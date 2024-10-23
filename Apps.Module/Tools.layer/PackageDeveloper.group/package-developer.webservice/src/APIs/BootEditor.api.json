@@ -1,0 +1,30 @@
+{
+  "name": "BootEditor",
+  "endpoints": [
+    {
+      "summary": "ListServices",
+      "method": "POST",
+      "path": "/:workspace/package/:packageName/list-services",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "module",
+          "in": "body",
+          "type": "string",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

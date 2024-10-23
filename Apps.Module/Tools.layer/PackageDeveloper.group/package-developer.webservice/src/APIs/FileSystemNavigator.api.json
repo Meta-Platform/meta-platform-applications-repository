@@ -1,0 +1,61 @@
+{
+  "name": "FileSystemNavigator",
+  "endpoints": [
+    {
+      "summary": "ListItem",
+      "method": "POST",
+      "path": "/:workspace/package/:packageName/ext/:ext/list-item",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ext",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "path",
+          "in": "body",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "GetContentItem",
+      "method": "POST",
+      "path": "/:workspace/package/:packageName/content-item",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "path",
+          "in": "body",
+          "type": "string",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

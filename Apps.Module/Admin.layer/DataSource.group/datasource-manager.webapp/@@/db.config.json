@@ -1,0 +1,8 @@
+{
+    "dialect": "mysql",
+    "host":"localhost",
+    "port":"3306",
+    "database":"datasource-manager",
+    "username": "admin",
+    "password":"q1w2e3r4t5"
+}

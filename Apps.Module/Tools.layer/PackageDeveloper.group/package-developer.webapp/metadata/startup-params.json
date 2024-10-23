@@ -1,0 +1,40 @@
+{
+    "port":"8093",
+    "serverName":"PackageDeveloperWebappInstance",
+    "serverManagerUrl": "http://localhost:8093/server-manager/status",
+    "RT_ENV_GENERATED_DIR_NAME":".generated_data",
+    "workspaceConfigs": [
+        {
+            "workspaceName":"Core.Module - Application.layer",
+            "path":"/home/kaiocezar/Workspaces/my-platform-reference-distro/repos/MyPlatform/Core.Module/Application.layer"
+        },
+        {
+            "workspaceName":"Core.Module - Library.layer",
+            "path":"/home/kaiocezar/Workspaces/my-platform-reference-distro/repos/MyPlatform/Core.Module/Library.layer"
+        },
+        {
+            "workspaceName":"Ecosystem.Module - Application.layer - DataSource.group",
+            "path":"/home/kaiocezar/Workspaces/my-platform-reference-distro/repos/MyPlatform/Ecosystem.Module/Application.layer/DataSource.group"
+        },
+        {
+            "workspaceName":"Ecosystem.Module - Application.layer - EcosystemControlPanel.group",
+            "path":"/home/kaiocezar/Workspaces/my-platform-reference-distro/repos/MyPlatform/Ecosystem.Module/Application.layer/EcosystemControlPanel.group"
+        },
+        {
+            "workspaceName":"Ecosystem.Module - Application.layer - ServerManager.group",
+            "path":"/home/kaiocezar/Workspaces/my-platform-reference-distro/repos/MyPlatform/Ecosystem.Module/Application.layer/ServerManager.group"
+        },
+        {
+            "workspaceName":"Ecosystem.Module - Library.layer",
+            "path":"/home/kaiocezar/Workspaces/my-platform-reference-distro/repos/MyPlatform/Ecosystem.Module/Library.layer"
+        },
+        {
+            "workspaceName":"UtilityApplication.Module - MyPlatformTools.layer - MyPlatformTools.layer - APIDesigner.group",
+            "path":"/home/kaiocezar/Workspaces/my-platform-reference-distro/repos/MyPlatform/UtilityApplication.Module/MyPlatformTools.layer/APIDesigner.group"
+        },
+        {
+            "workspaceName":"UtilityApplication.Module - MyPlatformTools.layer - MyPlatformTools.layer - PackageDeveloper.group",
+            "path":"/home/kaiocezar/Workspaces/my-platform-reference-distro/repos/MyPlatform/UtilityApplication.Module/MyPlatformTools.layer/PackageDeveloper.group"
+        }
+    ]
+}

@@ -1,0 +1,64 @@
+{
+    "bound-params":[
+        "serverService", 
+        "dataSourceLocalService"
+    ],
+    "endpoints": [
+        {
+            "url": "/datasource-manager",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/DataSources.api.json",
+                "controller": "Controllers/DataSources.controller"
+            },
+            "bound-params": {
+                "controller-params":{
+                    "dataSourceLocalService":"dataSourceLocalService"
+                },
+                "serverService":"serverService"
+            }
+        },
+        {
+            "url": "/file-system-navigator",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/FileSystemNavigator.api.json",
+                "controller": "Controllers/FileSystemNavigator.controller"
+            },
+            "bound-params": {
+                "controller-params":{
+                    "dataSourceLocalService":"dataSourceLocalService"
+                },
+                "serverService":"serverService"
+            }
+        },
+        {
+            "url": "/data-store-navigator",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/DataStoreNavigator.api.json",
+                "controller": "Controllers/DataStoreNavigator.controller"
+            },
+            "bound-params": {
+                "controller-params":{
+                    "dataSourceLocalService": "dataSourceLocalService"
+                },
+                "serverService":"serverService"
+            }
+        },
+        {
+            "url": "/relacional-database-handler",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/RelacionalDatabaseHandler.api.json",
+                "controller": "Controllers/RelacionalDatabaseHandler.controller"
+            },
+            "bound-params": {
+                "controller-params":{
+                    "dataSourceLocalService": "dataSourceLocalService"
+                },
+                "serverService":"serverService"
+            }
+        }
+    ]
+}

@@ -1,0 +1,20 @@
+{
+    "params": ["apisDirPath"],
+    "bound-params":["serverService"],
+    "endpoints": [
+        {
+            "url": "/api-designer",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/APIDesigner.api.json",
+                "controller": "Controllers/APIDesigner.controller",
+                "controller-params": {
+                    "apisDir": "{{apisDirPath}}"
+                }
+            },
+            "bound-params": {
+                "serverService":"serverService"
+            }
+        }
+    ]
+}

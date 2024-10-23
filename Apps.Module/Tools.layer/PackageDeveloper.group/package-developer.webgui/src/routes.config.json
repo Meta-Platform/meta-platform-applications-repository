@@ -1,0 +1,14 @@
+[
+    {
+        "path":"/",
+        "page":"MainPage"
+    },
+    {
+        "path":"/workspace/:workspace",
+        "page":"WorkspacePage"
+    },
+    {
+        "path":"/workspace/:workspace/package/:packageName",
+        "page":"PackagePage"
+    }
+]

@@ -1,0 +1,8 @@
+{
+    "port":"9248",
+    "serverName":"DatasourceManagerWebappInstance",
+    "appDataDir":"/home/~/datasource-manager-appdata-test",
+    "serverManagerUrl": "http://localhost:9248/server-manager/status",
+    "RT_ENV_GENERATED_DIR_NAME":".generated_data"
+}
+

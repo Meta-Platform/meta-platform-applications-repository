@@ -1,0 +1,7 @@
+[
+    {
+        "namespace": "PackageHandlerManager",
+        "path": "Managers/PackageHandler",
+        "params": ["workspaceConfigs"]
+    }
+]

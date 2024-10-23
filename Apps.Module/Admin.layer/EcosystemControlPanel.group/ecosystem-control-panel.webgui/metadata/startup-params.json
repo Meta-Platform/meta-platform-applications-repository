@@ -1,0 +1,7 @@
+{
+    "port":"8888",
+    "serverName":"RuntimeManagerWebappInstance",
+    "serverManagerUrl": "http://localhost:9015/server-manager/status",
+    "RT_ENV_GENERATED_DIR_NAME":".generated_data",
+    "isWatch": true
+}

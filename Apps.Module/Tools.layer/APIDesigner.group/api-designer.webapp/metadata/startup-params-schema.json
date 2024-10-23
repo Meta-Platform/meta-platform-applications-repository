@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "port": {
+      "type": "string",
+      "pattern": "^[0-9]+$"
+    },
+    "serverName": {
+      "type": "string"
+    },
+    "serverManagerUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "apisDirPath": {
+      "type": "string"
+    },
+    "RT_ENV_GENERATED_DIR_NAME": {
+      "type": "string"
+    }
+  },
+  "required": ["port", "serverName", "serverManagerUrl", "apisDirPath", "RT_ENV_GENERATED_DIR_NAME"]
+}

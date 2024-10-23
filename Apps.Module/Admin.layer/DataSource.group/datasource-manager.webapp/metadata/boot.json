@@ -1,0 +1,53 @@
+{
+    "params" : [
+        "port", 
+        "serverManagerUrl", 
+        "serverName",
+        "appDataDir",
+        "RT_ENV_GENERATED_DIR_NAME"
+    ],
+    "services": [
+        {
+            "namespace": "@@/server-service",
+            "dependency": "@/server-manager.service/services/HTTPServerService",
+            "params":{
+                "name":"{{serverName}}",
+                "port": "{{port}}"
+            }
+        },
+        {
+            "namespace": "@@/datasource-local-manager-service",
+            "dependency": "@/datasource-manager.service/services/DataSourceLocalManager",
+            "params": {
+                "appDataDir":"appDataDir"
+            }
+        }
+    ],
+    "endpoints": [
+        {
+            "dependency": "@/server-manager.webservice/endpoint-group",
+            "bound-params":{
+               "serverServiceForController":"@@/server-service",
+               "serverService": "@@/server-service"
+            }
+        },
+        {
+            "dependency": "@/datasource-manager.webservice/endpoint-group",
+            "bound-params":{
+                "serverService": "@@/server-service",
+                "dataSourceLocalService": "@@/datasource-local-manager-service"
+            }
+        },
+        {
+            "dependency": "@/datasource-manager.webgui/endpoint-group",
+            "params":{
+                "serverManagerUrl":"{{serverManagerUrl}}",
+                "serverName":"{{serverName}}",
+                "RT_ENV_GENERATED_DIR_NAME": "{{RT_ENV_GENERATED_DIR_NAME}}"
+            },
+            "bound-params":{
+                "serverService": "@@/server-service"
+            }
+        }
+    ]
+}

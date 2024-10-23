@@ -1,0 +1,7 @@
+[
+    {
+        "namespace": "DataSourceLocalManager",
+        "path": "Managers/DataSourceLocal",
+        "params": ["appDataDir"]
+    }
+]

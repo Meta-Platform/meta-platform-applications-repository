@@ -1,0 +1,6 @@
+{
+    "port":"8081",
+    "serverName":"APIDesignerWebguiInstance",
+    "serverManagerUrl": "http://localhost:8081/server-manager/status",
+    "RT_ENV_GENERATED_DIR_NAME":".generated_data"
+}

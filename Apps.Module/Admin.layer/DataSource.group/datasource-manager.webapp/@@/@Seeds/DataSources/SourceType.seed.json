@@ -1,0 +1,14 @@
+[
+    {
+        "Type":"fs",
+        "Description":"File System"
+    },
+    {
+        "Type":"datastore",
+        "Description":"Local Data Store"
+    },
+    {
+        "Type":"reltional-database",
+        "Description":"Relational Database"
+    }
+]

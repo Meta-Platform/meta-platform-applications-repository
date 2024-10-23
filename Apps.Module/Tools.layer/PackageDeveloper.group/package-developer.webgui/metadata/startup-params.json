@@ -1,0 +1,6 @@
+{
+    "port":"8083",
+    "serverName":"PackageDeveloperWebguiInstance",
+    "serverManagerUrl": "http://localhost:8090/server-manager/status",
+    "RT_ENV_GENERATED_DIR_NAME":".generated_data"
+}

@@ -1,0 +1,1 @@
+module.exports = async (model, seedPath) => await model.bulkCreate(require(`../Seeds/${seedPath}.seed.json`))

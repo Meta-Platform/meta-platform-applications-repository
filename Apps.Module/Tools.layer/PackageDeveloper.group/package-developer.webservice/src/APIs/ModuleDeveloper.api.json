@@ -1,0 +1,64 @@
+{
+  "name": "ModuleDeveloper",
+  "endpoints": [
+    {
+      "path": "/workspaces",
+      "method": "GET",
+      "summary": "ListWorkspaces"
+    },
+    {
+      "path": "/workspace/:workspace/package",
+      "method": "GET",
+      "summary": "ListPackagesByWorkspace",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "path",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "CreateWorkspace",
+      "method": "POST",
+      "path": "/workspace"
+    },
+    {
+      "summary": "CreatePackage",
+      "method": "POST",
+      "path": "/package"
+    },
+    {
+      "summary": "Status",
+      "method": "GET",
+      "path": "/status"
+    },
+    {
+      "summary": "GetIcon",
+      "method": "GET",
+      "path": "/icon/:workspace/:packageName/:ext",
+      "typeResponse" : "file",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ext",
+          "in": "path",
+          "type": "string",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

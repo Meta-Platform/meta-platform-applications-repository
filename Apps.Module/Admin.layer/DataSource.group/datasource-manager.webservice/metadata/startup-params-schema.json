@@ -1,0 +1,19 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "port": {
+        "type": "string",
+        "pattern": "^[0-9]+$"
+      },
+      "serverName": {
+        "type": "string"
+      },
+      "appDataDir": {
+        "type": "string",
+        "format": "uri"
+      }
+    },
+    "required": ["port", "serverName", "appDataDir"]
+  }
+  

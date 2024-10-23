@@ -1,0 +1,9 @@
+{
+  "name": "api-designer.webservice",
+  "version": "0.0.3",
+  "author": "Kaio Cezar <kadisk.shark@gmail.com>",
+  "dependencies": {
+    "lowdb": "^3.0.0",
+    "lowdb-cjs": "^3.0.1"
+  }
+}

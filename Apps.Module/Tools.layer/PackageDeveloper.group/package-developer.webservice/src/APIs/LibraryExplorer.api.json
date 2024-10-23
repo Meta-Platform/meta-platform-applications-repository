@@ -1,0 +1,111 @@
+{
+  "name": "LibraryExplorer",
+  "endpoints": [
+    {
+      "summary": "GetDetails",
+      "method": "GET",
+      "path": "/workspace/:workspace/package/:packageName/ext/:ext/details",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ext",
+          "in": "path",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "GetBoot",
+      "method": "GET",
+      "path": "/workspace/:workspace/package/:packageName/ext/:ext/boot",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ext",
+          "in": "path",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "GetServices",
+      "method": "GET",
+      "path": "/workspace/:workspace/package/:packageName/ext/:ext/services",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ext",
+          "in": "path",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "GetManagers",
+      "method": "GET",
+      "path": "/workspace/:workspace/package/:packageName/ext/:ext/managers",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ext",
+          "in": "path",
+          "type": "string",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

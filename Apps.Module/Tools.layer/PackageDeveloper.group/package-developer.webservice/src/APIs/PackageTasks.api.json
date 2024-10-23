@@ -1,0 +1,130 @@
+{
+  "name": "PackageTasks",
+  "endpoints": [
+    {
+      "summary": "InstallDependencies",
+      "method": "POST",
+      "path": "/install-dependencies",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "type",
+          "in": "body",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "ClearDependencies",
+      "method": "POST",
+      "path": "/clear-dependencies",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "type",
+          "in": "body",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "BuildArtifact",
+      "method": "POST",
+      "path": "/build-artifact",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "type",
+          "in": "body",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "Start",
+      "method": "POST",
+      "path": "/start",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "type",
+          "in": "body",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "Develop",
+      "method": "POST",
+      "path": "/develop",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "type",
+          "in": "body",
+          "type": "string",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,205 @@
+{
+	"name": "DataStoreNavigator",
+	"endpoints": [
+		{
+			"summary": "Insert",
+			"method": "POST",
+			"path": "/insert",
+			"parameters": [
+				{
+					"name": "keystone",
+					"in": "body",
+					"type": "string",
+					"required": true
+				},
+				{
+					"name": "docs",
+					"in": "body",
+					"type": "json",
+					"required": true
+				}
+			]
+		},
+		{
+			"summary": "Find",
+			"method": "GET",
+			"path": "/find",
+			"parameters": [
+				{
+					"name": "keystone",
+					"in": "query",
+					"type": "string",
+					"required": true
+				},
+				{
+					"name": "query",
+					"in": "query",
+					"type": "json",
+					"required": true
+				},
+				{
+					"name": "projection",
+					"in": "query",
+					"type": "json",
+					"required": false
+				},
+				{
+					"name": "sort",
+					"in": "query",
+					"type": "json",
+					"required": false
+				},
+				{
+					"name": "skip",
+					"in": "query",
+					"type": "number",
+					"required": false
+				},
+				{
+					"name": "limit",
+					"in": "query",
+					"type": "number",
+					"required": false
+				}
+			]
+		},
+		{
+			"summary": "FindOne",
+			"method": "GET",
+			"path": "/findone",
+			"parameters": [
+				{
+					"name": "keystone",
+					"in": "query",
+					"type": "string",
+					"required": true
+				},
+				{
+					"name": "query",
+					"in": "query",
+					"type": "json",
+					"required": true
+				},
+				{
+					"name": "projection",
+					"in": "query",
+					"type": "json",
+					"required": false
+				}
+			]
+		},
+		{
+			"summary": "Count",
+			"method": "GET",
+			"path": "/count",
+			"parameters": [
+				{
+					"name": "keystone",
+					"in": "query",
+					"type": "string",
+					"required": true
+				},
+				{
+					"name": "query",
+					"in": "query",
+					"type": "json",
+					"required": true
+				}
+			]
+		},
+		{
+			"summary": "Update",
+			"method": "PUT",
+			"path": "/update",
+			"parameters": [
+				{
+					"name": "keystone",
+					"in": "body",
+					"type": "string",
+					"required": true
+				},
+				{
+					"name": "query",
+					"in": "body",
+					"type": "json",
+					"required": true
+				},
+				{
+					"name": "update",
+					"in": "body",
+					"type": "json",
+					"required": true
+				},
+				{
+					"name": "options",
+					"in": "body",
+					"type": "json",
+					"required": false
+				}
+			]
+		},
+		{
+			"summary": "Remove",
+			"method": "DELETE",
+			"path": "/remove",
+			"parameters": [
+				{
+					"name": "keystone",
+					"in": "body",
+					"type": "string",
+					"required": true
+				},
+				{
+					"name": "query",
+					"in": "body",
+					"type": "json",
+					"required": true
+				},
+				{
+					"name": "options",
+					"in": "body",
+					"type": "json",
+					"required": false
+				}
+			]
+		},
+		{
+			"summary": "EnsureIndex",
+			"method": "POST",
+			"path": "/ensure-index",
+			"parameters": [
+				{
+					"name": "keystone",
+					"in": "body",
+					"type": "string",
+					"required": true
+				},
+				{
+					"name": "options",
+					"in": "body",
+					"type": "json",
+					"required": true
+				}
+			]
+		},
+		{
+			"summary": "RemoveIndex",
+			"method": "DELETE",
+			"path": "/remove-index",
+			"parameters": [
+				{
+					"name": "keystone",
+					"in": "body",
+					"type": "string",
+					"required": true
+				},
+				{
+					"name": "fieldName",
+					"in": "body",
+					"type": "string",
+					"required": true
+				}
+			]
+		}
+	]
+}

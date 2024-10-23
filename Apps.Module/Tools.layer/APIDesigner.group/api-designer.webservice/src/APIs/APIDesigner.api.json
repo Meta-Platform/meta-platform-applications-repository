@@ -1,0 +1,136 @@
+{
+  "name": "APIDesigner",
+  "endpoints": [
+    {
+      "path": "/",
+      "method": "GET",
+      "summary": "ListAPI"
+    },
+    {
+      "path": "/:api/endpoint",
+      "method": "GET",
+      "summary": "ListEndpoints",
+      "parameters": [
+        {
+          "in": "path",
+          "name": "api",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "path": "/:api/endpoint",
+      "method": "POST",
+      "summary": "CreateEndpoint",
+      "parameters": [
+        {
+          "in": "path",
+          "name": "api",
+          "type": "string",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "endpoint",
+          "type": "string",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "method",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "path": "/",
+      "method": "POST",
+      "summary": "CreateAPI",
+      "parameters": [
+        {
+          "in": "body",
+          "name": "name",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "path": "/:api/endpoints/:endpoint/path",
+      "summary": "UpdatePath",
+      "method": "PUT",
+      "parameters": [
+        {
+          "in": "path",
+          "name": "api",
+          "type": "string",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "endpoint",
+          "type": "string",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "path",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "UpdateMethod",
+      "method": "PUT",
+      "path": "/:api/endpoints/:endpoint/method",
+      "parameters": [
+        {
+          "in": "path",
+          "name": "api",
+          "type": "string",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "endpoint",
+          "type": "string",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "method",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "UpdateParameters",
+      "method": "PUT",
+      "path": "/:api/endpoints/:endpoint/parameters",
+      "parameters": [
+        {
+          "in": "path",
+          "name": "api",
+          "type": "string",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "endpoint",
+          "type": "string",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "parameters",
+          "type": "json",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

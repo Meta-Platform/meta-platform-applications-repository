@@ -1,0 +1,43 @@
+{
+	"name": "RelacionalDatabaseHandler",
+	"endpoints": [
+		{
+			"summary": "ShowAllTableName",
+			"method": "GET",
+			"path": "/show-all-table-name",
+			"parameters": [
+				{
+					"name": "keystone",
+					"in": "query",
+					"type": "string",
+					"required": true
+				},
+				{
+					"name": "options",
+					"in": "query",
+					"type": "json",
+					"required": false
+				}
+			]
+		},
+		{
+			"summary": "DescribeTable",
+			"method": "GET",
+			"path": "/describe-table",
+			"parameters": [
+				{
+					"name": "keystone",
+					"in": "query",
+					"type": "string",
+					"required": true
+				},
+				{
+					"name": "tableName",
+					"in": "query",
+					"type": "string",
+					"required": true
+				}
+			]
+		}
+	]
+}

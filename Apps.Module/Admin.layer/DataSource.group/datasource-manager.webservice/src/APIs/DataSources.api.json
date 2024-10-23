@@ -1,0 +1,104 @@
+{
+	"name": "DataSources",
+	"endpoints": [
+		{
+			"path": "/data-source/fs",
+			"method": "POST",
+			"summary": "CreateFileSystem",
+			"parameters": [
+				{
+					"name": "name",
+					"in": "body",
+					"type": "string",
+					"required": true
+				}
+			]
+		},
+		{
+			"path": "/data-source/datastore",
+			"method": "POST",
+			"summary": "CreateDataStore",
+			"parameters": [
+				{
+					"name": "name",
+					"in": "body",
+					"type": "string",
+					"required": true
+				}
+			]
+		},
+		{
+			"path": "/data-source/orm",
+			"method": "POST",
+			"summary": "CreateORM",
+			"parameters": [
+				{
+					"in": "body",
+					"name": "host",
+					"type": "string",
+					"required": true
+				},
+				{
+					"in": "body",
+					"name": "dialect",
+					"type": "string",
+					"required": true
+				},
+				{
+					"in": "body",
+					"name": "dbname",
+					"type": "string",
+					"required": true
+				},
+				{
+					"in": "body",
+					"name": "user",
+					"type": "string",
+					"required": true
+				},
+				{
+					"in": "body",
+					"name": "password",
+					"type": "string",
+					"required": true
+				}
+			]
+		},
+		{
+			"path": "/data-source",
+			"method": "POST",
+			"summary": "GetDataSource",
+			"parameters": [
+				{
+					"name": "name",
+					"in": "body",
+					"type": "string",
+					"required": true
+				}
+			]
+		},
+		{
+			"summary": "Status",
+			"method": "GET",
+			"path": "/status"
+		},
+		{
+			"summary": "ListDataSources",
+			"method": "GET",
+			"path": "/datasource-manager"
+		},
+		{
+			"summary": "ListDataSourcesByType",
+			"method": "GET",
+			"path": "/datasource-manager/:type",
+			"parameters": [
+				{
+					"name": "type",
+					"in": "path",
+					"type": "string",
+					"required": true
+				}
+			]
+		}
+	]
+}

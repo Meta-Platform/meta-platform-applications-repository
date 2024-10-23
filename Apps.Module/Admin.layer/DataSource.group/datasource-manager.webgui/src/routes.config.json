@@ -1,0 +1,10 @@
+[
+    {
+        "path":"/",
+        "page":"MainPage"
+    },
+    {
+        "path":"/status",
+        "page":"StatusContainer"
+    }
+]

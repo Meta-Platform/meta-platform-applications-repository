@@ -1,0 +1,15 @@
+{
+    "workbench.colorCustomizations": {
+        "activityBar.background": "#d55c58",
+        "activityBar.foreground": "#ffffff",
+        "activityBar.activeBackground": "#22426f",
+        "titleBar.activeBackground": "#bdc3c7",
+        "titleBar.activeForeground": "#7a9ec3",
+        "statusBar.background": "#bdc3c7",
+        "statusBar.foreground": "#2b3e51",
+        "sideBar.border": "#bdc3c7"
+    },
+    "workbench.colorTheme": "Default Dark+",
+    "svg.preview.background": "transparent",
+
+}

@@ -1,0 +1,40 @@
+{
+    "params" : [
+        "port", 
+        "serverName", 
+        "appDataDir"
+    ],
+    "services": [
+        {
+            "namespace": "@@/server-service",
+            "dependency": "@/server-manager.service/services/HTTPServerService",
+            "params":{
+                "name":"{{serverName}}",
+                "port": "{{port}}"
+            }
+        },
+        {
+            "namespace": "@@/datasource-local-manager-service",
+            "dependency": "@/datasource-manager.service/services/DataSourceLocalManager",
+            "params": {
+                "appDataDir":"appDataDir"
+            }
+        }
+    ],
+    "endpoints": [
+        {
+            "dependency": "@/server-manager.webservice/endpoint-group",
+            "bound-params":{
+               "serverServiceForController":"@@/server-service",
+               "serverService": "@@/server-service"
+            }
+        },
+        {
+            "dependency": "@//endpoint-group",
+            "bound-params":{
+                "serverService": "@@/server-service",
+                "dataSourceLocalService": "@@/datasource-local-manager-service"
+            }
+        }
+    ]
+}

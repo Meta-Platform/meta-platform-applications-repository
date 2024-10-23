@@ -1,0 +1,14 @@
+node- Icones do projeto
+- Package Explorer
+    - App
+    
+    - UI
+    - Web
+    - Lib
+
+
+    ,
+    {
+        "path":"/api-designer",
+        "page":"APIDesignerMainPage",
+    }

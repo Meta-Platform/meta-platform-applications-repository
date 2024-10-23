@@ -1,0 +1,43 @@
+{
+	"name": "FileSystemNavigator",
+	"endpoints": [
+		{
+			"summary": "ListItem",
+			"method": "POST",
+			"path": "/list-item",
+			"parameters": [
+				{
+					"name": "keystone",
+					"in": "body",
+					"type": "string",
+					"required": true
+				},
+				{
+					"name": "path",
+					"in": "body",
+					"type": "string",
+					"required": true
+				}
+			]
+		},
+		{
+			"summary": "GetContentItem",
+			"method": "POST",
+			"path": "/content-item",
+			"parameters": [
+				{
+					"name": "keystone",
+					"in": "body",
+					"type": "string",
+					"required": true
+				},
+				{
+					"name": "path",
+					"in": "body",
+					"type": "string",
+					"required": true
+				}
+			]
+		}
+	]
+}

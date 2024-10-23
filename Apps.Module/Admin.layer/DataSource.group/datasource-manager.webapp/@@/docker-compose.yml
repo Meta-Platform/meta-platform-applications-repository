@@ -1,0 +1,18 @@
+
+version: '3.1'
+
+services:
+  db:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_DATABASE: 'datasource-manager'
+      MYSQL_USER: 'admin'
+      MYSQL_PASSWORD: 'q1w2e3r4t5'
+      MYSQL_ROOT_PASSWORD: 'q1w2e3r4t5'
+    ports:
+      - '3306:3306'
+    expose:
+      - '3306'
+    #volumes:
+    #  - .temp-db:/var/lib/mysql

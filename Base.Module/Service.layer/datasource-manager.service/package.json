@@ -1,0 +1,12 @@
+{
+  "name": "datasource-manager.service",
+  "version": "0.0.3",
+  "author": "Kaio Cezar <kadisk.shark@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "mysql2": "^2.3.3",
+    "nedb": "^1.8.0",
+    "sequelize": "^6.21.6",
+    "tedious": "^15.1.0"
+  }
+}

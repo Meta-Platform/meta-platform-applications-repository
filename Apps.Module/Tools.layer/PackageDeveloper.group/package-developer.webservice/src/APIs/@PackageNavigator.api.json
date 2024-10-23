@@ -1,0 +1,111 @@
+{
+  "name": "PackageNavigator",
+  "endpoints": [
+    {
+      "summary": "ListModules",
+      "method": "POST",
+      "path": "/modules",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "body",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "GetModule",
+      "method": "POST",
+      "path": "/module/:module",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "module",
+          "in": "path",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "summary": "ListItem",
+      "method": "POST",
+      "path": "/items",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "module",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "path",
+          "in": "body",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "GetItem",
+      "method": "POST",
+      "path": "/item",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "module",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "path",
+          "in": "body",
+          "type": "string",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+[
+    {
+        "Name":"Apps DB",
+        "Source_Type_Id":3
+    },
+    {
+        "Name":"Projects DB",
+        "Source_Type_Id":3
+    },
+    {
+        "Name":"API Designer DB",
+        "Source_Type_Id":3
+    },
+    {
+        "Name":"HTTP Servers DB",
+        "Source_Type_Id":3
+    },
+    {
+        "Name":"Datasource Manager DB",
+        "Source_Type_Id":3
+    },
+    {
+        "Name":"Process Manager DB",
+        "Source_Type_Id":3
+    },
+    {
+        "Name":"Vivo Asana",
+        "Source_Type_Id":3
+    },
+    {
+        "Name":"Vivo Asana 2",
+        "Source_Type_Id":3
+    },
+    {
+        "Name":"AssetManager",
+        "Source_Type_Id":1
+    },
+    {
+        "Name":"Build Front-End",
+        "Source_Type_Id":2
+    },
+    {
+        "Name":"Database MySQL 1",
+        "Source_Type_Id":1
+    },
+    {
+        "Name":"Database MySQL 2",
+        "Source_Type_Id":1
+    },
+    {
+        "Name":"Honda Template",
+        "Source_Type_Id":2
+    },
+    {
+        "Name":"House Of English",
+        "Source_Type_Id":3
+    },
+    {
+        "Name":"Meu Espaço",
+        "Source_Type_Id":1
+    },
+    {
+        "Name":"nowhere",
+        "Source_Type_Id":1
+    },
+    {
+        "Name":"Service Profiles",
+        "Source_Type_Id":1
+    },
+    {
+        "Name":"Datastore 1",
+        "Source_Type_Id":2
+    },
+    {
+        "Name":"Datastore 2",
+        "Source_Type_Id":2
+    },
+    {
+        "Name":"Users Gauge",
+        "Source_Type_Id":2
+    }
+]

@@ -1,0 +1,7 @@
+[
+    {
+        "name":"PackageJson",
+        "requirements":["PackageJson"],
+        "filename":"package"
+    }
+]

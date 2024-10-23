@@ -1,0 +1,114 @@
+{
+    "bound-params":[
+        "serverService", 
+        "packageHandlerManagerService", 
+        "packageDeveloperLib"
+    ],
+    "endpoints": [
+        {
+            "url": "/package-developer",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/ModuleDeveloper.api.json",
+                "controller": "Controllers/ModuleDeveloper.controller"
+            },
+            "bound-params": {
+                "controller-params":{
+                    "packageHandlerManagerService":"packageHandlerManagerService",
+                    "packageDeveloperLib":"packageDeveloperLib"
+                },
+                "serverService":"serverService"
+            }
+        },
+        {
+            "url": "/webapp-package-explorer",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/WebappExplorer.api.json",
+                "controller": "Controllers/WebappExplorer.controller"
+            },
+            "bound-params": {
+                "controller-params":{
+                    "packageHandlerManagerService":"packageHandlerManagerService",
+                    "packageDeveloperLib":"packageDeveloperLib"
+                },
+                "serverService":"serverService"
+            }
+        },
+        {
+            "url": "/webgui-package-explorer",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/WebguiExplorer.api.json",
+                "controller": "Controllers/WebguiExplorer.controller"
+            },
+            "bound-params": {
+                "controller-params":{
+                    "packageHandlerManagerService":"packageHandlerManagerService",
+                    "packageDeveloperLib":"packageDeveloperLib"
+                },
+                "serverService":"serverService"
+            }
+        },
+        {
+            "url": "/webservice-package-explorer",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/WebserviceExplorer.api.json",
+                "controller": "Controllers/WebserviceExplorer.controller"
+            },
+            "bound-params": {
+                "controller-params":{
+                    "packageHandlerManagerService":"packageHandlerManagerService",
+                    "packageDeveloperLib":"packageDeveloperLib"
+                },
+                "serverService":"serverService"
+            }
+        },
+        {
+            "url": "/library-package-explorer",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/LibraryExplorer.api.json",
+                "controller": "Controllers/LibraryExplorer.controller"
+            },
+            "bound-params": {
+                "controller-params":{
+                    "packageHandlerManagerService":"packageHandlerManagerService",
+                    "packageDeveloperLib":"packageDeveloperLib"
+                },
+                "serverService":"serverService"
+            }
+        },
+        {
+            "url": "/package-file-explorer",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/FileSystemNavigator.api.json",
+                "controller": "Controllers/FileSystemNavigator.controller"
+            },
+            "bound-params": {
+                "controller-params":{
+                    "packageHandlerManagerService":"packageHandlerManagerService",
+                    "packageDeveloperLib":"packageDeveloperLib"
+                },
+                "serverService":"serverService"
+            }
+        },
+        {
+            "url": "/package-tasks",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/PackageTasks.api.json",
+                "controller": "Controllers/PackageTasks.controller"
+            },
+            "bound-params": {
+                "controller-params":{
+                    "packageHandlerManagerService":"packageHandlerManagerService",
+                    "packageDeveloperLib":"packageDeveloperLib"
+                },
+                "serverService":"serverService"
+            }
+        }
+    ]
+}

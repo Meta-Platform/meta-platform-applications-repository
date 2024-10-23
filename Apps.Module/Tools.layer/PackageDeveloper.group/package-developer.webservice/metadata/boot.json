@@ -1,0 +1,41 @@
+{
+    "params" : [
+        "port", 
+        "serverName", 
+        "workspaceConfigs"
+    ],
+    "services": [
+        {
+            "namespace": "@@/server-service",
+            "dependency": "@/server-manager.service/services/HTTPServerService",
+            "params":{
+                "name":"{{serverName}}",
+                "port": "{{port}}"
+            }
+        },
+        {
+            "namespace": "@@/package-handler-service",
+            "dependency": "@/package-developer.lib/services/PackageHandlerManager",
+            "params": {
+                "workspaceConfigs":"workspaceConfigs"
+            }
+        }
+    ],
+    "endpoints": [
+        {
+            "dependency": "@/server-manager.webservice/endpoint-group",
+            "bound-params":{
+               "serverServiceForController":"@@/server-service",
+               "serverService": "@@/server-service"
+            }
+        },
+        {
+            "dependency": "@//endpoint-group",
+            "bound-params":{
+                "serverService": "@@/server-service",
+                "packageHandlerManagerService": "@@/package-handler-service",
+                "packageDeveloperLib":"@/package-developer.lib"
+            }
+        }
+    ]
+}

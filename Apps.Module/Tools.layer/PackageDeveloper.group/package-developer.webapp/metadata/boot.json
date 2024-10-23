@@ -1,0 +1,54 @@
+{
+    "params" : [
+        "port", 
+        "serverManagerUrl", 
+        "serverName",
+        "workspaceConfigs",
+        "RT_ENV_GENERATED_DIR_NAME"
+    ],
+    "services": [
+        {
+            "namespace": "@@/server-service",
+            "dependency": "@/server-manager.service/services/HTTPServerService",
+            "params":{
+                "name":"{{serverName}}",
+                "port": "{{port}}"
+            }
+        },
+        {
+            "namespace": "@@/package-handler-service",
+            "dependency": "@/package-developer.lib/services/PackageHandlerManager",
+            "params": {
+                "workspaceConfigs":"workspaceConfigs"
+            }
+        }
+    ],
+    "endpoints": [
+        {
+            "dependency": "@/server-manager.webservice/endpoint-group",
+            "bound-params":{
+               "serverServiceForController":"@@/server-service",
+               "serverService": "@@/server-service"
+            }
+        },
+        {
+            "dependency": "@/package-developer.webservice/endpoint-group",
+             "bound-params":{
+                 "serverService": "@@/server-service",
+                 "packageHandlerManagerService": "@@/package-handler-service",
+                 "packageDeveloperLib":"@/package-developer.lib"
+             }
+        },
+        {
+            "dependency": "@/package-developer.webgui/endpoint-group",
+            "params":{
+                "serverManagerUrl":"{{serverManagerUrl}}",
+                "serverName":"{{serverName}}",
+                "RT_ENV_GENERATED_DIR_NAME":"{{RT_ENV_GENERATED_DIR_NAME}}"
+            },
+            "bound-params":{
+                "serverService": "@@/server-service"
+            }
+        }
+    ]
+}
