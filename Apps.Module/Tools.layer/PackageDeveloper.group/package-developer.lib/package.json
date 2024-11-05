@@ -2,7 +2,7 @@
   "name": "package-developer.lib",
   "version": "0.0.3",
   "author": "Kaio Cezar <kadisk.shark@gmail.com>",
-  "license": "ISC",
+  "license": "BSD-3-Clause",
   "dependencies": {
     "simple-git": "^3.14.0"
   }

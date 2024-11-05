@@ -6,7 +6,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC",
+  "license": "BSD-3-Clause",
   "peerDependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

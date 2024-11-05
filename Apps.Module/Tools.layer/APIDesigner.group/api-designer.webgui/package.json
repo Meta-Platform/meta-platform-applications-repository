@@ -2,7 +2,7 @@
   "name": "api-designer.webgui",
   "version": "0.0.3",
   "author": "Kaio Cezar <kadisk.shark@gmail.com>",
-  "license": "ISC",
+  "license": "BSD-3-Clause",
   "dependencies": {
     "@types/react": "^18.0.20",
     "@types/react-dom": "^18.0.6",
