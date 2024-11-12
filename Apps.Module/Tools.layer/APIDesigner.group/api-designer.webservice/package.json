@@ -3,7 +3,7 @@
   "version": "0.0.3",
   "author": "Kaio Cezar <kadisk.shark@gmail.com>",
   "dependencies": {
-    "lowdb": "^3.0.0",
+    "lowdb": "^7.0.1",
     "lowdb-cjs": "^3.0.1"
   }
 }
