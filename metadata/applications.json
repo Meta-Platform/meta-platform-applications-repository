@@ -1,0 +1,20 @@
+[
+    {
+        "appType":"APP",
+        "executable":"api",
+        "packageNamespace":"Apps.Module/Tools.layer/APIDesigner.group/api-designer.webapp",
+        "supervisorSocketFileName":"api-designer.sock"
+    },
+    {
+        "appType":"APP",
+        "executable":"developer",
+        "packageNamespace":"Apps.Module/Tools.layer/PackageDeveloper.group/package-developer.webapp",
+        "supervisorSocketFileName":"developer.sock"
+    },
+    {
+        "appType":"APP",
+        "executable":"sources",
+        "packageNamespace":"Apps.Module/Admin.layer/PackageDeveloper.group/datasource-manager.webapp",
+        "supervisorSocketFileName":"developer.sock"
+    }
+]
