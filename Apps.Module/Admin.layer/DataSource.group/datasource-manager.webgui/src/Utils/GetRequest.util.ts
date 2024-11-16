@@ -1,5 +1,5 @@
 import axios from "axios"
-import * as qs    from "query-string"
+import qs    from "query-string"
 
 const getURLPath = (path:string, parameters:Array<object>) => 
 parameters && parameters.length > 0
