@@ -2,6 +2,6 @@
     "port":"8082",
     "serverName":"APIDesignerWebappInstance",
     "serverManagerUrl": "http://localhost:8082/server-manager/status",
-    "apisDirPath":"/home/kadisk/Workspaces/meta-platform-repo/repos/PlaformApplicationsRepo/Apps.Module/Tools.layer/APIDesigner.group/api-designer.webservice/src/APIs",
+    "apisDirPath":"/home/kadisk/Workspaces/meta-platform-repo/repos/PlatformApplicationsRepo/Apps.Module/Tools.layer/APIDesigner.group/api-designer.webservice/src/APIs",
     "RT_ENV_GENERATED_DIR_NAME":".generated_data"
 }
