@@ -17,8 +17,8 @@
             "path":"/home/kadisk/Workspaces/my-platform-reference-distro/repos/MyPlatform/Ecosystem.Module/Application.layer/DataSource.group"
         },
         {
-            "workspaceName":"Ecosystem.Module - Application.layer - EcosystemControlPanel.group",
-            "path":"/home/kadisk/Workspaces/my-platform-reference-distro/repos/MyPlatform/Ecosystem.Module/Application.layer/EcosystemControlPanel.group"
+            "workspaceName":"Ecosystem.Module - Application.layer - InstanceExecutorControlPanel.group",
+            "path":"/home/kadisk/Workspaces/my-platform-reference-distro/repos/MyPlatform/Ecosystem.Module/Application.layer/InstanceExecutorControlPanel.group"
         },
         {
             "workspaceName":"Ecosystem.Module - Application.layer - ServerManager.group",
