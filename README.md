@@ -1,4 +1,4 @@
-[Meta Platform](../../README.md)
+[Meta Platform](https://github.com/Meta-Platform)
 # Meta Platform Applications Repository
 
 ## Modules
