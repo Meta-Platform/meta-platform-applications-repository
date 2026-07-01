@@ -1,9 +1,15 @@
 [
     {
         "appType":"APP",
-        "executable":"api",
+        "executable":"api-designer-webapp",
         "packageNamespace":"Apps.Module/Tools.layer/APIDesigner.group/api-designer.webapp",
         "supervisorSocketFileName":"api-designer.sock"
+    },
+    {
+        "appType":"DESKTOP",
+        "executable":"api-designer-desktop",
+        "packageNamespace":"Apps.Module/Tools.layer/APIDesigner.group/api-designer.desktopapp",
+        "supervisorSocketFileName":"api-designer-desktop.sock"
     },
     {
         "appType":"APP",
