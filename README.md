@@ -25,10 +25,13 @@ Quando você quer instalar/usar as aplicações finais, ou estudá-las como
 
 ## Instalação
 
-Instalado via [Setup Wizard](https://github.com/Meta-Platform/meta-platform-setup-wizard-command-line)
-(perfis de escopo `full` incluem este repositório). Executáveis publicados em
-[`metadata/applications.json`](./metadata/applications.json): `api`
-(api-designer), `developer` (package-developer), `sources` (datasource-manager).
+Instalado via [Setup Wizard](https://github.com/Meta-Platform/meta-platform-setup-wizard-command-line).
+O único perfil que inclui este repositório (`dev-localfs-full`) **não está
+registrado** no wizard atual — a instalação deste repositório é manual, voltada
+a desenvolvimento. Executáveis publicados em
+[`metadata/applications.json`](./metadata/applications.json):
+`api-designer-webapp` e `api-designer-desktop` (api-designer), `developer`
+(package-developer), `sources` (datasource-manager).
 
 ## Conceitos importantes
 
@@ -52,7 +55,8 @@ Instalado via [Setup Wizard](https://github.com/Meta-Platform/meta-platform-setu
 | `execution-mananger.webservice` | webservice | Apps | Admin | MyDesktop | Gerenciamento de execução (planejado) | Stub (vazio) | — | — |
 | `home-screen.webgui` | webgui | Apps | Admin | MyDesktop | Tela inicial do desktop (planejado) | Stub (vazio) | — | — |
 | `my-workspace.webgui` | webgui | Apps | Admin | MyDesktop | Workspace do usuário (planejado) | Stub (vazio) | — | — |
-| `api-designer.webapp` | webapp | Apps | Tools | APIDesigner | Composição do API Designer | Desenvolvido | `@@/server-service`, `@/api-designer.{webgui,webservice}` | `api` |
+| `api-designer.webapp` | webapp | Apps | Tools | APIDesigner | Composição do API Designer | Desenvolvido | `@@/server-service`, `@/api-designer.{webgui,webservice}` | `api-designer-webapp` |
+| `api-designer.desktopapp` | desktopapp | Apps | Tools | APIDesigner | Composição desktop (janela Electron) do API Designer | Desenvolvido | `@@/server-service`, `@/api-designer.{webgui,webservice}` | `api-designer-desktop` |
 | `api-designer.webgui` | webgui | Apps | Tools | APIDesigner | Front-end | Desenvolvido | `@@/server-service` | — |
 | `api-designer.webservice` | webservice | Apps | Tools | APIDesigner | API HTTP | Desenvolvido | `@@/server-service` | — |
 | `MetaCloud.webapp` | webapp | Apps | Tools | MetaCloud | App MetaCloud (planejado) | Stub (só `package.json`) | — | — |
@@ -78,8 +82,9 @@ Instalado via [Setup Wizard](https://github.com/Meta-Platform/meta-platform-setu
   ambiente de desktop.
 - **my-workspace** — planejado (`my-workspace.webgui`, **vazio**): área de
   trabalho do usuário.
-- **api-designer** (`api`) — ferramenta de desenho de APIs. Aplicação web
-  completa, desenvolvida.
+- **api-designer** (`api-designer-webapp` / `api-designer-desktop`) —
+  ferramenta de desenho de APIs. Aplicação web completa, desenvolvida, com
+  variante desktop (`api-designer.desktopapp`).
 - **MetaCloud** — em estágio inicial: `MetaCloud.webapp` é stub (só
   `package.json`) e `MetaCloud.webgui` tem apenas telas iniciais (`Login`,
   `WelcomePanel`).
