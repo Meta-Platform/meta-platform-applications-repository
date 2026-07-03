@@ -1,16 +1,19 @@
-# Módulo Web Packages
-Módulo de serviços web da aplicação package-developer.webapp
+# package-developer.webservice
 
-O Módulo Web Packages pode ser executado de forma independente
+Web service (backend) do **Package Developer** (`package-developer.webapp`).
+Expõe as APIs de workspaces/pacotes, navegação, tarefas de build e os *explorers*
+por tipo de package.
 
-## Configuração Local
-```sh
-$ npm install
-````
-### Execução
-```sh
-$ node index.js
-````
+## Execução
+
+Não é executado de forma independente (`node index.js`). É montado em runtime
+sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando o
+`package-developer.webapp` é executado pelo Package Executor.
+
+> **Explorers:** as rotas dos grupos *Package/UI/Web/Lib Explorer* incluem o
+> segmento `/ext/:ext/`, onde `ext` (path param, obrigatório) é a extensão do
+> package (`webapp`, `webgui`, `webservice`, `lib`). As tabelas de parâmetros
+> abaixo, além de `workspace` e `packageName`, também recebem esse `ext`.
 
 ## Serviços disponibilizados
 - Packages
@@ -34,22 +37,18 @@ $ node index.js
 - Package Explorer
     - Get Details
     - Get Boot
-    - Get Dependencies
 - UI Explorer
     - Get Details
     - Get Boot
-    - Get Dependencies
     - Get Routes
 - Web Explorer
     - Get Details
     - Get Boot
-    - Get Dependencies
     - Get APIs
     - Get Controllers
 - Lib Explorer
     - Get Details
     - Get Boot
-    - Get Dependencies
     - Get Services
     - Get Managers
 - Boot Editor
@@ -73,7 +72,7 @@ $ node index.js
 `GET` /workspaces
 
 ### **List Packages By Workspace** [ListPackagesByWorkspace]
-`GET` /data-source/datastore
+`GET` /workspace/:workspace/package
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
@@ -102,13 +101,14 @@ $ node index.js
 
 
 ### **Get Icon** [GetIcon]
-`GET` /icon/:workspace/:packageName
+`GET` /icon/:workspace/:packageName/:ext
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
 | ------------- | ------------- | ------------- | -------------|
 | workspace  | string  | path  | yes  |
 | packageName  | string  | path  | yes  |
+| ext  | string  | path  | yes  |
 
 
 ## **Package Navigator** [PackageNavigator]
@@ -230,10 +230,9 @@ $ node index.js
 **Serviços**
 - Get Details
 - Get Boot
-- Get Dependencies
 
 ### **Get Details** [GetDetails]
-`GET` /workspace/:workspace/package/:packageName/details
+`GET` /workspace/:workspace/package/:packageName/ext/:ext/details
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
@@ -243,7 +242,7 @@ $ node index.js
 
 
 ### **Get Boot** [GetBoot]
-`GET` /workspace/:workspace/package/:packageName/boot
+`GET` /workspace/:workspace/package/:packageName/ext/:ext/boot
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
@@ -256,11 +255,10 @@ $ node index.js
 **Serviços**
 - Get Details
 - Get Boot
-- Get Dependencies
 - Get Routes
 
 ### **Get Details** [GetDetails]
-`GET` /workspace/:workspace/package/:packageName/details
+`GET` /workspace/:workspace/package/:packageName/ext/:ext/details
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
@@ -270,7 +268,7 @@ $ node index.js
 
 
 ### **Get Boot** [GetBoot]
-`GET` /workspace/:workspace/package/:packageName/boot
+`GET` /workspace/:workspace/package/:packageName/ext/:ext/boot
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
@@ -280,7 +278,7 @@ $ node index.js
 
 
 ### **Get Routes** [GetRoutes]
-`GET` /workspace/:workspace/package/:packageName/routes
+`GET` /workspace/:workspace/package/:packageName/ext/:ext/routes
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
@@ -293,12 +291,11 @@ $ node index.js
 **Serviços**
 - Get Details
 - Get Boot
-- Get Dependencies
 - Get APIs
 - Get Controllers
 
 ### **Get Details** [GetDetails]
-`GET` /workspace/:workspace/package/:packageName/details
+`GET` /workspace/:workspace/package/:packageName/ext/:ext/details
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
@@ -308,7 +305,7 @@ $ node index.js
 
 
 ### **Get Boot** [GetBoot]
-`GET` /workspace/:workspace/package/:packageName/boot
+`GET` /workspace/:workspace/package/:packageName/ext/:ext/boot
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
@@ -318,7 +315,7 @@ $ node index.js
 
 
 ### **Get APIs** [GetAPIs]
-`GET` /workspace/:workspace/package/:packageName/apis
+`GET` /workspace/:workspace/package/:packageName/ext/:ext/apis
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
@@ -328,7 +325,7 @@ $ node index.js
 
 
 ### **Get Controllers** [GetControllers]
-`GET` /workspace/:workspace/package/:packageName/controllers
+`GET` /workspace/:workspace/package/:packageName/ext/:ext/controllers
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
@@ -340,12 +337,11 @@ $ node index.js
 **Serviços**
 - Get Details
 - Get Boot
-- Get Dependencies
 - Get Services
 - Get Managers
 
 ### **Get Details** [GetDetails]
-`GET` /workspace/:workspace/package/:packageName/details
+`GET` /workspace/:workspace/package/:packageName/ext/:ext/details
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
@@ -355,7 +351,7 @@ $ node index.js
 
 
 ### **Get Boot** [GetBoot]
-`GET` /workspace/:workspace/package/:packageName/boot
+`GET` /workspace/:workspace/package/:packageName/ext/:ext/boot
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
@@ -364,7 +360,7 @@ $ node index.js
 | packageName | string  | path  | yes  |
 
 ### **Get Services** [GetServices]
-`GET` /workspace/:workspace/package/:packageName/services
+`GET` /workspace/:workspace/package/:packageName/ext/:ext/services
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
@@ -374,7 +370,7 @@ $ node index.js
 
 
 ### **Get Managers** [GetManagers]
-`GET` /workspace/:workspace/package/:packageName/managers
+`GET` /workspace/:workspace/package/:packageName/ext/:ext/managers
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |

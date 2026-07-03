@@ -44,7 +44,7 @@ O Módulo Web API Designer pode ser executado de forma independente
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
 | ------------- | ------------- | ------------- | -------------|
-| api  | string  | body  | yes  |
+| api  | string  | path  | yes  |
 | endpoint  | string  | body  | yes  |
 | method  | string  | body  | yes  |
 
@@ -64,7 +64,7 @@ O Módulo Web API Designer pode ser executado de forma independente
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
 | ------------- | ------------- | ------------- | -------------|
-| name  | string  | path  | yes  |
+| api  | string  | path  | yes  |
 | endpoint  | string  | path  | yes  |
 | path  | string  | body  | yes  |
 

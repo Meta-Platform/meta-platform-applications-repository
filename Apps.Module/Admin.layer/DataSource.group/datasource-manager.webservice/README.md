@@ -1,16 +1,14 @@
-# Módulo Web Source Manager
-Módulo de serviços web da aplicação datasource-manager.webapp
+# datasource-manager.webservice
 
-O Módulo Web Data Source Manager pode ser executado de forma independente
+Web service (backend) do **Data Source Manager** (`datasource-manager.webapp`).
+Expõe as APIs de fontes de dados, navegação em data stores/arquivos e handler de
+banco relacional.
 
-## Configuração Local
-```sh
-$ npm install
-````
-### Execução
-```sh
-$ node index.js
-````
+## Execução
+
+Não é executado de forma independente (`node index.js`). É montado em runtime
+sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando o
+`datasource-manager.webapp` é executado pelo Package Executor.
 
 ## Serviços disponibilizados
 - Datasource Manager
@@ -169,7 +167,7 @@ $ node index.js
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
 | ------------- | ------------- | ------------- | -------------|
-| keystone  | string  | query  | yes  |
+| keystone  | string  | body  | yes  |
 | query  | json  | body  | yes  |
 | update  | json  | body  | yes  |
 | options  | json  | body  | no  |
@@ -248,7 +246,7 @@ $ node index.js
 
 ### **Describe Table** [DescribeTable]
 
-`POST` /content-item
+`GET` /describe-table
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
