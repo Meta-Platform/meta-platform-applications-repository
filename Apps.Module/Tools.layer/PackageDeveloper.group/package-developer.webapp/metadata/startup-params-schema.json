@@ -16,21 +16,12 @@
     "RT_ENV_GENERATED_DIR_NAME": {
       "type": "string"
     },
-    "workspaceConfigs": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "workspaceName": {
-            "type": "string"
-          },
-          "path": {
-            "type": "string"
-          }
-        },
-        "required": ["workspaceName", "path"]
-      }
+    "workspaceStorageFilePath": {
+      "type": "string"
+    },
+    "runCommandPath": {
+      "type": "string"
     }
   },
-  "required": ["port", "serverName", "serverManagerUrl", "RT_ENV_GENERATED_DIR_NAME", "workspaceConfigs"]
+  "required": ["port", "serverName", "serverManagerUrl", "RT_ENV_GENERATED_DIR_NAME", "workspaceStorageFilePath", "runCommandPath"]
 }

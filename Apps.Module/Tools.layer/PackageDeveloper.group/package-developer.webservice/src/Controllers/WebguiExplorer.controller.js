@@ -11,18 +11,21 @@ const WebguiExplorerController = (params) => {
 
     const _GetDetails = ({packageName, workspace, ext}) => {
         const packageDevelopmentService = GetPackage(packageHandlerManagerService, {packageName, workspace, ext})
+        if(!packageDevelopmentService) return undefined
         const uiService = GetWebguiService(packageDevelopmentService)
         return uiService.GetDetails()
     }
 
     const _GetBoot = ({packageName, workspace, ext}) => {
         const packageDevelopmentService = GetPackage(packageHandlerManagerService, {packageName, workspace, ext})
+        if(!packageDevelopmentService) return undefined
         const uiService = GetWebguiService(packageDevelopmentService)
         return uiService.GetBoot()
     }
 
     const _GetRoutes = ({packageName, workspace, ext}) => {
         const packageDevelopmentService = GetPackage(packageHandlerManagerService, {packageName, workspace, ext})
+        if(!packageDevelopmentService) return undefined
         const uiService = GetWebguiService(packageDevelopmentService)
         return uiService.GetRoutes()
     }

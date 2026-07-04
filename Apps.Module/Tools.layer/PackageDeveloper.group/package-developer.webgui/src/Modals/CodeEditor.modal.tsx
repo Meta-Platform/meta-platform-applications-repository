@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useState, useEffect } from "react"
 
 import { Button, Modal } from "semantic-ui-react"
 
@@ -9,6 +10,7 @@ type ModalProps = {
     filename : string
     content  : string
     onClose  : Function
+    onSave   : Function
 }
 
 const getLanguage = (filename:string) => {
@@ -50,23 +52,40 @@ const getLanguage = (filename:string) => {
 
 }
 
-const CodeEditorModal = ({open, filename, content, onClose}:ModalProps) =>{
+const CodeEditorModal = ({open, filename, content, onClose, onSave}:ModalProps) =>{
 
-    return <Modal open={open} closeIcon onClose={() => onClose()}>
-                <Modal.Header>Code Editor {filename}</Modal.Header>
+    const [value, setValue] = useState(content)
+    const [saving, setSaving] = useState(false)
+
+    useEffect(() => { setValue(content) }, [content, filename])
+
+    const dirty = value !== content
+
+    const handleSave = async () => {
+        setSaving(true)
+        try{
+            await onSave(value)
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    return <Modal open={open} closeIcon size="large" onClose={() => onClose()}>
+                <Modal.Header>Code Editor — {filename}{dirty ? " *" : ""}</Modal.Header>
                 <Modal.Content>
-                    <CodeEditor value={content} language={getLanguage(filename)} />
+                    <CodeEditor
+                        value={value}
+                        language={getLanguage(filename)}
+                        onChange={setValue} />
                 </Modal.Content>
                 <Modal.Actions>
                     <Button.Group>
                         <Button negative onClick={() => onClose()}>Cancel</Button>
-                        <Button>Reset</Button>
-                        <Button positive>Save</Button>
+                        <Button onClick={() => setValue(content)} disabled={!dirty}>Reset</Button>
+                        <Button positive loading={saving} disabled={!dirty || saving} onClick={handleSave}>Save</Button>
                     </Button.Group>
                 </Modal.Actions>
             </Modal>
 }
-    
-  
 
-  export default CodeEditorModal
+export default CodeEditorModal

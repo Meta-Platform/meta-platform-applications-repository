@@ -24,23 +24,26 @@ type PackageListProps =
 	packageSelected:{name:string, ext:string}
 	workspaceSelected:any
 	onSelect:Function
+	onOpen?:Function
 }
 
 const PackageList = ({
-	list, 
-	workspaceSelected, 
-	packageSelected, 
-	onSelect
-}:PackageListProps) => 
+	list,
+	workspaceSelected,
+	packageSelected,
+	onSelect,
+	onOpen
+}:PackageListProps) =>
 	<ListStyled selection animated>
 		{
 			list
-			.map(({name, namespace, ext}:any, key:number) => 
-			<List.Item 
-				key={key} 
+			.map(({name, namespace, ext}:any, key:number) =>
+			<List.Item
+				key={key}
 				active={packageSelected && name === packageSelected.name && ext === packageSelected.ext}
-				onClick={() => onSelect({name, ext})} >
-				<Image size="mini" src={`http://localhost:8093/package-developer/icon/${workspaceSelected}/${name}/${ext}`}/>
+				onClick={() => onSelect({name, ext})}
+				onDoubleClick={() => onOpen && onOpen({name, ext})} >
+				<Image size="mini" src={`/package-developer/icon/${encodeURIComponent(workspaceSelected)}/${encodeURIComponent(name)}/${encodeURIComponent(ext)}`}/>
 				<List.Content>
 					<List.Header>{name}</List.Header>
 					<List.Description>{namespace}</List.Description>

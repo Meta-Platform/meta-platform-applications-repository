@@ -79,6 +79,7 @@ const DetailsColumn = ({
 
     const {
         name,
+        ext,
         //path,
     } = package_details || {}
 
@@ -98,6 +99,7 @@ const DetailsColumn = ({
         <HeaderDetails
             packageName  = {name}
             workspace = {workspace}
+            ext       = {ext}
             path      = {package_details.path}/>
         <Divider/>
         <TabPackageDetails workspace={workspace}/>

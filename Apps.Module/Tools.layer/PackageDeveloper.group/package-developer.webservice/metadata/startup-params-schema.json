@@ -9,21 +9,12 @@
     "serverName": {
       "type": "string"
     },
-    "workspaceConfigs": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "workspaceName": {
-            "type": "string"
-          },
-          "path": {
-            "type": "string"
-          }
-        },
-        "required": ["workspaceName", "path"]
-      }
+    "workspaceStorageFilePath": {
+      "type": "string"
+    },
+    "runCommandPath": {
+      "type": "string"
     }
   },
-  "required": ["port", "serverName", "workspaceConfigs"]
+  "required": ["port", "serverName", "workspaceStorageFilePath", "runCommandPath"]
 }

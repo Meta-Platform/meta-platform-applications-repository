@@ -4,34 +4,57 @@ const readdir  = promisify(fs.readdir)
 
 const PackageHandlerService = require("../Services/PackageHandler.service")
 
-const ByExt = (ext, name) => {
-    const [_, extension] = name.split(".")
-    return extension === ext
-}
-//TODO Tornar configuravel
-const GetFilterExt = name => 
-    ByExt("webapp", name) 
-    || ByExt("lib", name) 
-    || ByExt("webservice", name) 
-    || ByExt("webgui", name) 
-    || ByExt("cli", name) 
+// Níveis de container da hierarquia Repository -> Module -> Layer -> Group -> Pacote.
+const CONTAINER_SUFFIXES = [".Module", ".layer", ".group"]
+const MAX_DEPTH = 8
 
-const GetAllServiceParamsByPath = (path) => new Promise(async (resolve, reject) => {
+const isContainer = (name) => CONTAINER_SUFFIXES.some((suffix) => name.endsWith(suffix))
+
+// Um pacote é uma pasta com sufixo (name.webapp/.lib/.service/.app/.cli/...) que
+// NÃO é um container de hierarquia e não é oculta/node_modules.
+const isPackage = (name) =>
+    !name.startsWith(".")
+    && name !== "node_modules"
+    && name.includes(".")
+    && !isContainer(name)
+
+// Varre recursivamente a partir do path da workspace (pode ser um Repository,
+// Module, Layer ou Group), descendo pelos containers e coletando os pacotes.
+const GetAllServiceParamsByPath = async (rootPath, depth = 0) => {
+    let entries
     try{
-        const packageNames = (await readdir(path))
-        .filter(GetFilterExt)
-        resolve(packageNames.map(packageName => ({
-            path    : `${path}/${packageName}`,
-            packageName
-        })))
-    } catch(e){
-        reject(e)
+        entries = await readdir(rootPath, { withFileTypes: true })
+    }catch(e){
+        if(["ENOENT", "ENOTDIR", "EACCES"].includes(e.code)) return []
+        throw e
     }
-})
+
+    const results = []
+    for(const entry of entries){
+        if(!entry.isDirectory()) continue
+        const name = entry.name
+        if(name === "node_modules" || name.startsWith(".")) continue
+
+        const fullPath = `${rootPath}/${name}`
+        if(isPackage(name)){
+            results.push({ path: fullPath, packageName: name })
+        } else if(isContainer(name) && depth < MAX_DEPTH){
+            results.push(...await GetAllServiceParamsByPath(fullPath, depth + 1))
+        }
+    }
+    return results
+}
 
 const PackageHandlerManager = (params) => {
 
-    const { workspaceConfigs, onReady } = params
+    const {
+        workspaceStoreLib,
+        workspaceStorageFilePath,
+        onReady
+    } = params
+
+    const InitializeWorkspaceStore = workspaceStoreLib.require("InitializeWorkspaceStore")
+    const store = InitializeWorkspaceStore(workspaceStorageFilePath)
 
     let listServices = []
 
@@ -39,35 +62,73 @@ const PackageHandlerManager = (params) => {
         listServices.push(new PackageHandlerService({ ...serviceParams }))
     }
 
-    const _LoadWorkspaceConfigs = async (workspaceConfigs) => {
-        const promises = workspaceConfigs
-        .map(async({workspaceName, path}) => {
-            try{
-                const listServiceParams = await GetAllServiceParamsByPath(path)
-                listServiceParams
-                 .forEach((serviceParams) => _LoadService({...serviceParams, workspaceName}))
-            }catch(e){
-                if(e.code === "ENOENT"){
-                    console.error(`O caminho "${path}" da Workspace "${workspaceName}" não foi encontrado!`)
-                }
+    // Varre o diretório de uma workspace e carrega os pacotes encontrados,
+    // carimbando cada serviço com o workspaceName.
+    const _LoadWorkspace = async ({ name, path }) => {
+        try{
+            const listServiceParams = await GetAllServiceParamsByPath(path)
+            listServiceParams
+             .forEach((serviceParams) => _LoadService({ ...serviceParams, workspaceName: name }))
+        }catch(e){
+            if(e.code === "ENOENT"){
+                console.error(`O caminho "${path}" da Workspace "${name}" não foi encontrado!`)
+            } else {
+                throw e
             }
-            
-        })
+        }
+    }
 
-        return await Promise.all(promises)
+    // Recarrega TODAS as workspaces a partir do banco.
+    const _LoadAllWorkspaces = async () => {
+        listServices = []
+        const workspaces = await store.List()
+        await Promise.all(workspaces.map(_LoadWorkspace))
     }
 
     const _GetListServices = () => listServices
 
+    const _ListWorkspaces = () => store.List()
+
+    const _GetWorkspace = ({ name }) => store.Get({ name })
+
+    // Re-varre os pacotes de uma workspace existente (após criar/remover pacote).
+    const _ReloadWorkspace = async ({ name }) => {
+        const workspace = await store.Get({ name })
+        if(!workspace) return
+        listServices = listServices.filter((service) => service.workspaceName !== name)
+        await _LoadWorkspace(workspace)
+    }
+
+    // Cria (ou atualiza) uma workspace no banco e carrega seus pacotes.
+    const _CreateWorkspace = async ({ name, path }) => {
+        const workspace = await store.Create({ name, path })
+        listServices = listServices.filter((service) => service.workspaceName !== name)
+        await _LoadWorkspace(workspace)
+        return workspace
+    }
+
+    // Remove uma workspace do banco e descarrega seus pacotes.
+    const _RemoveWorkspace = async ({ name }) => {
+        const removed = await store.Remove({ name })
+        listServices = listServices.filter((service) => service.workspaceName !== name)
+        return removed
+    }
+
     const _Run = async () => {
-        await _LoadWorkspaceConfigs(workspaceConfigs)
+        await store.ConnectAndSync()
+        await _LoadAllWorkspaces()
         onReady()
     }
 
     _Run()
 
     return {
-        GetListServices: _GetListServices
+        GetListServices : _GetListServices,
+        ListWorkspaces  : _ListWorkspaces,
+        GetWorkspace    : _GetWorkspace,
+        ReloadWorkspace : _ReloadWorkspace,
+        CreateWorkspace : _CreateWorkspace,
+        RemoveWorkspace : _RemoveWorkspace
     }
 
 }

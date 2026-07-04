@@ -1,8 +1,9 @@
 {
     "params" : [
-        "port", 
-        "serverName", 
-        "workspaceConfigs"
+        "port",
+        "serverName",
+        "workspaceStorageFilePath",
+        "runCommandPath"
     ],
     "services": [
         {
@@ -17,7 +18,17 @@
             "namespace": "@@/package-handler-service",
             "dependency": "@/package-developer.lib/services/PackageHandlerManager",
             "params": {
-                "workspaceConfigs":"workspaceConfigs"
+                "workspaceStorageFilePath": "{{workspaceStorageFilePath}}"
+            },
+            "bound-params": {
+                "workspaceStoreLib": "@/workspace-store.lib"
+            }
+        },
+        {
+            "namespace": "@@/package-process-service",
+            "dependency": "@/package-process-manager.lib/services/ProcessManager",
+            "params": {
+                "runCommandPath": "{{runCommandPath}}"
             }
         }
     ],
@@ -34,7 +45,9 @@
             "bound-params":{
                 "serverService": "@@/server-service",
                 "packageHandlerManagerService": "@@/package-handler-service",
-                "packageDeveloperLib":"@/package-developer.lib"
+                "packageDeveloperLib":"@/package-developer.lib",
+                "packageToolkitLib":"@/package-toolkit.lib",
+                "processManagerService":"@@/package-process-service"
             }
         }
     ]

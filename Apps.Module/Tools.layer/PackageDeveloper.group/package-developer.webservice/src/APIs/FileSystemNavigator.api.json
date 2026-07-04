@@ -35,7 +35,7 @@
     {
       "summary": "GetContentItem",
       "method": "POST",
-      "path": "/:workspace/package/:packageName/content-item",
+      "path": "/:workspace/package/:packageName/ext/:ext/content-item",
       "parameters": [
         {
           "name": "workspace",
@@ -50,7 +50,75 @@
           "required": true
         },
         {
+          "name": "ext",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
           "name": "path",
+          "in": "body",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "GetPackageMetadata",
+      "method": "POST",
+      "path": "/:workspace/package/:packageName/ext/:ext/metadata",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ext",
+          "in": "path",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "SaveContentItem",
+      "method": "POST",
+      "path": "/:workspace/package/:packageName/ext/:ext/save-content-item",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ext",
+          "in": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "path",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "content",
           "in": "body",
           "type": "string",
           "required": true

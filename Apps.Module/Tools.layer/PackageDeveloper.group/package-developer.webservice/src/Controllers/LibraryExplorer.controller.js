@@ -11,24 +11,28 @@ const LibraryExplorerController = (params) => {
     
     const _GetDetails = ({packageName, workspace, ext}) => {
         const packageDevelopmentService = GetPackage(packageHandlerManagerService, {packageName, workspace, ext})
+        if(!packageDevelopmentService) return undefined
         const libService = GetLibraryService(packageDevelopmentService)
         return libService.GetDetails()
     }
 
     const _GetBoot = ({packageName, workspace, ext}) => {
         const packageDevelopmentService = GetPackage(packageHandlerManagerService, {packageName, workspace, ext})
+        if(!packageDevelopmentService) return undefined
         const libService = GetLibraryService(packageDevelopmentService)
         return libService.GetBoot()
     }
 
     const _GetServices = ({packageName, workspace, ext}) => {
         const packageDevelopmentService = GetPackage(packageHandlerManagerService, {packageName, workspace, ext})
+        if(!packageDevelopmentService) return undefined
         const libService = GetLibraryService(packageDevelopmentService)
         return libService.GetServices()
     }
-    
+
     const _GetManagers = ({packageName, workspace, ext}) => {
         const packageDevelopmentService = GetPackage(packageHandlerManagerService, {packageName, workspace, ext})
+        if(!packageDevelopmentService) return undefined
         const libService = GetLibraryService(packageDevelopmentService)
         return libService.GetManagers()
     }

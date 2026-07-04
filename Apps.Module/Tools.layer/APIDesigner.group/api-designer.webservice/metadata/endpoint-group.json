@@ -1,6 +1,6 @@
 {
     "params": ["apisDirPath"],
-    "bound-params":["serverService"],
+    "bound-params":["serverService", "apiAuthoringLib"],
     "endpoints": [
         {
             "url": "/api-designer",
@@ -13,7 +13,10 @@
                 }
             },
             "bound-params": {
-                "serverService":"serverService"
+                "serverService":"serverService",
+                "controller-params": {
+                    "apiAuthoringLib": "apiAuthoringLib"
+                }
             }
         }
     ]

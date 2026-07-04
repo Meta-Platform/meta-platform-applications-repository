@@ -25,8 +25,8 @@ const FileSystemExplorer = ({
 	const [listItem, setListItem]   = useState<any[]>()
 	
 	const [pathCurrent, setPathCurrent]       = useState("/")
-	const [filenameOpen, setFilenameOpen]     = useState()
-	const [fileContent, setFileContent]       = useState()
+	const [filenameOpen, setFilenameOpen]     = useState<any>()
+	const [fileContent, setFileContent]       = useState<any>()
 
 	useEffect(() => {
 		updateContent()
@@ -73,6 +73,17 @@ const FileSystemExplorer = ({
 		.then(({data}:any) => setFileContent(data))
 	}
 
+	const saveFile = (content:string) =>
+		GetRequestByServer(HTTPServerManager)(process.env.SERVER_APP_NAME, "FileSystemNavigator")
+		.SaveContentItem({
+			workspace,
+			packageName:packageSelected.name,
+			ext:packageSelected.ext,
+			path : `${pathCurrent}${pathCurrent!=="/"?"/":""}${filenameOpen}`,
+			content
+		})
+		.then(() => setFileContent(content))
+
 	const handleCloseFile = () => {
 		setFilenameOpen(undefined)
 		setFileContent(undefined)
@@ -113,11 +124,12 @@ const FileSystemExplorer = ({
 			</List>
 			{
 				fileContent
-				&& <CodeEditorModal 
+				&& <CodeEditorModal
 					open     = {!!fileContent}
 					filename = {filenameOpen}
 					content  = {fileContent}
-					onClose  = {handleCloseFile}/>}
+					onClose  = {handleCloseFile}
+					onSave   = {saveFile}/>}
 	</>
 
 }

@@ -1,5 +1,5 @@
 {
-    "apisDirPath":"/home/kadisk/Workspaces/my-platform-reference-distro/repos/MyPlatform/UtilityApplication.Module/MyPlatformTools.layer/APIDesigner.group/api-designer.webservice/src/APIs",
+    "apisDirPath":"/home/kadisk/virtual-desk-state/local-app-data/api-designer-apis",
     "port":"8080",
     "serverName":"APIDesignerWebserviceInstance"
 }

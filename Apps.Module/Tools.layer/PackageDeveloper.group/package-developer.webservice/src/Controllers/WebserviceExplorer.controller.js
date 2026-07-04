@@ -11,22 +11,26 @@ const WebserviceExplorerController = (params) => {
 
     const _GetDetails = ({packageName, workspace, ext}) => {
         const packageDevelopmentService = GetPackage(packageHandlerManagerService, {packageName, workspace, ext})
+        if(!packageDevelopmentService) return undefined
         const webService = GetWebserviceService(packageDevelopmentService)
         return webService.GetDetails()
     }
     const _GetBoot = ({packageName, workspace, ext}) => {
         const packageDevelopmentService = GetPackage(packageHandlerManagerService, {packageName, workspace, ext})
+        if(!packageDevelopmentService) return undefined
         const webService = GetWebserviceService(packageDevelopmentService)
         return webService.GetBoot()
     }
 
     const _GetAPIs = ({packageName, workspace, ext}) => {
         const packageDevelopmentService = GetPackage(packageHandlerManagerService, {packageName, workspace, ext})
+        if(!packageDevelopmentService) return undefined
         const webService = GetWebserviceService(packageDevelopmentService)
         return webService.GetAPIs()
     }
     const _GetControllers = ({packageName, workspace, ext}) => {
         const packageDevelopmentService = GetPackage(packageHandlerManagerService, {packageName, workspace, ext})
+        if(!packageDevelopmentService) return undefined
         const webService = GetWebserviceService(packageDevelopmentService)
         return webService.GetControllers()
     }

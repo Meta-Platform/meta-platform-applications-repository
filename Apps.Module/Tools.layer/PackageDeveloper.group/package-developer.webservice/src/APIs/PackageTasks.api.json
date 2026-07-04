@@ -6,24 +6,9 @@
       "method": "POST",
       "path": "/install-dependencies",
       "parameters": [
-        {
-          "name": "workspace",
-          "in": "body",
-          "type": "string",
-          "required": true
-        },
-        {
-          "name": "packageName",
-          "in": "body",
-          "type": "string",
-          "required": true
-        },
-        {
-          "name": "type",
-          "in": "body",
-          "type": "string",
-          "required": true
-        }
+        { "name": "workspace", "in": "body", "type": "string", "required": true },
+        { "name": "packageName", "in": "body", "type": "string", "required": true },
+        { "name": "type", "in": "body", "type": "string", "required": true }
       ]
     },
     {
@@ -31,49 +16,9 @@
       "method": "POST",
       "path": "/clear-dependencies",
       "parameters": [
-        {
-          "name": "workspace",
-          "in": "body",
-          "type": "string",
-          "required": true
-        },
-        {
-          "name": "packageName",
-          "in": "body",
-          "type": "string",
-          "required": true
-        },
-        {
-          "name": "type",
-          "in": "body",
-          "type": "string",
-          "required": true
-        }
-      ]
-    },
-    {
-      "summary": "BuildArtifact",
-      "method": "POST",
-      "path": "/build-artifact",
-      "parameters": [
-        {
-          "name": "workspace",
-          "in": "body",
-          "type": "string",
-          "required": true
-        },
-        {
-          "name": "packageName",
-          "in": "body",
-          "type": "string",
-          "required": true
-        },
-        {
-          "name": "type",
-          "in": "body",
-          "type": "string",
-          "required": true
-        }
+        { "name": "workspace", "in": "body", "type": "string", "required": true },
+        { "name": "packageName", "in": "body", "type": "string", "required": true },
+        { "name": "type", "in": "body", "type": "string", "required": true }
       ]
     },
     {
@@ -81,49 +26,54 @@
       "method": "POST",
       "path": "/start",
       "parameters": [
-        {
-          "name": "workspace",
-          "in": "body",
-          "type": "string",
-          "required": true
-        },
-        {
-          "name": "packageName",
-          "in": "body",
-          "type": "string",
-          "required": true
-        },
-        {
-          "name": "type",
-          "in": "body",
-          "type": "string",
-          "required": true
-        }
+        { "name": "workspace", "in": "body", "type": "string", "required": true },
+        { "name": "packageName", "in": "body", "type": "string", "required": true },
+        { "name": "type", "in": "body", "type": "string", "required": true }
       ]
     },
     {
-      "summary": "Develop",
+      "summary": "Debug",
       "method": "POST",
-      "path": "/develop",
+      "path": "/debug",
       "parameters": [
-        {
-          "name": "workspace",
-          "in": "body",
-          "type": "string",
-          "required": true
-        },
-        {
-          "name": "packageName",
-          "in": "body",
-          "type": "string",
-          "required": true
-        },
-        {
-          "name": "type",
-          "in": "body",
-          "type": "string",
-          "required": true
-        }
+        { "name": "workspace", "in": "body", "type": "string", "required": true },
+        { "name": "packageName", "in": "body", "type": "string", "required": true },
+        { "name": "type", "in": "body", "type": "string", "required": true }
+      ]
+    },
+    {
+      "summary": "Stop",
+      "method": "POST",
+      "path": "/stop",
+      "parameters": [
+        { "name": "workspace", "in": "body", "type": "string", "required": true },
+        { "name": "packageName", "in": "body", "type": "string", "required": true },
+        { "name": "type", "in": "body", "type": "string", "required": true }
+      ]
+    },
+    {
+      "summary": "GetLogs",
+      "method": "POST",
+      "path": "/logs",
+      "parameters": [
+        { "name": "workspace", "in": "body", "type": "string", "required": true },
+        { "name": "packageName", "in": "body", "type": "string", "required": true },
+        { "name": "type", "in": "body", "type": "string", "required": true }
+      ]
+    },
+    {
+      "summary": "ListRunning",
+      "method": "GET",
+      "path": "/running"
+    },
+    {
+      "summary": "Console",
+      "method": "WS",
+      "path": "/console",
+      "parameters": [
+        { "name": "workspace", "in": "query", "type": "string", "required": true },
+        { "name": "packageName", "in": "query", "type": "string", "required": true },
+        { "name": "type", "in": "query", "type": "string", "required": true }
       ]
     }
   ]

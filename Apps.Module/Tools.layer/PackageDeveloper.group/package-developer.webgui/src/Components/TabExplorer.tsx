@@ -6,6 +6,10 @@ import { connect }            from "react-redux"
 
 import FileSystemExplorer from "../Explorers/FileSystem.explorer"
 import PackageConfigExplorer from "../Explorers/PackageConfig.explorer"
+import RunPackage from "./RunPackage"
+import PackageEditor from "./PackageEditor"
+import PackageMetadata from "./PackageMetadata"
+import PackageComponents from "./PackageComponents"
 
 import WEBAPP_PACKAGE_EXPLORER_CONFIGS from "../Configs/PackageExplorers/Webapp.config"
 import WEBSERVICE_EXPLORER_CONFIGS from "../Configs/PackageExplorers/Webservice.config"
@@ -56,6 +60,36 @@ const TabExplorer = ({
 	const tabPanes = (PackageManager.package_details && PackageManager.package_details.verifications )
 	? [
 		{
+			keystone: "PACKAGE_EDITOR",
+			menuItem: "Editor",
+			render: () =>
+				<Tab.Pane>
+					<PackageEditor
+						packageSelected = {packageSelected}
+						workspace = {workspace}/>
+				</Tab.Pane>
+		},
+		{
+			keystone: "PACKAGE_METADATA",
+			menuItem: "Metadata",
+			render: () =>
+				<Tab.Pane>
+					<PackageMetadata
+						packageSelected = {packageSelected}
+						workspace = {workspace}/>
+				</Tab.Pane>
+		},
+		{
+			keystone: "PACKAGE_COMPONENTS",
+			menuItem: "Config",
+			render: () =>
+				<Tab.Pane>
+					<PackageComponents
+						packageSelected = {packageSelected}
+						workspace = {workspace}/>
+				</Tab.Pane>
+		},
+		{
 			keystone: "WEBAPP_PACKAGE_EXPLORER",
 			menuItem: "Webapp Components",
 			render: () => 
@@ -98,9 +132,19 @@ const TabExplorer = ({
 		{
 			keystone: "FILESYSTEM_PAGKAGE_NAVIGATOR",
 			menuItem: "File System",
-			render: () => 
+			render: () =>
 				<Tab.Pane>
 					<FileSystemExplorer
+						packageSelected = {packageSelected}
+						workspace = {workspace}/>
+				</Tab.Pane>
+		},
+		{
+			keystone: "RUN_PACKAGE",
+			menuItem: "Run",
+			render: () =>
+				<Tab.Pane>
+					<RunPackage
 						packageSelected = {packageSelected}
 						workspace = {workspace}/>
 				</Tab.Pane>
@@ -108,6 +152,10 @@ const TabExplorer = ({
 	]
 	.filter(({keystone}) => {
 		if(keystone === "FILESYSTEM_PAGKAGE_NAVIGATOR") return true
+		if(keystone === "RUN_PACKAGE") return true
+		if(keystone === "PACKAGE_EDITOR") return true
+		if(keystone === "PACKAGE_METADATA") return true
+		if(keystone === "PACKAGE_COMPONENTS") return true
 		const {
 			package_details:{
 				verifications

@@ -1,8 +1,8 @@
 import * as React             from "react"
-import { useEffect}           from "react"
+import { useEffect, useState} from "react"
 import { connect }            from "react-redux"
 import { bindActionCreators } from "redux"
-import { Grid }               from "semantic-ui-react"
+import { Grid, Button, Icon } from "semantic-ui-react"
 import qs                     from "query-string"
 import { 
 	useLocation,
@@ -17,6 +17,8 @@ import PackageList from "../Lists/Package.list"
 import ExplorerColumn  from "../Columns/Explorer.column"
 import DetailsColumn   from "../Columns/Details.column"
 import WorkspaceColumn from "../Columns/Workspace.column"
+import PackageModal    from "../Modals/Package.modal"
+import PackageEditor   from "../Components/PackageEditor"
 
 import usePackageState   from "../Hooks/usePackageState"
 import useWorkspaceState from "../Hooks/useWorkspaceState"
@@ -57,15 +59,20 @@ const MainPage = ({
 	const {
 		listWorkspaces,
         workspaceSelected,
-        setWorkspaceSelected
+        setWorkspaceSelected,
+        createWorkspace
 	} = useWorkspaceState({HTTPServerManager})
 
 	const {
         listPackages,
         packageSelected,
-        setPackageSelected
+        setPackageSelected,
+        createPackage
 	}
 	= usePackageState({HTTPServerManager, workspace:workspaceSelected})
+
+	const [isPackageModalOpen, setPackageModal] = useState(false)
+	const [editorPackage, setEditorPackage] = useState<{name:string, ext:string} | undefined>()
 
 	useEffect(() => {
 		if(QueryParams.workspace && QueryParams.workspace !== ""){
@@ -132,23 +139,62 @@ const MainPage = ({
 		setPackageSelected(packageSelected)
 	}
 
+	// Duplo-clique: abre o pacote em modo editor (tela cheia, estilo VSCode).
+	const handleOpenPackage = (pkg:{name:string, ext:string}) => {
+		setPackageSelected(pkg)
+		setEditorPackage(pkg)
+	}
+
+	if(editorPackage){
+		return <PageDefault>
+			<div style={{display:"flex", alignItems:"center", gap:"10px", padding:"6px 4px", borderBottom:"1px solid #d4d4d5"}}>
+				<Button size="mini" icon="arrow left" content="Voltar" onClick={() => setEditorPackage(undefined)} />
+				<Icon name="folder open" color="yellow" />
+				<strong>{workspaceSelected}</strong>
+				<Icon name="angle right" style={{opacity:0.5}} />
+				<Icon name="box" color="blue" />
+				<strong>{editorPackage.name}.{editorPackage.ext}</strong>
+			</div>
+			<PackageEditor
+				packageSelected = {editorPackage}
+				workspace = {workspaceSelected}/>
+		</PageDefault>
+	}
+
 	return <PageDefault>
 				<ColumnGroup columns="three">
 					<Column width={3}>
 						<WorkspaceColumn
 							selected = {workspaceSelected}
 							list     = {listWorkspaces}
-							onSelect = {handleChangeWorkspace}/>
+							onSelect = {handleChangeWorkspace}
+							onCreateWorkspace = {createWorkspace}/>
 					</Column>
 					{
 						workspaceSelected
 						&& <Column width={4}>
-							<a href={`#/Workspace/${workspaceSelected}?${qs.stringify(QueryParams)}`}><h3>Packages</h3></a>
-							<PackageList 
+							<h3 style={{display:"inline-block"}}>
+								<a href={`#/Workspace/${workspaceSelected}?${qs.stringify(QueryParams)}`}>Packages</a>
+							</h3>
+							<Button
+								icon
+								size="mini"
+								color="blue"
+								title="Create Package"
+								style={{marginLeft:"5px"}}
+								onClick={() => setPackageModal(true)}>
+								<Icon name="plus" />
+							</Button>
+							<PackageModal
+								open={isPackageModalOpen}
+								onClose={() => setPackageModal(false)}
+								onCreatePackage={createPackage}/>
+							<PackageList
 								workspaceSelected = {workspaceSelected}
 								packageSelected   = {packageSelected}
 								list              = {listPackages || []}
-								onSelect          = {handleChangePackage}/>
+								onSelect          = {handleChangePackage}
+								onOpen            = {handleOpenPackage}/>
 						</Column>
 					}
 					{

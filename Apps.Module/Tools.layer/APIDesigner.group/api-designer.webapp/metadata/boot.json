@@ -30,7 +30,8 @@
                "apisDirPath":"{{apisDirPath}}"
             },
             "bound-params":{
-                "serverService": "@@/server-service"
+                "serverService": "@@/server-service",
+                "apiAuthoringLib": "@/api-authoring.lib"
             }
         },
         {

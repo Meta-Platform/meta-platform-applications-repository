@@ -2,6 +2,7 @@
     {
         "namespace": "PackageHandlerManager",
         "path": "Managers/PackageHandler",
-        "params": ["workspaceConfigs"]
+        "bound-params": ["workspaceStoreLib"],
+        "params": ["workspaceStorageFilePath"]
     }
 ]

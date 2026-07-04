@@ -27,12 +27,14 @@ type WorkspaceColumnProps = {
     selected : string
     list     : Array<any>
     onSelect : Function
+    onCreateWorkspace : Function
 }
 
 const WorkspaceColumn = ({
     selected,
     list,
-    onSelect
+    onSelect,
+    onCreateWorkspace
 }:WorkspaceColumnProps) => {
 
     const [isWorkspaceModalOpen, setWorkspaceModal] = useState(false)
@@ -59,7 +61,10 @@ const WorkspaceColumn = ({
                     list     = {list}
                     onSelect = {onSelect}/>
                 
-                <WorkspaceModal open={isWorkspaceModalOpen} onClose={()=> closeWorkspaceModal()}/>
+                <WorkspaceModal
+                    open={isWorkspaceModalOpen}
+                    onClose={()=> closeWorkspaceModal()}
+                    onCreateWorkspace={onCreateWorkspace}/>
             </>
 }
 

@@ -12,13 +12,15 @@ const WebappExplorerController = (params) => {
 
     const _GetDetails = ({packageName, workspace, ext}) => {
         const packageDevelopmentService = GetPackage(packageHandlerManagerService, {packageName, workspace, ext})
+        if(!packageDevelopmentService) return undefined
         return GetDetails(packageDevelopmentService)
     }
 
     const _GetBoot = ({packageName, workspace, ext}) => {
         const packageDevelopmentService = GetPackage(packageHandlerManagerService, {packageName, workspace, ext})
+        if(!packageDevelopmentService) return undefined
         return GetBoot(packageDevelopmentService)
-    } 
+    }
     
     const controllerServiceObject = {
         controllerName : "WebappExplorerController",

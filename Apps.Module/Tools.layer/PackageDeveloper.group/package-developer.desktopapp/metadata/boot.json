@@ -1,0 +1,79 @@
+{
+    "params" : [
+        "port",
+        "serverManagerUrl",
+        "windowUrl",
+        "serverName",
+        "workspaceStorageFilePath",
+        "runCommandPath",
+        "RT_ENV_GENERATED_DIR_NAME"
+    ],
+    "services": [
+        {
+            "namespace": "@@/server-service",
+            "dependency": "@/server-manager.service/services/HTTPServerService",
+            "params":{
+                "name":"{{serverName}}",
+                "port": "{{port}}"
+            }
+        },
+        {
+            "namespace": "@@/package-handler-service",
+            "dependency": "@/package-developer.lib/services/PackageHandlerManager",
+            "params": {
+                "workspaceStorageFilePath": "{{workspaceStorageFilePath}}"
+            },
+            "bound-params": {
+                "workspaceStoreLib": "@/workspace-store.lib"
+            }
+        },
+        {
+            "namespace": "@@/package-process-service",
+            "dependency": "@/package-process-manager.lib/services/ProcessManager",
+            "params": {
+                "runCommandPath": "{{runCommandPath}}"
+            }
+        }
+    ],
+    "endpoints": [
+        {
+            "dependency": "@/server-manager.webservice/endpoint-group",
+            "bound-params":{
+               "serverServiceForController":"@@/server-service",
+               "serverService": "@@/server-service"
+            }
+        },
+        {
+            "dependency": "@/package-developer.webservice/endpoint-group",
+             "bound-params":{
+                 "serverService": "@@/server-service",
+                 "packageHandlerManagerService": "@@/package-handler-service",
+                 "packageDeveloperLib":"@/package-developer.lib",
+                 "packageToolkitLib":"@/package-toolkit.lib",
+                 "processManagerService":"@@/package-process-service"
+             }
+        },
+        {
+            "dependency": "@/package-developer.webgui/endpoint-group",
+            "params":{
+                "serverManagerUrl":"{{serverManagerUrl}}",
+                "serverName":"{{serverName}}",
+                "RT_ENV_GENERATED_DIR_NAME":"{{RT_ENV_GENERATED_DIR_NAME}}"
+            },
+            "bound-params":{
+                "serverService": "@@/server-service"
+            }
+        }
+    ],
+    "windows": [
+        {
+            "title": "Package Developer",
+            "url": "{{windowUrl}}",
+            "width": 1280,
+            "height": 800,
+            "bound-params":{
+                "serverService": "@@/server-service"
+            }
+        }
+    ]
+}

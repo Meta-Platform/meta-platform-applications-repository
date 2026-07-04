@@ -1,8 +1,10 @@
 {
     "bound-params":[
-        "serverService", 
-        "packageHandlerManagerService", 
-        "packageDeveloperLib"
+        "serverService",
+        "packageHandlerManagerService",
+        "packageDeveloperLib",
+        "packageToolkitLib",
+        "processManagerService"
     ],
     "endpoints": [
         {
@@ -15,7 +17,8 @@
             "bound-params": {
                 "controller-params":{
                     "packageHandlerManagerService":"packageHandlerManagerService",
-                    "packageDeveloperLib":"packageDeveloperLib"
+                    "packageDeveloperLib":"packageDeveloperLib",
+                    "packageToolkitLib":"packageToolkitLib"
                 },
                 "serverService":"serverService"
             }
@@ -105,7 +108,8 @@
             "bound-params": {
                 "controller-params":{
                     "packageHandlerManagerService":"packageHandlerManagerService",
-                    "packageDeveloperLib":"packageDeveloperLib"
+                    "packageDeveloperLib":"packageDeveloperLib",
+                    "processManagerService":"processManagerService"
                 },
                 "serverService":"serverService"
             }

@@ -1,0 +1,8 @@
+{
+    "port":"9249",
+    "serverName":"DatasourceManagerDesktopInstance",
+    "appDataDir":"/home/kadisk/Workspaces/meta-platform-repo/datasource-manager-appdata-test",
+    "serverManagerUrl": "http://localhost:9249/server-manager/status",
+    "windowUrl": "http://localhost:9249/",
+    "RT_ENV_GENERATED_DIR_NAME":".generated_data"
+}

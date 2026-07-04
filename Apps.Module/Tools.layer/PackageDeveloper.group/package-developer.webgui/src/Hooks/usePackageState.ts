@@ -35,10 +35,16 @@ const usePackageState = ({
 		})
 	}
 
+	const createPackage = ({packageName, ext}:{packageName:string, ext:string}) =>
+		getWebservice(process.env.SERVER_APP_NAME, "ModuleDeveloper")
+		.CreatePackage({workspace, packageName, ext})
+		.then(() => updateListPackages())
+
     return {
         listPackages,
         packageSelected,
-        setPackageSelected
+        setPackageSelected,
+        createPackage
     }
 }
 

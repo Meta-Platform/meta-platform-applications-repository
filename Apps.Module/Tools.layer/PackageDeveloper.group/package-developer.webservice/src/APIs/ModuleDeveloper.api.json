@@ -22,12 +22,72 @@
     {
       "summary": "CreateWorkspace",
       "method": "POST",
-      "path": "/workspace"
+      "path": "/workspace",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "path",
+          "in": "body",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "RemoveWorkspace",
+      "method": "DELETE",
+      "path": "/workspace/:name",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "summary": "BrowseDir",
+      "method": "POST",
+      "path": "/browse-dir",
+      "parameters": [
+        {
+          "name": "path",
+          "in": "body",
+          "type": "string",
+          "required": false
+        }
+      ]
     },
     {
       "summary": "CreatePackage",
       "method": "POST",
-      "path": "/package"
+      "path": "/package",
+      "parameters": [
+        {
+          "name": "workspace",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "packageName",
+          "in": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ext",
+          "in": "body",
+          "type": "string",
+          "required": true
+        }
+      ]
     },
     {
       "summary": "Status",

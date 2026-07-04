@@ -18,9 +18,21 @@
         "supervisorSocketFileName":"developer.sock"
     },
     {
+        "appType":"DESKTOP",
+        "executable":"developer-desktop",
+        "packageNamespace":"Apps.Module/Tools.layer/PackageDeveloper.group/package-developer.desktopapp",
+        "supervisorSocketFileName":"developer-desktop.sock"
+    },
+    {
         "appType":"APP",
         "executable":"sources",
         "packageNamespace":"Apps.Module/Admin.layer/DataSource.group/datasource-manager.webapp",
         "supervisorSocketFileName":"sources.sock"
+    },
+    {
+        "appType":"DESKTOP",
+        "executable":"sources-desktop",
+        "packageNamespace":"Apps.Module/Admin.layer/DataSource.group/datasource-manager.desktopapp",
+        "supervisorSocketFileName":"sources-desktop.sock"
     }
 ]
