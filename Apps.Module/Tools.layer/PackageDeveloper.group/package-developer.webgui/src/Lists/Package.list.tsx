@@ -2,12 +2,13 @@
 import * as React from "react"
 
 import {
-	List, 
-	Image, 
-	Button, 
+	List,
+	Button,
 	Icon
 } from "semantic-ui-react"
 import styled from "styled-components"
+
+import PackageIcon from "../Components/PackageIcon"
 
 const ListStyled = styled(List)`
 	overflow: scroll;
@@ -43,7 +44,7 @@ const PackageList = ({
 				active={packageSelected && name === packageSelected.name && ext === packageSelected.ext}
 				onClick={() => onSelect({name, ext})}
 				onDoubleClick={() => onOpen && onOpen({name, ext})} >
-				<Image size="mini" src={`/package-developer/icon/${encodeURIComponent(workspaceSelected)}/${encodeURIComponent(name)}/${encodeURIComponent(ext)}`}/>
+				<PackageIcon workspace={workspaceSelected} name={name} ext={ext} />
 				<List.Content>
 					<List.Header>{name}</List.Header>
 					<List.Description>{namespace}</List.Description>

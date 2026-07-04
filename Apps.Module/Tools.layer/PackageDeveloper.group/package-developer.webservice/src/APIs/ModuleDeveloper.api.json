@@ -7,6 +7,36 @@
       "summary": "ListWorkspaces"
     },
     {
+      "path": "/recent-repositories",
+      "method": "GET",
+      "summary": "ListRecentRepositories"
+    },
+    {
+      "path": "/workspace/:workspace/hierarchy",
+      "method": "GET",
+      "summary": "GetRepositoryHierarchy",
+      "parameters": [
+        { "name": "workspace", "in": "path", "type": "string", "required": true }
+      ]
+    },
+    {
+      "path": "/app-state/:key",
+      "method": "GET",
+      "summary": "GetAppState",
+      "parameters": [
+        { "name": "key", "in": "path", "type": "string", "required": true }
+      ]
+    },
+    {
+      "path": "/app-state",
+      "method": "POST",
+      "summary": "SetAppState",
+      "parameters": [
+        { "name": "key", "in": "body", "type": "string", "required": true },
+        { "name": "value", "in": "body", "type": "string", "required": false }
+      ]
+    },
+    {
       "path": "/workspace/:workspace/package",
       "method": "GET",
       "summary": "ListPackagesByWorkspace",

@@ -75,13 +75,15 @@ type SourceTreeProps = {
     listDir  : (path:string) => Promise<any[]>
     onOpenFile : (path:string) => void
     selectedPath ?: string
+    rootPath ?: string
+    rootName ?: string
 }
 
-const SourceTree = ({ listDir, onOpenFile, selectedPath }:SourceTreeProps) =>
+const SourceTree = ({ listDir, onOpenFile, selectedPath, rootPath = "", rootName = "/" }:SourceTreeProps) =>
     <List>
         <DirNode
-            name="/"
-            path=""
+            name={rootName}
+            path={rootPath}
             defaultOpen
             listDir={listDir}
             onOpenFile={onOpenFile}

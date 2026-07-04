@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { connect } from "react-redux"
-import { Button, Modal, List, Input, Icon } from "semantic-ui-react"
+import { Button, Modal, List, Input, Icon, Label } from "semantic-ui-react"
 import styled from "styled-components"
 
 import GetRequestByServer from "../Utils/GetRequestByServer"
@@ -49,7 +49,7 @@ const DirectoryExplorer = ({open, initialPath, onClose, onSelect, HTTPServerMana
     }, [open])
 
     return <Modal open={open} closeIcon size="small" onClose={() => onClose()}>
-                <Modal.Header>Selecionar diretório</Modal.Header>
+                <Modal.Header><Icon name="folder open" /> Abrir repositório</Modal.Header>
                 <Modal.Content>
                     <Input
                         fluid
@@ -64,10 +64,20 @@ const DirectoryExplorer = ({open, initialPath, onClose, onSelect, HTTPServerMana
                             <List.Content><List.Header>..</List.Header></List.Content>
                         </List.Item>
                         {
-                            directories.map(({name, path}:any, key:number) =>
-                                <List.Item key={key} onClick={() => browse(path)}>
-                                    <List.Icon name="folder" color="yellow" />
-                                    <List.Content><List.Header>{name}</List.Header></List.Content>
+                            directories.map(({name, path, isRepository}:any, key:number) =>
+                                <List.Item key={key}
+                                    onClick={() => browse(path)}
+                                    style={isRepository ? {background:"#f0f7ff", borderRadius:4} : undefined}>
+                                    <List.Icon
+                                        name={isRepository ? "database" : "folder"}
+                                        color={isRepository ? "blue" : "yellow"} />
+                                    <List.Content>
+                                        <List.Header>
+                                            {name}
+                                            { isRepository &&
+                                                <Label color="blue" size="mini" horizontal style={{marginLeft:8}}>repositório</Label> }
+                                        </List.Header>
+                                    </List.Content>
                                 </List.Item>)
                         }
                     </DirList>
@@ -75,9 +85,9 @@ const DirectoryExplorer = ({open, initialPath, onClose, onSelect, HTTPServerMana
                 <Modal.Actions>
                     <Button onClick={() => onClose()}>Cancelar</Button>
                     <Button
-                        positive
-                        icon="check"
-                        content="Selecionar esta pasta"
+                        color="teal"
+                        icon="folder open"
+                        content="Abrir este diretório"
                         onClick={() => { onSelect(currentPath); onClose() }} />
                 </Modal.Actions>
             </Modal>

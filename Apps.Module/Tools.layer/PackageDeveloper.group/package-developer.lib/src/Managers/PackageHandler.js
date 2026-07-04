@@ -89,6 +89,13 @@ const PackageHandlerManager = (params) => {
 
     const _ListWorkspaces = () => store.List()
 
+    const _ListRecentWorkspaces = (limit) => store.ListRecent(limit)
+
+    const _TouchWorkspace = ({ name }) => store.Touch({ name })
+
+    const _GetState = (key) => store.GetState(key)
+    const _SetState = (key, value) => store.SetState(key, value)
+
     const _GetWorkspace = ({ name }) => store.Get({ name })
 
     // Re-varre os pacotes de uma workspace existente (após criar/remover pacote).
@@ -123,12 +130,16 @@ const PackageHandlerManager = (params) => {
     _Run()
 
     return {
-        GetListServices : _GetListServices,
-        ListWorkspaces  : _ListWorkspaces,
-        GetWorkspace    : _GetWorkspace,
-        ReloadWorkspace : _ReloadWorkspace,
-        CreateWorkspace : _CreateWorkspace,
-        RemoveWorkspace : _RemoveWorkspace
+        GetListServices      : _GetListServices,
+        ListWorkspaces       : _ListWorkspaces,
+        ListRecentWorkspaces : _ListRecentWorkspaces,
+        TouchWorkspace       : _TouchWorkspace,
+        GetState             : _GetState,
+        SetState             : _SetState,
+        GetWorkspace         : _GetWorkspace,
+        ReloadWorkspace      : _ReloadWorkspace,
+        CreateWorkspace      : _CreateWorkspace,
+        RemoveWorkspace      : _RemoveWorkspace
     }
 
 }

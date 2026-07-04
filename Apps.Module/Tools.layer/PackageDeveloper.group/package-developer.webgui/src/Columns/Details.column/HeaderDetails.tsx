@@ -3,9 +3,10 @@ import React from "react"
 
 import {
     Grid,
-    Header,
-    Image
+    Header
 } from "semantic-ui-react"
+
+import PackageIcon from "../../Components/PackageIcon"
 
 type HeaderDetailsProps = {
     packageName : string
@@ -22,9 +23,7 @@ const HeaderDetails = ({
 }:HeaderDetailsProps) =>
     <Grid  columns={2}>
         <Grid.Column width={3}>
-            <Image
-                size="tiny"
-                src={`/package-developer/icon/${encodeURIComponent(workspace)}/${encodeURIComponent(packageName)}/${encodeURIComponent(ext)}`}/>
+            <PackageIcon workspace={workspace} name={packageName} ext={ext} size="tiny" />
         </Grid.Column>
         <Grid.Column width={13}>
             <Header>{packageName}</Header>
