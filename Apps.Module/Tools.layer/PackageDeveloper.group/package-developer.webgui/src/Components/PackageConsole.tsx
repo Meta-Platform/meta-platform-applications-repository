@@ -5,8 +5,8 @@ import styled from "styled-components"
 
 const stripAnsi = (s:string) => s.replace(/\x1b\[[0-9;]*m/g, "")
 
-const Terminal = styled.div`
-    height: 46vh;
+const Terminal = styled.div<{h:string}>`
+    height: ${({h}) => h};
     overflow: auto;
     background: #101418;
     color: #d4d4d4;
@@ -29,7 +29,7 @@ const Line = styled.div<{stream:string}>`
 
 type Entry = { stream:string, line:string, ts?:number }
 
-const PackageConsole = ({ workspace, packageSelected }:any) => {
+const PackageConsole = ({ workspace, packageSelected, terminalHeight = "46vh" }:any) => {
 
     const [lines, setLines]     = useState<Entry[]>([])
     const [status, setStatus]   = useState<"connecting"|"open"|"closed">("connecting")
@@ -90,7 +90,7 @@ const PackageConsole = ({ workspace, packageSelected }:any) => {
             { status === "closed" &&
                 <a style={{marginLeft:8, cursor:"pointer"}} onClick={connect}><Icon name="refresh" />reconectar</a> }
         </div>
-        <Terminal ref={panelRef}>
+        <Terminal h={terminalHeight} ref={panelRef}>
             {
                 lines.length === 0
                 ? <span style={{opacity:0.4}}>sem saída — inicie o pacote (Run/Debug)</span>

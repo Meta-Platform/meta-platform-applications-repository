@@ -7,7 +7,7 @@ import PackageConsole from "./PackageConsole"
 
 const STATUS_COLOR:any = { RUNNING: "green", STOPPED: "grey", ERROR: "red", STOPPING: "yellow" }
 
-const RunPackage = ({ HTTPServerManager, packageSelected, workspace }:any) => {
+const RunPackage = ({ HTTPServerManager, packageSelected, workspace, terminalHeight }:any) => {
 
     const { status, busy, install, start, debug, stop } =
         usePackageTasks({ HTTPServerManager, workspace, packageSelected })
@@ -29,7 +29,7 @@ const RunPackage = ({ HTTPServerManager, packageSelected, workspace }:any) => {
         <Label color={STATUS_COLOR[status] || "grey"}>{status}</Label>
 
         <div style={{marginTop:10}}>
-            <PackageConsole workspace={workspace} packageSelected={packageSelected} />
+            <PackageConsole workspace={workspace} packageSelected={packageSelected} terminalHeight={terminalHeight} />
         </div>
     </>
 }

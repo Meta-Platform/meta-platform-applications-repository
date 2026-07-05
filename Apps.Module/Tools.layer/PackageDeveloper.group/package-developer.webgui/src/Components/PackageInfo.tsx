@@ -30,7 +30,7 @@ const PackageInfo = ({ HTTPServerManager, workspace, pkg }:any) => {
     const dependencies = packageJson.dependencies || {}
     const dependencyNames = Object.keys(dependencies)
 
-    return <div style={{ height: "78vh", overflow: "auto", paddingRight: 6 }}>
+    return <div style={{ height: "calc(100vh - var(--pd-header-h) - 8px)", overflow: "auto", paddingRight: 6 }}>
         <Header as="h3" style={{marginBottom: 4}}>
             <PackageIcon workspace={workspace} name={pkg.name} ext={pkg.ext} size="tiny" />
             <Header.Content>

@@ -6,11 +6,11 @@ import GlobalStyle from "../Styles/Global.style"
 
 import PackageMenu from "../Components/PackageMenu"
 
-const PageDefault = ({children}:any) =>
+const PageDefault = ({children, onHome}:any) =>
     <Container fluid={true}>
         <GlobalStyle />
         <div>
-            <PackageMenu/>
+            <PackageMenu onHome={onHome} />
             {children}
         </div>
     </Container>

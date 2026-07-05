@@ -1,0 +1,242 @@
+/*
+ * Tema corporativo / clean para o Ecosystem Control Panel.
+ * Canvas em tom de cinza, superfícies brancas elevadas, bordas sutis e
+ * tipografia neutra. Sobrepõe o semantic-ui-css padrão.
+ */
+
+:root {
+    --eco-canvas:    #dfdfdf;
+    --eco-surface:   #f2f4f7;
+    --eco-surface-2: #e7ebef;
+    --eco-surface-3: #dce1e6;
+    --eco-border:    #c7ced5;
+    --eco-border-2:  #b7bfc7;
+    --eco-text:      #272b30;
+    --eco-muted:     #636a71;
+    --eco-accent:    #3a6ea5;
+    --eco-radius:    8px;
+    --eco-shadow:    0 1px 2px rgba(16, 24, 40, .10), 0 1px 3px rgba(16, 24, 40, .07);
+    --eco-topbar-height: 52px;
+    /* sidebar enxuta: dá mais área útil aos painéis e acompanha o tamanho da
+     * tela sem exagerar em monitores largos. */
+    --eco-sidebar-width: clamp(262px, 20vw, 360px);
+}
+
+html, body, #gui {
+    background: var(--eco-canvas) !important;
+    color: var(--eco-text);
+}
+
+body {
+    font-family: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ---- superfícies (segments / cards) ---- */
+.ui.segment {
+    border: 1px solid var(--eco-border) !important;
+    box-shadow: var(--eco-shadow) !important;
+    border-radius: var(--eco-radius) !important;
+    background: var(--eco-surface);
+}
+.ui.placeholder.segment {
+    background: var(--eco-surface-2);
+}
+.ui.card,
+.ui.cards > .card {
+    box-shadow: var(--eco-shadow) !important;
+    border: 1px solid var(--eco-border) !important;
+    border-radius: var(--eco-radius) !important;
+}
+.ui.card:hover,
+.ui.cards > .card:hover {
+    box-shadow: 0 2px 8px rgba(16, 24, 40, .10) !important;
+}
+
+/* ---- top bar ---- */
+.ui.menu {
+    box-shadow: none;
+    border-radius: 0;
+}
+.ui.attached.menu,
+.ui.borderless.menu {
+    background: var(--eco-surface-2);
+}
+
+/* ---- faixa de cabeçalho do card ----
+ * O primeiro Header (ou Menu secondary usado como toolbar) dentro de um Segment
+ * vira uma faixa destacada do conteúdo: fundo levemente cinza, borda inferior e
+ * ocupando a largura do card. Aplica-se a todos os painéis de forma consistente.
+ */
+.ui.segment > .ui.header:first-child,
+.ui.segment > .ui.secondary.menu:first-child {
+    margin: -1rem -1rem 1em -1rem !important;
+    padding: 0.7em 1rem !important;
+    background: var(--eco-surface-2);
+    border-bottom: 1px solid var(--eco-border) !important;
+    border-top-left-radius: var(--eco-radius);
+    border-top-right-radius: var(--eco-radius);
+}
+/* o ícone do header não pode inflar/empurrar o conteúdo da faixa */
+.ui.segment > .ui.header:first-child > .icon {
+    font-size: 1.5em;
+    margin-right: .5rem;
+}
+.ui.segment > .ui.secondary.menu:first-child { border-radius: var(--eco-radius) var(--eco-radius) 0 0; }
+.ui.segment > .ui.header:first-child .sub.header { margin-top: 2px; }
+
+/* ---- headers / tipografia ---- */
+.ui.header { color: var(--eco-text); }
+.ui.header .sub.header { color: var(--eco-muted); }
+code {
+    background: var(--eco-surface-3);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: #3a4047;
+}
+
+/* ---- tabelas (estilo planilha corporativa) ---- */
+.ui.table {
+    border: 1px solid var(--eco-border) !important;
+    border-radius: var(--eco-radius);
+    color: var(--eco-text);
+    background: transparent !important;
+}
+.ui.table thead th {
+    background: var(--eco-surface-2) !important;
+    color: var(--eco-muted) !important;
+    font-weight: 600;
+    text-transform: none;
+    border-bottom: 1px solid var(--eco-border-2) !important;
+}
+.ui.table tbody tr:hover {
+    background: rgba(0, 0, 0, .04) !important;
+}
+.ui.striped.table tbody tr:nth-child(2n) {
+    background: var(--eco-surface-2);
+}
+.ui.table tr.active,
+.ui.table td.active {
+    background: #e8f0fa !important;
+    box-shadow: inset 3px 0 0 var(--eco-accent);
+}
+
+/* tabelas "basic" (key-value, regras): SEM borda externa, COM divisória interna */
+.ui.basic.table {
+    border: none !important;
+    box-shadow: none !important;
+}
+.ui.basic.table tbody tr:not(:last-child) > td {
+    border-bottom: 1px solid #eef0f2;
+}
+
+
+/* conteúdo das abas (TabPane) sem borda/sombra — visual limpo */
+.ui.tab.segment,
+.ui.attached.tab.segment,
+.ui.bottom.attached.segment.tab {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 12px 2px;
+}
+
+/* ---- abas (secondary pointing) ---- */
+.ui.secondary.pointing.menu {
+    border-bottom: 1px solid var(--eco-border);
+}
+.ui.secondary.pointing.menu .item {
+    color: var(--eco-muted);
+}
+.ui.secondary.pointing.menu .active.item {
+    color: var(--eco-accent);
+    border-color: var(--eco-accent);
+}
+.ui.tab.segment,
+.ui.bottom.attached.segment.active.tab {
+    background: var(--eco-surface);
+}
+
+/* ---- accordion / navigator ---- */
+.ui.styled.accordion {
+    box-shadow: none;
+    border: 1px solid var(--eco-border);
+    border-radius: var(--eco-radius);
+    background: var(--eco-surface);
+}
+.ui.styled.accordion .title {
+    color: var(--eco-text);
+    border-top: 1px solid var(--eco-border);
+}
+.ui.list .item .header { color: var(--eco-text); }
+
+
+/* ---- inputs ---- */
+.ui.input > input,
+.ui.selection.dropdown {
+    border-radius: 6px;
+    border-color: var(--eco-border-2);
+}
+.ui.input > input:focus {
+    border-color: var(--eco-accent);
+}
+
+/* ---- labels mais discretas ---- */
+.ui.basic.label {
+    border-color: var(--eco-border-2);
+    color: var(--eco-muted);
+    background: var(--eco-surface-2);
+}
+
+/* ---- foco visível (teclado) ---- */
+.ui.button:focus-visible,
+.ui.list .item:focus-visible,
+.ui.menu .item:focus-visible,
+a:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible,
+.ui.table tbody tr:focus-visible {
+    outline: 2px solid var(--eco-accent) !important;
+    outline-offset: 1px;
+    border-radius: 4px;
+}
+
+/* ---- cabeçalho de tabela fixo (sticky) em containers roláveis ---- */
+.ui.table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+/* botão desabilitado com contraste claro de "desabilitado" (não parecer bug) */
+.ui.button:disabled,
+.ui.disabled.button {
+    opacity: 0.5 !important;
+}
+
+/* ---- robustez de layout (não quebrar ícones / não desalinhar) ----
+ * Ícones dentro de linhas flex (barra superior, botões, labels, menus) nunca
+ * devem encolher: isso evita ícones "achatados" e o desalinhamento do texto ao
+ * lado quando o espaço fica apertado em janelas pequenas.
+ */
+.ui.menu .item > .icon,
+.ui.label > .icon,
+.ui.button > .icon {
+    flex: 0 0 auto;
+}
+.ui.menu .item {
+    min-width: 0;
+}
+
+
+/* Modais SEMPRE acima das janelas de runtime (dock 1490 / offcanvas 1500 /
+ * flutuantes 1501+). Sem isso, o dimmer do Semantic (z-index 1000) deixa o modal
+ * de confirmação atrás do terminal. */
+.ui.dimmer.modals.page {
+    z-index: 3000 !important;
+}
+
+/* ---- scrollbars sutis ---- */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: #c7ccd2; border-radius: 6px; border: 2px solid var(--eco-canvas); }
+*::-webkit-scrollbar-thumb:hover { background: #aeb4bb; }
+*::-webkit-scrollbar-track { background: transparent; }

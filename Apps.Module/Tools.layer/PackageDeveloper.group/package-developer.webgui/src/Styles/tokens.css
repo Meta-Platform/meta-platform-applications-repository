@@ -1,0 +1,175 @@
+/*
+ * Meta System Retro-Brutalist UI — Design Tokens
+ * ------------------------------------------------------------------
+ * Fonte única de verdade para cores, tipografia, espaçamento, bordas,
+ * sombras e z-index de TODOS os painéis da Meta Platform.
+ *
+ * Regra: componentes NÃO devem ter cor hardcoded. Sempre referenciar
+ * um token --mp-* (ou uma variável de compatibilidade --eco-*, que é
+ * reapontada para estes tokens em theme-retro-brutalist.css).
+ *
+ * Este arquivo contém APENAS declarações de tokens em :root — nenhum
+ * seletor de componente. Assim pode ser reaproveitado por outros
+ * painéis sem arrastar estilos específicos do Ecosystem Control Panel.
+ */
+
+:root {
+    /* ============================================================ */
+    /* 1. Superfícies (paper / off-white)                           */
+    /* ============================================================ */
+    --mp-paper:         #F6F0DE;
+    --mp-paper-2:       #EFE6D0;
+    --mp-paper-3:       #E4D8BE;
+    --mp-surface:       #FFF9E8;
+    --mp-surface-2:     #F8F1DD;
+    --mp-surface-muted: #E7E1D0;
+
+    /* ============================================================ */
+    /* 2. Tinta (texto e estruturas)                                */
+    /* ============================================================ */
+    --mp-ink:     #171713;
+    --mp-ink-2:   #2A2B27;
+    --mp-ink-3:   #3E413B;
+    --mp-muted:   #73766D;
+    --mp-muted-2: #9A9D92;
+
+    /* ============================================================ */
+    /* 3. Linhas / bordas                                           */
+    /* ============================================================ */
+    --mp-line-strong: #171713;
+    --mp-line:        #32342F;
+    --mp-line-soft:   #B8B3A3;
+    --mp-line-faint:  #D7CFBA;
+
+    /* ============================================================ */
+    /* 4. Marca / ações (acentos pastel controlados)                */
+    /* ============================================================ */
+    --mp-accent-cyan:   #00B7C2;
+    --mp-accent-blue:   #2D74C4;
+    --mp-accent-orange: #C96A1E;
+    --mp-accent-yellow: #F2C230;
+    --mp-accent-pink:   #E96AB6;
+    --mp-accent-violet: #8E73D8;
+
+    /* tons claros dos acentos, para faixas/tints (fundo de item ativo, etc.) */
+    --mp-accent-blue-tint:   #E2ECF8;
+    --mp-accent-cyan-tint:   #D9F3F5;
+    --mp-accent-orange-tint: #F6E6D5;
+
+    /* ============================================================ */
+    /* 5. Estados (semânticos — nunca decorativos)                  */
+    /* ============================================================ */
+    --mp-success: #1FAD57;
+    --mp-warning: #E8A300;
+    --mp-danger:  #E34949;
+    --mp-info:    #2D74C4;
+    --mp-neutral: #7B7F76;
+
+    --mp-success-tint: #DDF3E5;
+    --mp-warning-tint: #F8EBCD;
+    --mp-danger-tint:  #F8DDDD;
+
+    /* ============================================================ */
+    /* 6. Terminal / runtime streams                                */
+    /* ============================================================ */
+    --mp-terminal-bg:     #0B1020;
+    --mp-terminal-bg-2:   #10182B;
+    --mp-terminal-fg:     #F6F0DE;
+    --mp-terminal-muted:  #91A0B8;
+    --mp-terminal-green:  #4DFF88;
+    --mp-terminal-orange: #FF9B29;
+    --mp-terminal-red:    #FF6B6B;
+    --mp-terminal-blue:   #6DB7FF;
+
+    /* barras de título de janelas de runtime, por estado */
+    --mp-titlebar-exec:     #C96A1E; /* execução em andamento */
+    --mp-titlebar-runtime:  #2D74C4; /* stream de log de socket */
+    --mp-titlebar-success:  #1FAD57; /* finalizado com sucesso */
+    --mp-titlebar-failed:   #E34949; /* erro crítico */
+
+    /* ============================================================ */
+    /* 7. Tipografia                                                */
+    /* ============================================================ */
+    --mp-font-ui:      "Inter", "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --mp-font-display: "Space Grotesk", "Inter", "IBM Plex Sans", system-ui, sans-serif;
+    --mp-font-mono:    "JetBrains Mono", "IBM Plex Mono", "Fira Code", "SFMono-Regular", Consolas, monospace;
+
+    --mp-text-xs:  11px;
+    --mp-text-sm:  12px;
+    --mp-text-md:  14px;
+    --mp-text-lg:  16px;
+    --mp-text-xl:  20px;
+    --mp-text-2xl: 28px;
+    --mp-text-3xl: 36px;
+
+    --mp-line-xs:  14px;
+    --mp-line-sm:  16px;
+    --mp-line-md:  20px;
+    --mp-line-lg:  24px;
+    --mp-line-xl:  28px;
+    --mp-line-2xl: 36px;
+
+    /* ============================================================ */
+    /* 8. Espaçamento (escala base 4px)                             */
+    /* ============================================================ */
+    --mp-space-1:  4px;
+    --mp-space-2:  8px;
+    --mp-space-3:  12px;
+    --mp-space-4:  16px;
+    --mp-space-5:  20px;
+    --mp-space-6:  24px;
+    --mp-space-8:  32px;
+    --mp-space-10: 40px;
+    --mp-space-12: 48px;
+
+    /* ============================================================ */
+    /* 9. Bordas / radius                                           */
+    /* ============================================================ */
+    --mp-radius-sm:     4px;
+    --mp-radius-md:     8px;
+    --mp-radius-lg:     12px;
+    --mp-radius-window: 10px;
+
+    --mp-border-thin:   1px solid var(--mp-line-soft);
+    --mp-border:        2px solid var(--mp-line);
+    --mp-border-strong: 2px solid var(--mp-line-strong);
+
+    /* ============================================================ */
+    /* 10. Sombras (duras, não suaves genéricas)                    */
+    /* ------------------------------------------------------------ */
+    /* --mp-shadow-color e --mp-grid-line são temáveis (dark usa    */
+    /* preto puro + grid claro). NÃO use line-strong direto aqui.   */
+    /* ============================================================ */
+    --mp-shadow-color: var(--mp-line-strong);
+    --mp-grid-line:    rgba(23, 23, 19, 0.035);
+
+    --mp-shadow-none: none;
+    --mp-shadow-1:    2px 2px 0 var(--mp-shadow-color);
+    --mp-shadow-2:    4px 4px 0 var(--mp-shadow-color);
+    --mp-shadow-3:    6px 6px 0 var(--mp-shadow-color);
+    --mp-shadow-soft: 0 8px 24px rgba(23, 23, 19, 0.18);
+
+    /* ============================================================ */
+    /* 11. App shell (dimensões canônicas)                          */
+    /* ============================================================ */
+    --mp-shell-topbar-h:            56px;
+    --mp-shell-sidebar-w:           264px;
+    --mp-shell-sidebar-w-collapsed: 64px;
+    --mp-shell-drawer-w:            380px;
+    --mp-shell-dock-h:              48px;
+    --mp-shell-dock-expanded-h:     320px;
+    --mp-content-max-w:             1280px;
+
+    /* ============================================================ */
+    /* 12. Z-index (escala canônica para NOVOS componentes)         */
+    /* ------------------------------------------------------------ */
+    /* Nota: o stacking atual do painel (dock/offcanvas/flutuantes/  */
+    /* modais) permanece intocado nesta fase para não regredir. Use  */
+    /* estes tokens ao criar componentes novos do design system.     */
+    /* ============================================================ */
+    --mp-z-drawer:  700;
+    --mp-z-window:  800;
+    --mp-z-modal:   900;
+    --mp-z-toast:   1000;
+    --mp-z-palette: 1100;
+}

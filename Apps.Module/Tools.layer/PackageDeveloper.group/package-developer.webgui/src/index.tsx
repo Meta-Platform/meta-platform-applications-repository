@@ -4,6 +4,13 @@ import { Provider }                     from "react-redux"
 import { combineReducers, createStore } from "redux"
 
 import "semantic-ui-css/semantic.css"
+import "./Styles/tokens.css"
+import "./Styles/CorporateTheme.css"
+import "./Styles/theme-retro-brutalist.css"
+import "./Styles/components.css"
+import "./Styles/themes.css"
+
+import { applySavedTheme } from "./Utils/theme"
 
 import PagesMapper from "./Mappers/Pages.mapper"
 
@@ -22,6 +29,8 @@ const reducer = combineReducers({
 	PackageManager    : PackageManagerReducer,
 	QueryParams       :  QueryParamsReducer
 })
+
+applySavedTheme()
 
 const store = createStore(reducer)
 const root = ReactDOM.createRoot(document.getElementById("gui"))

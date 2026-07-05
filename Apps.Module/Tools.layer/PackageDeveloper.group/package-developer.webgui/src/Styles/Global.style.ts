@@ -1,183 +1,176 @@
 import { createGlobalStyle } from "styled-components"
 
-// Design system do Package Developer (Meta Platform): tokens de cor + tema dark
-// unificado (slate + acento teal), alto contraste e estados padronizados.
+// Package Developer — ponte de compatibilidade + estilos específicos do IDE.
+// ---------------------------------------------------------------------------
+// O sistema de temas (5 variantes light/dark/gray/blue/cyberpunk) vem do
+// design system "Meta System Retro-Brutalist UI", importado como CSS no
+// index.tsx (tokens.css → CorporateTheme.css → theme-retro-brutalist.css →
+// components.css → themes.css). Aquele stack define os tokens --mp-paper/ink/
+// line/accent/... e governa Segments, Cards, Menus, Botões, Inputs e Modais.
+//
+// Este arquivo NÃO reescreve componentes do Semantic UI (o stack acima já faz
+// isso). Ele apenas:
+//   1. Mantém o vocabulário legado do Package Developer (--mp-bg-*, --mp-text-*,
+//      --mp-code-*, etc.) reapontado para os tokens --mp-* do design system,
+//      para que os componentes que ainda usam esses nomes (CodeEditor,
+//      PackageEditMode, editores) fiquem temáveis sem serem tocados.
+//   2. Aplica os estilos que são exclusivos do IDE: scrollbars, os modos
+//      data-ide-mode (nav/edit), a rail de edição e o editor de código.
+//
+// IMPORTANTE: NÃO redefinir aqui os tokens que já pertencem ao design system
+// (--mp-success/warning/danger/info, --mp-radius-*, --mp-border-strong) — eles
+// são temáveis em themes.css e devem variar junto com o tema.
 export default createGlobalStyle`
 
     :root {
-        /* Backgrounds */
-        --mp-bg-canvas: #0B1118;
-        --mp-bg-app: #0F1621;
-        --mp-bg-panel: #151D29;
-        --mp-bg-panel-alt: #111B24;
-        --mp-bg-raised: #1C2633;
-        --mp-bg-overlay: rgba(2, 6, 12, 0.68);
+        /* Backgrounds → superfícies paper/surface do design system */
+        --mp-bg-canvas:    var(--mp-paper);
+        --mp-bg-app:       var(--mp-paper);
+        --mp-bg-panel:     var(--mp-surface);
+        --mp-bg-panel-alt: var(--mp-paper-2);
+        --mp-bg-raised:    var(--mp-surface-2);
+        --mp-bg-overlay:   rgba(0, 0, 0, 0.5);
 
         /* Superfícies interativas */
-        --mp-bg-hover: #1A2A36;
-        --mp-bg-active: #203241;
-        --mp-bg-selected: #103A3A;
+        --mp-bg-hover:    var(--mp-paper-2);
+        --mp-bg-active:   var(--mp-accent-blue-tint);
+        --mp-bg-selected: var(--mp-accent-cyan-tint);
 
-        /* Bordas */
-        --mp-border-subtle: #263241;
-        --mp-border-default: #334155;
-        --mp-border-strong: #4B5C70;
-        --mp-border-focus: #14D6C8;
+        /* Bordas (--mp-border-strong é do design system, não redefinir) */
+        --mp-border-subtle:  var(--mp-line-faint);
+        --mp-border-default: var(--mp-line-soft);
+        --mp-border-focus:   var(--mp-accent-blue);
 
         /* Texto */
-        --mp-text-primary: #F2F7F8;
-        --mp-text-secondary: #B5C3CF;
-        --mp-text-muted: #8FA1AF;
-        --mp-text-disabled: #5F6B78;
-        --mp-text-inverse: #0B1118;
+        --mp-text-primary:   var(--mp-ink);
+        --mp-text-secondary: var(--mp-ink-2);
+        --mp-text-muted:     var(--mp-muted);
+        --mp-text-disabled:  var(--mp-muted-2);
+        --mp-text-inverse:   var(--mp-paper);
 
-        /* Acento */
-        --mp-accent: #14D6C8;
-        --mp-accent-hover: #1AF0E0;
-        --mp-accent-border: rgba(20, 214, 200, 0.42);
+        /* Acento (o teal do Package Developer mapeia no cyan do design system) */
+        --mp-accent:        var(--mp-accent-cyan);
+        --mp-accent-hover:  var(--mp-accent-cyan);
+        --mp-accent-border: var(--mp-accent-cyan);
 
-        /* Status */
-        --mp-success: #46D878;
-        --mp-warning: #FFB86B;
-        --mp-danger: #FF5C5C;
-        --mp-info: #58A6FF;
+        /* Editor de código — usa a paleta de terminal (escura em todos os temas) */
+        --mp-code-bg:     var(--mp-terminal-bg);
+        --mp-code-border: var(--mp-line);
 
-        /* Editor */
-        --mp-code-bg: #0D1117;
-        --mp-code-border: #2A3645;
+        /* Sombras (duras) e foco */
+        --mp-shadow-sm:  var(--mp-shadow-1);
+        --mp-shadow-md:  var(--mp-shadow-2);
+        --mp-shadow-lg:  var(--mp-shadow-3);
+        --mp-focus-ring: 0 0 0 2px var(--mp-accent-cyan);
+        --mp-font-code:  var(--mp-font-mono);
 
-        /* Sombras / raios / foco */
-        --mp-shadow-sm: 0 1px 2px rgba(0,0,0,.35);
-        --mp-shadow-md: 0 8px 24px rgba(0,0,0,.38);
-        --mp-shadow-lg: 0 20px 60px rgba(0,0,0,.48);
-        --mp-radius-sm: 4px;
-        --mp-radius-md: 6px;
-        --mp-radius-lg: 10px;
-        --mp-focus-ring: 0 0 0 2px rgba(20,214,200,.38);
-        --mp-font-code: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+        /* altura do topo (menu do app) — usada para preencher a viewport nos
+         * modos navegação/edição. Ajuste único aqui reflete em todas as colunas. */
+        --pd-header-h: 50px;
     }
 
     /* ---------- scrollbars ---------- */
-    * { scrollbar-width: thin; scrollbar-color: #3B4858 var(--mp-bg-panel-alt); }
+    * { scrollbar-width: thin; scrollbar-color: var(--mp-line-soft) var(--mp-paper-2); }
     ::-webkit-scrollbar { width: 10px; height: 10px; }
-    ::-webkit-scrollbar-track { background: var(--mp-bg-panel-alt); }
-    ::-webkit-scrollbar-thumb { background: #3B4858; border-radius: 999px; border: 2px solid var(--mp-bg-panel-alt); }
-    ::-webkit-scrollbar-thumb:hover { background: #536579; }
-
-    /* ---------- base ---------- */
-    body { background: var(--mp-bg-canvas); color: var(--mp-text-primary); }
-    a { color: var(--mp-info); }
-    code, pre { color: var(--mp-accent); font-family: var(--mp-font-code); }
-
-    /* ---------- texto (contraste AA/AAA) ---------- */
-    .ui.header, .ui.card .header, .ui.cards > .card .header, h1, h2, h3, h4, h5 { color: var(--mp-text-primary) !important; }
-    .ui.header .sub.header { color: var(--mp-text-muted) !important; }
-    .ui.list .item .header, .ui.list .list > .item .header { color: var(--mp-text-primary) !important; }
-    .ui.list .item, .ui.list .item > .content, .ui.list .item .content,
-    .ui.list .list > .item, .ui.list .list > .item > .content { color: var(--mp-text-secondary) !important; }
-    .ui.list .item .description, .ui.card .meta, .ui.card .description { color: var(--mp-text-muted) !important; }
-
-    /* ---------- superfícies ---------- */
-    .ui.segment { background: var(--mp-bg-panel); color: var(--mp-text-secondary); border-color: var(--mp-border-subtle); box-shadow: none; }
-    .ui.placeholder.segment { background: var(--mp-bg-panel-alt); border-color: var(--mp-border-subtle); }
-    .ui.placeholder.segment .header { color: var(--mp-text-primary) !important; }
-    .ui.placeholder.segment p, .ui.placeholder.segment .icon { color: var(--mp-text-muted) !important; }
-
-    .ui.card, .ui.cards > .card {
-        background: var(--mp-bg-panel) !important; color: var(--mp-text-secondary) !important;
-        border: 1px solid var(--mp-border-subtle) !important; box-shadow: var(--mp-shadow-sm) !important;
-    }
-    .ui.card:hover, .ui.cards > .card:hover {
-        background: var(--mp-bg-raised) !important; border-color: var(--mp-accent-border) !important; box-shadow: var(--mp-shadow-md) !important;
-    }
-    .ui.card > .content, .ui.cards > .card > .content { border-color: var(--mp-border-subtle) !important; }
-
-    /* ---------- menu / tabs ---------- */
-    .ui.menu { background: var(--mp-bg-panel-alt); border-color: var(--mp-border-default); box-shadow: none; }
-    .ui.menu .item { color: var(--mp-text-muted); }
-    .ui.tabular.menu .item { color: var(--mp-text-muted); border-color: transparent; border-bottom: 2px solid transparent; }
-    .ui.tabular.menu .active.item {
-        background: var(--mp-bg-panel); color: var(--mp-text-primary);
-        border-color: var(--mp-border-default); border-bottom: 2px solid var(--mp-accent);
-    }
-
-    /* ---------- lists / estados selecionados ---------- */
-    .ui.selection.list > .item:hover, .ui.list > .item:hover { background: var(--mp-bg-hover); border-radius: var(--mp-radius-sm); }
-    .ui.list > .item.active, .ui.selection.list > .item.active {
-        background: var(--mp-bg-selected) !important; color: var(--mp-text-primary) !important;
-        box-shadow: inset 3px 0 0 var(--mp-accent); border-radius: var(--mp-radius-sm);
-    }
-    .ui.divider { color: var(--mp-text-muted); }
-    .ui.divider:not(.vertical):not(.horizontal) { border-top-color: var(--mp-border-default); border-bottom-color: var(--mp-border-default); }
+    ::-webkit-scrollbar-track { background: var(--mp-paper-2); }
+    ::-webkit-scrollbar-thumb { background: var(--mp-line-soft); border-radius: 999px; border: 2px solid var(--mp-paper-2); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--mp-muted); }
 
     /* ícones de pasta menos saturados */
-    .icon.yellow { color: #FFCF70 !important; }
-
-    /* ---------- inputs ---------- */
-    .ui.input > input, .ui.form input, .ui.form textarea, textarea,
-    .ui.form input:not([type]), input:not([type]), input[type="text"], input[type="password"],
-    input[type="number"], input[type="search"], .ui.form .field input {
-        background: var(--mp-code-bg) !important; color: var(--mp-text-primary) !important; border-color: var(--mp-border-default) !important;
-    }
-    .ui.input > input:focus, .ui.form input:focus, textarea:focus, input:focus {
-        border-color: var(--mp-border-focus) !important; box-shadow: var(--mp-focus-ring) !important;
-    }
-    input::placeholder, textarea::placeholder { color: var(--mp-text-disabled) !important; }
-    .ui.action.input > .button { background: var(--mp-bg-raised) !important; color: var(--mp-text-secondary) !important; border: 1px solid var(--mp-border-default) !important; }
-
-    /* ---------- botões ---------- */
-    .ui.button { transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease; }
-    .ui.teal.button, .ui.primary.button {
-        background: var(--mp-accent) !important; color: var(--mp-text-inverse) !important; font-weight: 700; box-shadow: none !important;
-    }
-    .ui.teal.button:hover, .ui.primary.button:hover { background: var(--mp-accent-hover) !important; color: var(--mp-text-inverse) !important; }
-    .ui.positive.button { background: var(--mp-success) !important; color: var(--mp-text-inverse) !important; font-weight: 700; box-shadow: none !important; }
-    .ui.basic.button, .ui.button {
-        background: var(--mp-bg-raised); color: var(--mp-text-secondary); border: 1px solid var(--mp-border-default); box-shadow: none;
-    }
-    .ui.basic.button { box-shadow: inset 0 0 0 1px var(--mp-border-default) !important; color: var(--mp-text-secondary) !important; background: transparent !important; }
-    .ui.basic.button:hover, .ui.button:hover { background: var(--mp-bg-hover) !important; color: var(--mp-text-primary) !important; border-color: var(--mp-border-strong); }
-    .ui.red.button, .ui.red.basic.button {
-        background: rgba(255,92,92,.12) !important; color: #FFC4C4 !important;
-        border: 1px solid rgba(255,92,92,.48) !important; box-shadow: none !important;
-    }
-    .ui.red.button:hover, .ui.red.basic.button:hover { background: rgba(255,92,92,.20) !important; color: #FFE1E1 !important; border-color: var(--mp-danger) !important; }
-    .ui.button:disabled, .ui.disabled.button, .ui.button.disabled {
-        background: #151A22 !important; color: var(--mp-text-disabled) !important; border-color: #252E3A !important; opacity: 1 !important;
-    }
-    /* teal/primary/positive não devem virar "button base" acima */
-    .ui.teal.button, .ui.primary.button, .ui.positive.button { border-color: transparent !important; }
-
-    /* ---------- labels / chips ---------- */
-    .ui.label { background: var(--mp-bg-raised); color: var(--mp-text-secondary); border: 1px solid var(--mp-border-default); }
-    .ui.basic.label { background: transparent; color: var(--mp-text-muted); border: 1px solid var(--mp-border-default); }
-    .ui.blue.label, .ui.teal.label { background: rgba(88,166,255,.16); color: #B9DAFF; border: 1px solid rgba(88,166,255,.35); }
-
-    /* ---------- modal + overlay ---------- */
-    .ui.dimmer, .ui.page.modals.dimmer.transition, .ui.modals.dimmer { background: var(--mp-bg-overlay) !important; }
-    .ui.modal {
-        background: var(--mp-bg-raised) !important; color: var(--mp-text-primary) !important;
-        border: 1px solid var(--mp-border-default) !important; border-radius: var(--mp-radius-lg) !important; box-shadow: var(--mp-shadow-lg) !important;
-    }
-    .ui.modal > .header { background: var(--mp-bg-raised) !important; color: var(--mp-text-primary) !important; border-bottom: 1px solid var(--mp-border-subtle) !important; }
-    .ui.modal > .content { background: var(--mp-bg-raised) !important; color: var(--mp-text-secondary) !important; }
-    .ui.modal > .actions { background: var(--mp-bg-panel) !important; border-top: 1px solid var(--mp-border-subtle) !important; }
-    .ui.modal > .close { top: .85rem; right: 1rem; color: var(--mp-text-muted); }
-    .ui.modal > .close:hover { color: var(--mp-text-primary); }
+    .icon.yellow { color: var(--mp-warning) !important; }
 
     /* ====================================================================== */
-    /* MODOS unificados (mesma base slate + teal em navegação e edição)       */
+    /* MODOS do IDE (navegação / edição) — específicos do Package Developer    */
     /* ====================================================================== */
-    [data-ide-mode="nav"], [data-ide-mode="edit"] { background: var(--mp-bg-canvas); min-height: 84vh; }
-    [data-ide-mode] .ui.header > .icon, [data-ide-mode] .ui.header .icon { color: var(--mp-accent); }
-    .repo-topbar { border-bottom: 1px solid var(--mp-border-default) !important; }
+    [data-ide-mode="nav"], [data-ide-mode="edit"] { height: calc(100vh - var(--pd-header-h)); overflow: hidden; }
+    [data-ide-mode] .ui.header > .icon, [data-ide-mode] .ui.header .icon { color: var(--mp-accent-cyan); }
+    .repo-topbar { border-bottom: var(--mp-border) !important; }
 
-    /* editor: rail e área compartilham a base slate (sem vinho) */
-    .edit-rail { background: var(--mp-bg-panel-alt) !important; border-right: 1px solid var(--mp-border-default); }
+    /* editor: rail e área compartilham a base de superfície do tema */
+    .edit-rail { background: var(--mp-paper-2) !important; border-right: var(--mp-border); }
     .code-editor, [data-ide-mode="edit"] textarea, textarea.code-editor {
-        background: var(--mp-code-bg) !important; color: var(--mp-text-primary) !important;
+        background: var(--mp-code-bg) !important; color: var(--mp-terminal-fg) !important;
         border: 1px solid var(--mp-code-border) !important; border-radius: var(--mp-radius-md);
-        font-family: var(--mp-font-code) !important; font-size: 13px; line-height: 1.55;
+        font-family: var(--mp-font-mono) !important; font-size: 13px; line-height: 1.55;
     }
-    .code-editor:focus, [data-ide-mode="edit"] textarea:focus { border-color: var(--mp-border-focus) !important; box-shadow: var(--mp-focus-ring) !important; }
+    .code-editor:focus, [data-ide-mode="edit"] textarea:focus { border-color: var(--mp-accent-blue) !important; box-shadow: var(--mp-focus-ring) !important; }
+
+    /* coluna Repositórios: item em flex para o nome truncar com reticências
+       (o layout table-cell padrão do Semantic ignora text-overflow) */
+    .repos-list.ui.list > .item { display: flex !important; align-items: center; padding-left: 0 !important; }
+    .repos-list.ui.list > .item > i.icon { flex: 0 0 auto; width: auto !important; margin: 0 8px 0 0 !important; padding: 0 !important; }
+    .repos-list.ui.list > .item > .content { flex: 1 1 auto !important; min-width: 0 !important; width: auto !important; }
+
+    /* abas de arquivo do editor (modo edição) — visíveis e táteis, estilo eco */
+    .edit-tabs.ui.tabular.menu {
+        border-bottom: var(--mp-border) !important;
+        background: var(--mp-paper-2) !important;
+        padding: 6px 6px 0 6px !important;
+        min-height: 0 !important;
+    }
+    .edit-tabs.ui.tabular.menu > .item {
+        color: var(--mp-muted) !important;
+        background: var(--mp-paper-3) !important;
+        border: 1.5px solid var(--mp-line-soft) !important;
+        border-bottom: none !important;
+        border-radius: var(--mp-radius-sm) var(--mp-radius-sm) 0 0 !important;
+        margin: 0 4px 0 0 !important;
+        padding: 7px 10px !important;
+        font-weight: 700;
+        font-family: var(--mp-font-mono);
+        font-size: 12px;
+    }
+    .edit-tabs.ui.tabular.menu > .item:hover {
+        background: var(--mp-surface-2) !important;
+        color: var(--mp-ink) !important;
+        border-color: var(--mp-line) !important;
+    }
+    .edit-tabs.ui.tabular.menu > .active.item {
+        color: var(--mp-ink) !important;
+        background: var(--mp-surface) !important;
+        border-color: var(--mp-line-strong) !important;
+        border-top: 3px solid var(--mp-accent-blue) !important;
+        margin-bottom: -2px !important;
+        box-shadow: var(--mp-shadow-1);
+    }
+    .edit-tab-scope { opacity: 0.5; }
+    .edit-tabs .active.item .edit-tab-file { font-weight: 800; }
+    .edit-tab-dirty { color: var(--mp-warning); margin-left: 6px; font-size: 11px; vertical-align: middle; }
+    .edit-tab-close { margin-left: 8px !important; opacity: 0.55; border-radius: 3px; }
+    .edit-tab-close:hover { opacity: 1; color: var(--mp-danger) !important; background: var(--mp-danger-tint); }
+
+    /* menu de contexto (botão direito) — mesmo padrão do my-desktop */
+    .myd-ctx-scrim { position: fixed; inset: 0; z-index: var(--mp-z-palette); background: transparent; }
+    .myd-ctx-menu {
+        position: fixed; z-index: calc(var(--mp-z-palette) + 1);
+        min-width: 210px; padding: 5px;
+        background: var(--mp-surface);
+        border: var(--mp-border-strong);
+        border-radius: var(--mp-radius-md);
+        box-shadow: var(--mp-shadow-2);
+    }
+    .myd-ctx-item {
+        display: flex; align-items: center; gap: 8px; width: 100%;
+        padding: 8px 10px; border: none; background: transparent;
+        border-radius: var(--mp-radius-sm);
+        color: var(--mp-ink); font-size: var(--mp-text-sm); font-weight: 600;
+        text-align: left; cursor: pointer;
+    }
+    .myd-ctx-item .icon { color: var(--mp-muted); margin: 0; }
+    .myd-ctx-item:hover { background: var(--mp-accent-blue-tint); }
+    .myd-ctx-item:hover .icon { color: var(--mp-ink); }
+    .myd-ctx-item--danger { color: var(--mp-danger); }
+    .myd-ctx-item--danger .icon { color: var(--mp-danger); }
+    .myd-ctx-item--danger:hover { background: var(--mp-danger-tint); }
+    .myd-ctx-item:disabled { opacity: .5; cursor: default; }
+    .myd-ctx-divider { border-top: 1px solid var(--mp-line-faint); margin: 4px 2px; }
+    .myd-ctx-item--open { background: var(--mp-surface-2); }
+    .myd-ctx-item--child { padding-left: 30px; }
+    .myd-ctx-chevron.icon { margin-left: auto !important; margin-right: 0 !important; color: var(--mp-muted) !important; }
+    .myd-ctx-icon-gap { display: inline-block; width: 1.18em; flex: 0 0 auto; }
+
+    /* dock Executar / Console (rodapé da área de edição) */
+    .edit-run-dock { border-top: var(--mp-border); background: var(--mp-surface); }
+    .edit-run-bar { background: var(--mp-paper-2); border-bottom: 1px solid var(--mp-line-faint); color: var(--mp-ink); }
+    .edit-run-bar:hover { background: var(--mp-paper-3); }
 `

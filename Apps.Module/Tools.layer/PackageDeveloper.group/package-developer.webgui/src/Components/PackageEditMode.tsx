@@ -8,14 +8,16 @@ import GetRequestByServer from "../Utils/GetRequestByServer"
 import CodeEditor from "./CodeEditor"
 import SourceTree from "./SourceTree"
 import PackageTypeNav from "./PackageTypeNav"
+import RunPackage from "./RunPackage"
+import ContextMenu from "./ContextMenu"
 
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 const basename = (p:string) => p.split("/").filter(Boolean).pop() || p
 
 const Wrap = styled.div`
     display: flex;
-    height: 82vh;
-    border-top: 1px solid #ececec;
+    height: calc(100vh - var(--pd-header-h));
+    border-top: 1px solid var(--mp-line-faint);
 `
 const Rail = styled.div`
     width: 54px;
@@ -28,7 +30,8 @@ const Rail = styled.div`
 `
 const NavCol = styled.div`
     width: 250px;
-    border-right: 1px solid #ddd;
+    border-right: var(--mp-border);
+    background: var(--mp-paper);
     overflow: auto;
     padding: 8px;
 `
@@ -50,6 +53,20 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
     const [active, setActive]       = useState<number>(-1)
     const [saving, setSaving]       = useState(false)
     const [restored, setRestored]   = useState(false)
+    const [runOpen, setRunOpen]     = useState(false)
+    const [runMounted, setRunMounted] = useState(false)
+    const [ctxMenu, setCtxMenu]     = useState<any>()
+
+    const openCtx = (e:any, items:any[]) => {
+        e.preventDefault(); e.stopPropagation()
+        if(items.length) setCtxMenu({ x: e.clientX, y: e.clientY, items })
+    }
+    const copyPath = (p:string) => { try { navigator.clipboard && navigator.clipboard.writeText(p) } catch(_) {} }
+
+    // Abre/fecha o painel Executar/Console. Monta sob demanda (na 1ª abertura) e,
+    // uma vez montado, permanece vivo mesmo recolhido — preserva o processo e a
+    // saída do terminal (apenas escondido via CSS).
+    const toggleRun = () => { if(!runMounted) setRunMounted(true); setRunOpen((o) => !o) }
 
     const modSvc = () => GetRequestByServer(HTTPServerManager)(SERVER_APP_NAME, "ModuleDeveloper")
     const fsSvc  = () => GetRequestByServer(HTTPServerManager)(SERVER_APP_NAME, "FileSystemNavigator")
@@ -111,6 +128,23 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
         setTabs((prev) => prev.filter((_, i) => i !== index))
         setActive((cur) => index === cur ? (index > 0 ? index - 1 : (tabs.length > 1 ? 0 : -1)) : (cur > index ? cur - 1 : cur))
     }
+    const closeOthers = (index:number) => { setTabs((prev) => [prev[index]]); setActive(0) }
+    const closeAll    = () => { setTabs([]); setActive(-1) }
+
+    // Itens do menu de contexto de uma aba.
+    const tabContextItems = (i:number) => [
+        { icon: "close",         label: "Fechar",         onClick: () => closeTab(i) },
+        { icon: "close",         label: "Fechar outras",  disabled: tabs.length <= 1, onClick: () => closeOthers(i) },
+        { icon: "close",         label: "Fechar todas",   onClick: () => closeAll() },
+        { divider: true },
+        { icon: "copy outline",  label: "Copiar caminho", onClick: () => copyPath(tabs[i].filePath) }
+    ]
+    // Itens do menu de contexto de um arquivo na árvore de navegação.
+    const fileContextItems = (filePath:string) => [
+        { icon: "external square alternate", label: "Abrir",          onClick: () => openFile(activePkg, filePath) },
+        { icon: "copy outline",              label: "Copiar caminho", onClick: () => copyPath(filePath) }
+    ]
+    const onFileContext = (e:any, filePath:string) => openCtx(e, fileContextItems(filePath))
 
     const saveActive = async () => {
         const tab = tabs[active]
@@ -124,6 +158,19 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
 
     const activeTab = tabs[active]
     const dirty = activeTab ? activeTab.content !== activeTab.savedContent : false
+
+    // Sessão sem pacotes (ex.: editar um Grupo vazio): nada para editar.
+    if(!activePkg){
+        return <Wrap>
+            <Rail className="edit-rail">
+                <Popup content="Voltar à navegação" position="right center" trigger={
+                    <Button basic icon="arrow left" size="small" onClick={onClose} />} />
+            </Rail>
+            <div style={{flex:1, display:"flex", alignItems:"center", justifyContent:"center"}}>
+                <Header icon><Icon name="inbox" color="grey" />Este grupo não tem pacotes para editar.</Header>
+            </div>
+        </Wrap>
+    }
 
     return <Wrap>
         <Rail className="edit-rail">
@@ -154,35 +201,42 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
                 ? <SourceTree
                     listDir={listDir(activePkg)}
                     onOpenFile={(p:string) => openFile(activePkg, p)}
+                    onFileContext={onFileContext}
                     selectedPath={activeTab && activeTab.pkg === activePkg ? activeTab.filePath : undefined} />
                 : <PackageTypeNav
                     key={`${activePkg.name}.${activePkg.ext}`}
                     listDir={listDir(activePkg)}
                     onOpenFile={(p:string) => openFile(activePkg, p)}
+                    onFileContext={onFileContext}
                     selectedPath={activeTab && activeTab.pkg === activePkg ? activeTab.filePath : undefined} />
             }
         </NavCol>
 
         <EditorArea>
+            <div style={{flex:1, minHeight:0, display:"flex", flexDirection:"column", overflow:"hidden"}}>
             {
                 tabs.length === 0
                 ? <Segment placeholder textAlign="center" style={{margin:16, flex:1}}>
                     <Header icon><Icon name="file code outline" color="grey" />Abra um arquivo pela navegação à esquerda</Header>
                   </Segment>
                 : <>
-                    <Menu tabular size="small" style={{overflowX:"auto", margin:0, minHeight:0}}>
+                    <Menu tabular size="small" className="edit-tabs" style={{overflowX:"auto", margin:0, minHeight:0, flexShrink:0}}>
                         {
-                            tabs.map((t:any, i:number) =>
-                                <Menu.Item key={t.key} active={i === active} onClick={() => setActive(i)}>
-                                    <span style={{opacity:0.55, fontSize:"0.82em"}}>{t.pkg.name}.{t.pkg.ext}/</span>
-                                    {t.filename}{t.content !== t.savedContent ? " *" : ""}
-                                    <Icon name="close" size="small" style={{marginLeft:6}}
+                            tabs.map((t:any, i:number) => {
+                                const isDirty = t.content !== t.savedContent
+                                return <Menu.Item key={t.key} active={i === active} onClick={() => setActive(i)}
+                                    onContextMenu={(e:any) => openCtx(e, tabContextItems(i))}>
+                                    <span className="edit-tab-scope">{t.pkg.name}.{t.pkg.ext}/</span>
+                                    <span className="edit-tab-file">{t.filename}</span>
+                                    { isDirty && <span className="edit-tab-dirty" title="alterações não salvas">●</span> }
+                                    <Icon name="close" size="small" className="edit-tab-close" title="Fechar"
                                         onClick={(e:any) => { e.stopPropagation(); closeTab(i) }} />
-                                </Menu.Item>)
+                                </Menu.Item>
+                            })
                         }
                     </Menu>
                     {
-                        activeTab && <div style={{padding:8, flex:1, display:"flex", flexDirection:"column"}}>
+                        activeTab && <div style={{padding:8, flex:1, minHeight:0, display:"flex", flexDirection:"column"}}>
                             <div style={{marginBottom:6}}>
                                 <Button size="mini" positive icon="save" content="Save"
                                     loading={saving} disabled={!dirty || saving} onClick={saveActive} />
@@ -193,7 +247,27 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
                     }
                   </>
             }
+            </div>
+
+            {/* Dock Executar / Console — painel inferior recolhível (para o pacote ativo) */}
+            <div className="edit-run-dock" style={{flex:"0 0 auto"}}>
+                <div className="edit-run-bar" onClick={toggleRun}
+                    style={{display:"flex", alignItems:"center", gap:8, padding:"6px 12px", cursor:"pointer", userSelect:"none", fontWeight:700}}>
+                    <Icon name={runOpen ? "chevron down" : "chevron up"} style={{margin:0}} />
+                    <Icon name="play" color="teal" style={{margin:0}} />
+                    Executar / Console
+                    <span style={{opacity:0.6, fontWeight:400, fontSize:"0.85em"}}>{activePkg.name}.{activePkg.ext}</span>
+                </div>
+                {
+                    runMounted &&
+                    <div style={{display: runOpen ? "block" : "none", padding:10, overflow:"auto", maxHeight:"52vh"}}>
+                        <RunPackage key={activePkg.path} workspace={workspace} packageSelected={activePkg} terminalHeight="30vh" />
+                    </div>
+                }
+            </div>
         </EditorArea>
+
+        { ctxMenu && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={ctxMenu.items} onClose={() => setCtxMenu(undefined)} /> }
     </Wrap>
 }
 

@@ -17,7 +17,7 @@ const METADATA_TYPES:any = {
 
 // Navegação do pacote POR TIPO de componente (não por árvore de arquivos):
 // Metadados (Boot/Serviços/Endpoints/Comandos/…) + categorias de código (src/).
-const PackageTypeNav = ({ listDir, onOpenFile, selectedPath }:any) => {
+const PackageTypeNav = ({ listDir, onOpenFile, onFileContext, selectedPath }:any) => {
 
     const [meta, setMeta]     = useState<any[]>([])
     const [srcDirs, setSrcDirs]   = useState<any[]>([])
@@ -45,7 +45,8 @@ const PackageTypeNav = ({ listDir, onOpenFile, selectedPath }:any) => {
                         const t = METADATA_TYPES[f.filename] || { label: f.filename, icon: "file outline" }
                         const path = `/metadata/${f.filename}`
                         return <List.Item key={f.filename} active={selectedPath === path}
-                            style={{cursor:"pointer"}} onClick={() => openMeta(f.filename)}>
+                            style={{cursor:"pointer"}} onClick={() => openMeta(f.filename)}
+                            onContextMenu={(e:any) => onFileContext && onFileContext(e, path)}>
                             <List.Icon name={t.icon} color="teal" />
                             <List.Content>
                                 {t.label}
@@ -69,13 +70,14 @@ const PackageTypeNav = ({ listDir, onOpenFile, selectedPath }:any) => {
                     srcDirs.map((d:any, i:number) =>
                         <SourceTree key={"d"+i}
                             rootPath={`/src/${d.filename}`} rootName={d.filename}
-                            listDir={listDir} onOpenFile={onOpenFile} selectedPath={selectedPath} />)
+                            listDir={listDir} onOpenFile={onOpenFile} onFileContext={onFileContext} selectedPath={selectedPath} />)
                 }
                 {
                     srcFiles.map((f:any, i:number) => {
                         const path = `/src/${f.filename}`
                         return <List.Item key={"f"+i} active={selectedPath === path}
-                            style={{cursor:"pointer"}} onClick={() => onOpenFile(path)}>
+                            style={{cursor:"pointer"}} onClick={() => onOpenFile(path)}
+                            onContextMenu={(e:any) => onFileContext && onFileContext(e, path)}>
                             <List.Icon name="file code outline" color="grey" />
                             <List.Content>{f.filename}</List.Content>
                         </List.Item>

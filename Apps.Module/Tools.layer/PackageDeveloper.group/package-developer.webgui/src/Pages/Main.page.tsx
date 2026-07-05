@@ -5,6 +5,7 @@ import { Grid, Button, Icon, Header, Segment, Loader } from "semantic-ui-react"
 import styled from "styled-components"
 
 import PageDefault from "../Components/PageDefault"
+import ContextMenu from "../Components/ContextMenu"
 
 import useRepositoryState   from "../Hooks/useRepositoryState"
 import RepositoryWelcome    from "../Components/RepositoryWelcome"
@@ -21,19 +22,23 @@ const basename = (p:string) => p.split("/").filter(Boolean).pop() || p
 // Resolve o nó selecionado (por path) na hierarquia atual — sobrevive a reloads.
 const findNode = (hierarchy:any, ref:any) => {
     if(!hierarchy || !ref) return undefined
+    if(ref.kind === "all") return { kind: "all", node: hierarchy }
     for(const mod of hierarchy.modules || []){
         if(ref.kind === "module" && mod.path === ref.path) return { kind: "module", node: mod }
         for(const layer of mod.layers || []){
             if(ref.kind === "layer" && layer.path === ref.path) return { kind: "layer", node: layer }
+            for(const group of layer.groups || []){
+                if(ref.kind === "group" && group.path === ref.path) return { kind: "group", node: group }
+            }
         }
     }
     return undefined
 }
 
 const ScrollColumn = styled(Grid.Column)`
-    height: 80vh;
+    height: calc(100vh - var(--pd-header-h) - 8px);
     overflow: auto;
-    border-color: #2b2f38 !important;
+    border-color: var(--mp-line-faint) !important;
 `
 
 const MainPage = ({ HTTPServerManager }:any) => {
@@ -50,6 +55,7 @@ const MainPage = ({ HTTPServerManager }:any) => {
     const [editSession, setEditSession]         = useState<any>()
     const [browserOpen, setBrowserOpen]         = useState(false)
     const [createReq, setCreateReq]             = useState<any>()
+    const [ctxMenu, setCtxMenu]                 = useState<any>()
 
     useEffect(() => {
         setSelectedRef(undefined)
@@ -70,6 +76,26 @@ const MainPage = ({ HTTPServerManager }:any) => {
     const requestCreate = (kind:string, parentPath:string, parentLabel:string) =>
         setCreateReq({ kind, parentPath, parentLabel })
 
+    // ---- Menu de contexto (botão direito) para criar/editar nós ----
+    const openCtx = (e:any, items:any[]) => {
+        e.preventDefault(); e.stopPropagation()
+        if(items.length) setCtxMenu({ x: e.clientX, y: e.clientY, items })
+    }
+    const handleNodeContext = (e:any, kind:string, node:any) => {
+        const items:any[] =
+            kind === "module" ? [{ icon:"clone outline", label:"Novo Layer", onClick:() => requestCreate("layer", node.path, node.name) }]
+          : kind === "layer"  ? [{ icon:"folder", label:"Novo Grupo", onClick:() => requestCreate("group", node.path, node.name) },
+                                 { icon:"cube",   label:"Novo Pacote", onClick:() => requestCreate("package", node.path, node.name) }]
+          : kind === "group"  ? [{ icon:"cube", label:"Novo Pacote", onClick:() => requestCreate("package", node.path, node.name) }]
+          : kind === "package"? [{ icon:"edit", label:"Editar pacote", onClick:() => handleEditPackage(node) }]
+          : []
+        openCtx(e, items)
+    }
+    const handleRootContext = (e:any) => {
+        if(!hierarchy) return
+        openCtx(e, [{ icon:"cubes", label:"Novo Module", onClick:() => requestCreate("module", hierarchy.path, activeRepository) }])
+    }
+
     const handleCreateNode = (payload:any) => {
         const { kind, parentPath } = createReq
         if(kind === "package")
@@ -79,7 +105,7 @@ const MainPage = ({ HTTPServerManager }:any) => {
 
     // ---- Tela de boas-vindas (sem repositório ativo) ----
     if(!activeRepository){
-        return <PageDefault>
+        return <PageDefault onHome={goToWelcome}>
             <RepositoryWelcome
                 recents={recents}
                 onOpen={openRepository}
@@ -91,7 +117,7 @@ const MainPage = ({ HTTPServerManager }:any) => {
 
     // ---- Modo edição (VSCode-like, tela cheia) ----
     if(editSession){
-        return <PageDefault>
+        return <PageDefault onHome={goToWelcome}>
             <div data-ide-mode="edit">
                 <PackageEditMode
                     workspace={activeRepository}
@@ -102,10 +128,10 @@ const MainPage = ({ HTTPServerManager }:any) => {
     }
 
     // ---- Modo navegação (4 colunas) ----
-    return <PageDefault>
+    return <PageDefault onHome={goToWelcome}>
       <div data-ide-mode="nav">
         <Grid columns="equal" divided style={{margin:0}}>
-            <ScrollColumn width={2}>
+            <ScrollColumn width={3}>
                 <OpenRepositories
                     repos={openRepositories}
                     active={activeRepository}
@@ -115,18 +141,22 @@ const MainPage = ({ HTTPServerManager }:any) => {
                     onHome={goToWelcome} />
             </ScrollColumn>
             <ScrollColumn width={3}>
-                <div style={{display:"flex", alignItems:"center"}}>
-                    <Header as="h5" style={{flex:1, margin:0}}><Icon name="sitemap" />Módulos / Layers</Header>
-                    <Button icon="plus" size="mini" basic compact title="Novo Module"
-                        disabled={!hierarchy}
-                        onClick={() => requestCreate("module", hierarchy.path, activeRepository)} />
+                <div style={{display:"flex", alignItems:"center"}} onContextMenu={handleRootContext}>
+                    <Header as="h5" style={{flex:1, margin:0, cursor: hierarchy ? "pointer" : undefined}}
+                        title="Clique: todos os pacotes • Botão direito: novo Module"
+                        onClick={() => hierarchy && setSelectedRef({ kind: "all", path: hierarchy.path })}>
+                        <Icon name="sitemap" />Módulos / Layers
+                    </Header>
                 </div>
                 <div style={{marginTop:8}}>
                 {
                     hierarchy
                     ? <RepositoryHierarchy hierarchy={hierarchy} selectedPath={selectedRef && selectedRef.path}
+                        workspace={activeRepository}
+                        selectedPackage={selectedPackage}
+                        onSelectPackage={setSelectedPackage}
                         onSelect={(sel:any) => setSelectedRef({ kind: sel.kind, path: sel.node.path })}
-                        onCreateRequest={requestCreate} />
+                        onNodeContext={handleNodeContext} />
                     : <Loader active inline="centered" />
                 }
                 </div>
@@ -140,9 +170,9 @@ const MainPage = ({ HTTPServerManager }:any) => {
                     onSelectPackage={setSelectedPackage}
                     onEditPackage={handleEditPackage}
                     onEditGroup={handleEditGroup}
-                    onCreateRequest={requestCreate} />
+                    onNodeContext={handleNodeContext} />
             </ScrollColumn>
-            <ScrollColumn width={7}>
+            <ScrollColumn width={6}>
                 {
                     selectedPackage
                     ? <PackageInfo workspace={activeRepository} pkg={selectedPackage} />
@@ -166,6 +196,8 @@ const MainPage = ({ HTTPServerManager }:any) => {
         parentLabel={createReq && createReq.parentLabel}
         onClose={() => setCreateReq(undefined)}
         onCreate={handleCreateNode} />
+
+      { ctxMenu && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={ctxMenu.items} onClose={() => setCtxMenu(undefined)} /> }
     </PageDefault>
 }
 
