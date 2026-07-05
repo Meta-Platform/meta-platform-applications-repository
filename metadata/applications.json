@@ -34,5 +34,11 @@
         "executable":"sources-desktop",
         "packageNamespace":"Apps.Module/Admin.layer/DataSource.group/datasource-manager.desktopapp",
         "supervisorSocketFileName":"sources-desktop.sock"
+    },
+    {
+        "appType":"DESKTOP",
+        "executable":"my-desktop",
+        "packageNamespace":"Apps.Module/Admin.layer/MyDesktop.group/my-desktop.desktopapp",
+        "supervisorSocketFileName":"my-desktop.sock"
     }
 ]

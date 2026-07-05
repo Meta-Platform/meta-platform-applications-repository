@@ -1,0 +1,13 @@
+{
+    "port":"9092",
+    "serverName":"ExecutionManagerWebserviceInstance",
+    "installDataDirPath":"~/EcosystemData",
+    "panelStateFilePath":"~/virtual-desk-state/my-desktop-state.json",
+    "ecosystemDefaultsFileRelativePath":"./config-files/ecosystem-defaults.json",
+    "REPOS_CONF_FILENAME_REPOS_DATA":"repositories.json",
+    "REPOS_CONF_EXT_MODULE_DIR":"Module",
+    "REPOS_CONF_EXT_LAYER_DIR":"layer",
+    "REPOS_CONF_EXT_GROUP_DIR":"group",
+    "REPOS_CONF_EXTLIST_PKG_TYPE":"app|cli|webapp|desktopapp|webgui|webservice|service|lib",
+    "PKG_CONF_DIRNAME_METADATA":"metadata"
+}

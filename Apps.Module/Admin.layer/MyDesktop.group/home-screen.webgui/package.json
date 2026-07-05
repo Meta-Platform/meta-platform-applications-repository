@@ -1,0 +1,31 @@
+{
+  "name": "home-screen.webgui",
+  "version": "0.0.1",
+  "author": "Kaio Cezar <kadisk.shark@gmail.com>",
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/react-redux": "^7.1.34",
+    "@types/react-router-dom": "^5.3.3",
+    "@types/styled-components": "^5.1.34",
+    "axios": "^1.7.7",
+    "css-loader": "^7.1.2",
+    "file-loader": "^6.2.0",
+    "query-string": "^9.1.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-redux": "^9.1.2",
+    "react-router-dom": "^6.28.0",
+    "redux": "^5.0.1",
+    "sass": "^1.81.0",
+    "sass-loader": "^16.0.3",
+    "semantic-ui-css": "^2.5.0",
+    "semantic-ui-react": "^2.1.5",
+    "source-map-loader": "^5.0.0",
+    "style-loader": "^4.0.0",
+    "styled-components": "^6.1.13",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,77 @@
+{
+    "params" : [
+        "port",
+        "serverName",
+        "installDataDirPath",
+        "panelStateFilePath",
+        "ecosystemDefaultsFileRelativePath",
+        "REPOS_CONF_FILENAME_REPOS_DATA",
+        "REPOS_CONF_EXT_MODULE_DIR",
+        "REPOS_CONF_EXT_LAYER_DIR",
+        "REPOS_CONF_EXT_GROUP_DIR",
+        "REPOS_CONF_EXTLIST_PKG_TYPE",
+        "PKG_CONF_DIRNAME_METADATA"
+    ],
+    "services": [
+        {
+            "namespace": "@@/notification-hub-service",
+            "dependency": "@/ecosystem-control-panel.service/services/NotificationHubService"
+        },
+        {
+            "namespace": "@@/ecosystemdata-handler-service",
+            "dependency": "@/ecosystem-control-panel.service/services/EcosystemDataHandlerService",
+            "params":{
+                "installDataDirPath": "{{installDataDirPath}}",
+                "panelStateFilePath": "{{panelStateFilePath}}"
+            }
+        },
+        {
+            "namespace": "@@/server-service",
+            "dependency": "@/server-manager.service/services/HTTPServerService",
+            "params":{
+                "name":"{{serverName}}",
+                "port": "{{port}}"
+            }
+        },
+        {
+            "namespace":"@@/repository-manager",
+            "dependency": "@/repository-manager.service/services/RepositoryManagerService",
+            "bound-params": {
+                "repositoryUtilitiesLib":"@/repository-utilities.lib",
+                "dependencyGraphBuilderLib": "@/dependency-graph-builder.lib"
+            },
+            "params": {
+                "installDataDirPath":"{{installDataDirPath}}",
+                "REPOS_CONF_FILENAME_REPOS_DATA":"{{REPOS_CONF_FILENAME_REPOS_DATA}}",
+                "REPOS_CONF_EXT_MODULE_DIR":"{{REPOS_CONF_EXT_MODULE_DIR}}",
+                "REPOS_CONF_EXT_LAYER_DIR":"{{REPOS_CONF_EXT_LAYER_DIR}}",
+                "REPOS_CONF_EXT_GROUP_DIR":"{{REPOS_CONF_EXT_GROUP_DIR}}",
+                "REPOS_CONF_EXTLIST_PKG_TYPE":"{{REPOS_CONF_EXTLIST_PKG_TYPE}}",
+                "PKG_CONF_DIRNAME_METADATA": "{{PKG_CONF_DIRNAME_METADATA}}"
+            }
+        }
+    ],
+    "endpoints": [
+        {
+            "dependency": "@/server-manager.webservice/endpoint-group",
+            "bound-params":{
+               "serverServiceForController":"@@/server-service",
+               "serverService": "@@/server-service"
+            }
+        },
+        {
+            "dependency": "@//endpoint-group",
+            "params":{
+                "ecosystemDefaultsFileRelativePath": "{{ecosystemDefaultsFileRelativePath}}"
+            },
+            "bound-params":{
+                "serverService": "@@/server-service",
+                "ecosystemdataHandlerService": "@@/ecosystemdata-handler-service",
+                "jsonFileUtilitiesLib": "@/json-file-utilities.lib",
+                "repositoryManagerService": "@@/repository-manager",
+                "notificationHubService": "@@/notification-hub-service",
+                "ecosystemInstallUtilitiesLib": "@/ecosystem-install-utilities.lib"
+            }
+        }
+    ]
+}

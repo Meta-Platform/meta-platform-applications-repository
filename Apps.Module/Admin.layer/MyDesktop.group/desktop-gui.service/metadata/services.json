@@ -1,0 +1,17 @@
+[
+    {
+        "namespace": "DesktopGuiService",
+        "path": "Services/DesktopGui.service",
+        "bound-params": [
+            "ecosystemdataHandlerService",
+            "notificationHubService",
+            "repositoryManagerService",
+            "jsonFileUtilitiesLib",
+            "ecosystemInstallUtilitiesLib",
+            "executionManagerWebservice"
+        ],
+        "params": [
+            "ecosystemDefaultsFileRelativePath"
+        ]
+    }
+]

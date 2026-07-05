@@ -1,0 +1,72 @@
+{
+    "params": ["ecosystemDefaultsFileRelativePath"],
+    "bound-params":[
+        "serverService",
+        "ecosystemdataHandlerService",
+        "jsonFileUtilitiesLib",
+        "repositoryManagerService",
+        "notificationHubService",
+        "ecosystemInstallUtilitiesLib"
+    ],
+    "endpoints": [
+        {
+            "url": "/applications",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Applications.api.json",
+                "controller": "Controllers/Applications.controller",
+                "controller-params":{
+                    "ecosystemDefaultsFileRelativePath": "{{ecosystemDefaultsFileRelativePath}}"
+                }
+            },
+            "bound-params": {
+                "serverService":"serverService",
+                "controller-params":{
+                    "ecosystemdataHandlerService":"ecosystemdataHandlerService",
+                    "jsonFileUtilitiesLib": "jsonFileUtilitiesLib",
+                    "ecosystemInstallUtilitiesLib": "ecosystemInstallUtilitiesLib",
+                    "notificationHubService": "notificationHubService"
+                }
+            }
+        },
+        {
+            "url": "/desktop-applications",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/DesktopApplications.api.json",
+                "controller": "Controllers/DesktopApplications.controller",
+                "controller-params":{
+                    "ecosystemDefaultsFileRelativePath": "{{ecosystemDefaultsFileRelativePath}}"
+                }
+            },
+            "bound-params": {
+                "serverService":"serverService",
+                "controller-params":{
+                    "ecosystemdataHandlerService":"ecosystemdataHandlerService",
+                    "jsonFileUtilitiesLib": "jsonFileUtilitiesLib",
+                    "repositoryManagerService": "repositoryManagerService"
+                }
+            }
+        },
+        {
+            "url": "/execution",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Execution.api.json",
+                "controller": "Controllers/Execution.controller",
+                "controller-params":{
+                    "ecosystemDefaultsFileRelativePath": "{{ecosystemDefaultsFileRelativePath}}"
+                }
+            },
+            "bound-params": {
+                "serverService":"serverService",
+                "controller-params":{
+                    "ecosystemdataHandlerService":"ecosystemdataHandlerService",
+                    "jsonFileUtilitiesLib": "jsonFileUtilitiesLib",
+                    "repositoryManagerService": "repositoryManagerService",
+                    "notificationHubService": "notificationHubService"
+                }
+            }
+        }
+    ]
+}

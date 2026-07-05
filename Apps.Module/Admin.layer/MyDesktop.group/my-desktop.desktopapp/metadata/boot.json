@@ -1,0 +1,47 @@
+{
+    "params" : [
+        "serverName",
+        "RT_ENV_GENERATED_DIR_NAME",
+        "installDataDirPath",
+        "panelStateFilePath",
+        "ecosystemDefaultsFileRelativePath",
+        "REPOS_CONF_FILENAME_REPOS_DATA",
+        "REPOS_CONF_EXT_MODULE_DIR",
+        "REPOS_CONF_EXT_LAYER_DIR",
+        "REPOS_CONF_EXT_GROUP_DIR",
+        "REPOS_CONF_EXTLIST_PKG_TYPE",
+        "PKG_CONF_DIRNAME_METADATA"
+    ],
+    "windows": [
+        {
+            "title": "MyDesktop",
+            "width": 1280,
+            "height": 800,
+            "dependency": "@/home-screen.webgui",
+            "params": {
+                "serverName": "{{serverName}}",
+                "RT_ENV_GENERATED_DIR_NAME": "{{RT_ENV_GENERATED_DIR_NAME}}",
+                "installDataDirPath": "{{installDataDirPath}}",
+                "panelStateFilePath": "{{panelStateFilePath}}",
+                "ecosystemDefaultsFileRelativePath": "{{ecosystemDefaultsFileRelativePath}}",
+                "REPOS_CONF_FILENAME_REPOS_DATA": "{{REPOS_CONF_FILENAME_REPOS_DATA}}",
+                "REPOS_CONF_EXT_MODULE_DIR": "{{REPOS_CONF_EXT_MODULE_DIR}}",
+                "REPOS_CONF_EXT_LAYER_DIR": "{{REPOS_CONF_EXT_LAYER_DIR}}",
+                "REPOS_CONF_EXT_GROUP_DIR": "{{REPOS_CONF_EXT_GROUP_DIR}}",
+                "REPOS_CONF_EXTLIST_PKG_TYPE": "{{REPOS_CONF_EXTLIST_PKG_TYPE}}",
+                "PKG_CONF_DIRNAME_METADATA": "{{PKG_CONF_DIRNAME_METADATA}}"
+            },
+            "bound-params": {
+                "homeScreenWebgui":             "@/home-screen.webgui",
+                "desktopGuiService":            "@/desktop-gui.service",
+                "executionManagerWebservice":   "@/execution-manager.webservice",
+                "repositoryManagerService":     "@/repository-manager.service",
+                "ecosystemControlPanelService": "@/ecosystem-control-panel.service",
+                "jsonFileUtilitiesLib":         "@/json-file-utilities.lib",
+                "ecosystemInstallUtilitiesLib": "@/ecosystem-install-utilities.lib",
+                "repositoryUtilitiesLib":       "@/repository-utilities.lib",
+                "dependencyGraphBuilderLib":    "@/dependency-graph-builder.lib"
+            }
+        }
+    ]
+}

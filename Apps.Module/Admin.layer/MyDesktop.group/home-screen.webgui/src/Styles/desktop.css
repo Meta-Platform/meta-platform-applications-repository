@@ -1,0 +1,440 @@
+/*
+ * MyDesktop — home-screen.webgui
+ * ------------------------------------------------------------------
+ * Área de trabalho retrô-brutalista. TODO estilo referencia os tokens
+ * --mp-* do design system "Meta System Retro-Brutalist UI" (copiado do
+ * Ecosystem Control Panel), então todos os temas (light/dark/gray/blue/
+ * cyberpunk) funcionam sem regra extra.
+ */
+
+html, body, #gui { height: 100%; margin: 0; }
+#gui { display: block; }
+
+/* ============================================================ */
+/* Shell da área de trabalho                                    */
+/* ============================================================ */
+.myd-desktop {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    color: var(--mp-ink);
+}
+
+/* ============================================================ */
+/* Barra de sistema (topo)                                      */
+/* ============================================================ */
+.myd-menubar {
+    flex: 0 0 auto;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--mp-space-3);
+    background: var(--mp-paper-2);
+    border-bottom: var(--mp-border-strong);
+    box-shadow: var(--mp-shadow-1);
+    z-index: var(--mp-z-drawer);
+    user-select: none;
+}
+.myd-menubar__left,
+.myd-menubar__right { display: flex; align-items: center; gap: var(--mp-space-4); }
+
+.myd-menubar__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--mp-font-display);
+    font-weight: 800;
+    font-size: var(--mp-text-md);
+    letter-spacing: -0.01em;
+    color: var(--mp-ink);
+    padding: 2px 6px;
+    border-radius: var(--mp-radius-sm);
+}
+.myd-menubar__brand:hover { background: var(--mp-surface-2); }
+.myd-menubar__mark { color: var(--mp-accent-orange); font-size: 1.05em; }
+
+.myd-menubar__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--mp-text-xs);
+    font-weight: 800;
+    color: var(--mp-ink-2);
+    background: var(--mp-surface);
+    border: 1.5px solid var(--mp-line-soft);
+    border-radius: 999px;
+    padding: 2px 10px;
+}
+.myd-menubar__clock {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.05;
+    font-family: var(--mp-font-mono);
+    min-width: 84px;
+}
+.myd-menubar__clock strong { font-size: var(--mp-text-md); color: var(--mp-ink); }
+.myd-menubar__clock small { font-size: 10px; color: var(--mp-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+
+/* ============================================================ */
+/* Superfície da área de trabalho + grade de ícones             */
+/* ============================================================ */
+.myd-surface {
+    flex: 1 1 auto;
+    overflow: auto;
+    padding: var(--mp-space-6);
+    position: relative;
+}
+.myd-surface--centered {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.myd-icon-grid {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: var(--mp-space-4) var(--mp-space-5);
+    height: 100%;
+    max-height: 100%;
+}
+
+/* ---- Ícone de aplicação ---- */
+.myd-icon {
+    width: 96px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 6px;
+    border: 2px solid transparent;
+    border-radius: var(--mp-radius-md);
+    background: transparent;
+    cursor: pointer;
+    text-align: center;
+    transition: transform .08s ease;
+}
+.myd-icon:hover { background: color-mix(in srgb, var(--mp-surface) 55%, transparent); }
+.myd-icon:hover { transform: translateY(-1px); }
+/* Seleção estilo desktop clássico: sem caixa pesada. O quadro do ícone ganha
+ * um leve tint e o RÓTULO vira uma "pílula" de destaque (texto sobre acento). */
+.myd-icon--selected { background: transparent; border-color: transparent; box-shadow: none; }
+.myd-icon--selected:hover { background: transparent; }
+.myd-icon--selected .myd-icon__frame { background: var(--mp-accent-blue-tint); }
+.myd-icon--selected .myd-icon__label {
+    background: var(--mp-accent-blue);
+    color: #fff;
+    padding: 1px 6px;
+    border-radius: var(--mp-radius-sm);
+}
+.myd-icon__frame {
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--mp-surface);
+    border: var(--mp-border-strong);
+    border-radius: var(--mp-radius-md);
+    box-shadow: var(--mp-shadow-1);
+}
+.myd-icon__img { width: 40px; height: 40px; object-fit: contain; }
+.myd-icon__glyph.icon { font-size: 34px; margin: 0; color: var(--mp-ink-2); }
+.myd-icon__label {
+    font-size: var(--mp-text-xs);
+    font-weight: 700;
+    color: var(--mp-ink);
+    line-height: 1.15;
+    max-width: 92px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+}
+.myd-icon:focus-visible {
+    outline: 3px solid var(--mp-accent-blue);
+    outline-offset: 2px;
+}
+
+/* ============================================================ */
+/* Janela de sistema (chrome retrô)                             */
+/* ============================================================ */
+.myd-window {
+    background: var(--mp-surface);
+    border: var(--mp-border-strong);
+    border-radius: var(--mp-radius-window);
+    box-shadow: var(--mp-shadow-2);
+    overflow: hidden;
+    max-width: 92vw;
+}
+.myd-window__titlebar {
+    position: relative;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+    background: var(--mp-paper-2);
+    border-bottom: var(--mp-border-strong);
+}
+.myd-window--exec    .myd-window__titlebar { background: var(--mp-accent-orange-tint); border-bottom-color: var(--mp-accent-orange); }
+.myd-window--success .myd-window__titlebar { background: var(--mp-success-tint);       border-bottom-color: var(--mp-success); }
+.myd-window--danger  .myd-window__titlebar { background: var(--mp-danger-tint);        border-bottom-color: var(--mp-danger); }
+
+.myd-window__lights { display: flex; gap: 7px; }
+.myd-light {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    border: 2px solid var(--mp-line-strong);
+    background: var(--mp-surface-muted);
+}
+.myd-light--red    { background: var(--mp-danger); }
+.myd-light--yellow { background: var(--mp-accent-yellow); }
+.myd-light--green  { background: var(--mp-success); }
+.myd-light--red[role="button"] { cursor: pointer; }
+.myd-window__lights--ghost { visibility: hidden; }
+
+.myd-window__title {
+    position: absolute;
+    left: 0; right: 0;
+    text-align: center;
+    font-family: var(--mp-font-display);
+    font-weight: 800;
+    font-size: var(--mp-text-sm);
+    letter-spacing: -0.01em;
+    color: var(--mp-ink);
+    pointer-events: none;
+}
+.myd-window__body { padding: var(--mp-space-5); color: var(--mp-ink-2); }
+.myd-window__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--mp-space-2);
+    padding: var(--mp-space-3) var(--mp-space-4);
+    background: var(--mp-surface-2);
+    border-top: var(--mp-border);
+}
+
+/* diálogos simples dentro de janelas */
+.myd-dialog { display: flex; align-items: flex-start; gap: var(--mp-space-4); }
+.myd-dialog p { margin: 0; line-height: 1.5; }
+.myd-dialog--compact { align-items: center; gap: var(--mp-space-3); }
+.myd-dialog--compact span { font-size: var(--mp-text-md); }
+
+/* scrim de modal */
+.myd-modal-scrim {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--mp-paper) 60%, transparent);
+    backdrop-filter: blur(1.5px);
+    z-index: var(--mp-z-modal);
+    padding: var(--mp-space-6);
+}
+
+/* ============================================================ */
+/* Janela de boas-vindas                                        */
+/* ============================================================ */
+.myd-welcome__body { display: flex; gap: var(--mp-space-5); }
+.myd-welcome__art {
+    flex: 0 0 auto;
+    width: 96px;
+    height: 96px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--mp-accent-cyan-tint);
+    border: var(--mp-border-strong);
+    border-radius: var(--mp-radius-md);
+    box-shadow: var(--mp-shadow-1);
+    color: var(--mp-ink);
+}
+.myd-welcome__text h2 {
+    margin: 0 0 6px;
+    font-family: var(--mp-font-display);
+    font-size: var(--mp-text-xl);
+    color: var(--mp-ink);
+}
+.myd-welcome__lead { margin: 0 0 var(--mp-space-3); line-height: 1.5; }
+.myd-welcome__list { list-style: none; margin: 0 0 var(--mp-space-3); padding: 0; }
+.myd-welcome__list li { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: var(--mp-text-sm); color: var(--mp-ink-2); }
+.myd-welcome__count { margin: 0; font-size: var(--mp-text-sm); color: var(--mp-muted); }
+
+/* ============================================================ */
+/* Janela "Sobre"                                               */
+/* ============================================================ */
+.myd-about { text-align: center; }
+.myd-about__mark { font-size: 40px; color: var(--mp-accent-orange); line-height: 1; }
+.myd-about h2 { margin: 6px 0 2px; font-family: var(--mp-font-display); }
+.myd-about__sub { margin: 0 0 var(--mp-space-4); color: var(--mp-muted); font-size: var(--mp-text-sm); }
+.myd-about__specs { display: flex; flex-direction: column; gap: 6px; margin: 0; text-align: left; }
+.myd-about__specs > div {
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px solid var(--mp-line-faint);
+    padding-top: 6px;
+}
+.myd-about__specs dt { color: var(--mp-muted); font-weight: 700; margin: 0; }
+.myd-about__specs dd { color: var(--mp-ink); font-family: var(--mp-font-mono); margin: 0; }
+
+/* ============================================================ */
+/* Dock inferior                                                */
+/* ============================================================ */
+.myd-dock-wrap {
+    position: absolute;
+    left: 0; right: 0;
+    bottom: var(--mp-space-4);
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    z-index: var(--mp-z-window);
+}
+.myd-dock {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-2);
+    max-width: 90vw;
+    overflow-x: auto;
+    padding: 8px 12px;
+    background: color-mix(in srgb, var(--mp-surface) 92%, transparent);
+    border: var(--mp-border-strong);
+    border-radius: 16px;
+    box-shadow: var(--mp-shadow-2);
+}
+.myd-dock__item {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--mp-surface);
+    border: var(--mp-border);
+    border-radius: var(--mp-radius-md);
+    cursor: pointer;
+    box-shadow: var(--mp-shadow-1);
+    transition: transform .08s ease;
+}
+.myd-dock__item:hover { transform: translateY(-3px); box-shadow: var(--mp-shadow-2); }
+.myd-dock__item:active { transform: translateY(0); box-shadow: none; }
+.myd-dock__img { width: 28px; height: 28px; object-fit: contain; }
+.myd-dock__glyph.icon { font-size: 22px; margin: 0; color: var(--mp-ink-2); }
+
+/* ============================================================ */
+/* Toast de execução (canto inferior direito)                   */
+/* ============================================================ */
+.myd-launch-toast {
+    position: fixed;
+    right: var(--mp-space-5);
+    bottom: calc(var(--mp-space-4) + 64px);
+    z-index: var(--mp-z-toast);
+}
+
+/* ============================================================ */
+/* Menu de contexto (botão direito)                             */
+/* ============================================================ */
+.myd-ctx-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: var(--mp-z-palette);
+    background: transparent;
+}
+.myd-ctx-menu {
+    position: fixed;
+    z-index: calc(var(--mp-z-palette) + 1);
+    min-width: 210px;
+    padding: 5px;
+    background: var(--mp-surface);
+    border: var(--mp-border-strong);
+    border-radius: var(--mp-radius-md);
+    box-shadow: var(--mp-shadow-2);
+}
+.myd-ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    background: transparent;
+    border-radius: var(--mp-radius-sm);
+    color: var(--mp-ink);
+    font-size: var(--mp-text-sm);
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+.myd-ctx-item .icon { color: var(--mp-muted); margin: 0; }
+.myd-ctx-item:hover { background: var(--mp-accent-blue-tint); }
+.myd-ctx-item:hover .icon { color: var(--mp-ink); }
+.myd-ctx-item--danger { color: var(--mp-danger); }
+.myd-ctx-item--danger .icon { color: var(--mp-danger); }
+.myd-ctx-item--danger:hover { background: var(--mp-danger-tint); }
+.myd-ctx-item:disabled { opacity: .5; cursor: default; }
+.myd-ctx-divider { border-top: 1px solid var(--mp-line-faint); margin: 4px 2px; }
+
+/* ============================================================ */
+/* Gerenciador de aplicações                                    */
+/* ============================================================ */
+.myd-mgr .myd-window__body { padding: 0; }
+.myd-mgr__toolbar { padding: var(--mp-space-4); border-bottom: var(--mp-border); background: var(--mp-paper-2); }
+.myd-mgr__error {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px var(--mp-space-4);
+    background: var(--mp-danger-tint);
+    color: var(--mp-ink);
+    border-bottom: 1px solid var(--mp-danger);
+    font-size: var(--mp-text-sm);
+}
+.myd-mgr__list { max-height: 52vh; overflow-y: auto; }
+.myd-mgr__empty { padding: var(--mp-space-8); text-align: center; color: var(--mp-muted); }
+.myd-mgr__row {
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-3);
+    padding: 10px var(--mp-space-4);
+    border-bottom: 1px solid var(--mp-line-faint);
+}
+.myd-mgr__row:hover { background: var(--mp-surface-2); }
+.myd-mgr__icon {
+    flex: 0 0 auto;
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--mp-surface);
+    border: var(--mp-border);
+    border-radius: var(--mp-radius-md);
+    box-shadow: var(--mp-shadow-1);
+}
+.myd-mgr__icon img { width: 26px; height: 26px; object-fit: contain; }
+.myd-mgr__glyph.icon { font-size: 20px; margin: 0; color: var(--mp-ink-2); }
+.myd-mgr__info { flex: 1 1 auto; min-width: 0; }
+.myd-mgr__name { font-weight: 800; color: var(--mp-ink); font-family: var(--mp-font-display); }
+.myd-mgr__meta { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+.myd-mgr__meta code { font-size: var(--mp-text-xs); }
+.myd-mgr__status { flex: 0 0 auto; }
+.myd-mgr__badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: var(--mp-text-xs); font-weight: 800; color: var(--mp-muted);
+}
+.myd-mgr__badge--on { color: var(--mp-success); }
+.myd-mgr__action { flex: 0 0 auto; }
+.myd-mgr__summary { margin-right: auto; color: var(--mp-muted); font-size: var(--mp-text-sm); align-self: center; }
+
+/* ---- submenu do menu de contexto (ex.: Tema) ---- */
+.myd-ctx-item--open { background: var(--mp-surface-2); }
+.myd-ctx-item--child { padding-left: 30px; }
+.myd-ctx-chevron.icon { margin-left: auto !important; margin-right: 0 !important; color: var(--mp-muted) !important; }
+.myd-ctx-icon-gap { display: inline-block; width: 1.18em; flex: 0 0 auto; }
+.myd-ctx-item .check.icon { color: var(--mp-accent-blue); }

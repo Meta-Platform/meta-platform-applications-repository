@@ -1,0 +1,222 @@
+/*
+ * Meta System Retro-Brutalist UI — Variantes de tema
+ * ------------------------------------------------------------------
+ * Cada variante redefine APENAS os tokens --mp-* sob :root[data-theme="X"].
+ * Como todos os componentes (e a ponte --eco-*) leem os tokens via var(),
+ * trocar data-theme troca o tema inteiro — sem tocar em componente.
+ *
+ * Aplicar via: document.documentElement.setAttribute("data-theme", "dark")
+ * (sem atributo / "light" = tema base off-white de tokens.css).
+ *
+ * Importar DEPOIS de tokens.css (para sobrepor os defaults).
+ */
+
+/* ================================================================== */
+/* DARK — neo-brutalismo escuro (fundo carvão, bordas claras)         */
+/* ================================================================== */
+:root[data-theme="dark"] {
+    --mp-paper:         #16181d;
+    --mp-paper-2:       #1d2027;
+    --mp-paper-3:       #262a32;
+    --mp-surface:       #1e2229;
+    --mp-surface-2:     #262b33;
+    --mp-surface-muted: #2b3038;
+
+    --mp-ink:     #F2EEE0;
+    --mp-ink-2:   #d8d3c4;
+    --mp-ink-3:   #c2bdad;
+    --mp-muted:   #a6aaa1;
+    --mp-muted-2: #8a8f86;
+
+    /* bordas SUTIS (não brancas): a definição vem da elevação (surface > bg)
+     * + sombra preta dura. Bordas brancas grossas deixavam tudo "muito branco". */
+    --mp-line-strong: #565c68;
+    --mp-line:        #3f444d;
+    --mp-line-soft:   #333841;
+    --mp-line-faint:  #2a2f37;
+
+    --mp-accent-blue-tint:   #182739;
+    --mp-accent-cyan-tint:   #0e2a2d;
+    --mp-accent-orange-tint: #2e2210;
+
+    --mp-success-tint: #14281c;
+    --mp-warning-tint: #2c2410;
+    --mp-danger-tint:  #2e1717;
+
+    --mp-shadow-color: #000000;
+    --mp-grid-line:    rgba(236, 231, 214, 0.045);
+}
+
+/* ================================================================== */
+/* GRAY — tons cinzas, quase monocromático                            */
+/* ================================================================== */
+:root[data-theme="gray"] {
+    --mp-paper:         #e4e4e4;
+    --mp-paper-2:       #d9d9d9;
+    --mp-paper-3:       #cccccc;
+    --mp-surface:       #f1f1f1;
+    --mp-surface-2:     #e6e6e6;
+    --mp-surface-muted: #d2d2d2;
+
+    --mp-ink:     #171717;
+    --mp-ink-2:   #2a2a2a;
+    --mp-ink-3:   #3e3e3e;
+    --mp-muted:   #6b6b6b;
+    --mp-muted-2: #909090;
+
+    --mp-line-strong: #171717;
+    --mp-line:        #3a3a3a;
+    --mp-line-soft:   #a8a8a8;
+    --mp-line-faint:  #cfcfcf;
+
+    /* acentos dessaturados (leves toques de cor apenas para navegação) */
+    --mp-accent-cyan:   #5f7375;
+    --mp-accent-blue:   #4b5563;
+    --mp-accent-orange: #85766a;
+    --mp-accent-yellow: #b0a878;
+    --mp-accent-pink:   #8a7580;
+    --mp-accent-violet: #6b6b7a;
+
+    --mp-accent-blue-tint:   #dcdfe3;
+    --mp-accent-cyan-tint:   #dcdfdf;
+    --mp-accent-orange-tint: #e2ded8;
+
+    /* estados ainda distinguíveis, porém suavizados */
+    --mp-success: #5a7a63; --mp-success-tint: #dde5df;
+    --mp-warning: #8f8452; --mp-warning-tint: #e6e2d2;
+    --mp-danger:  #9a5c5c; --mp-danger-tint:  #ecdede;
+    --mp-info:    #566073;
+    --mp-neutral: #6b6b6b;
+
+    --mp-shadow-color: #171717;
+    --mp-grid-line:    rgba(23, 23, 23, 0.05);
+}
+
+/* ================================================================== */
+/* BLUE — tudo puxado para o azul (papel azulado, tinta azul-escura)  */
+/* ================================================================== */
+:root[data-theme="blue"] {
+    --mp-paper:         #e9eff8;
+    --mp-paper-2:       #dce6f3;
+    --mp-paper-3:       #ccdaec;
+    --mp-surface:       #f3f7fd;
+    --mp-surface-2:     #e6eef8;
+    --mp-surface-muted: #d4e0ef;
+
+    --mp-ink:     #0e2438;
+    --mp-ink-2:   #22405c;
+    --mp-ink-3:   #38566f;
+    --mp-muted:   #5b7185;
+    --mp-muted-2: #8598ab;
+
+    --mp-line-strong: #0e2438;
+    --mp-line:        #2f4d6b;
+    --mp-line-soft:   #9db4cc;
+    --mp-line-faint:  #c6d5e6;
+
+    --mp-accent-cyan:   #0a8fb0;
+    --mp-accent-blue:   #2563c4;
+    --mp-accent-orange: #c9772b;
+    --mp-accent-yellow: #e0b12f;
+    --mp-accent-pink:   #cf5b9e;
+    --mp-accent-violet: #5b6bd6;
+
+    --mp-accent-blue-tint:   #d7e5f7;
+    --mp-accent-cyan-tint:   #d4edf3;
+    --mp-accent-orange-tint: #f4e3d2;
+
+    --mp-success: #1f9d6b; --mp-success-tint: #d8efe6;
+    --mp-warning: #d69a1a; --mp-warning-tint: #f6eccf;
+    --mp-danger:  #d64550; --mp-danger-tint:  #f6dce0;
+    --mp-info:    #2563c4;
+
+    --mp-shadow-color: #0e2438;
+    --mp-grid-line:    rgba(14, 36, 56, 0.05);
+}
+
+/* ================================================================== */
+/* CYBERPUNK — dark roxo com neon (magenta/violeta/cyan)              */
+/* ================================================================== */
+:root[data-theme="cyberpunk"] {
+    --mp-paper:         #0d0a18;
+    --mp-paper-2:       #150f28;
+    --mp-paper-3:       #1e1638;
+    --mp-surface:       #17102e;
+    --mp-surface-2:     #1f1740;
+    --mp-surface-muted: #281d4d;
+
+    --mp-ink:     #f0eaff;
+    --mp-ink-2:   #d5cbf4;
+    --mp-ink-3:   #c4baea;
+    --mp-muted:   #a89cd0;
+    --mp-muted-2: #857aac;
+
+    /* bordas violeta SUTIS (neon fica nos acentos/estados, não em tudo) */
+    --mp-line-strong: #6f4fa8;
+    --mp-line:        #4e3a75;
+    --mp-line-soft:   #3a2b5a;
+    --mp-line-faint:  #2a2046;
+
+    --mp-accent-cyan:   #00e5ff;
+    --mp-accent-blue:   #4d7cff;
+    --mp-accent-orange: #ff8a3d;
+    --mp-accent-yellow: #ffd93d;
+    --mp-accent-pink:   #ff4ecd;
+    --mp-accent-violet: #b06bff;
+
+    --mp-accent-blue-tint:   #16214d;
+    --mp-accent-cyan-tint:   #0a2e38;
+    --mp-accent-orange-tint: #33220f;
+
+    --mp-success: #2ee6a0; --mp-success-tint: #0e2a22;
+    --mp-warning: #ffcf3d; --mp-warning-tint: #2c2610;
+    --mp-danger:  #ff4d6d; --mp-danger-tint:  #2e1220;
+    --mp-info:    #4d7cff;
+    --mp-neutral: #8a7db5;
+
+    /* terminal + titlebars neon */
+    --mp-terminal-bg:     #0a0618;
+    --mp-terminal-bg-2:   #120a28;
+    --mp-terminal-fg:     #ece4ff;
+    --mp-terminal-muted:  #8a7db5;
+    --mp-terminal-green:  #2ee6a0;
+    --mp-terminal-blue:   #4d7cff;
+    --mp-terminal-orange: #ff8a3d;
+    --mp-terminal-red:    #ff4d6d;
+    --mp-titlebar-exec:    #ff4ecd;
+    --mp-titlebar-runtime: #b06bff;
+    --mp-titlebar-success: #2ee6a0;
+    --mp-titlebar-failed:  #ff4d6d;
+
+    --mp-shadow-color: #000000;
+    --mp-grid-line:    rgba(176, 107, 255, 0.06);
+}
+
+/* ================================================================== */
+/* Ajustes globais para temas ESCUROS (dark, cyberpunk)               */
+/* ------------------------------------------------------------------ */
+/* Inputs/formulários usam #fffdf4 fixo no tema base — sob dark eles   */
+/* precisam de fundo escuro para o texto claro ser legível.           */
+/* ================================================================== */
+:root[data-theme="dark"] .ui.input > input,
+:root[data-theme="dark"] .ui.selection.dropdown,
+:root[data-theme="cyberpunk"] .ui.input > input,
+:root[data-theme="cyberpunk"] .ui.selection.dropdown {
+    background: var(--mp-surface-2) !important;
+    color: var(--mp-ink) !important;
+}
+:root[data-theme="dark"] .ui.input > input::placeholder,
+:root[data-theme="cyberpunk"] .ui.input > input::placeholder {
+    color: var(--mp-muted-2) !important;
+}
+/* código inline em dark: fundo escuro */
+:root[data-theme="dark"] code,
+:root[data-theme="cyberpunk"] code {
+    background: var(--mp-surface-2);
+    color: var(--mp-ink-2);
+}
+/* dimmer de modais mais escuro em temas dark */
+:root[data-theme="dark"] .ui.dimmer,
+:root[data-theme="cyberpunk"] .ui.dimmer {
+    background: rgba(0, 0, 0, 0.62) !important;
+}

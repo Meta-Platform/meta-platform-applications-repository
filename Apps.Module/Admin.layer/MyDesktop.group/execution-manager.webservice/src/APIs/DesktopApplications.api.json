@@ -1,0 +1,24 @@
+{
+	"name": "DesktopApplications",
+	"endpoints": [
+		{
+			"summary": "ListDesktopApplications",
+			"method": "GET",
+			"path": "/list"
+		},
+		{
+			"summary": "GetApplicationIcon",
+			"method": "GET",
+			"path": "/icon",
+			"typeResponse": "file",
+			"parameters": [
+				{ "name": "namespaceRepo", "in": "query", "type": "string", "required": true },
+				{ "name": "moduleName",    "in": "query", "type": "string", "required": true },
+				{ "name": "layerName",     "in": "query", "type": "string", "required": true },
+				{ "name": "packageName",   "in": "query", "type": "string", "required": true },
+				{ "name": "ext",           "in": "query", "type": "string", "required": true },
+				{ "name": "parentGroup",   "in": "query", "type": "string", "required": false }
+			]
+		}
+	]
+}

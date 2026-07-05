@@ -1,0 +1,40 @@
+{
+	"name": "Applications",
+	"endpoints": [
+		{
+			"summary": "ListApplications",
+			"method": "GET",
+			"path": "/list"
+		},
+		{
+			"summary": "GetApplicationIcon",
+			"method": "GET",
+			"path": "/icon",
+			"typeResponse": "file",
+			"parameters": [
+				{ "name": "executableName", "in": "query", "type": "string", "required": true }
+			]
+		},
+		{
+			"summary": "InstallApplication",
+			"method": "POST",
+			"path": "/install",
+			"parameters": [
+				{ "name": "executableName", "in": "body", "type": "string", "required": true }
+			]
+		},
+		{
+			"summary": "UninstallApplication",
+			"method": "POST",
+			"path": "/uninstall",
+			"parameters": [
+				{ "name": "executableName", "in": "body", "type": "string", "required": true }
+			]
+		},
+		{
+			"summary": "UpdateAllRepositories",
+			"method": "POST",
+			"path": "/update-all"
+		}
+	]
+}
