@@ -1,11 +1,12 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { connect } from "react-redux"
-import { Header, Icon, Label, Segment, List, Loader, Divider } from "semantic-ui-react"
+import { Header, Icon, Label, Segment, List, Loader, Divider, Accordion } from "semantic-ui-react"
 
 import GetRequestByServer from "../Utils/GetRequestByServer"
 import PackageIcon from "./PackageIcon"
 import PackageComponents from "./PackageComponents"
+import RunPackage from "./RunPackage"
 
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 
@@ -14,6 +15,7 @@ const PackageInfo = ({ HTTPServerManager, workspace, pkg }:any) => {
 
     const [metadata, setMetadata] = useState<any>()
     const [loading, setLoading]   = useState(false)
+    const [runOpen, setRunOpen]   = useState(false)
 
     const api = GetRequestByServer(HTTPServerManager)(SERVER_APP_NAME, "FileSystemNavigator")
 
@@ -42,6 +44,17 @@ const PackageInfo = ({ HTTPServerManager, workspace, pkg }:any) => {
         <Label size="small" color="blue">{pkg.ext}</Label>
         { packageJson.version && <Label size="small">v{packageJson.version}</Label> }
         <Label basic size="small"><Icon name="lock" style={{margin:0}} /> somente leitura</Label>
+
+        <Divider />
+
+        <Accordion>
+            <Accordion.Title active={runOpen} onClick={() => setRunOpen(!runOpen)} style={{fontWeight:700}}>
+                <Icon name="dropdown" /><Icon name="play" color="teal" /> Executar / Console
+            </Accordion.Title>
+            <Accordion.Content active={runOpen}>
+                { runOpen && <RunPackage key={pkg.path} workspace={workspace} packageSelected={pkg} /> }
+            </Accordion.Content>
+        </Accordion>
 
         <Divider />
 
