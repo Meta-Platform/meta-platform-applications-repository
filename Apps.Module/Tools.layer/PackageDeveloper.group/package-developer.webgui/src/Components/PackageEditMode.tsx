@@ -127,14 +127,14 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
     return <Wrap>
         <Rail className="edit-rail">
             <Popup content="Voltar à navegação" position="right center" trigger={
-                <Button inverted icon="arrow left" size="small" onClick={onClose} />} />
-            <div style={{width:32, height:1, background:"#454a54", margin:"4px 0"}} />
+                <Button basic icon="arrow left" size="small" onClick={onClose} />} />
+            <div style={{width:32, height:1, background:"var(--mp-border-default)", margin:"4px 0"}} />
             {
                 packages.map((pkg:any, i:number) =>
                     <Popup key={i} content={`${pkg.name}.${pkg.ext}`} position="right center" trigger={
                         <Button
                             primary={pkg === activePkg}
-                            inverted={pkg !== activePkg}
+                            basic={pkg !== activePkg}
                             icon="box" size="small"
                             onClick={() => setActivePkg(pkg)} />} />)
             }
