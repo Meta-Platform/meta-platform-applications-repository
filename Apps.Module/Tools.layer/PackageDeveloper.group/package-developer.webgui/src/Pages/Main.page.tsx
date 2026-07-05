@@ -35,6 +35,7 @@ const MainPage = ({ HTTPServerManager }:any) => {
         closeOpenRepository,
         goToWelcome,
         createRepository,
+        scaffoldRepository,
         removeRepository
     } = useRepositoryState({ HTTPServerManager })
 
@@ -66,6 +67,7 @@ const MainPage = ({ HTTPServerManager }:any) => {
                 recents={recents}
                 onOpen={openRepository}
                 onCreate={createRepository}
+                onScaffold={scaffoldRepository}
                 onRemove={removeRepository} />
         </PageDefault>
     }

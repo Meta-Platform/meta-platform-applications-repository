@@ -65,6 +65,10 @@ const useRepositoryState = ({ HTTPServerManager }:any) => {
     const createRepository = ({ name, path }:{name:string, path:string}) =>
         svc().CreateWorkspace({ name, path }).then(() => loadRecents())
 
+    // Cria um Repository do zero (scaffold) em <path>/<name>.
+    const scaffoldRepository = ({ name, path }:{name:string, path:string}) =>
+        svc().CreateRepository({ name, path }).then(() => loadRecents())
+
     const removeRepository = (name:string) =>
         svc().RemoveWorkspace({ name }).then(() => { closeOpenRepository(name); loadRecents() })
 
@@ -96,6 +100,7 @@ const useRepositoryState = ({ HTTPServerManager }:any) => {
         closeOpenRepository,
         goToWelcome,
         createRepository,
+        scaffoldRepository,
         removeRepository
     }
 }

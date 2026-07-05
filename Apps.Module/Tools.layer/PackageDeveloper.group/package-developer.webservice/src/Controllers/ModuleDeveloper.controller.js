@@ -24,6 +24,7 @@ const ModuleDeveloperController = (params) => {
     const GetIcon                 = packageDeveloperLib.require("Services/PackageHandler.service/PublicFunctions/GetIcon.function")
     const IsRepository            = packageDeveloperLib.require("Manager.Functions/IsRepository.function")
     const GetRepositoryHierarchy  = packageDeveloperLib.require("Manager.Functions/GetRepositoryHierarchy.function")
+    const CreateRepository        = packageDeveloperLib.require("Manager.Functions/CreateRepository.function")
 
     const PICKER_LAST_DIR_KEY = "picker:lastDir"
 
@@ -40,6 +41,12 @@ const ModuleDeveloperController = (params) => {
         const isRepo = await IsRepository(path)
         if(!isRepo) throw `"${path}" não é um Repository válido (falta metadata/applications.json)`
         return packageHandlerManagerService.CreateWorkspace({ name, path })
+    }
+
+    // Cria um Repository do zero (scaffold) em <path>/<name> e o registra/abre.
+    const _CreateRepository = async ({ name, path: parentPath }) => {
+        const repositoryPath = await CreateRepository({ basePath: parentPath, name })
+        return packageHandlerManagerService.CreateWorkspace({ name, path: repositoryPath })
     }
 
     const _RemoveWorkspace = (name) =>
@@ -139,6 +146,7 @@ const ModuleDeveloperController = (params) => {
         ListWorkspaces          : _ListWorkspaces,
         ListRecentRepositories  : _ListRecentRepositories,
         CreateWorkspace         : _CreateWorkspace,
+        CreateRepository        : _CreateRepository,
         RemoveWorkspace         : _RemoveWorkspace,
         GetRepositoryHierarchy  : _GetRepositoryHierarchy,
         BrowseDir               : _BrowseDir,

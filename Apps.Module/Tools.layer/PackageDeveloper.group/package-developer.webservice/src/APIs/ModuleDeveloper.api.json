@@ -82,6 +82,15 @@
       ]
     },
     {
+      "summary": "CreateRepository",
+      "method": "POST",
+      "path": "/repository",
+      "parameters": [
+        { "name": "name", "in": "body", "type": "string", "required": true },
+        { "name": "path", "in": "body", "type": "string", "required": true }
+      ]
+    },
+    {
       "summary": "BrowseDir",
       "method": "POST",
       "path": "/browse-dir",

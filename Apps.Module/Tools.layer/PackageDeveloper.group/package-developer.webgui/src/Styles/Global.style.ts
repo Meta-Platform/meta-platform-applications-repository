@@ -52,10 +52,14 @@ export default createGlobalStyle`
     .ui.divider:not(.vertical):not(.horizontal) { border-top-color: #2b2f38; border-bottom-color: #2b2f38; }
 
     /* ---------- inputs ---------- */
-    .ui.input > input, .ui.form input, .ui.form textarea, textarea {
-        background: #14161b; color: #dfe3ea; border-color: #2b2f38;
+    .ui.input > input, .ui.form input, .ui.form textarea, textarea,
+    .ui.form input:not([type]), .ui.form .field input:not([type]),
+    input:not([type]), input[type="text"], input[type="password"], input[type="number"], input[type="search"],
+    .ui.form .field input, .ui.modal input, .ui.dropdown {
+        background: #14161b !important; color: #dfe3ea !important; border-color: #2b2f38 !important;
     }
-    .ui.input > input::placeholder { color: #7b828e; }
+    input::placeholder { color: #7b828e !important; }
+    .ui.action.input > .button { background: #262a33 !important; color: #dfe3ea !important; }
 
     /* ---------- modal ---------- */
     .ui.modal, .ui.modal > .content, .ui.modal > .actions {

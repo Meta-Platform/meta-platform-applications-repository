@@ -3,13 +3,15 @@ import { useState } from "react"
 import { Header, Icon, Button, Card, Divider, Segment, Message } from "semantic-ui-react"
 
 import DirectoryExplorer from "../Modals/DirectoryExplorer.modal"
+import CreateRepositoryModal from "../Modals/CreateRepository.modal"
 
 const basename = (p:string) => p.split("/").filter(Boolean).pop() || p
 
-// Tela de boas-vindas (estilo IDE): repositórios recentes + abrir repositório.
-const RepositoryWelcome = ({ recents, onOpen, onCreate, onRemove }:any) => {
+// Tela de boas-vindas (estilo IDE): repositórios recentes + abrir/criar repositório.
+const RepositoryWelcome = ({ recents, onOpen, onCreate, onScaffold, onRemove }:any) => {
 
     const [browserOpen, setBrowserOpen] = useState(false)
+    const [createOpen, setCreateOpen]   = useState(false)
     const [error, setError]             = useState<string>("")
 
     // Selecionou uma pasta no navegador: só abre se for um Repository válido.
@@ -32,6 +34,7 @@ const RepositoryWelcome = ({ recents, onOpen, onCreate, onRemove }:any) => {
 
         <div style={{margin: "20px 0"}}>
             <Button color="teal" icon="folder open" content="Abrir repositório" onClick={() => setBrowserOpen(true)} />
+            <Button basic color="teal" icon="plus" content="Criar repositório" onClick={() => setCreateOpen(true)} />
         </div>
 
         { error && <Message negative onDismiss={() => setError("")}><Icon name="warning circle" />{error}</Message> }
@@ -72,6 +75,12 @@ const RepositoryWelcome = ({ recents, onOpen, onCreate, onRemove }:any) => {
             open={browserOpen}
             onClose={() => setBrowserOpen(false)}
             onSelect={handleSelectDir} />
+
+        <CreateRepositoryModal
+            open={createOpen}
+            onClose={() => setCreateOpen(false)}
+            onCreate={({name, path}:any) =>
+                Promise.resolve(onScaffold({ name, path })).then(() => onOpen(name))} />
     </div>
 }
 
