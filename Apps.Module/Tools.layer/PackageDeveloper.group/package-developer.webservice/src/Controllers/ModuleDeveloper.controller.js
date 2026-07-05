@@ -27,8 +27,9 @@ const ModuleDeveloperController = (params) => {
     const GetIcon                 = packageDeveloperLib.require("Services/PackageHandler.service/PublicFunctions/GetIcon.function")
     const IsRepository            = packageDeveloperLib.require("Manager.Functions/IsRepository.function")
     const GetRepositoryHierarchy  = packageDeveloperLib.require("Manager.Functions/GetRepositoryHierarchy.function")
-    const CreateRepository        = packageDeveloperLib.require("Manager.Functions/CreateRepository.function")
-    const CreateContainer         = packageDeveloperLib.require("Manager.Functions/CreateContainer.function")
+    // Scaffold compartilhado com o CLI (package-toolkit.lib, ecosystem-core).
+    const CreateRepository        = packageToolkitLib.require("CreateRepositoryStruct")
+    const CreateContainer         = packageToolkitLib.require("CreateContainer")
 
     const PICKER_LAST_DIR_KEY = "picker:lastDir"
 

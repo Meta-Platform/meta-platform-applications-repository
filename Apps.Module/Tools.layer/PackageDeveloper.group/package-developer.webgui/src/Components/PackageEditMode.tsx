@@ -7,6 +7,7 @@ import styled from "styled-components"
 import GetRequestByServer from "../Utils/GetRequestByServer"
 import CodeEditor from "./CodeEditor"
 import SourceTree from "./SourceTree"
+import PackageTypeNav from "./PackageTypeNav"
 
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 const basename = (p:string) => p.split("/").filter(Boolean).pop() || p
@@ -154,12 +155,11 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
                     listDir={listDir(activePkg)}
                     onOpenFile={(p:string) => openFile(activePkg, p)}
                     selectedPath={activeTab && activeTab.pkg === activePkg ? activeTab.filePath : undefined} />
-                : <>
-                    <SourceTree rootPath="/metadata" rootName="metadata"
-                        listDir={listDir(activePkg)} onOpenFile={(p:string) => openFile(activePkg, p)} />
-                    <SourceTree rootPath="/src" rootName="código"
-                        listDir={listDir(activePkg)} onOpenFile={(p:string) => openFile(activePkg, p)} />
-                  </>
+                : <PackageTypeNav
+                    key={`${activePkg.name}.${activePkg.ext}`}
+                    listDir={listDir(activePkg)}
+                    onOpenFile={(p:string) => openFile(activePkg, p)}
+                    selectedPath={activeTab && activeTab.pkg === activePkg ? activeTab.filePath : undefined} />
             }
         </NavCol>
 
