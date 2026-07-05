@@ -136,5 +136,3 @@ Node via nvm 22.13. O `.webgui` builda em runtime (webpack, ~20 s → log
 - Info read-only: estrutura de arquivos + grafo de dependências entre pacotes (`@/`, `@@/`).
 - Integrar o APIDesigner e dar o mesmo redesign ao `datasource-manager`.
 - Estabilidade do `.desktopapp` (terminação ao fechar janela).
-- Limpeza de arquivos órfãos do modelo antigo (`Pages/{Workspace,Package}.page`,
-  `Columns/*`, `TabExplorer`, `Workspace.modal`).
