@@ -104,28 +104,25 @@
       ]
     },
     {
+      "summary": "CreateContainer",
+      "method": "POST",
+      "path": "/container",
+      "parameters": [
+        { "name": "workspace", "in": "body", "type": "string", "required": true },
+        { "name": "parentPath", "in": "body", "type": "string", "required": false },
+        { "name": "name", "in": "body", "type": "string", "required": true },
+        { "name": "kind", "in": "body", "type": "string", "required": true }
+      ]
+    },
+    {
       "summary": "CreatePackage",
       "method": "POST",
       "path": "/package",
       "parameters": [
-        {
-          "name": "workspace",
-          "in": "body",
-          "type": "string",
-          "required": true
-        },
-        {
-          "name": "packageName",
-          "in": "body",
-          "type": "string",
-          "required": true
-        },
-        {
-          "name": "ext",
-          "in": "body",
-          "type": "string",
-          "required": true
-        }
+        { "name": "workspace", "in": "body", "type": "string", "required": true },
+        { "name": "targetPath", "in": "body", "type": "string", "required": false },
+        { "name": "packageName", "in": "body", "type": "string", "required": true },
+        { "name": "ext", "in": "body", "type": "string", "required": true }
       ]
     },
     {

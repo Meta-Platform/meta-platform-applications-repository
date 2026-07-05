@@ -14,8 +14,21 @@ import PackageTree          from "../Components/PackageTree"
 import PackageInfo          from "../Components/PackageInfo"
 import PackageEditMode      from "../Components/PackageEditMode"
 import DirectoryExplorer    from "../Modals/DirectoryExplorer.modal"
+import CreateNodeModal      from "../Modals/CreateNode.modal"
 
 const basename = (p:string) => p.split("/").filter(Boolean).pop() || p
+
+// Resolve o nó selecionado (por path) na hierarquia atual — sobrevive a reloads.
+const findNode = (hierarchy:any, ref:any) => {
+    if(!hierarchy || !ref) return undefined
+    for(const mod of hierarchy.modules || []){
+        if(ref.kind === "module" && mod.path === ref.path) return { kind: "module", node: mod }
+        for(const layer of mod.layers || []){
+            if(ref.kind === "layer" && layer.path === ref.path) return { kind: "layer", node: layer }
+        }
+    }
+    return undefined
+}
 
 const ScrollColumn = styled(Grid.Column)`
     height: 80vh;
@@ -26,38 +39,42 @@ const ScrollColumn = styled(Grid.Column)`
 const MainPage = ({ HTTPServerManager }:any) => {
 
     const {
-        recents,
-        openRepositories,
-        activeRepository,
-        hierarchy,
-        openRepository,
-        switchRepository,
-        closeOpenRepository,
-        goToWelcome,
-        createRepository,
-        scaffoldRepository,
+        recents, openRepositories, activeRepository, hierarchy,
+        openRepository, switchRepository, closeOpenRepository, goToWelcome,
+        createRepository, scaffoldRepository, createContainer, createPackage,
         removeRepository
     } = useRepositoryState({ HTTPServerManager })
 
-    const [selectedNode, setSelectedNode]       = useState<any>()
+    const [selectedRef, setSelectedRef]         = useState<any>()
     const [selectedPackage, setSelectedPackage] = useState<any>()
     const [editSession, setEditSession]         = useState<any>()
     const [browserOpen, setBrowserOpen]         = useState(false)
+    const [createReq, setCreateReq]             = useState<any>()
 
     useEffect(() => {
-        setSelectedNode(undefined)
+        setSelectedRef(undefined)
         setSelectedPackage(undefined)
         setEditSession(undefined)
     }, [activeRepository])
+
+    const selectedNode = findNode(hierarchy, selectedRef)
 
     const handleEditPackage = (pkg:any) => setEditSession({ title: `${pkg.name}.${pkg.ext}`, packages: [pkg] })
     const handleEditGroup   = (group:any) => setEditSession({ title: group.name, packages: group.packages || [] })
 
     const handleAddRepo = (path:string) => {
         const name = basename(path)
-        Promise.resolve(createRepository({ name, path }))
-            .then(() => openRepository(name))
-            .catch(() => {})
+        Promise.resolve(createRepository({ name, path })).then(() => openRepository(name)).catch(() => {})
+    }
+
+    const requestCreate = (kind:string, parentPath:string, parentLabel:string) =>
+        setCreateReq({ kind, parentPath, parentLabel })
+
+    const handleCreateNode = (payload:any) => {
+        const { kind, parentPath } = createReq
+        if(kind === "package")
+            return createPackage({ targetPath: parentPath, packageName: payload.name, ext: payload.ext })
+        return createContainer({ parentPath, name: payload.name, kind })
     }
 
     // ---- Tela de boas-vindas (sem repositório ativo) ----
@@ -98,12 +115,21 @@ const MainPage = ({ HTTPServerManager }:any) => {
                     onHome={goToWelcome} />
             </ScrollColumn>
             <ScrollColumn width={3}>
-                <Header as="h5"><Icon name="sitemap" />Módulos / Layers</Header>
+                <div style={{display:"flex", alignItems:"center"}}>
+                    <Header as="h5" style={{flex:1, margin:0}}><Icon name="sitemap" />Módulos / Layers</Header>
+                    <Button icon="plus" size="mini" basic compact title="Novo Module"
+                        disabled={!hierarchy}
+                        onClick={() => requestCreate("module", hierarchy.path, activeRepository)} />
+                </div>
+                <div style={{marginTop:8}}>
                 {
                     hierarchy
-                    ? <RepositoryHierarchy hierarchy={hierarchy} selected={selectedNode} onSelect={setSelectedNode} />
+                    ? <RepositoryHierarchy hierarchy={hierarchy} selectedPath={selectedRef && selectedRef.path}
+                        onSelect={(sel:any) => setSelectedRef({ kind: sel.kind, path: sel.node.path })}
+                        onCreateRequest={requestCreate} />
                     : <Loader active inline="centered" />
                 }
+                </div>
             </ScrollColumn>
             <ScrollColumn width={4}>
                 <Header as="h5"><Icon name="cubes" />Pacotes</Header>
@@ -113,7 +139,8 @@ const MainPage = ({ HTTPServerManager }:any) => {
                     selectedPackage={selectedPackage}
                     onSelectPackage={setSelectedPackage}
                     onEditPackage={handleEditPackage}
-                    onEditGroup={handleEditGroup} />
+                    onEditGroup={handleEditGroup}
+                    onCreateRequest={requestCreate} />
             </ScrollColumn>
             <ScrollColumn width={7}>
                 {
@@ -132,6 +159,13 @@ const MainPage = ({ HTTPServerManager }:any) => {
         open={browserOpen}
         onClose={() => setBrowserOpen(false)}
         onSelect={handleAddRepo} />
+
+      <CreateNodeModal
+        open={!!createReq}
+        kind={createReq && createReq.kind}
+        parentLabel={createReq && createReq.parentLabel}
+        onClose={() => setCreateReq(undefined)}
+        onCreate={handleCreateNode} />
     </PageDefault>
 }
 

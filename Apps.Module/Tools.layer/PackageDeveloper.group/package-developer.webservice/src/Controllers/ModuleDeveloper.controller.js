@@ -7,9 +7,12 @@ const readdir = promisify(fs.readdir)
 const AUTHOR = "Kaio Cezar <kadisk.shark@gmail.com>"
 const PKG_CONF_DIRNAME_METADATA = "metadata"
 
-// ext do package-developer -> função de scaffolding do package-toolkit.lib
+// ext -> criador dedicado do package-toolkit.lib. Demais tipos usam o scaffold
+// genérico (CreateBasePackage): src/ + package.json + metadata/package.json.
 const PACKAGE_CREATORS = {
-    lib: "CreateLibPackage"
+    lib     : "CreateLibPackage",
+    cli     : "CreateCliPackage",
+    service : "CreateServicesPackage"
 }
 
 const ModuleDeveloperController = (params) => {
@@ -25,6 +28,7 @@ const ModuleDeveloperController = (params) => {
     const IsRepository            = packageDeveloperLib.require("Manager.Functions/IsRepository.function")
     const GetRepositoryHierarchy  = packageDeveloperLib.require("Manager.Functions/GetRepositoryHierarchy.function")
     const CreateRepository        = packageDeveloperLib.require("Manager.Functions/CreateRepository.function")
+    const CreateContainer         = packageDeveloperLib.require("Manager.Functions/CreateContainer.function")
 
     const PICKER_LAST_DIR_KEY = "picker:lastDir"
 
@@ -86,24 +90,47 @@ const ModuleDeveloperController = (params) => {
     const _GetAppState = (key) => packageHandlerManagerService.GetState(key)
     const _SetAppState = ({ key, value }) => packageHandlerManagerService.SetState(key, value)
 
-    // Cria um pacote (scaffold) dentro do diretório da workspace e re-varre.
-    const _CreatePackage = async ({ workspace, packageName, ext }) => {
+    // Garante que um caminho-alvo está dentro do repositório (segurança).
+    const _AssertInsideRepo = (repoPath, targetPath) => {
+        const resolved = path.resolve(targetPath)
+        const root = path.resolve(repoPath)
+        if(resolved !== root && !resolved.startsWith(root + path.sep))
+            throw `Destino "${targetPath}" fora do repositório`
+        return resolved
+    }
+
+    // Cria um container da hierarquia (Module/Layer/Group) no destino e re-varre.
+    const _CreateContainer = async ({ workspace, parentPath, name, kind }) => {
         const targetWorkspace = await packageHandlerManagerService.GetWorkspace({ name: workspace })
         if(!targetWorkspace) throw `Workspace "${workspace}" não encontrada`
+        const parent = _AssertInsideRepo(targetWorkspace.path, parentPath || targetWorkspace.path)
+        const dirPath = await CreateContainer({ parentPath: parent, name, kind })
+        await packageHandlerManagerService.ReloadWorkspace({ name: workspace })
+        return { workspace, name, kind, path: dirPath }
+    }
+
+    // Cria um pacote (scaffold) num Layer/Group específico e re-varre. Tipos sem
+    // criador dedicado usam o scaffold genérico (CreateBasePackage).
+    const _CreatePackage = async ({ workspace, targetPath, packageName, ext }) => {
+        const targetWorkspace = await packageHandlerManagerService.GetWorkspace({ name: workspace })
+        if(!targetWorkspace) throw `Workspace "${workspace}" não encontrada`
+        const workingDirPath = _AssertInsideRepo(targetWorkspace.path, targetPath || targetWorkspace.path)
 
         const creatorName = PACKAGE_CREATORS[ext]
-        if(!creatorName) throw `Criação de pacote do tipo "${ext}" ainda não suportada`
-
-        const CreatePackage = packageToolkitLib.require(creatorName)
-        const packagePath = await CreatePackage({
-            packageName,
-            workingDirPath: targetWorkspace.path,
-            author: AUTHOR,
-            PKG_CONF_DIRNAME_METADATA
-        })
+        let packagePath
+        if(creatorName){
+            const CreatePackage = packageToolkitLib.require(creatorName)
+            packagePath = await CreatePackage({
+                packageName, workingDirPath, author: AUTHOR, PKG_CONF_DIRNAME_METADATA
+            })
+        } else {
+            const CreateBasePackage = packageToolkitLib.require("Helpers/CreateBasePackage")
+            const namespace = `${packageName}.${ext}`
+            packagePath = path.resolve(workingDirPath, namespace)
+            await CreateBasePackage({ basePath: packagePath, namespace, author: AUTHOR, PKG_CONF_DIRNAME_METADATA })
+        }
 
         await packageHandlerManagerService.ReloadWorkspace({ name: workspace })
-
         return { workspace, packageName, ext, path: packagePath }
     }
 
@@ -147,6 +174,7 @@ const ModuleDeveloperController = (params) => {
         ListRecentRepositories  : _ListRecentRepositories,
         CreateWorkspace         : _CreateWorkspace,
         CreateRepository        : _CreateRepository,
+        CreateContainer         : _CreateContainer,
         RemoveWorkspace         : _RemoveWorkspace,
         GetRepositoryHierarchy  : _GetRepositoryHierarchy,
         BrowseDir               : _BrowseDir,

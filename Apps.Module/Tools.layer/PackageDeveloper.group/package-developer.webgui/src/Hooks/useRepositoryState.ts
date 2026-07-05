@@ -69,6 +69,22 @@ const useRepositoryState = ({ HTTPServerManager }:any) => {
     const scaffoldRepository = ({ name, path }:{name:string, path:string}) =>
         svc().CreateRepository({ name, path }).then(() => loadRecents())
 
+    // Re-carrega a hierarquia do repositório ativo (após criar estrutura).
+    const reloadHierarchy = (name?:string) => {
+        const target = name || activeRepository
+        return target ? fetchHierarchy(target) : Promise.resolve()
+    }
+
+    // Cria Module/Layer/Group no repositório ativo.
+    const createContainer = ({ parentPath, name, kind }:{parentPath:string, name:string, kind:string}) =>
+        svc().CreateContainer({ workspace: activeRepository, parentPath, name, kind })
+            .then(() => reloadHierarchy())
+
+    // Cria um pacote no destino (Layer/Group) do repositório ativo.
+    const createPackage = ({ targetPath, packageName, ext }:{targetPath:string, packageName:string, ext:string}) =>
+        svc().CreatePackage({ workspace: activeRepository, targetPath, packageName, ext })
+            .then(() => reloadHierarchy())
+
     const removeRepository = (name:string) =>
         svc().RemoveWorkspace({ name }).then(() => { closeOpenRepository(name); loadRecents() })
 
@@ -101,6 +117,9 @@ const useRepositoryState = ({ HTTPServerManager }:any) => {
         goToWelcome,
         createRepository,
         scaffoldRepository,
+        createContainer,
+        createPackage,
+        reloadHierarchy,
         removeRepository
     }
 }

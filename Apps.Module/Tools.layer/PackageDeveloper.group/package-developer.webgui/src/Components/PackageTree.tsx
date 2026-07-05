@@ -22,8 +22,8 @@ const PackageItem = ({ workspace, pkg, selectedPackage, onSelectPackage, onEditP
     </List.Item>
 }
 
-// Grupo (colapsado por padrão): edita todos os pacotes juntos.
-const GroupNode = ({ workspace, group, selectedPackage, onSelectPackage, onEditPackage, onEditGroup }:any) => {
+// Grupo (colapsado por padrão): edita todos juntos + criar pacote dentro.
+const GroupNode = ({ workspace, group, selectedPackage, onSelectPackage, onEditPackage, onEditGroup, onCreateRequest }:any) => {
     const [open, setOpen] = useState(false)
     return <List.Item>
         <div style={{display:"flex", alignItems:"center"}}>
@@ -34,6 +34,8 @@ const GroupNode = ({ workspace, group, selectedPackage, onSelectPackage, onEditP
                     <span style={{opacity:0.5, marginLeft:6}}>({(group.packages||[]).length})</span>
                 </List.Header>
             </List.Content>
+            <Button icon="plus" size="mini" basic compact title="Novo pacote no grupo"
+                onClick={(e:any) => { e.stopPropagation(); onCreateRequest("package", group.path, group.name) }} />
             <Button icon="edit outline" size="mini" basic compact title="Editar grupo (todos os pacotes)"
                 onClick={(e:any) => { e.stopPropagation(); onEditGroup(group) }} />
         </div>
@@ -47,8 +49,17 @@ const GroupNode = ({ workspace, group, selectedPackage, onSelectPackage, onEditP
     </List.Item>
 }
 
-// Layer (usado quando o nó selecionado é um Module): agrupa groups + pacotes.
-const LayerNode = ({ workspace, layer, ...rest }:any) => {
+// Barra de ações de um Layer: criar Grupo / criar Pacote.
+const LayerActions = ({ layer, onCreateRequest }:any) =>
+    <div style={{margin:"2px 0 8px 0"}}>
+        <Button.Group size="mini" basic>
+            <Button icon="folder" content="Grupo" onClick={() => onCreateRequest("group", layer.path, layer.name)} />
+            <Button icon="cube" content="Pacote" onClick={() => onCreateRequest("package", layer.path, layer.name)} />
+        </Button.Group>
+    </div>
+
+// Layer (usado quando o nó selecionado é um Module).
+const LayerNode = ({ workspace, layer, onCreateRequest, ...rest }:any) => {
     const [open, setOpen] = useState(false)
     return <List.Item>
         <List.Icon name={open ? "caret down" : "caret right"} link onClick={() => setOpen(!open)} />
@@ -56,30 +67,40 @@ const LayerNode = ({ workspace, layer, ...rest }:any) => {
             <List.Header style={{cursor:"pointer"}} onClick={() => setOpen(!open)}>
                 <Icon name="clone outline" color="teal" />{layer.name}
             </List.Header>
-            { open && <List.List><LayerContent layer={layer} workspace={workspace} {...rest} /></List.List> }
+            {
+                open && <List.List>
+                    <LayerActions layer={layer} onCreateRequest={onCreateRequest} />
+                    <LayerContent layer={layer} workspace={workspace} onCreateRequest={onCreateRequest} {...rest} />
+                </List.List>
+            }
         </List.Content>
     </List.Item>
 }
 
-const LayerContent = ({ layer, workspace, ...rest }:any) => <>
+const LayerContent = ({ layer, workspace, onCreateRequest, ...rest }:any) => <>
     { (layer.groups || []).map((group:any, key:number) =>
-        <GroupNode key={"g"+key} workspace={workspace} group={group} {...rest} />) }
+        <GroupNode key={"g"+key} workspace={workspace} group={group} onCreateRequest={onCreateRequest} {...rest} />) }
     { (layer.packages || []).map((pkg:any, key:number) =>
         <PackageItem key={"p"+key} workspace={workspace} pkg={pkg} {...rest} />) }
 </>
 
-const PackageTree = ({ workspace, selected, ...rest }:any) => {
+const PackageTree = ({ workspace, selected, onCreateRequest, ...rest }:any) => {
     if(!selected){
         return <p style={{opacity:0.55, padding:"10px"}}>Selecione um Module ou Layer à esquerda.</p>
     }
-    return <List>
+    return <div>
         {
             selected.kind === "layer"
-                ? <LayerContent layer={selected.node} workspace={workspace} {...rest} />
-                : (selected.node.layers || []).map((layer:any, key:number) =>
-                    <LayerNode key={key} layer={layer} workspace={workspace} {...rest} />)
+                ? <>
+                    <LayerActions layer={selected.node} onCreateRequest={onCreateRequest} />
+                    <List><LayerContent layer={selected.node} workspace={workspace} onCreateRequest={onCreateRequest} {...rest} /></List>
+                  </>
+                : <List>
+                    {(selected.node.layers || []).map((layer:any, key:number) =>
+                        <LayerNode key={key} layer={layer} workspace={workspace} onCreateRequest={onCreateRequest} {...rest} />)}
+                  </List>
         }
-    </List>
+    </div>
 }
 
 export default PackageTree
