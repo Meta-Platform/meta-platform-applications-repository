@@ -1,4 +1,5 @@
-import GetRequest from "../Utils/GetRequest.util"
+import GetRequest      from "../Utils/GetRequest.util"
+import GetRequestByIPC from "../Utils/GetRequestByIPC"
 //TODO Ja existe repetido
 const getURLPath = (path:string, parameters:Array<object>) => 
 parameters && parameters.length > 0
@@ -21,7 +22,13 @@ const getSocket = (port:number, path:string, parameters:Array<Object>) =>
 	(data:object) => new WebSocket(`ws://localhost:${port===80?"":port}${getURLPath(path, getParametersWithData(parameters, data))}`)
 
 const GetRequestByServer = ({list_web_servers_running}:any) => (serverName:string, name:string) => {
-	const {listServices=[], port} = 
+	// Electron GUI-host: transporte IPC (sem HTTP). Todos os call sites que usam
+	// GetRequestByServer(...)(SERVER_APP_NAME, api) passam a falar por IPC sem
+	// alteração. serverName/list_web_servers_running são ignorados neste caminho.
+	if(typeof window !== "undefined" && (window as any).metaGui)
+		return GetRequestByIPC(name)
+
+	const {listServices=[], port} =
 	list_web_servers_running
 	.find(({name}:any) => name === serverName) || {}
 

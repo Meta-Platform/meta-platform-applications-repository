@@ -10,6 +10,12 @@ import axios                  from "axios"
 import HTTPServerManagerActionsCreator from "../Actions/HTTPServerManager.actionsCreator"
 
 const fetchHTTPServersRunning = async () => {
+    // Electron GUI-host: não há servidor HTTP — o transporte é IPC (window.metaGui).
+    // Sintetiza a lista de servidores (mesmo shape que o axios entrega: a array
+    // guardada em list_web_servers_running) só para passar o gate de render.
+    if(typeof window !== "undefined" && (window as any).metaGui){
+        return [{ name: process.env.SERVER_APP_NAME, port: 0, listServices: [] }]
+    }
     // @ts-ignore
     const {data} = await axios.get(process.env.HTTP_SERVER_MANAGER_ENDPOINT)
     return data

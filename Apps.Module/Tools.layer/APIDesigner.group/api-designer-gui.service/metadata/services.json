@@ -1,0 +1,13 @@
+[
+    {
+        "namespace": "ApiDesignerGuiService",
+        "path": "Services/ApiDesignerGui.service",
+        "bound-params": [
+            "apiAuthoringLib",
+            "apiDesignerWebservice"
+        ],
+        "params": [
+            "apisDir"
+        ]
+    }
+]

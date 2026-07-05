@@ -41,6 +41,46 @@
                 "ecosystemInstallUtilitiesLib": "@/ecosystem-install-utilities.lib",
                 "repositoryUtilitiesLib":       "@/repository-utilities.lib",
                 "dependencyGraphBuilderLib":    "@/dependency-graph-builder.lib"
+            },
+            "gui-host": {
+                "webgui": "homeScreenWebgui",
+                "guiService": "guiService",
+                "serviceGraph": [
+                    {
+                        "ref": "notificationHub",
+                        "package": "ecosystemControlPanelService",
+                        "factory": "Services/NotificationHub.service"
+                    },
+                    {
+                        "ref": "ecosystemData",
+                        "package": "ecosystemControlPanelService",
+                        "factory": "Services/EcosystemDataHandler.service"
+                    },
+                    {
+                        "ref": "repositoryManager",
+                        "package": "repositoryManagerService",
+                        "factory": "Services/RepositoryManager.service",
+                        "boundLibs": {
+                            "repositoryUtilitiesLib": "repositoryUtilitiesLib",
+                            "dependencyGraphBuilderLib": "dependencyGraphBuilderLib"
+                        }
+                    },
+                    {
+                        "ref": "guiService",
+                        "package": "desktopGuiService",
+                        "factory": "Services/DesktopGui.service",
+                        "boundServices": {
+                            "ecosystemdataHandlerService": "ecosystemData",
+                            "notificationHubService": "notificationHub",
+                            "repositoryManagerService": "repositoryManager"
+                        },
+                        "boundLibs": {
+                            "jsonFileUtilitiesLib": "jsonFileUtilitiesLib",
+                            "ecosystemInstallUtilitiesLib": "ecosystemInstallUtilitiesLib",
+                            "executionManagerWebservice": "executionManagerWebservice"
+                        }
+                    }
+                ]
             }
         }
     ]

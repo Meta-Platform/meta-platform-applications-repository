@@ -12,7 +12,7 @@ import {
 import { connect }            from "react-redux"
 import { bindActionCreators } from "redux"
 
-import GetRequestByServer from "../Utils/GetRequestByServer"
+import GetAPI from "../Utils/GetAPI"
 
 import APIColumn      from "../Columns/API.column"
 import EndpointColumn from "../Columns/Endpoint.column"
@@ -59,7 +59,7 @@ const APIDesignerContainer = ({
 	const [methodForUpdate, setMethodForUpdate]         = useState<string>()
 	const [parametersForUpdate, setParametersForUpdate] = useState()
 
-	useEffect(() => setRequest(GetRequestByServer(HTTPServerManager)(SERVER_APP_NAME, "APIDesigner")), [])
+	useEffect(() => setRequest(GetAPI({ apiName: "APIDesigner", serverManagerInformation: HTTPServerManager })), [])
 	useEffect(() => updateListWebservices()                                           , [APIDesignerRequest])
 	useEffect(() => selectAPIAfterListAPI()                                           , [listAPI])
 	useEffect(() => selectFirstEndpointIfNoExitsSelectedCaseExitsUpdated()            , [listEndpoint])

@@ -1,8 +1,5 @@
 {
-    "port":"8083",
     "serverName":"APIDesignerDesktopInstance",
-    "serverManagerUrl": "http://localhost:8083/server-manager/status",
-    "windowUrl": "http://localhost:8083/",
     "apisDirPath":"/home/kadisk/virtual-desk-state/local-app-data/api-designer-apis",
     "RT_ENV_GENERATED_DIR_NAME":".generated_data"
 }

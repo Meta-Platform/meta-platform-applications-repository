@@ -1,0 +1,11 @@
+[
+    {
+        "namespace": "DatasourceGuiService",
+        "path": "Services/DatasourceGui.service",
+        "bound-params": [
+            "dataSourceLocalService",
+            "datasourceManagerWebservice"
+        ],
+        "params": []
+    }
+]
