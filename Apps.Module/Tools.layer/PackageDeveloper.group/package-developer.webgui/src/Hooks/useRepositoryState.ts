@@ -98,6 +98,10 @@ const useRepositoryState = ({ HTTPServerManager }:any) => {
     const removeRepository = (name:string) =>
         svc().RemoveWorkspace({ name }).then(() => { closeOpenRepository(name); loadRecents() })
 
+    // Memória de UI (larguras de coluna, etc.) via AppState do banco.
+    const getAppState = (key:string) => svc().GetAppState({ key }).then(({data}:any) => data)
+    const setAppState = (key:string, value:string) => svc().SetAppState({ key, value })
+
     // Carga inicial: recentes + restaura os repositórios abertos + o ativo.
     useEffect(() => {
         loadRecents()
@@ -132,7 +136,9 @@ const useRepositoryState = ({ HTTPServerManager }:any) => {
         renameNode,
         removeNode,
         reloadHierarchy,
-        removeRepository
+        removeRepository,
+        getAppState,
+        setAppState
     }
 }
 

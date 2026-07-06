@@ -30,3 +30,39 @@ export const addListItem = (list:string[], v:string = "") =>
 
 export const removeListItem = (list:string[], i:number) =>
     (list || []).filter((_:string, j:number) => j !== i)
+
+// ---- Editor de objeto (chave→valor). Trabalha sobre pares [chave, valor] para
+// preservar ordem e o foco do input ao renomear a chave. ----
+
+export const objectToEntries = (obj:any):any[] =>
+    (obj && typeof obj === "object" && !Array.isArray(obj)) ? Object.keys(obj).map((k) => [k, obj[k]]) : []
+
+export const entriesToObject = (entries:any[]):any => {
+    const out:any = {}
+    ;(entries || []).forEach(([k, v]:any) => { out[k] = v })
+    return out
+}
+
+export const setEntryKey = (entries:any[], i:number, k:string) =>
+    (entries || []).map((en:any, j:number) => j === i ? [k, en[1]] : en)
+
+export const setEntryValue = (entries:any[], i:number, v:any) =>
+    (entries || []).map((en:any, j:number) => j === i ? [en[0], v] : en)
+
+export const addEntry = (entries:any[]) => [ ...(entries || []), ["", ""] ]
+
+export const removeEntryAt = (entries:any[], i:number) =>
+    (entries || []).filter((_:any, j:number) => j !== i)
+
+// Coage a número quando o texto é numérico (para campos como width/height, que
+// NÃO podem virar string no JSON). Vazio/inválido mantém o valor original.
+export const coerceNumber = (v:any) => {
+    if(v === "" || v == null) return v
+    const n = Number(v)
+    return Number.isNaN(n) ? v : n
+}
+
+// Um valor é "editável como texto" no formulário (string/número/bool/nulo);
+// objetos e arrays aninhados são preservados como estão.
+export const isScalar = (v:any) =>
+    v == null || typeof v === "string" || typeof v === "number" || typeof v === "boolean"

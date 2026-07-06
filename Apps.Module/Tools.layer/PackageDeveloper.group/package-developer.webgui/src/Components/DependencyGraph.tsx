@@ -30,6 +30,9 @@ const truncate = (s:string, n:number) => s.length > n ? s.slice(0, n - 1) + "…
 // à direita, os pacotes que ele referencia via @/.
 const DependencyGraph = ({ metadata, pkg }:any) => {
     const refs = extractPackageRefs(metadata)
+    // Sem dependências entre pacotes → não renderiza card vazio.
+    if(refs.length === 0) return null
+
     const selfLabel = `${pkg.name}.${pkg.ext}`
 
     const rowH = 46, top = 24, leftX = 12, nodeW = 150, rightX = 210, depW = 150
@@ -39,9 +42,7 @@ const DependencyGraph = ({ metadata, pkg }:any) => {
     return <Segment>
         <Header as="h4"><Icon name="sitemap" />Dependências entre pacotes (@/)</Header>
         {
-            refs.length === 0
-            ? <p style={{opacity:0.55}}>Este pacote não referencia outros pacotes (@/).</p>
-            : <svg viewBox={`0 0 ${rightX + depW + 12} ${H}`} width="100%" style={{maxHeight:420, display:"block"}}>
+            <svg viewBox={`0 0 ${rightX + depW + 12} ${H}`} width="100%" style={{maxHeight:420, display:"block"}}>
                 {
                     refs.map((r, i) => {
                         const y = top + i * rowH + 15

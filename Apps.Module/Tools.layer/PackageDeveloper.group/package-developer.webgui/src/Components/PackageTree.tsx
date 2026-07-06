@@ -1,69 +1,73 @@
 import * as React from "react"
-import { useState } from "react"
-import { List, Icon, Button } from "semantic-ui-react"
+import { useState, useEffect } from "react"
+import { List, Icon } from "semantic-ui-react"
 
 import PackageIcon from "./PackageIcon"
 
-// Pacote (folha): clique = info, botão de editar, botão direito = menu de contexto.
+// Destaque visual do nó selecionado (faixa de acento + fundo suave).
+const SELECTED_STYLE:any = {
+    background: "var(--mp-accent-soft, rgba(20,214,200,0.14))",
+    boxShadow: "inset 3px 0 0 var(--mp-accent, #14D6C8)",
+    borderRadius: 4
+}
+
+// Lápis discreto de edição — só aparece no item selecionado.
+const EditPencil = ({ onClick, title }:any) =>
+    <Icon name="pencil" link title={title} style={{margin:0, opacity:0.85}}
+        onClick={(e:any) => { e.stopPropagation(); onClick() }} />
+
+// Pacote (folha): clique = seleciona (destaca + info); duplo-clique = editar;
+// botão direito = menu de contexto. O lápis só aparece quando selecionado.
 const PackageItem = ({ workspace, pkg, selectedPackage, onSelectPackage, onEditPackage, onNodeContext }:any) => {
     const isSelected = selectedPackage
         && selectedPackage.name === pkg.name
         && selectedPackage.ext === pkg.ext
         && selectedPackage.path === pkg.path
-    return <List.Item active={isSelected} style={{cursor:"pointer"}}
+    return <List.Item active={isSelected} style={{cursor:"pointer", padding:"4px 6px", ...(isSelected ? SELECTED_STYLE : {})}}
+        onClick={() => onSelectPackage(pkg)}
+        onDoubleClick={() => onEditPackage(pkg)}
         onContextMenu={(e:any) => onNodeContext && onNodeContext(e, "package", pkg)}>
         <div style={{display:"flex", alignItems:"center"}}>
-            <div style={{flex:1, display:"flex", alignItems:"center"}} onClick={() => onSelectPackage(pkg)}>
+            <div style={{flex:1, display:"flex", alignItems:"center", minWidth:0}}>
                 <span style={{marginRight:8}}><PackageIcon workspace={workspace} name={pkg.name} ext={pkg.ext} /></span>
-                <span><strong>{pkg.name}</strong><span style={{opacity:0.55}}>.{pkg.ext}</span></span>
+                <span style={{overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>
+                    <strong>{pkg.name}</strong><span style={{opacity:0.55}}>.{pkg.ext}</span>
+                </span>
             </div>
-            <Button icon="edit" size="mini" basic compact title="Editar pacote"
-                onClick={(e:any) => { e.stopPropagation(); onEditPackage(pkg) }} />
+            { isSelected && <EditPencil title="Editar pacote (ou duplo-clique)" onClick={() => onEditPackage(pkg)} /> }
         </div>
     </List.Item>
 }
 
-// Grupo (colapsado por padrão): editar todos + botão direito para criar pacote.
-const GroupNode = ({ workspace, group, onEditGroup, onNodeContext, ...rest }:any) => {
-    const [open, setOpen] = useState(false)
+// Grupo: clique = seleciona (destaca) e expande; duplo-clique = editar todos;
+// caret = expandir/recolher. Auto-expande quando contém o pacote selecionado.
+const GroupNode = ({ workspace, group, selectedGroup, selectedPackage, onSelectGroup, onEditGroup, onNodeContext, ...rest }:any) => {
+    const containsSelected = !!selectedPackage && (group.packages || []).some((p:any) => p.path === selectedPackage.path)
+    const isSelected = !!selectedGroup && selectedGroup.path === group.path
+    const [open, setOpen] = useState(containsSelected || isSelected)
+    useEffect(() => { if(containsSelected) setOpen(true) }, [containsSelected])
+
     return <List.Item>
-        <div style={{display:"flex", alignItems:"center"}}>
+        <div style={{display:"flex", alignItems:"center", padding:"2px 4px", ...(isSelected ? SELECTED_STYLE : {})}}>
             <List.Icon name={open ? "caret down" : "caret right"} link onClick={() => setOpen(!open)} style={{marginTop:6}} />
-            <List.Content style={{flex:1}}>
-                <List.Header style={{cursor:"pointer"}} onClick={() => setOpen(!open)}
+            <List.Content style={{flex:1, minWidth:0}}>
+                <List.Header style={{cursor:"pointer", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}
+                    onClick={() => { onSelectGroup && onSelectGroup(group); setOpen(true) }}
+                    onDoubleClick={() => onEditGroup(group)}
                     onContextMenu={(e:any) => onNodeContext && onNodeContext(e, "group", group)}>
                     <Icon name="folder" color="yellow" />{group.name}
                     <span style={{opacity:0.5, marginLeft:6}}>({(group.packages||[]).length})</span>
                 </List.Header>
             </List.Content>
-            <Button icon="edit outline" size="mini" basic compact title="Editar grupo (todos os pacotes)"
-                onClick={(e:any) => { e.stopPropagation(); onEditGroup(group) }} />
+            { isSelected && <EditPencil title="Editar grupo — todos os pacotes (ou duplo-clique)" onClick={() => onEditGroup(group)} /> }
         </div>
         {
             open && <List.List>
                 {(group.packages || []).map((pkg:any, key:number) =>
-                    <PackageItem key={key} workspace={workspace} pkg={pkg} onNodeContext={onNodeContext} {...rest} />)}
+                    <PackageItem key={key} workspace={workspace} pkg={pkg}
+                        selectedPackage={selectedPackage} onNodeContext={onNodeContext} {...rest} />)}
             </List.List>
         }
-    </List.Item>
-}
-
-// Layer (usado quando o nó selecionado é um Module).
-const LayerNode = ({ workspace, layer, onNodeContext, ...rest }:any) => {
-    const [open, setOpen] = useState(false)
-    return <List.Item>
-        <List.Icon name={open ? "caret down" : "caret right"} link onClick={() => setOpen(!open)} />
-        <List.Content>
-            <List.Header style={{cursor:"pointer"}} onClick={() => setOpen(!open)}
-                onContextMenu={(e:any) => onNodeContext && onNodeContext(e, "layer", layer)}>
-                <Icon name="clone outline" color="teal" />{layer.name}
-            </List.Header>
-            {
-                open && <List.List>
-                    <LayerContent layer={layer} workspace={workspace} onNodeContext={onNodeContext} {...rest} />
-                </List.List>
-            }
-        </List.Content>
     </List.Item>
 }
 
@@ -115,15 +119,24 @@ const PackageTree = ({ workspace, selected, onNodeContext, ...rest }:any) => {
         </div>
     }
 
+    // Layer: grupos (pastas) + pacotes soltos.
+    if(selected.kind === "layer"){
+        return <div>
+            <List><LayerContent layer={selected.node} workspace={workspace} onNodeContext={onNodeContext} {...rest} /></List>
+        </div>
+    }
+
+    // Module (ou outro container): a coluna Pacotes mostra os PACOTES do módulo
+    // (achatados) — nunca as layers (que ficam na coluna Módulos / Layers).
+    const modulePkgs = collectPackages(selected.node)
     return <div>
-        {
-            selected.kind === "layer"
-                ? <List><LayerContent layer={selected.node} workspace={workspace} onNodeContext={onNodeContext} {...rest} /></List>
-                : <List>
-                    {(selected.node.layers || []).map((layer:any, key:number) =>
-                        <LayerNode key={key} layer={layer} workspace={workspace} onNodeContext={onNodeContext} {...rest} />)}
-                  </List>
-        }
+        <div style={{opacity:0.6, fontSize:"0.82em", fontWeight:700, margin:"2px 0 8px 2px"}}>
+            PACOTES ({modulePkgs.length})
+        </div>
+        <List>
+            { modulePkgs.map((pkg:any, key:number) =>
+                <PackageItem key={key} workspace={workspace} pkg={pkg} onNodeContext={onNodeContext} {...rest} />) }
+        </List>
     </div>
 }
 

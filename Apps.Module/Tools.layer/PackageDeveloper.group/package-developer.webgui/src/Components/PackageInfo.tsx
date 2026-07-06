@@ -1,22 +1,23 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { connect } from "react-redux"
-import { Header, Icon, Label, Segment, List, Loader, Divider, Accordion } from "semantic-ui-react"
+import { Header, Icon, Label, Segment, List, Loader, Divider } from "semantic-ui-react"
 
 import GetRequestByServer from "../Utils/GetRequestByServer"
 import PackageIcon from "./PackageIcon"
 import PackageComponents from "./PackageComponents"
 import DependencyGraph from "./DependencyGraph"
-import RunPackage from "./RunPackage"
+import Markdown from "./Markdown"
 
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 
 // Painel de informações do pacote (modo navegação: SOMENTE LEITURA).
+// Run/Console NÃO aparecem aqui — ficam no modo edição.
 const PackageInfo = ({ HTTPServerManager, workspace, pkg }:any) => {
 
     const [metadata, setMetadata] = useState<any>()
     const [loading, setLoading]   = useState(false)
-    const [runOpen, setRunOpen]   = useState(false)
+    const [readme, setReadme]     = useState<string | undefined>()
 
     const api = GetRequestByServer(HTTPServerManager)(SERVER_APP_NAME, "FileSystemNavigator")
 
@@ -25,6 +26,11 @@ const PackageInfo = ({ HTTPServerManager, workspace, pkg }:any) => {
         api.GetPackageMetadata({ workspace, packageName: pkg.name, ext: pkg.ext })
             .then(({data}:any) => setMetadata(data || {}))
             .finally(() => setLoading(false))
+        // README.md do pacote (opcional — some se não existir).
+        setReadme(undefined)
+        api.GetContentItem({ workspace, packageName: pkg.name, ext: pkg.ext, path: "/README.md" })
+            .then(({data}:any) => { if(typeof data === "string" && data.trim()) setReadme(data) })
+            .catch(() => {})
     }, [workspace, pkg.name, pkg.ext, pkg.path])
 
     const packageJson = (metadata && metadata["package.json"]) || {}
@@ -48,27 +54,30 @@ const PackageInfo = ({ HTTPServerManager, workspace, pkg }:any) => {
 
         <Divider />
 
-        <Accordion>
-            <Accordion.Title active={runOpen} onClick={() => setRunOpen(!runOpen)} style={{fontWeight:700}}>
-                <Icon name="dropdown" /><Icon name="play" color="teal" /> Executar / Console
-            </Accordion.Title>
-            <Accordion.Content active={runOpen}>
-                { runOpen && <RunPackage key={pkg.path} workspace={workspace} packageSelected={pkg} /> }
-            </Accordion.Content>
-        </Accordion>
-
-        <Divider />
+        {
+            readme &&
+            <Segment>
+                <Header as="h4"><Icon name="file alternate outline" />README</Header>
+                <div style={{maxHeight:"42vh", overflow:"auto"}}><Markdown text={readme} /></div>
+            </Segment>
+        }
 
         {
             loading
             ? <Loader active inline="centered" />
             : <>
-                <Segment>
-                    <Header as="h4"><Icon name="cube" />Dependências (npm)</Header>
-                    {
-                        dependencyNames.length === 0
-                        ? <p style={{opacity:0.55}}>Sem dependências declaradas.</p>
-                        : <List divided relaxed size="small">
+                {/* Boot vem primeiro (dentro de PackageComponents), depois os demais componentes. */}
+                <PackageComponents workspace={workspace} packageSelected={pkg} />
+
+                {/* Grafo @/ — o componente já não renderiza nada quando não há refs. */}
+                <DependencyGraph metadata={metadata} pkg={pkg} />
+
+                {/* Dependências npm por ÚLTIMO, e só quando existirem. */}
+                {
+                    dependencyNames.length > 0 &&
+                    <Segment>
+                        <Header as="h4"><Icon name="cube" />Dependências (npm)</Header>
+                        <List divided relaxed size="small">
                             { dependencyNames.map((dep:string) =>
                                 <List.Item key={dep}>
                                     <List.Icon name="box" color="grey" />
@@ -77,13 +86,9 @@ const PackageInfo = ({ HTTPServerManager, workspace, pkg }:any) => {
                                         <List.Description>{dependencies[dep]}</List.Description>
                                     </List.Content>
                                 </List.Item>) }
-                          </List>
-                    }
-                </Segment>
-
-                <DependencyGraph metadata={metadata} pkg={pkg} />
-
-                <PackageComponents workspace={workspace} packageSelected={pkg} />
+                        </List>
+                    </Segment>
+                }
             </>
         }
     </div>

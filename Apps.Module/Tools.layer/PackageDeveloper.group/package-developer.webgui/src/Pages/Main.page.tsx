@@ -1,8 +1,7 @@
 import * as React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { connect } from "react-redux"
-import { Grid, Button, Icon, Header, Segment, Loader, Confirm } from "semantic-ui-react"
-import styled from "styled-components"
+import { Icon, Header, Loader, Confirm } from "semantic-ui-react"
 
 import PageDefault from "../Components/PageDefault"
 import ContextMenu from "../Components/ContextMenu"
@@ -14,9 +13,13 @@ import RepositoryHierarchy  from "../Components/RepositoryHierarchy"
 import PackageTree          from "../Components/PackageTree"
 import PackageInfo          from "../Components/PackageInfo"
 import PackageEditMode      from "../Components/PackageEditMode"
+import ResizableColumns     from "../Components/ResizableColumns"
 import DirectoryExplorer    from "../Modals/DirectoryExplorer.modal"
 import CreateNodeModal      from "../Modals/CreateNode.modal"
 import RenameNodeModal      from "../Modals/RenameNode.modal"
+
+const COLS_KEY = "ide:nav-columns"
+const DEFAULT_WIDTHS = [280, 300, 420]
 
 const SUFFIX:any = { module: ".Module", layer: ".layer", group: ".group" }
 // Nome base de um nó (sem o sufixo de tipo). Pacote já traz `name` sem sufixo.
@@ -45,11 +48,15 @@ const findNode = (hierarchy:any, ref:any) => {
     return undefined
 }
 
-const ScrollColumn = styled(Grid.Column)`
-    height: calc(100vh - var(--pd-header-h) - 8px);
-    overflow: auto;
-    border-color: var(--mp-line-faint) !important;
-`
+// Encontra a Layer que contém um pacote (pelo path), para navegar a coluna de
+// pacotes ao selecionar um pacote de qualquer lugar.
+const findLayerOfPackage = (hierarchy:any, pkgPath:string) => {
+    if(!hierarchy || !pkgPath) return undefined
+    for(const mod of hierarchy.modules || [])
+        for(const layer of mod.layers || [])
+            if(pkgPath === layer.path || pkgPath.startsWith(layer.path + "/")) return layer
+    return undefined
+}
 
 const MainPage = ({ HTTPServerManager }:any) => {
 
@@ -57,28 +64,59 @@ const MainPage = ({ HTTPServerManager }:any) => {
         recents, openRepositories, activeRepository, hierarchy,
         openRepository, switchRepository, closeOpenRepository, goToWelcome,
         createRepository, scaffoldRepository, createContainer, createPackage,
-        renameNode, removeNode, removeRepository
+        renameNode, removeNode, removeRepository, getAppState, setAppState
     } = useRepositoryState({ HTTPServerManager })
 
     const [selectedRef, setSelectedRef]         = useState<any>()
     const [selectedPackage, setSelectedPackage] = useState<any>()
+    const [selectedGroup, setSelectedGroup]     = useState<any>()
     const [editSession, setEditSession]         = useState<any>()
+    const [editReq, setEditReq]                 = useState<any>()
     const [browserOpen, setBrowserOpen]         = useState(false)
     const [createReq, setCreateReq]             = useState<any>()
     const [renameReq, setRenameReq]             = useState<any>()
     const [deleteReq, setDeleteReq]             = useState<any>()
     const [ctxMenu, setCtxMenu]                 = useState<any>()
+    const [colWidths, setColWidths]             = useState<number[]>(DEFAULT_WIDTHS)
+    const widthsRef = useRef(colWidths)
+    widthsRef.current = colWidths
 
     useEffect(() => {
         setSelectedRef(undefined)
         setSelectedPackage(undefined)
+        setSelectedGroup(undefined)
         setEditSession(undefined)
     }, [activeRepository])
 
+    // Restaura larguras de coluna salvas.
+    useEffect(() => {
+        getAppState(COLS_KEY).then((v:any) => {
+            try { const arr = typeof v === "string" ? JSON.parse(v) : v; if(Array.isArray(arr) && arr.length >= 3) setColWidths(arr) } catch(e) {}
+        }).catch(() => {})
+    }, [])
+
+    const resizeCol = (i:number, w:number) => setColWidths((prev) => prev.map((x, j) => j === i ? w : x))
+    const commitWidths = () => setAppState(COLS_KEY, JSON.stringify(widthsRef.current))
+
     const selectedNode = findNode(hierarchy, selectedRef)
 
-    const handleEditPackage = (pkg:any) => setEditSession({ title: `${pkg.name}.${pkg.ext}`, packages: [pkg] })
-    const handleEditGroup   = (group:any) => setEditSession({ title: group.name, packages: group.packages || [] })
+    // Selecionar um pacote: destaca, mostra info e navega a coluna de pacotes p/
+    // a Layer que o contém (mostra a lista da layer com o pacote destacado).
+    const handleSelectPackage = (pkg:any) => {
+        setSelectedPackage(pkg)
+        setSelectedGroup(undefined)
+        const layer = findLayerOfPackage(hierarchy, pkg.path)
+        if(layer) setSelectedRef({ kind: "layer", path: layer.path })
+    }
+    const handleSelectGroup = (group:any) => {
+        setSelectedGroup(group)
+        setSelectedPackage(undefined)
+    }
+
+    // Entrar no modo edição passa por um modal de confirmação.
+    const requestEdit = (session:any) => setEditReq(session)
+    const handleEditPackage = (pkg:any) => requestEdit({ title: `${pkg.name}.${pkg.ext}`, packages: [pkg] })
+    const handleEditGroup   = (group:any) => requestEdit({ title: group.name, packages: group.packages || [] })
 
     const handleAddRepo = (path:string) => {
         const name = basename(path)
@@ -127,6 +165,7 @@ const MainPage = ({ HTTPServerManager }:any) => {
         const hit = (p?:string) => !!p && (p === affectedPath || p.startsWith(affectedPath + "/"))
         if(selectedRef && hit(selectedRef.path)) setSelectedRef(undefined)
         if(selectedPackage && hit(selectedPackage.path)) setSelectedPackage(undefined)
+        if(selectedGroup && hit(selectedGroup.path)) setSelectedGroup(undefined)
     }
 
     const handleRenameNode = (payload:any) => {
@@ -164,11 +203,11 @@ const MainPage = ({ HTTPServerManager }:any) => {
         </PageDefault>
     }
 
-    // ---- Modo navegação (4 colunas) ----
+    // ---- Modo navegação (4 colunas redimensionáveis) ----
     return <PageDefault onHome={goToWelcome}>
       <div data-ide-mode="nav">
-        <Grid columns="equal" divided style={{margin:0}}>
-            <ScrollColumn width={3}>
+        <ResizableColumns widths={colWidths} onResize={resizeCol} onCommit={commitWidths}>
+            <div>
                 <OpenRepositories
                     repos={openRepositories}
                     active={activeRepository}
@@ -176,8 +215,8 @@ const MainPage = ({ HTTPServerManager }:any) => {
                     onClose={closeOpenRepository}
                     onAdd={() => setBrowserOpen(true)}
                     onHome={goToWelcome} />
-            </ScrollColumn>
-            <ScrollColumn width={3}>
+            </div>
+            <div>
                 <div style={{display:"flex", alignItems:"center"}} onContextMenu={handleRootContext}>
                     <Header as="h5" style={{flex:1, margin:0, cursor: hierarchy ? "pointer" : undefined}}
                         title="Clique: todos os pacotes • Botão direito: novo Module"
@@ -191,35 +230,30 @@ const MainPage = ({ HTTPServerManager }:any) => {
                     ? <RepositoryHierarchy hierarchy={hierarchy} selectedPath={selectedRef && selectedRef.path}
                         workspace={activeRepository}
                         selectedPackage={selectedPackage}
-                        onSelectPackage={setSelectedPackage}
+                        onSelectPackage={handleSelectPackage}
                         onSelect={(sel:any) => setSelectedRef({ kind: sel.kind, path: sel.node.path })}
                         onNodeContext={handleNodeContext} />
                     : <Loader active inline="centered" />
                 }
                 </div>
-            </ScrollColumn>
-            <ScrollColumn width={4}>
+            </div>
+            <div>
                 <Header as="h5"><Icon name="cubes" />Pacotes</Header>
                 <PackageTree
                     workspace={activeRepository}
                     selected={selectedNode}
                     selectedPackage={selectedPackage}
-                    onSelectPackage={setSelectedPackage}
+                    selectedGroup={selectedGroup}
+                    onSelectPackage={handleSelectPackage}
+                    onSelectGroup={handleSelectGroup}
                     onEditPackage={handleEditPackage}
                     onEditGroup={handleEditGroup}
                     onNodeContext={handleNodeContext} />
-            </ScrollColumn>
-            <ScrollColumn width={6}>
-                {
-                    selectedPackage
-                    ? <PackageInfo workspace={activeRepository} pkg={selectedPackage} />
-                    : <Segment placeholder textAlign="center" style={{height:"70vh"}}>
-                        <Header icon><Icon name="info circle" color="grey" />Selecione um pacote</Header>
-                        <p style={{opacity:0.65}}>Endpoints, serviços, estrutura e dependências aparecem aqui — somente leitura.</p>
-                      </Segment>
-                }
-            </ScrollColumn>
-        </Grid>
+            </div>
+            <div>
+                { selectedPackage && <PackageInfo workspace={activeRepository} pkg={selectedPackage} /> }
+            </div>
+        </ResizableColumns>
       </div>
 
       <DirectoryExplorer
@@ -241,6 +275,15 @@ const MainPage = ({ HTTPServerManager }:any) => {
         suffix={renameReq && nodeSuffix(renameReq.kind, renameReq.node)}
         onClose={() => setRenameReq(undefined)}
         onRename={handleRenameNode} />
+
+      <Confirm
+        open={!!editReq}
+        header="Modo de edição"
+        content={editReq ? `Entrar no modo de edição de "${editReq.title}"?` : ""}
+        confirmButton={{ content: "Editar", primary: true }}
+        cancelButton="Cancelar"
+        onCancel={() => setEditReq(undefined)}
+        onConfirm={() => { setEditSession(editReq); setEditReq(undefined) }} />
 
       <Confirm
         open={!!deleteReq}

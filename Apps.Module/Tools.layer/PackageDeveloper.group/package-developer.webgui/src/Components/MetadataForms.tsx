@@ -26,21 +26,36 @@ export const BootForm = ({ value, onChange }:any) => {
         </Section>
         <Section title="Services">
             <RecordListEditor value={v.services || []} onChange={(x:any) => set("services", x)}
-                emptyItem={{ namespace: "", dependency: "" }}
+                emptyItem={{ namespace: "", dependency: "", params: {}, "bound-params": {} }}
                 itemLabel={(it:any) => it.namespace || "service"}
-                fields={[{ key:"namespace", label:"namespace" }, { key:"dependency", label:"dependency" }]} />
+                fields={[
+                    { key:"namespace", label:"namespace" },
+                    { key:"dependency", label:"dependency" },
+                    { key:"params", label:"params", type:"keyvalue" },
+                    { key:"bound-params", label:"bound-params", type:"keyvalue" }
+                ]} />
         </Section>
         <Section title="Endpoints">
             <RecordListEditor value={v.endpoints || []} onChange={(x:any) => set("endpoints", x)}
-                emptyItem={{ dependency: "" }}
+                emptyItem={{ dependency: "", "bound-params": {} }}
                 itemLabel={(it:any) => it.dependency || "endpoint"}
-                fields={[{ key:"dependency", label:"dependency" }]} />
+                fields={[
+                    { key:"dependency", label:"dependency" },
+                    { key:"bound-params", label:"bound-params", type:"keyvalue" }
+                ]} />
         </Section>
         <Section title="Windows">
             <RecordListEditor value={v.windows || []} onChange={(x:any) => set("windows", x)}
-                emptyItem={{ title: "", url: "" }}
+                emptyItem={{ title: "", dependency: "", width: 1280, height: 800, params: {}, "bound-params": {} }}
                 itemLabel={(it:any) => it.title || "window"}
-                fields={[{ key:"title", label:"title" }, { key:"url", label:"url" }]} />
+                fields={[
+                    { key:"title", label:"title" },
+                    { key:"dependency", label:"dependency" },
+                    { key:"width", label:"width", type:"number" },
+                    { key:"height", label:"height", type:"number" },
+                    { key:"params", label:"params", type:"keyvalue" },
+                    { key:"bound-params", label:"bound-params", type:"keyvalue" }
+                ]} />
         </Section>
     </div>
 }
@@ -53,7 +68,8 @@ export const ServicesForm = ({ value, onChange }:any) =>
         fields={[
             { key:"namespace", label:"namespace" },
             { key:"path", label:"path" },
-            { key:"bound-params", label:"bound-params", type:"stringlist" }
+            { key:"bound-params", label:"bound-params", type:"stringlist" },
+            { key:"params", label:"params", type:"stringlist" }
         ]} />
 
 // ----- endpoint-group.json (objeto) -----
@@ -66,9 +82,14 @@ export const EndpointGroupForm = ({ value, onChange }:any) => {
         </Section>
         <Section title="Endpoints">
             <RecordListEditor value={v.endpoints || []} onChange={(x:any) => set("endpoints", x)}
-                emptyItem={{ url: "", type: "controller" }}
+                emptyItem={{ url: "", type: "controller", params: {}, "bound-params": {} }}
                 itemLabel={(it:any) => it.url || "endpoint"}
-                fields={[{ key:"url", label:"url" }, { key:"type", label:"type" }]} />
+                fields={[
+                    { key:"url", label:"url" },
+                    { key:"type", label:"type" },
+                    { key:"params", label:"params", type:"keyvalue" },
+                    { key:"bound-params", label:"bound-params", type:"keyvalue" }
+                ]} />
         </Section>
     </div>
 }
@@ -76,12 +97,14 @@ export const EndpointGroupForm = ({ value, onChange }:any) => {
 // ----- command-group.json (objeto, comandos recursivos) -----
 const CMD_FIELDS = ["command", "namespace", "description", "path"]
 
+const CMD_HANDLED = CMD_FIELDS.concat(["children", "parameters", "parametersToLoad"])
+
 const CommandTree = ({ list, onChange }:any) => {
     const items:any[] = Array.isArray(list) ? list : []
     return <div>
         {
             items.map((it:any, i:number) => {
-                const extra = Object.keys(it || {}).filter((k) => CMD_FIELDS.indexOf(k) === -1 && k !== "children")
+                const extra = Object.keys(it || {}).filter((k) => CMD_HANDLED.indexOf(k) === -1)
                 return <div key={i} style={{border:"1px solid var(--mp-line-faint)", borderRadius:6, padding:8, marginBottom:8}}>
                     <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6}}>
                         <strong style={{opacity:0.7, fontSize:"0.85em"}}>{it.command || it.namespace || "comando"}</strong>
@@ -95,6 +118,23 @@ const CommandTree = ({ list, onChange }:any) => {
                                     onChange={(e:any) => onChange(patchRecord(items, i, k, e.target.value))} />
                             </div>)
                     }
+                    <div style={{marginTop:6}}>
+                        <label style={{fontSize:"0.78em", opacity:0.7, display:"block", marginBottom:2}}>parameters</label>
+                        <RecordListEditor value={it.parameters || []} onChange={(x:any) => onChange(patchRecord(items, i, "parameters", x))}
+                            emptyItem={{ key:"", paramType:"positional", valueType:"string", describe:"" }}
+                            itemLabel={(p:any) => p.key || "param"}
+                            fields={[
+                                { key:"key", label:"key" },
+                                { key:"paramType", label:"paramType (positional/option)" },
+                                { key:"valueType", label:"valueType (string/number/boolean)" },
+                                { key:"describe", label:"describe" }
+                            ]} />
+                    </div>
+                    <div style={{marginTop:6}}>
+                        <label style={{fontSize:"0.78em", opacity:0.7, display:"block", marginBottom:2}}>parametersToLoad</label>
+                        <StringListEditor value={it.parametersToLoad || []} placeholder="nomeDoBoundParam"
+                            onChange={(x:any) => onChange(patchRecord(items, i, "parametersToLoad", x))} />
+                    </div>
                     <div style={{marginLeft:12, marginTop:6, borderLeft:"2px solid var(--mp-line-faint)", paddingLeft:8}}>
                         <div style={{fontSize:"0.75em", opacity:0.6, marginBottom:4}}>children</div>
                         <CommandTree list={it.children || []} onChange={(x:any) => onChange(patchRecord(items, i, "children", x))} />

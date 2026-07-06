@@ -41,14 +41,20 @@ Repositórios **recentes** (cards) + **Abrir repositório** (navegador de diret�
 que destaca repos) + **Criar repositório** (scaffold).
 
 ### Modo Navegação (4 colunas)
+Colunas **redimensionáveis** (arraste os divisores) com larguras **lembradas** entre
+sessões (AppState `ide:nav-columns`).
 1. **Repositórios abertos** — switcher (abrir/alternar/fechar vários) + home.
 2. **Módulos / Layers** — árvore; "+" cria Module (topo) e Layer (por módulo).
-3. **Pacotes** — grupos + pacotes; "+" cria Grupo/Pacote no layer e Pacote no grupo;
-   ícone de editar por pacote (e por grupo, abre todos juntos).
-4. **Info (somente leitura)** — namespace, path, chips (tipo/versão/readonly),
-   dependências **npm**, **grafo de dependências entre pacotes** (`@/`, hub→lista em SVG),
-   boot/serviços/endpoints/comandos, e seção **Executar / Console**
-   (Install/Run/Debug/Stop + terminal WS com stdin).
+3. **Pacotes** — mostra os pacotes do nó selecionado (nunca layers). Selecionar um
+   pacote de qualquer lugar navega a coluna para a **Layer** que o contém e o
+   **destaca**. Grupos aparecem como pastas (com seus pacotes). O nó **selecionado**
+   ganha um lápis discreto de edição; **duplo-clique** (ou o lápis) entra na edição —
+   sempre via **modal de confirmação**. "+" cria Grupo/Pacote.
+4. **Info (somente leitura)** — namespace, path, chips (tipo/versão/readonly); se houver
+   **README.md**, ele é renderizado (markdown-lite); depois **Boot** (sempre o 1º card),
+   demais componentes, **grafo `@/`** e, por **último**, dependências **npm**. Cards
+   vazios não aparecem. *(Run/Console ficam só no modo edição.)* Vazio quando nada
+   selecionado.
 
 ### Modo Edição (tela cheia, VSCode-like)
 Rail esquerdo minimizado (voltar + trocar pacote do grupo). Navegação intercambiável:
@@ -56,13 +62,21 @@ Rail esquerdo minimizado (voltar + trocar pacote do grupo). Navegação intercam
   Endpoints/Comandos/Parâmetros) + Código (categorias de `src/`).
 - **Arquivos**: árvore de arquivos completa.
 Abas multi-arquivo/multi-pacote com **posição lembrada entre sessões**; Save por arquivo.
+Ao entrar (sem abas salvas), abre automaticamente a **config principal** do pacote
+(boot/services/command-group/endpoint-group/package.json, ou README) para não iniciar vazio.
 Menu de contexto (botão direito) na árvore: **novo arquivo, renomear, excluir** (arquivo/pasta).
+
+**Zoom global:** `Ctrl/Cmd` + `+` / `-` ajusta o tamanho de todo o app; `Ctrl/Cmd` + `0`
+reseta. Lembrado entre sessões (localStorage). O README no painel de info renderiza
+markdown-lite (títulos, listas, **tabelas**, citações, código).
 
 **Editores estruturados (formulário):** ao abrir `boot.json`, `services.json`,
 `endpoint-group.json` ou `command-group.json`, o editor oferece um modo **Formulário**
-(listas de registros com adicionar/remover/reordenar) além do **JSON** cru. Campos não
-modelados são **preservados** (marcados com 🔒) — a edição por formulário nunca descarta
-chaves. JSON inválido cai automaticamente no modo cru.
+(listas de registros com adicionar/remover/reordenar) além do **JSON** cru. Edita também
+os campos aninhados: `params`/`bound-params` como **objeto chave→valor**, `width`/`height`
+de janela como **número** (sem virar string), e `parameters`/`parametersToLoad` de comando.
+Campos e objetos não modelados são **preservados** (marcados com 🔒) — a edição por
+formulário nunca descarta chaves. JSON inválido cai automaticamente no modo cru.
 
 ---
 

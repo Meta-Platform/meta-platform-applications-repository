@@ -96,11 +96,31 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
         })
     }
 
-    // Restaura abas abertas (posição lembrada entre sessões, via banco).
+    // Abre o 1º arquivo padrão que existir (para o editor não iniciar vazio).
+    const DEFAULT_FILES = ["/metadata/boot.json", "/metadata/services.json", "/metadata/command-group.json", "/metadata/endpoint-group.json", "/metadata/package.json", "/README.md"]
+    const openDefaultFile = async (pkg:any) => {
+        for(const candidate of DEFAULT_FILES){
+            try {
+                const { data } = await fsSvc().GetContentItem({ workspace, packageName: pkg.name, ext: pkg.ext, path: candidate })
+                if(data !== undefined && data !== null){
+                    // axios pode ter parseado JSON em objeto — normaliza para string.
+                    const content = typeof data === "string" ? data : JSON.stringify(data, null, 4)
+                    setTabs([{ key: tabKey(pkg, candidate), pkg, filePath: candidate, filename: basename(candidate), content, savedContent: content }])
+                    setActive(0)
+                    return true
+                }
+            } catch(e) {}
+        }
+        return false
+    }
+
+    // Restaura abas abertas (posição lembrada entre sessões, via banco). Se não há
+    // nada salvo, abre um arquivo padrão para o editor não começar vazio.
     useEffect(() => {
         modSvc().GetAppState({ key: stateKey }).then(async ({data}:any) => {
             let saved:any
             try { saved = typeof data === "string" ? JSON.parse(data) : data } catch(e) {}
+            let opened = false
             if(saved && Array.isArray(saved.open) && saved.open.length){
                 const loaded:any[] = []
                 for(const item of saved.open){
@@ -112,9 +132,13 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
                             filename: basename(item.filePath), content: c, savedContent: c })
                     } catch(e) {}
                 }
-                setTabs(loaded)
-                setActive(typeof saved.active === "number" && saved.active < loaded.length ? saved.active : (loaded.length ? 0 : -1))
+                if(loaded.length){
+                    setTabs(loaded)
+                    setActive(typeof saved.active === "number" && saved.active < loaded.length ? saved.active : 0)
+                    opened = true
+                }
             }
+            if(!opened && activePkg) await openDefaultFile(activePkg)
             setRestored(true)
         }).catch(() => setRestored(true))
     }, [])
@@ -275,9 +299,10 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
             <div style={{flex:1, minHeight:0, display:"flex", flexDirection:"column", overflow:"hidden"}}>
             {
                 tabs.length === 0
-                ? <Segment placeholder textAlign="center" style={{margin:16, flex:1}}>
-                    <Header icon><Icon name="file code outline" color="grey" />Abra um arquivo pela navegação à esquerda</Header>
-                  </Segment>
+                ? <div style={{flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", opacity:0.5, gap:10}}>
+                    <Icon name="file code outline" size="huge" style={{margin:0}} />
+                    <div>Abra um arquivo pela navegação à esquerda</div>
+                  </div>
                 : <>
                     <Menu tabular size="small" className="edit-tabs" style={{overflowX:"auto", margin:0, minHeight:0, flexShrink:0}}>
                         {
