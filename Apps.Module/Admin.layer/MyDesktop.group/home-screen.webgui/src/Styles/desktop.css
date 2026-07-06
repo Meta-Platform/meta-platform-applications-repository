@@ -58,6 +58,7 @@ html, body, #gui { height: 100%; margin: 0; }
 }
 .myd-menubar__brand:hover { background: var(--mp-surface-2); }
 .myd-menubar__mark { color: var(--mp-accent-orange); font-size: 1.05em; }
+.myd-menubar__brand-caret.icon { font-size: 11px; margin: 0 0 0 3px; color: var(--mp-muted); }
 
 .myd-menubar__chip {
     display: inline-flex;
@@ -322,9 +323,13 @@ html, body, #gui { height: 100%; margin: 0; }
     pointer-events: auto;
     display: flex;
     align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
     gap: var(--mp-space-2);
-    max-width: 90vw;
-    overflow-x: auto;
+    max-width: 92vw;
+    /* overflow visível para o balão de rótulo escapar por cima; muitos itens
+     * quebram em linhas em vez de rolar horizontalmente (evita clipping). */
+    overflow: visible;
     padding: 8px 12px;
     background: color-mix(in srgb, var(--mp-surface) 92%, transparent);
     border: var(--mp-border-strong);
@@ -349,6 +354,37 @@ html, body, #gui { height: 100%; margin: 0; }
 .myd-dock__item:active { transform: translateY(0); box-shadow: none; }
 .myd-dock__img { width: 28px; height: 28px; object-fit: contain; }
 .myd-dock__glyph.icon { font-size: 22px; margin: 0; color: var(--mp-ink-2); }
+
+/* item em execução: borda de destaque (além do ponto abaixo) */
+.myd-dock__item--running { border-color: var(--mp-success); box-shadow: 0 0 0 1.5px var(--mp-success-tint), var(--mp-shadow-1); }
+
+/* rótulo em balão ao passar o mouse */
+.myd-dock__label {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    background: var(--mp-ink);
+    color: var(--mp-paper);
+    font-family: var(--mp-font-display);
+    font-weight: 700; font-size: var(--mp-text-xs);
+    line-height: 1.2;
+    white-space: nowrap;
+    padding: 5px 10px;
+    border-radius: var(--mp-radius-sm);
+    box-shadow: var(--mp-shadow-2);
+    opacity: 0; pointer-events: none;
+    transition: opacity .1s ease, transform .1s ease;
+    z-index: 3;
+}
+.myd-dock__label::after {
+    content: ""; position: absolute; top: 100%; left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: var(--mp-ink);
+}
+.myd-dock__label-run { font-size: 10px; font-weight: 800; color: var(--mp-success); }
+.myd-dock__item:hover .myd-dock__label { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* ============================================================ */
 /* Toast de execução (canto inferior direito)                   */
@@ -408,6 +444,54 @@ html, body, #gui { height: 100%; margin: 0; }
 /* ============================================================ */
 .myd-mgr .myd-window__body { padding: 0; }
 .myd-mgr__toolbar { padding: var(--mp-space-4); border-bottom: var(--mp-border); background: var(--mp-paper-2); }
+
+/* ---- chips de filtro por tipo ---- */
+.myd-appmgr__filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.myd-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1.5px solid var(--mp-line-soft);
+    background: var(--mp-surface);
+    color: var(--mp-ink-2);
+    font-family: var(--mp-font-display);
+    font-weight: 700; font-size: var(--mp-text-xs);
+    padding: 5px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+}
+.myd-chip:hover { border-color: var(--mp-line-strong); color: var(--mp-ink); }
+.myd-chip--active {
+    background: var(--mp-accent-blue);
+    border-color: var(--mp-accent-blue);
+    color: #fff;
+}
+.myd-chip__count {
+    font-size: 11px; font-weight: 800;
+    background: color-mix(in srgb, currentColor 18%, transparent);
+    color: inherit;
+    border-radius: 999px;
+    padding: 0 6px; min-width: 18px; text-align: center;
+}
+
+/* ---- grupos por repositório ---- */
+.myd-appgroup__head {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    padding: 8px var(--mp-space-4);
+    background: var(--mp-paper-2);
+    border: none; border-top: 1px solid var(--mp-line-faint); border-bottom: 1px solid var(--mp-line-faint);
+    cursor: pointer; text-align: left;
+    font-family: var(--mp-font-display);
+}
+.myd-appgroup__head:hover { background: var(--mp-surface-2); }
+.myd-appgroup:first-child .myd-appgroup__head { border-top: none; }
+.myd-appgroup__chevron.icon { color: var(--mp-muted); margin: 0; font-size: 13px; }
+.myd-appgroup__icon.icon { color: var(--mp-muted); margin: 0; }
+.myd-appgroup__name { font-weight: 800; color: var(--mp-ink); font-size: var(--mp-text-sm); }
+.myd-appgroup__count {
+    margin-left: auto;
+    font-size: var(--mp-text-xs); font-weight: 800; color: var(--mp-muted);
+    background: var(--mp-surface); border: 1px solid var(--mp-line-faint);
+    border-radius: 999px; padding: 1px 9px;
+}
 .myd-mgr__error {
     display: flex; align-items: center; gap: 8px;
     padding: 10px var(--mp-space-4);
@@ -483,24 +567,129 @@ html, body, #gui { height: 100%; margin: 0; }
 /* ============================================================ */
 /* Gestão de repositórios e fontes                              */
 /* ============================================================ */
-.myd-repo { display: flex; flex-direction: column; }
-.myd-repo__section-title {
-    padding: 10px var(--mp-space-4) 6px;
+
+/* ---- abas ---- */
+.myd-tabs {
+    display: flex;
+    gap: 2px;
+    padding: var(--mp-space-3) var(--mp-space-4) 0;
+    background: var(--mp-paper-2);
+    border-bottom: var(--mp-border);
+}
+.myd-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1.5px solid var(--mp-line-soft);
+    border-bottom: none;
+    background: var(--mp-surface-2);
+    color: var(--mp-ink-2);
     font-family: var(--mp-font-display);
     font-weight: 800;
     font-size: var(--mp-text-sm);
-    color: var(--mp-ink-2);
-    background: var(--mp-paper-2);
-    border-bottom: 1px solid var(--mp-line-faint);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+    padding: 8px 16px;
+    border-radius: var(--mp-radius-sm) var(--mp-radius-sm) 0 0;
+    cursor: pointer;
+    margin-bottom: -1.5px;
 }
-.myd-repo__list { max-height: 30vh; }
-.myd-repo__ricon.icon { color: var(--mp-muted); flex: 0 0 auto; }
-.myd-repo__count { font-size: var(--mp-text-xs); color: var(--mp-muted); }
+.myd-tab:hover { background: var(--mp-surface); color: var(--mp-ink); }
+.myd-tab--active {
+    background: var(--mp-paper);
+    color: var(--mp-ink);
+    border-color: var(--mp-line-strong);
+    border-bottom: 1.5px solid var(--mp-paper);
+}
+.myd-tab .icon { margin: 0; }
+
+/* ---- painel (área rolável das abas) ---- */
+.myd-repo__panel { max-height: 58vh; overflow-y: auto; }
+
+/* ---- lista de cards (aba Repositórios) ---- */
+.myd-repo__ricon.icon { color: var(--mp-muted); flex: 0 0 auto; font-size: 22px; }
+.myd-repo__cards { display: flex; flex-direction: column; }
+.myd-repo__card { border-bottom: var(--mp-border); }
+.myd-repo__card:last-child { border-bottom: none; }
+.myd-repo__head {
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-3);
+    padding: 12px var(--mp-space-4);
+}
+
+/* ---- fontes aninhadas dentro de um repositório ---- */
+.myd-repo__sources {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0 var(--mp-space-4) 12px calc(var(--mp-space-4) + 34px);
+}
+.myd-repo__src {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    background: var(--mp-surface-2);
+    border: 1px solid var(--mp-line-faint);
+    border-radius: var(--mp-radius-sm);
+}
+.myd-repo__src--active {
+    background: var(--mp-success-tint);
+    border-color: var(--mp-success);
+}
+.myd-repo__src--empty {
+    color: var(--mp-muted);
+    font-size: var(--mp-text-sm);
+    background: transparent;
+    border-style: dashed;
+}
+.myd-repo__src-icon.icon { flex: 0 0 auto; color: var(--mp-ink-2); font-size: 16px; margin: 0; }
+.myd-repo__src-body { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.myd-repo__src-type { font-weight: 700; font-size: var(--mp-text-xs); color: var(--mp-ink-2); white-space: nowrap; }
+.myd-repo__src-loc {
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-xs);
+    color: var(--mp-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.myd-repo__src-flag {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: var(--mp-text-xs); font-weight: 800; color: var(--mp-success);
+}
+.myd-repo__src .ui.button { flex: 0 0 auto; white-space: nowrap; margin: 0; }
+.myd-repo__addsrc {
+    align-self: flex-start;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: transparent;
+    border: 1.5px dashed var(--mp-line-soft);
+    border-radius: var(--mp-radius-sm);
+    color: var(--mp-muted);
+    font-size: var(--mp-text-xs); font-weight: 700;
+    padding: 6px 12px;
+    cursor: pointer;
+    margin-top: 2px;
+}
+.myd-repo__addsrc:hover:not(:disabled) { color: var(--mp-accent-blue); border-color: var(--mp-accent-blue); }
+.myd-repo__addsrc:disabled { opacity: 0.5; cursor: default; }
+
+/* ---- formulário (aba Nova fonte) ---- */
 .myd-repo__form {
     display: flex;
     flex-direction: column;
     gap: var(--mp-space-2);
     padding: var(--mp-space-4);
+}
+.myd-repo__field-label {
+    font-weight: 700;
+    font-size: var(--mp-text-xs);
+    color: var(--mp-ink-2);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-top: 6px;
+}
+.myd-repo__form-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--mp-space-2);
+    margin-top: var(--mp-space-3);
 }

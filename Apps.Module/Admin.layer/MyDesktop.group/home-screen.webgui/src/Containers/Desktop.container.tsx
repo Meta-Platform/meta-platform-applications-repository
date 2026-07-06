@@ -249,6 +249,20 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     }
     const handleChangeTheme = (nextTheme:ThemeName) => { setTheme(nextTheme); ApplyTheme(nextTheme) }
 
+    // ---- organizar ícones (realinhar na grade) -----------------------------
+    // Redistribui todos os ícones na grade-padrão (fluxo em colunas). "byName"
+    // ordena alfabeticamente; senão preserva a ordem atual das aplicações.
+    const handleArrangeIcons = (byName:boolean) => {
+        const rows = RowsPerColumn(surfaceHeight)
+        const ordered = byName
+            ? [ ...appViews ].sort((a, b) => a.label.localeCompare(b.label))
+            : appViews
+        const next:IconPositions = {}
+        ordered.forEach((av, index) => { next[av.key] = DefaultPosition(index, rows) })
+        setPositions(next)
+        SavePositions(next)
+    }
+
     useEffect(() => {
         if(!toast) return
         const timeout = toast.spinner ? 12000 : 4000
@@ -352,24 +366,40 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     }, [isManagerOpen, confirm, isAboutOpen, isWelcomeOpen, appViews])
 
     // ---- menus de contexto -------------------------------------------------
+    // Itens do menu de sistema (compartilhados entre o botão direito da área de
+    // trabalho e o menu da marca "MyDesktop" na barra do topo).
+    const buildSystemMenuItems = (includeAbout:boolean):ContextMenuItem[] => [
+        ...(includeAbout ? [
+            { label: "Sobre este computador", icon: "info circle", onClick: () => setIsAboutOpen(true) } as ContextMenuItem,
+            { divider: true, label: "" } as ContextMenuItem
+        ] : []),
+        { label: "Adicionar aplicativo…", icon: "plus", onClick: () => setIsManagerOpen(true) },
+        { label: "Repositórios e fontes…", icon: "cubes", onClick: () => setIsRepoManagerOpen(true) },
+        { label: "Atualizar tudo", icon: "refresh", onClick: handleUpdateAll },
+        { label: "Recarregar ícones", icon: "redo", onClick: fetchApplicationList },
+        {
+            label: "Organizar ícones", icon: "grid layout",
+            children: [
+                { label: "Alinhar à grade", icon: "th", onClick: () => handleArrangeIcons(false) },
+                { label: "Por nome", icon: "sort alphabet down", onClick: () => handleArrangeIcons(true) }
+            ]
+        },
+        { divider: true, label: "" },
+        {
+            label: "Tema", icon: "paint brush",
+            children: THEMES.map((t) => ({ label: t.label, icon: t.icon, checked: theme === t.key, onClick: () => handleChangeTheme(t.key) }))
+        }
+    ]
+
     const openDesktopMenu = (e:React.MouseEvent) => {
         e.preventDefault()
         setSelectedKeys([])
-        setContextMenu({
-            x: e.clientX, y: e.clientY,
-            items: [
-                { label: "Adicionar aplicativo…", icon: "plus", onClick: () => setIsManagerOpen(true) },
-                { label: "Repositórios e fontes…", icon: "cubes", onClick: () => setIsRepoManagerOpen(true) },
-                { label: "Atualizar tudo", icon: "refresh", onClick: handleUpdateAll },
-                { label: "Recarregar ícones", icon: "redo", onClick: fetchApplicationList },
-                { divider: true, label: "" },
-                {
-                    label: "Tema", icon: "paint brush",
-                    children: THEMES.map((t) => ({ label: t.label, icon: t.icon, checked: theme === t.key, onClick: () => handleChangeTheme(t.key) }))
-                }
-            ]
-        })
+        setContextMenu({ x: e.clientX, y: e.clientY, items: buildSystemMenuItems(false) })
     }
+
+    // Menu da marca "MyDesktop" — abre logo abaixo do botão da barra do topo.
+    const openBrandMenu = (anchor:{ x:number, y:number }) =>
+        setContextMenu({ x: anchor.x, y: anchor.y, items: buildSystemMenuItems(true) })
 
     const openIconMenu = (e:React.MouseEvent, av:any) => {
         e.preventDefault()
@@ -392,6 +422,18 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
                 { label: "Remover", icon: "trash", danger: true, onClick: () => handleUninstallSelection([ av.key ]) }
             ]
         setContextMenu({ x: e.clientX, y: e.clientY, items })
+    }
+
+    // Menu de contexto do dock (item único) — não altera a seleção da área de trabalho.
+    const openDockMenu = (e:React.MouseEvent, av:any) => {
+        e.preventDefault()
+        const isRunning = runningExecutables.includes(av.executableName)
+        setContextMenu({ x: e.clientX, y: e.clientY, items: [
+            { label: "Abrir", icon: "external", onClick: () => handleLaunch(av) },
+            ...(isRunning ? [{ label: "Encerrar", icon: "power off", onClick: () => handleClose(av) } as ContextMenuItem] : []),
+            { divider: true, label: "" },
+            { label: "Remover", icon: "trash", danger: true, onClick: () => handleUninstallSelection([ av.key ]) }
+        ] })
     }
 
     // ---- render ------------------------------------------------------------
@@ -448,14 +490,15 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
 
     return <div className="myd-desktop">
 
-        <SystemMenuBar appCount={appViews.length} onOpenAbout={() => setIsAboutOpen(true)}/>
+        <SystemMenuBar appCount={appViews.length} onOpenMenu={openBrandMenu}/>
 
         { renderSurface() }
 
         <Dock apps={appViews.map((av) => ({
             key: av.key, label: av.label, iconUrl: av.iconUrl,
             running: runningExecutables.includes(av.executableName),
-            onOpen: () => handleLaunch(av)
+            onOpen: () => handleLaunch(av),
+            onContextMenu: (e:React.MouseEvent) => openDockMenu(e, av)
         }))}/>
 
         {
