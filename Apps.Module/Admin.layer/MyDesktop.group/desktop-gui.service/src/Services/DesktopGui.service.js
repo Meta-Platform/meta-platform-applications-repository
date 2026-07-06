@@ -25,6 +25,10 @@ const CONTROLLER_MODULES = {
     Applications: {
         controller: "Controllers/Applications.controller",
         api:        "APIs/Applications.api.json"
+    },
+    Sources: {
+        controller: "Controllers/Sources.controller",
+        api:        "APIs/Sources.api.json"
     }
 }
 
@@ -52,9 +56,11 @@ const DesktopGuiService = (params) => {
         ecosystemDefaultsFileRelativePath
     }
 
-    // Instancia cada controller e monta o manifesto a partir dos .api.json.
+    // Instancia cada controller e monta o manifesto + o mapa de parâmetros
+    // (por summary) a partir dos .api.json.
     const registry = {}
     const manifest = {}
+    const parametersBySummary = {}
     Object.keys(CONTROLLER_MODULES).forEach((apiName) => {
         const { controller, api } = CONTROLLER_MODULES[apiName]
         const ControllerFactory = executionManagerWebservice.require(controller)
@@ -62,14 +68,28 @@ const DesktopGuiService = (params) => {
 
         registry[apiName] = ControllerFactory(controllerParams)
         manifest[apiName] = (apiTemplate.endpoints || []).map(({ summary }) => summary)
+        parametersBySummary[apiName] = (apiTemplate.endpoints || []).reduce((acc, { summary, parameters }) => {
+            acc[summary] = parameters || []
+            return acc
+        }, {})
     })
 
-    // Chamada genérica vinda do renderer: registry[apiName][method](args).
-    const Invoke = async (serviceName, method, args) => {
+    // Chamada vinda do renderer. Espelha EXATAMENTE o contrato de invocação do
+    // servidor HTTP (server-manager CreateAPIEndpointsService), para o IPC ser
+    // um drop-in transparente do webservice:
+    //   0 params  → method()
+    //   1 param   → method(valor)   (posicional — o valor do único parâmetro)
+    //   2+ params → method(objeto)  (o objeto com todos os parâmetros)
+    // O renderer sempre envia `data` como objeto com as chaves dos parâmetros.
+    const Invoke = async (serviceName, method, data) => {
         const controller = registry[serviceName]
         if(!controller || typeof controller[method] !== "function")
             throw new Error(`Método desconhecido: ${serviceName}.${method}`)
-        return controller[method](args)
+
+        const parameters = (parametersBySummary[serviceName] || {})[method] || []
+        if(parameters.length === 0)  return controller[method]()
+        if(parameters.length === 1)  return controller[method]((data || {})[parameters[0].name])
+        return controller[method](data)
     }
 
     // Lista de services + métodos, para o webgui montar a mesma superfície de

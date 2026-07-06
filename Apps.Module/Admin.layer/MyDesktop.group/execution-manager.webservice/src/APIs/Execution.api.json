@@ -11,7 +11,21 @@
 				{ "name": "layerName",     "in": "body", "type": "string", "required": true },
 				{ "name": "packageName",   "in": "body", "type": "string", "required": true },
 				{ "name": "ext",           "in": "body", "type": "string", "required": true },
-				{ "name": "parentGroup",   "in": "body", "type": "string", "required": false }
+				{ "name": "parentGroup",   "in": "body", "type": "string", "required": false },
+				{ "name": "executableName","in": "body", "type": "string", "required": false }
+			]
+		},
+		{
+			"summary": "ListRunning",
+			"method": "GET",
+			"path": "/running"
+		},
+		{
+			"summary": "StopApplication",
+			"method": "POST",
+			"path": "/stop",
+			"parameters": [
+				{ "name": "executableName", "in": "body", "type": "string", "required": true }
 			]
 		}
 	]

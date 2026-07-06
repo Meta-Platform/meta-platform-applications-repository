@@ -10,6 +10,26 @@
     ],
     "endpoints": [
         {
+            "url": "/sources",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Sources.api.json",
+                "controller": "Controllers/Sources.controller",
+                "controller-params":{
+                    "ecosystemDefaultsFileRelativePath": "{{ecosystemDefaultsFileRelativePath}}"
+                }
+            },
+            "bound-params": {
+                "serverService":"serverService",
+                "controller-params":{
+                    "ecosystemdataHandlerService":"ecosystemdataHandlerService",
+                    "jsonFileUtilitiesLib": "jsonFileUtilitiesLib",
+                    "ecosystemInstallUtilitiesLib": "ecosystemInstallUtilitiesLib",
+                    "notificationHubService": "notificationHubService"
+                }
+            }
+        },
+        {
             "url": "/applications",
             "type": "controller",
             "params": {

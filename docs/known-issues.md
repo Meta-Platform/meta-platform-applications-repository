@@ -2,22 +2,17 @@
 
 Itens confirmados no código (estrutura de diretórios atual).
 
-## 1. Typo no nome da pasta `execution-mananger.webservice`
+## 1. Packages stub / em desenvolvimento
 
-O package planejado para o gerenciamento de execução está com o nome **grafado
-errado**: `Apps.Module/Admin.layer/MyDesktop.group/execution-mananger.webservice`
-(deveria ser `execution-manager`). A pasta está **vazia** (stub), então o impacto
-atual é nulo, mas o nome deve ser corrigido antes de implementar o package
-(e qualquer referência por namespace deverá usar o nome corrigido).
+O grupo `MyDesktop` já está implementado — `my-desktop.desktopapp`,
+`home-screen.webgui` e `execution-manager.webservice` (a pasta usa a grafia
+correta `execution-manager`, não `mananger`). Segue **stub** apenas o
+`my-workspace.webgui` (vazio). No grupo `MetaCloud`, o `MetaCloud.webapp` é stub
+(só `package.json`) e o `MetaCloud.webgui` tem apenas telas iniciais. Ver a
+matriz de estado no [README](../README.md#matriz-de-packages); packages stub não
+devem ser tratados como funcionais.
 
-## 2. Packages stub / em desenvolvimento
-
-Vários packages do grupo `MyDesktop` e `MetaCloud` ainda são **stubs** (vazios ou
-só com `package.json`) — ver a matriz de estado no
-[README](../README.md#matriz-de-packages). Não devem ser tratados como
-funcionais.
-
-## 3. `ui-components.lib` sem `metadata/`
+## 2. `ui-components.lib` sem `metadata/`
 
 A `Base.Module/Library.layer/ui-components.lib` é uma biblioteca de componentes
 React consumida em **build** pelos `webgui`; **não** possui `metadata/package.json`

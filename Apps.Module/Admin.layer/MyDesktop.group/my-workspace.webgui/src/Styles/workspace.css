@@ -1,0 +1,79 @@
+/*
+ * My Workspace — my-workspace.webgui
+ * Quadro pessoal de notas. Reutiliza os tokens --mp-* do design system
+ * "Meta System Retro-Brutalist UI" (mesmo do MyDesktop), então todos os
+ * temas funcionam sem regra extra.
+ */
+
+html, body, #gui { height: 100%; margin: 0; }
+#gui { display: block; }
+
+.mws-app { height: 100%; display: flex; flex-direction: column; overflow: hidden; color: var(--mp-ink); }
+
+/* ---- barra de topo ---- */
+.mws-topbar {
+    flex: 0 0 auto;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--mp-space-3);
+    background: var(--mp-paper-2);
+    border-bottom: var(--mp-border-strong);
+    box-shadow: var(--mp-shadow-1);
+    user-select: none;
+}
+.mws-topbar__brand { font-family: var(--mp-font-display); font-weight: 800; font-size: var(--mp-text-md); letter-spacing: -0.01em; }
+.mws-topbar__mark { color: var(--mp-accent-orange); }
+.mws-topbar__right { display: flex; align-items: center; gap: var(--mp-space-4); }
+.mws-topbar__chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: var(--mp-text-xs); font-weight: 800; color: var(--mp-ink-2);
+    background: var(--mp-surface); border: 1.5px solid var(--mp-line-soft); border-radius: 999px; padding: 2px 10px;
+}
+.mws-topbar__theme.ui.dropdown { color: var(--mp-ink) !important; font-size: var(--mp-text-sm); }
+.mws-topbar__clock { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.05; font-family: var(--mp-font-mono); min-width: 76px; }
+.mws-topbar__clock strong { font-size: var(--mp-text-md); }
+.mws-topbar__clock small { font-size: 10px; color: var(--mp-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+
+/* ---- quadro ---- */
+.mws-board { flex: 1 1 auto; overflow: auto; padding: var(--mp-space-6); }
+.mws-board__toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--mp-space-5); }
+.mws-board__title { margin: 0; font-family: var(--mp-font-display); font-size: var(--mp-text-2xl); color: var(--mp-ink); }
+
+.mws-empty { text-align: center; color: var(--mp-muted); margin-top: 12vh; }
+.mws-empty p { margin: var(--mp-space-3) 0 var(--mp-space-4); }
+
+.mws-notes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--mp-space-4); }
+
+.mws-note {
+    display: flex;
+    flex-direction: column;
+    min-height: 180px;
+    background: var(--mp-surface);
+    border: var(--mp-border-strong);
+    border-radius: var(--mp-radius-md);
+    box-shadow: var(--mp-shadow-2);
+    overflow: hidden;
+}
+.mws-note__bar { display: flex; align-items: center; justify-content: space-between; height: 22px; padding: 0 6px; }
+.mws-note__color { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--mp-line-strong); cursor: pointer; background: var(--mp-note-accent); }
+.mws-note__del { border: none; background: transparent; color: var(--mp-ink-3); cursor: pointer; padding: 0; }
+.mws-note__del:hover { color: var(--mp-danger); }
+.mws-note__title {
+    border: none; background: transparent; padding: 2px 12px;
+    font-family: var(--mp-font-display); font-weight: 800; font-size: var(--mp-text-lg); color: var(--mp-ink);
+}
+.mws-note__title:focus { outline: none; }
+.mws-note__body {
+    flex: 1 1 auto; resize: none; border: none; background: transparent;
+    padding: 6px 12px 12px; color: var(--mp-ink-2); font-family: var(--mp-font-ui); font-size: var(--mp-text-sm); line-height: 1.5;
+}
+.mws-note__body:focus { outline: none; }
+
+/* tints por cor (fundo suave + acento no topo/bolinha) */
+.mws-note--yellow { background: var(--mp-warning-tint);      --mp-note-accent: var(--mp-accent-yellow); border-top: 6px solid var(--mp-accent-yellow); }
+.mws-note--cyan   { background: var(--mp-accent-cyan-tint);  --mp-note-accent: var(--mp-accent-cyan);   border-top: 6px solid var(--mp-accent-cyan); }
+.mws-note--pink   { background: var(--mp-danger-tint);       --mp-note-accent: var(--mp-accent-pink);   border-top: 6px solid var(--mp-accent-pink); }
+.mws-note--green  { background: var(--mp-success-tint);      --mp-note-accent: var(--mp-success);       border-top: 6px solid var(--mp-success); }
+.mws-note--blue   { background: var(--mp-accent-blue-tint);  --mp-note-accent: var(--mp-accent-blue);   border-top: 6px solid var(--mp-accent-blue); }

@@ -179,7 +179,10 @@ const ApplicationsController = (params) => {
         }
     }
 
-    const GetApplicationIcon = async ({ executableName }) => {
+    // Chamado tanto pelo protocolo metaicon:// (recebe objeto {executableName})
+    // quanto pelo servidor HTTP de 1 parâmetro (recebe o valor). Aceita os dois.
+    const GetApplicationIcon = async (arg) => {
+        const executableName = (arg && typeof arg === "object") ? arg.executableName : arg
         const parsed = await _ReadExecutableOrDeclared(executableName)
         const packageIconPath = await _FindPackageIconPath(_GetPackageDirPath(parsed))
         if(!packageIconPath)
@@ -206,7 +209,8 @@ const ApplicationsController = (params) => {
     }
 
     // Instala um executável declarado (mesma primitiva do `repo install --executables`).
-    const InstallApplication = async ({ executableName }) => {
+    // Endpoint de 1 parâmetro → recebe o VALOR posicional (contrato do servidor).
+    const InstallApplication = async (executableName) => {
         const declared = (await _ListDeclaredExecutables()).find((e) => e.executableName === executableName)
         if(!declared)
             throw new Error(`Executável "${executableName}" não é declarado por nenhum repositório instalado.`)
@@ -260,7 +264,8 @@ const ApplicationsController = (params) => {
     }
 
     // Desinstala um executável instalado (apaga scripts + remove de installedApplications).
-    const UninstallApplication = async ({ executableName }) => {
+    // Endpoint de 1 parâmetro → recebe o VALOR posicional (contrato do servidor).
+    const UninstallApplication = async (executableName) => {
         const repositoryNamespace = await _FindRepositoryNamespaceByExecutable(executableName)
         if(!repositoryNamespace)
             throw new Error(`Não foi possível localizar o repositório do executável "${executableName}".`)

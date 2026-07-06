@@ -44,7 +44,6 @@ a desenvolvimento. Executáveis publicados em
 
 > **Estado** reflete o que existe **no código hoje**: *Desenvolvido* = com
 > metadados/código; *WIP* = início; *Stub* = vazio ou só `package.json`.
-> ⚠️ A pasta `execution-mananger.webservice` está grafada com o typo "mananger".
 
 | Package | Tipo | Módulo | Layer | Group | Função | Estado | Dependências (namespaces) | Executável |
 |---------|------|--------|-------|-------|--------|--------|---------------------------|------------|
@@ -52,9 +51,11 @@ a desenvolvimento. Executáveis publicados em
 | `datasource-manager.webgui` | webgui | Apps | Admin | DataSource | Front-end | Desenvolvido | `@@/server-service` | — |
 | `datasource-manager.webservice` | webservice | Apps | Admin | DataSource | API HTTP | Desenvolvido | `@@/server-service` | — |
 | `datasource-manager.service` | service | Base | Service | — | Serviço `DataSourceLocalManager` | Desenvolvido | — | — |
-| `execution-mananger.webservice` | webservice | Apps | Admin | MyDesktop | Gerenciamento de execução (planejado) | Stub (vazio) | — | — |
-| `home-screen.webgui` | webgui | Apps | Admin | MyDesktop | Tela inicial do desktop (planejado) | Stub (vazio) | — | — |
-| `my-workspace.webgui` | webgui | Apps | Admin | MyDesktop | Workspace do usuário (planejado) | Stub (vazio) | — | — |
+| `my-desktop.desktopapp` | desktopapp | Apps | Admin | MyDesktop | Composição desktop (janela Electron) do MyDesktop | Desenvolvido | `@@/server-service`, `@/home-screen.webgui`, `@/execution-manager.webservice`, serviços de core (`repository-manager`, `ecosystemdata-handler`, `notification-hub`) | `my-desktop` |
+| `home-screen.webgui` | webgui | Apps | Admin | MyDesktop | Área de trabalho: ícones (arrastáveis, multi-seleção), gerenciamento de apps/fontes, instâncias em execução | Desenvolvido | `@@/server-service`, `@/execution-manager.webservice` | — |
+| `execution-manager.webservice` | webservice | Apps | Admin | MyDesktop | Descobre/lança apps desktop; gerencia aplicações (instalar/remover), fontes/repositórios e instâncias | Desenvolvido | `@@/server-service`, `@/repository-manager.service`, `@/ecosystem-install-utilities.lib`, `@/ecosystem-control-panel.service` | — |
+| `desktop-gui.service` | service | Apps | Admin | MyDesktop | Hospeda os controllers do execution-manager via IPC (modo Electron GUI-host) | Desenvolvido | `@/execution-manager.webservice` (+ serviços de core) | — |
+| `my-workspace.webgui` | webgui | Apps | Admin | MyDesktop | Workspace do usuário: quadro de notas (persistência local) | Desenvolvido | `@@/server-service` | — |
 | `api-designer.webapp` | webapp | Apps | Tools | APIDesigner | Composição do API Designer | Desenvolvido | `@@/server-service`, `@/api-designer.{webgui,webservice}` | `api-designer-webapp` |
 | `api-designer.desktopapp` | desktopapp | Apps | Tools | APIDesigner | Composição desktop (janela Electron) do API Designer | Desenvolvido | `@@/server-service`, `@/api-designer.{webgui,webservice}` | `api-designer-desktop` |
 | `api-designer.webgui` | webgui | Apps | Tools | APIDesigner | Front-end | Desenvolvido | `@@/server-service` | — |
@@ -76,12 +77,15 @@ a desenvolvimento. Executáveis publicados em
 - **datasource-manager** (`sources`) — gerencia fontes de dados. Aplicação web
   completa (webapp+webgui+webservice) apoiada pelo `datasource-manager.service`
   (`DataSourceLocalManager`), em `Base.Module`.
-- **execution-manager** — planejado (pasta `execution-mananger.webservice`,
-  atualmente **vazia**). Destinado ao gerenciamento de execução no MyDesktop.
-- **home-screen** — planejado (`home-screen.webgui`, **vazio**): tela inicial do
-  ambiente de desktop.
-- **my-workspace** — planejado (`my-workspace.webgui`, **vazio**): área de
-  trabalho do usuário.
+- **MyDesktop** (`my-desktop.desktopapp`) — a **área de trabalho** e porta de
+  entrada do uso local. Aplicação desktop completa: o `home-screen.webgui`
+  mostra, como ícones, todas as aplicações de desktop **instaladas**
+  (`appType=DESKTOP`) e permite lançá-las; o `execution-manager.webservice` faz a
+  descoberta (via `repository-manager.service`) e o lançamento (`run package`).
+  Reutiliza o design system "Retro-Brutalist" do Ecosystem Control Panel.
+- **my-workspace** (`my-workspace.webgui`) — workspace pessoal do usuário:
+  primeira versão como **quadro de notas** (sticky notes) persistido localmente,
+  no mesmo design system do MyDesktop. Evoluirá para arquivos/atalhos.
 - **api-designer** (`api-designer-webapp` / `api-designer-desktop`) —
   ferramenta de desenho de APIs. Aplicação web completa, desenvolvida, com
   variante desktop (`api-designer.desktopapp`).
@@ -110,8 +114,8 @@ a desenvolvimento. Executáveis publicados em
   `standard`/`full`).
 - **Executável não encontrado** → `EcosystemData/executables` no `PATH`.
 
-Inconsistências conhecidas (typo `execution-mananger`, packages stub,
-`ui-components` sem metadata): [docs/known-issues.md](./docs/known-issues.md).
+Inconsistências conhecidas (packages stub, `ui-components` sem metadata):
+[docs/known-issues.md](./docs/known-issues.md).
 
 ## Links relacionados
 

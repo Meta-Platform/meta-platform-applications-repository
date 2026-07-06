@@ -1,0 +1,7 @@
+{
+    "port":"8892",
+    "serverName":"MyWorkspaceWebguiInstance",
+    "serverManagerUrl": "http://localhost:8892/server-manager/status",
+    "RT_ENV_GENERATED_DIR_NAME":".generated_data",
+    "isWatch": true
+}
