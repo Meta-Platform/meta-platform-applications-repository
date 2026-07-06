@@ -1,0 +1,14 @@
+[
+    {
+        "namespace": "PackageDeveloperGuiService",
+        "path": "Services/PackageDeveloperGui.service",
+        "bound-params": [
+            "packageHandlerManagerService",
+            "processManagerService",
+            "packageDeveloperLib",
+            "packageToolkitLib",
+            "packageDeveloperWebservice"
+        ],
+        "params": []
+    }
+]

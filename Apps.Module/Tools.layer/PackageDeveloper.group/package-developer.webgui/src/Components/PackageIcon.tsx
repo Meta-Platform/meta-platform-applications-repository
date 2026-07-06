@@ -16,7 +16,11 @@ const PackageIcon = ({ workspace, name, ext, size = "mini" }:any) => {
         return <Icon name="cube" color="grey" size="large" style={{margin:0}} />
     }
 
-    const src = `/package-developer/icon/${enc(workspace)}/${enc(name)}/${enc(ext)}`
+    // Electron GUI-host: ícone servido pelo protocolo custom metaicon:// (sem
+    // origem HTTP). Fora do Electron, a rota relativa do webservice.
+    const src = (typeof window !== "undefined" && (window as any).metaGui)
+        ? `metaicon://package?workspace=${enc(workspace)}&packageName=${enc(name)}&ext=${enc(ext)}`
+        : `/package-developer/icon/${enc(workspace)}/${enc(name)}/${enc(ext)}`
 
     return <Image
         size={size}

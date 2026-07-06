@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from "react"
 import { Input, Label, Icon } from "semantic-ui-react"
 import styled from "styled-components"
 
+import IPCWebSocket from "../Utils/IPCWebSocket"
+
 const stripAnsi = (s:string) => s.replace(/\x1b\[[0-9;]*m/g, "")
 
 const Terminal = styled.div<{h:string}>`
@@ -35,7 +37,7 @@ const PackageConsole = ({ workspace, packageSelected, terminalHeight = "46vh" }:
     const [status, setStatus]   = useState<"connecting"|"open"|"closed">("connecting")
     const [command, setCommand] = useState("")
 
-    const wsRef    = useRef<WebSocket | null>(null)
+    const wsRef    = useRef<any>(null)
     const panelRef = useRef<HTMLDivElement>(null)
 
     const buildUrl = () => {
@@ -49,7 +51,16 @@ const PackageConsole = ({ workspace, packageSelected, terminalHeight = "46vh" }:
     const connect = () => {
         setLines([])
         setStatus("connecting")
-        const ws = new WebSocket(buildUrl())
+        // Electron GUI-host: console via canal de streaming IPC (IPCWebSocket),
+        // no lugar de um WebSocket HTTP baseado em window.location. Mesma API,
+        // incluindo stdin (ws.send). Fora do Electron, WebSocket normal.
+        const ws = (typeof window !== "undefined" && (window as any).metaGui)
+            ? new IPCWebSocket("PackageTasks", "Console", {
+                  workspace,
+                  packageName: packageSelected.name,
+                  type: packageSelected.ext
+              })
+            : new WebSocket(buildUrl())
         wsRef.current = ws
         ws.onopen    = () => setStatus("open")
         ws.onclose   = () => setStatus("closed")

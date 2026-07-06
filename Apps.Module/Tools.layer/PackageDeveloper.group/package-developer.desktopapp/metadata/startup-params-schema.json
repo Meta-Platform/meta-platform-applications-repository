@@ -2,20 +2,8 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "port": {
-      "type": "string",
-      "pattern": "^[0-9]+$"
-    },
     "serverName": {
       "type": "string"
-    },
-    "serverManagerUrl": {
-      "type": "string",
-      "format": "uri"
-    },
-    "windowUrl": {
-      "type": "string",
-      "format": "uri"
     },
     "RT_ENV_GENERATED_DIR_NAME": {
       "type": "string"
@@ -27,5 +15,5 @@
       "type": "string"
     }
   },
-  "required": ["port", "serverName", "serverManagerUrl", "windowUrl", "RT_ENV_GENERATED_DIR_NAME", "workspaceStorageFilePath", "runCommandPath"]
+  "required": ["serverName", "RT_ENV_GENERATED_DIR_NAME", "workspaceStorageFilePath", "runCommandPath"]
 }

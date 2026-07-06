@@ -1,4 +1,5 @@
-import GetRequest from "../Utils/GetRequest.util"
+import GetRequest   from "../Utils/GetRequest.util"
+import IPCWebSocket from "../Utils/IPCWebSocket"
 //TODO Ja existe repetido
 const getURLPath = (path:string, parameters:Array<object>) => 
 parameters && parameters.length > 0
@@ -29,13 +30,22 @@ const GetRequestByServer = ({list_web_servers_running}:any) => (serverName:strin
 	const {path:servicePath, apiTemplate} = listServices
 	.find(({serviceName}:any) => serviceName === name + "Controller") || {}
 
+	// Electron GUI-host: transporte IPC (sem HTTP). HTTP vira window.metaGui.invoke
+	// e WS vira IPCWebSocket (compatível com a API de WebSocket do browser). O
+	// gui.service espelha o contrato de args do servidor, então basta encaminhar `data`.
+	const isIPC = typeof window !== "undefined" && Boolean((window as any).metaGui)
+
 	return apiTemplate?.endpoints.reduce((acc:any, {method, path, parameters, summary}:any) =>
 	 ({
-		 ...acc, 
-		 [summary] : 
-			 method.toUpperCase() !== "WS"
-			 ? GetRequest(port, method, servicePath+path, parameters)
-			 : getSocket(port, servicePath+path, parameters)
+		 ...acc,
+		 [summary] :
+			 isIPC
+			 ? ( method.toUpperCase() !== "WS"
+			     ? (data:object) => (window as any).metaGui.invoke(name, summary, data).then((result:any) => ({ data: result }))
+			     : (data:object) => new IPCWebSocket(name, summary, data) )
+			 : ( method.toUpperCase() !== "WS"
+			     ? GetRequest(port, method, servicePath+path, parameters)
+			     : getSocket(port, servicePath+path, parameters) )
 	  }), {})
 }
 
