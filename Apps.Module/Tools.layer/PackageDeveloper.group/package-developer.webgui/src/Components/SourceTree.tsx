@@ -8,12 +8,13 @@ type TreeNodeProps = {
     listDir  : (path:string) => Promise<any[]>
     onOpenFile : (path:string) => void
     onFileContext ?: (e:any, path:string) => void
+    onDirContext ?: (e:any, path:string) => void
     selectedPath ?: string
     defaultOpen ?: boolean
 }
 
 // Nó de diretório: carrega os filhos sob demanda (lazy) ao expandir.
-const DirNode = ({ name, path, listDir, onOpenFile, onFileContext, selectedPath, defaultOpen }:TreeNodeProps) => {
+const DirNode = ({ name, path, listDir, onOpenFile, onFileContext, onDirContext, selectedPath, defaultOpen }:TreeNodeProps) => {
 
     const [open, setOpen]       = useState(!!defaultOpen)
     const [loaded, setLoaded]   = useState(false)
@@ -41,7 +42,8 @@ const DirNode = ({ name, path, listDir, onOpenFile, onFileContext, selectedPath,
             style={{cursor:"pointer"}}
             onClick={toggle} />
         <List.Content>
-            <List.Header style={{cursor:"pointer"}} onClick={toggle}>
+            <List.Header style={{cursor:"pointer"}} onClick={toggle}
+                onContextMenu={(e:any) => onDirContext && onDirContext(e, path)}>
                 <Icon name={open ? "caret down" : "caret right"} />{name || "/"}
             </List.Header>
             {
@@ -65,6 +67,7 @@ const DirNode = ({ name, path, listDir, onOpenFile, onFileContext, selectedPath,
                                         listDir={listDir}
                                         onOpenFile={onOpenFile}
                                         onFileContext={onFileContext}
+                                        onDirContext={onDirContext}
                                         selectedPath={selectedPath} />
                         })
                     }
@@ -78,12 +81,13 @@ type SourceTreeProps = {
     listDir  : (path:string) => Promise<any[]>
     onOpenFile : (path:string) => void
     onFileContext ?: (e:any, path:string) => void
+    onDirContext ?: (e:any, path:string) => void
     selectedPath ?: string
     rootPath ?: string
     rootName ?: string
 }
 
-const SourceTree = ({ listDir, onOpenFile, onFileContext, selectedPath, rootPath = "", rootName = "/" }:SourceTreeProps) =>
+const SourceTree = ({ listDir, onOpenFile, onFileContext, onDirContext, selectedPath, rootPath = "", rootName = "/" }:SourceTreeProps) =>
     <List>
         <DirNode
             name={rootName}
@@ -92,6 +96,7 @@ const SourceTree = ({ listDir, onOpenFile, onFileContext, selectedPath, rootPath
             listDir={listDir}
             onOpenFile={onOpenFile}
             onFileContext={onFileContext}
+            onDirContext={onDirContext}
             selectedPath={selectedPath} />
     </List>
 

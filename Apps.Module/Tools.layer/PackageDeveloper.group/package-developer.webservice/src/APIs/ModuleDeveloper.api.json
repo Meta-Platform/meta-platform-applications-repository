@@ -126,6 +126,25 @@
       ]
     },
     {
+      "summary": "RenameNode",
+      "method": "POST",
+      "path": "/rename-node",
+      "parameters": [
+        { "name": "workspace", "in": "body", "type": "string", "required": true },
+        { "name": "path", "in": "body", "type": "string", "required": true },
+        { "name": "newName", "in": "body", "type": "string", "required": true }
+      ]
+    },
+    {
+      "summary": "DeleteNode",
+      "method": "POST",
+      "path": "/delete-node",
+      "parameters": [
+        { "name": "workspace", "in": "body", "type": "string", "required": true },
+        { "name": "path", "in": "body", "type": "string", "required": true }
+      ]
+    },
+    {
       "summary": "Status",
       "method": "GET",
       "path": "/status"

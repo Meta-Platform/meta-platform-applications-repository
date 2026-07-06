@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { connect } from "react-redux"
-import { Grid, Button, Icon, Header, Segment, Loader } from "semantic-ui-react"
+import { Grid, Button, Icon, Header, Segment, Loader, Confirm } from "semantic-ui-react"
 import styled from "styled-components"
 
 import PageDefault from "../Components/PageDefault"
@@ -16,6 +16,16 @@ import PackageInfo          from "../Components/PackageInfo"
 import PackageEditMode      from "../Components/PackageEditMode"
 import DirectoryExplorer    from "../Modals/DirectoryExplorer.modal"
 import CreateNodeModal      from "../Modals/CreateNode.modal"
+import RenameNodeModal      from "../Modals/RenameNode.modal"
+
+const SUFFIX:any = { module: ".Module", layer: ".layer", group: ".group" }
+// Nome base de um nó (sem o sufixo de tipo). Pacote já traz `name` sem sufixo.
+const nodeBaseName = (kind:string, node:any) =>
+    kind === "package" ? node.name : node.name.slice(0, node.name.lastIndexOf("."))
+const nodeSuffix = (kind:string, node:any) =>
+    kind === "package" ? `.${node.ext}` : (SUFFIX[kind] || "")
+const nodeLabel = (kind:string, node:any) =>
+    kind === "package" ? `${node.name}.${node.ext}` : node.name
 
 const basename = (p:string) => p.split("/").filter(Boolean).pop() || p
 
@@ -47,7 +57,7 @@ const MainPage = ({ HTTPServerManager }:any) => {
         recents, openRepositories, activeRepository, hierarchy,
         openRepository, switchRepository, closeOpenRepository, goToWelcome,
         createRepository, scaffoldRepository, createContainer, createPackage,
-        removeRepository
+        renameNode, removeNode, removeRepository
     } = useRepositoryState({ HTTPServerManager })
 
     const [selectedRef, setSelectedRef]         = useState<any>()
@@ -55,6 +65,8 @@ const MainPage = ({ HTTPServerManager }:any) => {
     const [editSession, setEditSession]         = useState<any>()
     const [browserOpen, setBrowserOpen]         = useState(false)
     const [createReq, setCreateReq]             = useState<any>()
+    const [renameReq, setRenameReq]             = useState<any>()
+    const [deleteReq, setDeleteReq]             = useState<any>()
     const [ctxMenu, setCtxMenu]                 = useState<any>()
 
     useEffect(() => {
@@ -75,20 +87,27 @@ const MainPage = ({ HTTPServerManager }:any) => {
 
     const requestCreate = (kind:string, parentPath:string, parentLabel:string) =>
         setCreateReq({ kind, parentPath, parentLabel })
+    const requestRename = (kind:string, node:any) => setRenameReq({ kind, node })
+    const requestDelete = (kind:string, node:any) => setDeleteReq({ kind, node })
 
-    // ---- Menu de contexto (botão direito) para criar/editar nós ----
+    // ---- Menu de contexto (botão direito) para criar/editar/renomear/excluir nós ----
     const openCtx = (e:any, items:any[]) => {
         e.preventDefault(); e.stopPropagation()
         if(items.length) setCtxMenu({ x: e.clientX, y: e.clientY, items })
     }
     const handleNodeContext = (e:any, kind:string, node:any) => {
-        const items:any[] =
+        const createItems:any[] =
             kind === "module" ? [{ icon:"clone outline", label:"Novo Layer", onClick:() => requestCreate("layer", node.path, node.name) }]
           : kind === "layer"  ? [{ icon:"folder", label:"Novo Grupo", onClick:() => requestCreate("group", node.path, node.name) },
                                  { icon:"cube",   label:"Novo Pacote", onClick:() => requestCreate("package", node.path, node.name) }]
           : kind === "group"  ? [{ icon:"cube", label:"Novo Pacote", onClick:() => requestCreate("package", node.path, node.name) }]
           : kind === "package"? [{ icon:"edit", label:"Editar pacote", onClick:() => handleEditPackage(node) }]
           : []
+        const manageItems:any[] = [
+            { icon:"i cursor", label:"Renomear", onClick:() => requestRename(kind, node) },
+            { icon:"trash", label:"Excluir", danger:true, onClick:() => requestDelete(kind, node) }
+        ]
+        const items = createItems.length ? [...createItems, { divider:true }, ...manageItems] : manageItems
         openCtx(e, items)
     }
     const handleRootContext = (e:any) => {
@@ -101,6 +120,24 @@ const MainPage = ({ HTTPServerManager }:any) => {
         if(kind === "package")
             return createPackage({ targetPath: parentPath, packageName: payload.name, ext: payload.ext })
         return createContainer({ parentPath, name: payload.name, kind })
+    }
+
+    // Limpa a seleção se o nó afetado (ou um ancestral dele) estava selecionado.
+    const clearIfAffected = (affectedPath:string) => {
+        const hit = (p?:string) => !!p && (p === affectedPath || p.startsWith(affectedPath + "/"))
+        if(selectedRef && hit(selectedRef.path)) setSelectedRef(undefined)
+        if(selectedPackage && hit(selectedPackage.path)) setSelectedPackage(undefined)
+    }
+
+    const handleRenameNode = (payload:any) => {
+        const affected = renameReq.node.path
+        return renameNode({ path: affected, newName: payload.name }).then(() => clearIfAffected(affected))
+    }
+    const handleDeleteNode = () => {
+        const affected = deleteReq.node.path
+        Promise.resolve(removeNode({ path: affected }))
+            .then(() => clearIfAffected(affected))
+            .finally(() => setDeleteReq(undefined))
     }
 
     // ---- Tela de boas-vindas (sem repositório ativo) ----
@@ -196,6 +233,25 @@ const MainPage = ({ HTTPServerManager }:any) => {
         parentLabel={createReq && createReq.parentLabel}
         onClose={() => setCreateReq(undefined)}
         onCreate={handleCreateNode} />
+
+      <RenameNodeModal
+        open={!!renameReq}
+        kind={renameReq && renameReq.kind}
+        currentName={renameReq && nodeBaseName(renameReq.kind, renameReq.node)}
+        suffix={renameReq && nodeSuffix(renameReq.kind, renameReq.node)}
+        onClose={() => setRenameReq(undefined)}
+        onRename={handleRenameNode} />
+
+      <Confirm
+        open={!!deleteReq}
+        header="Excluir"
+        content={deleteReq
+            ? `Excluir "${nodeLabel(deleteReq.kind, deleteReq.node)}" e todo o seu conteúdo? Esta ação não pode ser desfeita.`
+            : ""}
+        confirmButton={{ content: "Excluir", negative: true }}
+        cancelButton="Cancelar"
+        onCancel={() => setDeleteReq(undefined)}
+        onConfirm={handleDeleteNode} />
 
       { ctxMenu && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={ctxMenu.items} onClose={() => setCtxMenu(undefined)} /> }
     </PageDefault>

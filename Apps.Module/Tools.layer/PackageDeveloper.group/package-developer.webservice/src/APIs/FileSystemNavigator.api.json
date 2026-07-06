@@ -124,6 +124,41 @@
           "required": true
         }
       ]
+    },
+    {
+      "summary": "CreateContentItem",
+      "method": "POST",
+      "path": "/:workspace/package/:packageName/ext/:ext/create-content-item",
+      "parameters": [
+        { "name": "workspace", "in": "path", "type": "string", "required": true },
+        { "name": "packageName", "in": "path", "type": "string", "required": true },
+        { "name": "ext", "in": "path", "type": "string", "required": true },
+        { "name": "path", "in": "body", "type": "string", "required": true },
+        { "name": "content", "in": "body", "type": "string", "required": false }
+      ]
+    },
+    {
+      "summary": "RenameContentItem",
+      "method": "POST",
+      "path": "/:workspace/package/:packageName/ext/:ext/rename-content-item",
+      "parameters": [
+        { "name": "workspace", "in": "path", "type": "string", "required": true },
+        { "name": "packageName", "in": "path", "type": "string", "required": true },
+        { "name": "ext", "in": "path", "type": "string", "required": true },
+        { "name": "path", "in": "body", "type": "string", "required": true },
+        { "name": "newPath", "in": "body", "type": "string", "required": true }
+      ]
+    },
+    {
+      "summary": "DeleteContentItem",
+      "method": "POST",
+      "path": "/:workspace/package/:packageName/ext/:ext/delete-content-item",
+      "parameters": [
+        { "name": "workspace", "in": "path", "type": "string", "required": true },
+        { "name": "packageName", "in": "path", "type": "string", "required": true },
+        { "name": "ext", "in": "path", "type": "string", "required": true },
+        { "name": "path", "in": "body", "type": "string", "required": true }
+      ]
     }
   ]
 }

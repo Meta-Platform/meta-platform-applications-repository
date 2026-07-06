@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { connect } from "react-redux"
-import { Menu, Icon, Button, Segment, Label, Popup, Header } from "semantic-ui-react"
+import { Menu, Icon, Button, Segment, Label, Popup, Header, Confirm } from "semantic-ui-react"
 import styled from "styled-components"
 
 import GetRequestByServer from "../Utils/GetRequestByServer"
@@ -10,6 +10,8 @@ import SourceTree from "./SourceTree"
 import PackageTypeNav from "./PackageTypeNav"
 import RunPackage from "./RunPackage"
 import ContextMenu from "./ContextMenu"
+import TextPromptModal from "../Modals/TextPrompt.modal"
+import MetadataEditor, { isStructuredMetadata } from "./MetadataEditor"
 
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 const basename = (p:string) => p.split("/").filter(Boolean).pop() || p
@@ -56,6 +58,9 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
     const [runOpen, setRunOpen]     = useState(false)
     const [runMounted, setRunMounted] = useState(false)
     const [ctxMenu, setCtxMenu]     = useState<any>()
+    const [treeVersion, setTreeVersion] = useState(0)   // bump para remontar a árvore após CRUD de arquivo
+    const [filePrompt, setFilePrompt] = useState<any>() // { mode:"new"|"rename", dirPath?, filePath?, initial }
+    const [fileDelete, setFileDelete] = useState<any>() // { filePath }
 
     const openCtx = (e:any, items:any[]) => {
         e.preventDefault(); e.stopPropagation()
@@ -139,12 +144,64 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
         { divider: true },
         { icon: "copy outline",  label: "Copiar caminho", onClick: () => copyPath(tabs[i].filePath) }
     ]
+    // ---- CRUD de arquivo dentro do pacote ativo ----
+    const joinPath = (dir:string, name:string) => `${dir || ""}/${name}`.replace(/\/+/g, "/")
+
+    const createFile = async (dirPath:string, filename:string) => {
+        const filePath = joinPath(dirPath, filename)
+        await fsSvc().CreateContentItem({ workspace, packageName: activePkg.name, ext: activePkg.ext, path: filePath })
+        setTreeVersion((v) => v + 1)
+        await openFile(activePkg, filePath)
+    }
+    const renameFile = async (filePath:string, newName:string) => {
+        const dir = filePath.slice(0, filePath.lastIndexOf("/"))
+        const newPath = joinPath(dir, newName)
+        if(newPath === filePath) return
+        await fsSvc().RenameContentItem({ workspace, packageName: activePkg.name, ext: activePkg.ext, path: filePath, newPath })
+        setTreeVersion((v) => v + 1)
+        // Atualiza a aba aberta (deste pacote) que apontava para o arquivo renomeado.
+        setTabs((prev) => prev.map((t) =>
+            (t.pkg.path === activePkg.path && t.filePath === filePath)
+                ? { ...t, key: tabKey(activePkg, newPath), filePath: newPath, filename: basename(newPath) }
+                : t))
+    }
+    const deleteFile = async (filePath:string) => {
+        await fsSvc().DeleteContentItem({ workspace, packageName: activePkg.name, ext: activePkg.ext, path: filePath })
+        setTreeVersion((v) => v + 1)
+        // Fecha qualquer aba (deste pacote) sob o caminho excluído.
+        setTabs((prev) => prev.filter((t) =>
+            !(t.pkg.path === activePkg.path && (t.filePath === filePath || t.filePath.startsWith(filePath + "/")))))
+    }
+    const handleFilePromptSubmit = (value:string) =>
+        filePrompt.mode === "new"
+            ? createFile(filePrompt.dirPath, value)
+            : renameFile(filePrompt.filePath, value)
+
     // Itens do menu de contexto de um arquivo na árvore de navegação.
     const fileContextItems = (filePath:string) => [
         { icon: "external square alternate", label: "Abrir",          onClick: () => openFile(activePkg, filePath) },
+        { icon: "i cursor",                  label: "Renomear",       onClick: () => setFilePrompt({ mode:"rename", filePath, initial: basename(filePath) }) },
+        { icon: "trash",                     label: "Excluir",        danger: true, onClick: () => setFileDelete({ filePath }) },
+        { divider: true },
         { icon: "copy outline",              label: "Copiar caminho", onClick: () => copyPath(filePath) }
     ]
+    // Itens do menu de contexto de uma pasta. A raiz só permite criar arquivo.
+    const dirContextItems = (dirPath:string) => {
+        const isRoot = !dirPath || dirPath === "/"
+        const items:any[] = [
+            { icon: "file outline", label: "Novo arquivo", onClick: () => setFilePrompt({ mode:"new", dirPath: dirPath || "", initial: "" }) }
+        ]
+        if(!isRoot){
+            items.push(
+                { divider: true },
+                { icon: "i cursor", label: "Renomear pasta", onClick: () => setFilePrompt({ mode:"rename", filePath: dirPath, initial: basename(dirPath) }) },
+                { icon: "trash", label: "Excluir pasta", danger: true, onClick: () => setFileDelete({ filePath: dirPath }) }
+            )
+        }
+        return items
+    }
     const onFileContext = (e:any, filePath:string) => openCtx(e, fileContextItems(filePath))
+    const onDirContext  = (e:any, dirPath:string) => openCtx(e, dirContextItems(dirPath))
 
     const saveActive = async () => {
         const tab = tabs[active]
@@ -199,12 +256,14 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
             {
                 navMode === "arquivos"
                 ? <SourceTree
+                    key={`${activePkg.path}:${treeVersion}`}
                     listDir={listDir(activePkg)}
                     onOpenFile={(p:string) => openFile(activePkg, p)}
                     onFileContext={onFileContext}
+                    onDirContext={onDirContext}
                     selectedPath={activeTab && activeTab.pkg === activePkg ? activeTab.filePath : undefined} />
                 : <PackageTypeNav
-                    key={`${activePkg.name}.${activePkg.ext}`}
+                    key={`${activePkg.name}.${activePkg.ext}:${treeVersion}`}
                     listDir={listDir(activePkg)}
                     onOpenFile={(p:string) => openFile(activePkg, p)}
                     onFileContext={onFileContext}
@@ -242,7 +301,11 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
                                     loading={saving} disabled={!dirty || saving} onClick={saveActive} />
                                 <Label basic size="small" style={{marginLeft:6}}>{activeTab.filePath}{dirty ? " (modificado)" : ""}</Label>
                             </div>
-                            <CodeEditor value={activeTab.content} language="plaintext" onChange={updateActive} />
+                            {
+                                isStructuredMetadata(activeTab.filePath)
+                                ? <MetadataEditor filePath={activeTab.filePath} content={activeTab.content} onChange={updateActive} />
+                                : <CodeEditor value={activeTab.content} language="plaintext" onChange={updateActive} />
+                            }
                         </div>
                     }
                   </>
@@ -268,6 +331,25 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
         </EditorArea>
 
         { ctxMenu && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={ctxMenu.items} onClose={() => setCtxMenu(undefined)} /> }
+
+        <TextPromptModal
+            open={!!filePrompt}
+            title={filePrompt && filePrompt.mode === "new" ? "Novo arquivo" : "Renomear"}
+            icon={filePrompt && filePrompt.mode === "new" ? "file outline" : "i cursor"}
+            label={filePrompt && filePrompt.mode === "new" ? "nome do arquivo" : "novo nome"}
+            initial={filePrompt && filePrompt.initial}
+            action={filePrompt && filePrompt.mode === "new" ? "Criar" : "Renomear"}
+            onClose={() => setFilePrompt(undefined)}
+            onSubmit={handleFilePromptSubmit} />
+
+        <Confirm
+            open={!!fileDelete}
+            header="Excluir"
+            content={fileDelete ? `Excluir "${basename(fileDelete.filePath)}"? Esta ação não pode ser desfeita.` : ""}
+            confirmButton={{ content: "Excluir", negative: true }}
+            cancelButton="Cancelar"
+            onCancel={() => setFileDelete(undefined)}
+            onConfirm={() => { const p = fileDelete.filePath; setFileDelete(undefined); deleteFile(p) }} />
     </Wrap>
 }
 

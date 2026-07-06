@@ -6,6 +6,7 @@ import { Header, Icon, Label, Segment, List, Loader, Divider, Accordion } from "
 import GetRequestByServer from "../Utils/GetRequestByServer"
 import PackageIcon from "./PackageIcon"
 import PackageComponents from "./PackageComponents"
+import DependencyGraph from "./DependencyGraph"
 import RunPackage from "./RunPackage"
 
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
@@ -79,6 +80,8 @@ const PackageInfo = ({ HTTPServerManager, workspace, pkg }:any) => {
                           </List>
                     }
                 </Segment>
+
+                <DependencyGraph metadata={metadata} pkg={pkg} />
 
                 <PackageComponents workspace={workspace} packageSelected={pkg} />
             </>

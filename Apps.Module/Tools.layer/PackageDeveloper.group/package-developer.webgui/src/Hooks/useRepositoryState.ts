@@ -85,6 +85,16 @@ const useRepositoryState = ({ HTTPServerManager }:any) => {
         svc().CreatePackage({ workspace: activeRepository, targetPath, packageName, ext })
             .then(() => reloadHierarchy())
 
+    // Renomeia um nó (container ou pacote) preservando o sufixo de tipo.
+    const renameNode = ({ path, newName }:{path:string, newName:string}) =>
+        svc().RenameNode({ workspace: activeRepository, path, newName })
+            .then(() => reloadHierarchy())
+
+    // Exclui um nó (container ou pacote) recursivamente.
+    const removeNode = ({ path }:{path:string}) =>
+        svc().DeleteNode({ workspace: activeRepository, path })
+            .then(() => reloadHierarchy())
+
     const removeRepository = (name:string) =>
         svc().RemoveWorkspace({ name }).then(() => { closeOpenRepository(name); loadRecents() })
 
@@ -119,6 +129,8 @@ const useRepositoryState = ({ HTTPServerManager }:any) => {
         scaffoldRepository,
         createContainer,
         createPackage,
+        renameNode,
+        removeNode,
         reloadHierarchy,
         removeRepository
     }

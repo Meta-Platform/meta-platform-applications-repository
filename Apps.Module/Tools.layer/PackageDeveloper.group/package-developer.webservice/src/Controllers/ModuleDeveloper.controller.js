@@ -27,6 +27,8 @@ const ModuleDeveloperController = (params) => {
     const GetIcon                 = packageDeveloperLib.require("Services/PackageHandler.service/PublicFunctions/GetIcon.function")
     const IsRepository            = packageDeveloperLib.require("Manager.Functions/IsRepository.function")
     const GetRepositoryHierarchy  = packageDeveloperLib.require("Manager.Functions/GetRepositoryHierarchy.function")
+    const RenameNode              = packageDeveloperLib.require("Manager.Functions/RenameNode.function")
+    const DeleteNode              = packageDeveloperLib.require("Manager.Functions/DeleteNode.function")
     // Scaffold compartilhado com o CLI (package-toolkit.lib, ecosystem-core).
     const CreateRepository        = packageToolkitLib.require("CreateRepositoryStruct")
     const CreateContainer         = packageToolkitLib.require("CreateContainer")
@@ -135,6 +137,28 @@ const ModuleDeveloperController = (params) => {
         return { workspace, packageName, ext, path: packagePath }
     }
 
+    // Renomeia um nó (container ou pacote) preservando o sufixo de tipo e re-varre.
+    const _RenameNode = async ({ workspace, path: nodePath, newName }) => {
+        const targetWorkspace = await packageHandlerManagerService.GetWorkspace({ name: workspace })
+        if(!targetWorkspace) throw `Workspace "${workspace}" não encontrada`
+        const safe = _AssertInsideRepo(targetWorkspace.path, nodePath)
+        if(safe === path.resolve(targetWorkspace.path)) throw "Não é possível renomear a raiz do repositório"
+        const newPath = await RenameNode(safe, newName)
+        await packageHandlerManagerService.ReloadWorkspace({ name: workspace })
+        return { workspace, path: newPath }
+    }
+
+    // Exclui um nó (container ou pacote) recursivamente e re-varre.
+    const _DeleteNode = async ({ workspace, path: nodePath }) => {
+        const targetWorkspace = await packageHandlerManagerService.GetWorkspace({ name: workspace })
+        if(!targetWorkspace) throw `Workspace "${workspace}" não encontrada`
+        const safe = _AssertInsideRepo(targetWorkspace.path, nodePath)
+        if(safe === path.resolve(targetWorkspace.path)) throw "Não é possível excluir a raiz do repositório"
+        await DeleteNode(safe)
+        await packageHandlerManagerService.ReloadWorkspace({ name: workspace })
+        return { workspace, path: safe }
+    }
+
     const _ListPackagesByWorkspace = (workspaceName) =>
         ListPackagesByWorkspace(packageHandlerManagerService, {workspaceName})
     
@@ -176,6 +200,8 @@ const ModuleDeveloperController = (params) => {
         CreateWorkspace         : _CreateWorkspace,
         CreateRepository        : _CreateRepository,
         CreateContainer         : _CreateContainer,
+        RenameNode              : _RenameNode,
+        DeleteNode              : _DeleteNode,
         RemoveWorkspace         : _RemoveWorkspace,
         GetRepositoryHierarchy  : _GetRepositoryHierarchy,
         BrowseDir               : _BrowseDir,

@@ -46,7 +46,8 @@ que destaca repos) + **Criar repositório** (scaffold).
 3. **Pacotes** — grupos + pacotes; "+" cria Grupo/Pacote no layer e Pacote no grupo;
    ícone de editar por pacote (e por grupo, abre todos juntos).
 4. **Info (somente leitura)** — namespace, path, chips (tipo/versão/readonly),
-   dependências, boot/serviços/endpoints/comandos, e seção **Executar / Console**
+   dependências **npm**, **grafo de dependências entre pacotes** (`@/`, hub→lista em SVG),
+   boot/serviços/endpoints/comandos, e seção **Executar / Console**
    (Install/Run/Debug/Stop + terminal WS com stdin).
 
 ### Modo Edição (tela cheia, VSCode-like)
@@ -55,6 +56,13 @@ Rail esquerdo minimizado (voltar + trocar pacote do grupo). Navegação intercam
   Endpoints/Comandos/Parâmetros) + Código (categorias de `src/`).
 - **Arquivos**: árvore de arquivos completa.
 Abas multi-arquivo/multi-pacote com **posição lembrada entre sessões**; Save por arquivo.
+Menu de contexto (botão direito) na árvore: **novo arquivo, renomear, excluir** (arquivo/pasta).
+
+**Editores estruturados (formulário):** ao abrir `boot.json`, `services.json`,
+`endpoint-group.json` ou `command-group.json`, o editor oferece um modo **Formulário**
+(listas de registros com adicionar/remover/reordenar) além do **JSON** cru. Campos não
+modelados são **preservados** (marcados com 🔒) — a edição por formulário nunca descarta
+chaves. JSON inválido cai automaticamente no modo cru.
 
 ---
 
@@ -72,9 +80,11 @@ Abas multi-arquivo/multi-pacote com **posição lembrada entre sessões**; Save 
 
 - **ModuleDeveloper**: `GET /workspaces`, `GET /recent-repositories`,
   `GET /workspace/:w/hierarchy`, `GET|POST /app-state`, `POST /workspace`,
-  `POST /repository`, `POST /container`, `POST /package`, `DELETE /workspace/:name`,
+  `POST /repository`, `POST /container`, `POST /package`,
+  `POST /rename-node`, `POST /delete-node`, `DELETE /workspace/:name`,
   `POST /browse-dir`, `GET /icon/:w/:pkg/:ext`.
-- **FileSystemNavigator**: `ListItem`, `GetContentItem`, `SaveContentItem`, `GetPackageMetadata`.
+- **FileSystemNavigator**: `ListItem`, `GetContentItem`, `SaveContentItem`,
+  `CreateContentItem`, `RenameContentItem`, `DeleteContentItem`, `GetPackageMetadata`.
 - **PackageTasks**: `InstallDependencies`, `Start`, `Debug`, `Stop`, `ListRunning`,
   `GetLogs`, e WS `/console` (logs ao vivo + stdin).
 
@@ -131,8 +141,9 @@ Node via nvm 22.13. O `.webgui` builda em runtime (webpack, ~20 s → log
 
 ## Pendências (pós-🔴)
 
-- Renomear/mover/excluir nós (pacote/grupo/layer/module/arquivo); criar arquivo novo no editor.
-- Editores estruturados (formulário) para boot/services/endpoint-group/command-group.
-- Info read-only: estrutura de arquivos + grafo de dependências entre pacotes (`@/`, `@@/`).
+- **Mover** nós (pacote/grupo/layer/module) para outro pai. *(Renomear, excluir e criar
+  arquivo novo já implementados — via menu de contexto na árvore e no editor.)*
+- Info read-only: mostrar a **estrutura de arquivos** do pacote. *(O grafo de
+  dependências entre pacotes via `@/` já é exibido no painel de info.)*
 - Integrar o APIDesigner e dar o mesmo redesign ao `datasource-manager`.
 - Estabilidade do `.desktopapp` (terminação ao fechar janela).
