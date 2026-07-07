@@ -154,7 +154,7 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
         const idx = tabs.findIndex((t) => t.key === key)
         if(idx > -1){ setActive(idx); return }
         const { data } = await fsSvc().GetContentItem({ workspace: pkg.workspace, packageName: pkg.name, ext: pkg.ext, path: filePath })
-        const content = typeof data === "string" ? data : JSON.stringify(data, null, 4)
+        const content = typeof data === "string" ? data : (data == null ? "" : JSON.stringify(data, null, 4))
         setTabs((prev) => {
             const next = [...prev, { key, pkg, filePath, filename: basename(filePath), content, savedContent: content }]
             setActive(next.length - 1)
@@ -173,7 +173,7 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
         let content = "{}"
         try {
             const { data } = await fsSvc().GetContentItem({ workspace: pkg.workspace, packageName: pkg.name, ext: pkg.ext, path: detail.file })
-            content = typeof data === "string" ? data : JSON.stringify(data, null, 4)
+            content = typeof data === "string" ? data : (data == null ? "" : JSON.stringify(data, null, 4))
         } catch(e) {}
         setTabs((prev) => {
             const next = [...prev, { key, kind:"component", pkg, file: detail.file, path: detail.path || [],
@@ -191,7 +191,7 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
                 const { data } = await fsSvc().GetContentItem({ workspace: pkg.workspace, packageName: pkg.name, ext: pkg.ext, path: candidate })
                 if(data !== undefined && data !== null){
                     // axios pode ter parseado JSON em objeto — normaliza para string.
-                    const content = typeof data === "string" ? data : JSON.stringify(data, null, 4)
+                    const content = typeof data === "string" ? data : (data == null ? "" : JSON.stringify(data, null, 4))
                     const key = tabKey(pkg, candidate)
                     setTabs((prev) => {
                         if(prev.some((t) => t.key === key)) return prev
@@ -220,13 +220,13 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
                             const cmp = item.component
                             const { data: content } = await fsSvc().GetContentItem({
                                 workspace: item.pkg.workspace, packageName: item.pkg.name, ext: item.pkg.ext, path: cmp.file })
-                            const c = typeof content === "string" ? content : JSON.stringify(content, null, 4)
+                            const c = typeof content === "string" ? content : (content == null ? "" : JSON.stringify(content, null, 4))
                             loaded.push({ key: componentKey(item.pkg, cmp.detail), kind:"component", pkg: item.pkg,
                                 file: cmp.file, path: cmp.path, detail: cmp.detail, filename: cmp.detail.title, content: c, savedContent: c })
                         } else {
                             const { data: content } = await fsSvc().GetContentItem({
                                 workspace: item.pkg.workspace, packageName: item.pkg.name, ext: item.pkg.ext, path: item.filePath })
-                            const c = typeof content === "string" ? content : JSON.stringify(content, null, 4)
+                            const c = typeof content === "string" ? content : (content == null ? "" : JSON.stringify(content, null, 4))
                             loaded.push({ key: tabKey(item.pkg, item.filePath), pkg: item.pkg, filePath: item.filePath,
                                 filename: basename(item.filePath), content: c, savedContent: c })
                         }

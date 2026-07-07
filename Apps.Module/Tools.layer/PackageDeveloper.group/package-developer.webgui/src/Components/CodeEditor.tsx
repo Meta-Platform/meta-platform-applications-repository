@@ -57,6 +57,8 @@ type CodeEditorProps = {
 // ativa acompanham o scroll do textarea.
 const CodeEditor = ({ value, onChange }:CodeEditorProps) => {
 
+    const code = value == null ? "" : String(value)   // blinda contra value undefined
+
     const preRef    = useRef<HTMLPreElement>(null)
     const taRef     = useRef<HTMLTextAreaElement>(null)
     const gutterRef = useRef<HTMLDivElement>(null)
@@ -65,7 +67,7 @@ const CodeEditor = ({ value, onChange }:CodeEditorProps) => {
     const activeLineRef = useRef(1)
     activeLineRef.current = activeLine
 
-    const lineCount = (value.match(/\n/g) || []).length + 1
+    const lineCount = (code.match(/\n/g) || []).length + 1
 
     const positionBand = () => {
         const ta = taRef.current, band = bandRef.current
@@ -83,7 +85,7 @@ const CodeEditor = ({ value, onChange }:CodeEditorProps) => {
     const updateCaret = () => {
         const ta = taRef.current
         if(!ta) return
-        const line = value.substring(0, ta.selectionStart).split("\n").length
+        const line = code.substring(0, ta.selectionStart).split("\n").length
         setActiveLine(line)
         activeLineRef.current = line
         positionBand()
@@ -94,7 +96,7 @@ const CodeEditor = ({ value, onChange }:CodeEditorProps) => {
             e.preventDefault()
             const target = e.target as HTMLTextAreaElement
             const start = target.selectionStart, end = target.selectionEnd
-            onChange(value.substring(0, start) + "    " + value.substring(end))
+            onChange(code.substring(0, start) + "    " + code.substring(end))
             requestAnimationFrame(() => { target.selectionStart = target.selectionEnd = start + 4 })
         }
     }
@@ -132,12 +134,12 @@ const CodeEditor = ({ value, onChange }:CodeEditorProps) => {
             <pre ref={preRef} aria-hidden="true" className="wb-scroll" style={{
                 ...FONT, position:"absolute", inset:0, overflow:"auto",
                 color:"var(--color-editor-text, #c9d1d9)", pointerEvents:"none"
-            }} dangerouslySetInnerHTML={{ __html: highlight(value) + "\n" }} />
+            }} dangerouslySetInnerHTML={{ __html: highlight(code) + "\n" }} />
             <textarea
                 ref={taRef}
                 className="code-editor wb-scroll"
                 spellCheck={false}
-                value={value}
+                value={code}
                 onChange={(e) => { onChange(e.target.value); requestAnimationFrame(updateCaret) }}
                 onScroll={syncScroll}
                 onKeyDown={handleKeyDown}
