@@ -49,13 +49,14 @@ type CodeEditorProps = {
     value    : string
     language : string
     onChange : (value:string) => void
+    scrollTo?: { line:number, n:number }   // rola até a linha (n muda a cada pedido)
 }
 
 // Editor de código com highlight, gutter (line numbers) e realce da linha atual.
 // Técnica de overlay: um <pre> colorido atrás de um <textarea> transparente (o
 // textarea recebe input/caret; o pre mostra as cores). O gutter e a banda de linha
 // ativa acompanham o scroll do textarea.
-const CodeEditor = ({ value, onChange }:CodeEditorProps) => {
+const CodeEditor = ({ value, onChange, scrollTo }:CodeEditorProps) => {
 
     const code = value == null ? "" : String(value)   // blinda contra value undefined
 
@@ -118,6 +119,18 @@ const CodeEditor = ({ value, onChange }:CodeEditorProps) => {
         const id = setTimeout(on, 50)   // após layout inicial
         return () => { window.removeEventListener("resize", on); clearTimeout(id) }
     }, [])
+
+    // Rola até a linha alvo (pedido externo via prop scrollTo) e realça-a.
+    useEffect(() => {
+        if(!scrollTo || !scrollTo.line) return
+        requestAnimationFrame(() => {
+            const ta = taRef.current; if(!ta) return
+            const line = scrollTo.line
+            ta.scrollTop = Math.max(0, (line - 1) * LINE_H - ta.clientHeight / 2)
+            setActiveLine(line); activeLineRef.current = line
+            syncScroll()
+        })
+    }, [scrollTo && scrollTo.n])
 
     const onMinimapClick = (e:React.MouseEvent) => {
         const cv = canvasRef.current, ta = taRef.current

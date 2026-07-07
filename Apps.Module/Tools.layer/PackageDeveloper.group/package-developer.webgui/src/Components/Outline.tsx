@@ -41,7 +41,7 @@ const JsonKeys = ({ obj, depth }:any) => {
 }
 
 // Painel Outline: símbolos do arquivo de código OU chaves do JSON ativo.
-const Outline = ({ tab }:any) => {
+const Outline = ({ tab, onGoto }:any) => {
     if(!tab) return <div style={{opacity:.55, fontSize:13, padding:"6px 4px"}}>Nenhum arquivo aberto.</div>
 
     const content = tab.content || ""
@@ -57,7 +57,7 @@ const Outline = ({ tab }:any) => {
     if(syms.length === 0) return <div style={{opacity:.55, fontSize:13, padding:"6px 4px"}}>Sem símbolos detectados.</div>
     return <List size="small" style={{margin:0}}>
         { syms.map((s, i) =>
-            <List.Item key={i}>
+            <List.Item key={i} style={{cursor:"pointer"}} onClick={() => onGoto && onGoto(s.line)} title={`linha ${s.line}`}>
                 <List.Icon name={s.icon} color={s.color} />
                 <List.Content>
                     <List.Header style={{fontSize:"0.92em", fontWeight:500}}>

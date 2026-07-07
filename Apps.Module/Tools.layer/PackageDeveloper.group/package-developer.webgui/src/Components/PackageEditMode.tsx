@@ -114,6 +114,7 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
     const [panelFocus, setPanelFocus] = useState<any>({ tab:"", n:0 })        // foca uma aba do BottomPanel
     const focusPanel = (tab:string) => { setRunMounted(true); setRunOpen(true); setPanelFocus((f:any) => ({ tab, n: f.n + 1 })) }
     const [inspectorOpen, setInspectorOpen] = useState(true)                  // painel inspector (direita)
+    const [goto, setGoto] = useState<any>({ key:"", line:0, n:0 })            // rolar até linha (Search/Outline)
 
     const openCtx = (e:any, items:any[]) => {
         e.preventDefault(); e.stopPropagation()
@@ -158,10 +159,11 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
         fsSvc().ListItem({ workspace: pkg.workspace, packageName: pkg.name, ext: pkg.ext, path })
             .then(({data}:any) => (data && data.listItem) || [])
 
-    const openFile = async (pkg:any, filePath:string) => {
+    const openFile = async (pkg:any, filePath:string, gotoLine?:number) => {
         const key = tabKey(pkg, filePath)
+        const goTo = () => { if(gotoLine) setGoto((g:any) => ({ key, line: gotoLine, n: g.n + 1 })) }
         const idx = tabs.findIndex((t) => t.key === key)
-        if(idx > -1){ setActive(idx); return }
+        if(idx > -1){ setActive(idx); goTo(); return }
         const { data } = await fsSvc().GetContentItem({ workspace: pkg.workspace, packageName: pkg.name, ext: pkg.ext, path: filePath })
         const content = typeof data === "string" ? data : (data == null ? "" : JSON.stringify(data, null, 4))
         setTabs((prev) => {
@@ -169,6 +171,7 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
             setActive(next.length - 1)
             return next
         })
+        goTo()
     }
 
     // Abre uma aba de COMPONENTE (formulário focado numa fatia de um arquivo de
@@ -511,10 +514,10 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
             </div>
             {
                 navMode === "search"
-                ? <Search pkgs={pkgs} onOpen={(pk:any, path:string) => openFile(pk, path)}
+                ? <Search pkgs={pkgs} onOpen={(pk:any, path:string, line?:number) => openFile(pk, path, line)}
                     searchFiles={(params:any) => fsSvc().SearchFiles(params)} />
                 : navMode === "outline"
-                ? <Outline tab={activeTab} />
+                ? <Outline tab={activeTab} onGoto={(line:number) => activeTab && setGoto((g:any) => ({ key: activeTab.key, line, n: g.n + 1 }))} />
                 : navMode === "arquivos"
                 ? <SourceTree
                     key={`${activePkg.path}:${treeVersion}`}
@@ -620,7 +623,8 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
                                   })()
                                 : isStructuredMetadata(activeTab.filePath)
                                 ? <MetadataEditor filePath={activeTab.filePath} content={activeTab.content} onChange={updateActive} />
-                                : <CodeEditor value={activeTab.content} language="plaintext" onChange={updateActive} />
+                                : <CodeEditor value={activeTab.content} language="plaintext" onChange={updateActive}
+                                    scrollTo={goto.key === activeTab.key ? goto : undefined} />
                             }
                         </div>
                     }

@@ -64,7 +64,7 @@ const Search = ({ pkgs, searchFiles, onOpen }:any) => {
         {
             results.map((r:any, i:number) => { const c = pkgContext(r.pkg)
                 return <div key={i} style={{marginBottom:8}}>
-                    <div onClick={() => onOpen(r.pkg, r.path)} title={`${r.pkg.name}.${r.pkg.ext}${r.path}`}
+                    <div onClick={() => onOpen(r.pkg, r.path, r.matches && r.matches[0] && r.matches[0].line)} title={`${r.pkg.name}.${r.pkg.ext}${r.path}`}
                         style={{display:"flex", alignItems:"center", gap:6, padding:"3px 4px", cursor:"pointer", fontSize:12.5, fontWeight:600}}>
                         <span style={{width:7, height:7, borderRadius:2, background:c.color, flexShrink:0}} />
                         <span style={{whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>{r.filename}</span>
@@ -73,7 +73,7 @@ const Search = ({ pkgs, searchFiles, onOpen }:any) => {
                     </div>
                     {
                         (r.matches || []).map((m:any, j:number) =>
-                            <div key={j} onClick={() => onOpen(r.pkg, r.path)} title={`linha ${m.line}`}
+                            <div key={j} onClick={() => onOpen(r.pkg, r.path, m.line)} title={`linha ${m.line}`}
                                 style={{display:"flex", gap:8, padding:"1px 4px 1px 18px", cursor:"pointer", fontFamily:"var(--font-mono)", fontSize:11.5}}
                                 onMouseEnter={(e:any) => e.currentTarget.style.background = "rgba(127,127,127,.1)"}
                                 onMouseLeave={(e:any) => e.currentTarget.style.background = "transparent"}>
