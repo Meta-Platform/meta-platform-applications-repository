@@ -69,6 +69,17 @@ const Field = styled.div`
 const Nested = styled.div` border-left: 2px solid var(--mp-line-faint, rgba(127,127,127,.25)); padding-left: 8px; `
 const Preserved = styled.div` font-size: .72em; opacity: .5; margin-top: 4px; & > i.icon { margin-right: 3px; } `
 
+// Campo de referência/caminho (ganha botão de copiar + dica de tipo).
+const refLike = (key:string, val:any) =>
+    /^(dependency|namespace)$/i.test(key || "") || /path$/i.test(key || "") || /^@@?\//.test(String(val == null ? "" : val))
+const copyVal = (v:any) => { try { navigator.clipboard && navigator.clipboard.writeText(String(v == null ? "" : v)) } catch(_) {} }
+
+const TypeHint = styled.span`
+    margin-left: 6px; padding: 0 5px; border-radius: 4px; font-size: .62em; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .03em;
+    background: var(--mp-accent-blue-tint, rgba(45,116,196,.15)); color: var(--mp-accent-blue, #2D74C4);
+`
+
 // ---- Editor de lista de strings ----
 export const StringListEditor = ({ value, onChange, placeholder }:any) => {
     const list:string[] = Array.isArray(value) ? value : []
@@ -117,17 +128,23 @@ export const RecordFields = ({ value, fields, onChange }:any) => {
     const scalars = fields.filter((f:any) => f.type !== "keyvalue" && f.type !== "stringlist")
     const nested  = fields.filter((f:any) => f.type === "keyvalue" || f.type === "stringlist")
 
-    const renderScalar = (f:any) =>
-        <Field key={f.key}>
-            <label>{f.label}</label>
-            {
-                f.type === "number"
-                ? <TextInput type="number" value={it[f.key] != null ? it[f.key] : ""} placeholder={f.placeholder}
-                    onChange={(e:any) => patch(f.key, coerceNumber(e.target.value))} />
-                : <TextInput value={it[f.key] != null ? it[f.key] : ""} placeholder={f.placeholder}
-                    onChange={(e:any) => patch(f.key, e.target.value)} />
-            }
+    const renderScalar = (f:any) => {
+        const val = it[f.key]
+        const isRef = refLike(f.key, val)
+        return <Field key={f.key}>
+            <label>{f.label}{isRef && <TypeHint>ref</TypeHint>}{f.type === "number" && <TypeHint>num</TypeHint>}</label>
+            <Row style={{marginBottom:0}}>
+                {
+                    f.type === "number"
+                    ? <TextInput type="number" value={val != null ? val : ""} placeholder={f.placeholder}
+                        onChange={(e:any) => patch(f.key, coerceNumber(e.target.value))} />
+                    : <TextInput value={val != null ? val : ""} placeholder={f.placeholder}
+                        onChange={(e:any) => patch(f.key, e.target.value)} />
+                }
+                { isRef && <IconBtn title="Copiar" onClick={() => copyVal(val)}><Icon name="copy outline" /></IconBtn> }
+            </Row>
         </Field>
+    }
     const renderNested = (f:any) =>
         f.type === "stringlist"
             ? <StringListEditor value={it[f.key] || []} onChange={(x:any) => patch(f.key, x)} />

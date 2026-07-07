@@ -465,9 +465,11 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
             <div style={{flex:1, minHeight:0, display:"flex", flexDirection:"column", overflow:"hidden"}}>
             {
                 tabs.length === 0
-                ? <div style={{flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", opacity:0.5, gap:10}}>
-                    <Icon name="file code outline" size="huge" style={{margin:0}} />
-                    <div>Abra um arquivo pela navegação à esquerda</div>
+                ? <div style={{flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12,
+                    color:"var(--color-text-muted, #63614f)", fontFamily:"var(--font-ui)"}}>
+                    <Icon name="file code outline" size="huge" style={{margin:0, opacity:0.35}} />
+                    <div style={{fontSize:16, fontWeight:700}}>Nenhum arquivo aberto</div>
+                    <div style={{fontSize:13, opacity:0.75}}>Selecione um arquivo ou item de metadado na barra à esquerda</div>
                   </div>
                 : <>
                     <Menu tabular size="small" className="edit-tabs" style={{overflowX:"auto", margin:0, minHeight:0, flexShrink:0}}>
