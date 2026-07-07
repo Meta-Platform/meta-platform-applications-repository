@@ -9,7 +9,7 @@ import CodeEditor from "./CodeEditor"
 import SourceTree from "./SourceTree"
 import PackageTypeNav from "./PackageTypeNav"
 import RunControls from "./RunControls"
-import PackageConsole from "./PackageConsole"
+import BottomPanel from "./BottomPanel"
 import ContextMenu from "./ContextMenu"
 import TextPromptModal from "../Modals/TextPrompt.modal"
 import MetadataEditor, { isStructuredMetadata } from "./MetadataEditor"
@@ -363,6 +363,13 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
     const activeTab = tabs[active]
     const dirty = activeTab ? activeTab.content !== activeTab.savedContent : false
 
+    // Problems: arquivos JSON abertos com conteúdo inválido (alimenta o BottomPanel).
+    const problems = tabs.filter((t) => {
+        const isJson = t.kind === "component" || /\.json$/i.test(t.filePath || "")
+        if(!isJson) return false
+        try { JSON.parse(t.content); return false } catch(e) { return true }
+    }).map((t) => ({ file: `${t.pkg.name}.${t.pkg.ext}/${t.filename}`, message: "JSON inválido", severity: "error" }))
+
     // Sessão sem pacotes (ex.: editar um Grupo vazio): nada para editar.
     if(!activePkg){
         return <Shell><Wrap>
@@ -535,22 +542,9 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
             }
             </div>
 
-            {/* Dock Console — saída (recolhível). Os botões de execução ficam na barra superior. */}
-            <div className="edit-run-dock" style={{flex:"0 0 auto"}}>
-                <div className="edit-run-bar" onClick={toggleRun}
-                    style={{display:"flex", alignItems:"center", gap:8, padding:"6px 12px", cursor:"pointer", userSelect:"none", fontWeight:700}}>
-                    <Icon name={runOpen ? "chevron down" : "chevron up"} style={{margin:0}} />
-                    <Icon name="terminal" color="teal" style={{margin:0}} />
-                    Console
-                    <span style={{opacity:0.6, fontWeight:400, fontSize:"0.85em"}}>{activePkg.name}.{activePkg.ext}</span>
-                </div>
-                {
-                    runMounted &&
-                    <div style={{display: runOpen ? "block" : "none", padding:10, overflow:"auto", maxHeight:"52vh"}}>
-                        <PackageConsole key={activePkg.path} workspace={activePkg.workspace} packageSelected={activePkg} terminalHeight="30vh" />
-                    </div>
-                }
-            </div>
+            {/* Painel inferior (Problems / Console / Output / Tasks) — recolhível. */}
+            <BottomPanel key={activePkg.path} pkg={activePkg} problems={problems}
+                open={runOpen} mounted={runMounted} onToggle={toggleRun} />
         </EditorArea>
 
         { ctxMenu && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={ctxMenu.items} onClose={() => setCtxMenu(undefined)} /> }
