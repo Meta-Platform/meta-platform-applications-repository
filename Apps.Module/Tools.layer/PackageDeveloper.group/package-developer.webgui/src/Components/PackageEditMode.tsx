@@ -18,6 +18,7 @@ import { getAtPath, setAtPath } from "./metadataFormLogic"
 import { pkgContext } from "../Utils/pkgContext"
 import WorkbenchStatusBar from "./WorkbenchStatusBar"
 import CommandPalette from "./CommandPalette"
+import Inspector from "./Inspector"
 
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 const basename = (p:string) => p.split("/").filter(Boolean).pop() || p
@@ -110,6 +111,7 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
     const [navCollapsed, setNavCollapsed] = useState(false)                   // Ctrl+B
     const [panelFocus, setPanelFocus] = useState<any>({ tab:"", n:0 })        // foca uma aba do BottomPanel
     const focusPanel = (tab:string) => { setRunMounted(true); setRunOpen(true); setPanelFocus((f:any) => ({ tab, n: f.n + 1 })) }
+    const [inspectorOpen, setInspectorOpen] = useState(true)                  // painel inspector (direita)
 
     const openCtx = (e:any, items:any[]) => {
         e.preventDefault(); e.stopPropagation()
@@ -445,6 +447,8 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
                     <Button basic icon="warning circle" size="small" onClick={() => focusPanel("problems")} />
                     { problems.length > 0 && <span className="ide-badge" style={{position:"absolute", top:-1, right:-1, pointerEvents:"none"}}>{problems.length}</span> }
                 </div>} />
+            <Popup content="Inspector" position="right center" size="small" trigger={
+                <Button basic={!inspectorOpen} primary={inspectorOpen} icon="info" size="small" onClick={() => setInspectorOpen((o) => !o)} />} />
             <div style={{width:32, height:1, background:"var(--mp-border-default)", margin:"4px 0"}} />
             {
                 // Agrupa os pacotes por (repo+módulo+layer) — mesma cor por origem.
@@ -600,6 +604,15 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
             <BottomPanel key={activePkg.path} pkg={activePkg} problems={problems} focus={panelFocus}
                 open={runOpen} mounted={runMounted} onToggle={toggleRun} />
         </EditorArea>
+
+        {
+            inspectorOpen &&
+            <Inspector pkg={activePkg} activeTab={activeTab} dirty={dirty} problems={problems}
+                onAction={(a:string) => {
+                    if(a === "save") kbRef.current.save()
+                    else focusPanel(a === "tasks" ? "tasks" : a === "console" ? "console" : "problems")
+                }} />
+        }
 
         { ctxMenu && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={ctxMenu.items} onClose={() => setCtxMenu(undefined)} /> }
 
