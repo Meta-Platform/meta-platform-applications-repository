@@ -27,6 +27,8 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
     const api = useApi()
     const [item, setItem] = useState<WorkItem | null>(null)
     const [error, setError] = useState<string | null>(null)
+    const [checkDraft, setCheckDraft] = useState("")
+    const [critDraft, setCritDraft] = useState("")
 
     const usersById: { [id: string]: User } = {}
     users.forEach((u) => { usersById[u.id] = u })
@@ -129,29 +131,53 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                     }} />
             </div>
 
-            {item.acceptanceCriteria && item.acceptanceCriteria.length > 0
-                ? <div className="mpm-col">
-                    <div className="mpm-section-title"><Icon name="check circle outline" /> Critérios de aceite</div>
-                    <div className="mpm-checklist">
-                        {item.acceptanceCriteria.map((a) =>
-                            <div key={a.id} className={`mpm-checklist__item ${a.met ? "is-done" : ""}`}>
-                                <Icon name={a.met ? "check square" : "square outline"} /> {a.text}
-                            </div>)}
-                    </div>
+            <div className="mpm-col">
+                <div className="mpm-section-title"><Icon name="check circle outline" /> Critérios de aceite</div>
+                <div className="mpm-checklist">
+                    {(item.acceptanceCriteria || []).map((a) =>
+                        <div key={a.id} className={`mpm-checklist__item ${a.met ? "is-done" : ""}`}>
+                            <Icon name={a.met ? "check square" : "square outline"} link
+                                onClick={() => patch(() => api.items.updateAcceptanceCriteria(a.id, { met: !a.met }))} />
+                            <span style={{ flex: 1 }}>{a.text}</span>
+                            <Icon name="trash" link className="mpm-muted"
+                                onClick={() => patch(() => api.items.removeAcceptanceCriteria(a.id))} />
+                        </div>)}
                 </div>
-                : null}
+                <div className="mpm-row">
+                    <input className="mpm-input" placeholder="Adicionar critério + Enter" value={critDraft}
+                        onChange={(e) => setCritDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && critDraft.trim()) {
+                                const text = critDraft.trim(); setCritDraft("")
+                                patch(() => api.items.addAcceptanceCriteria(item.id, text))
+                            }
+                        }} />
+                </div>
+            </div>
 
-            {item.checklist && item.checklist.length > 0
-                ? <div className="mpm-col">
-                    <div className="mpm-section-title"><Icon name="tasks" /> Checklist</div>
-                    <div className="mpm-checklist">
-                        {item.checklist.map((c) =>
-                            <div key={c.id} className={`mpm-checklist__item ${c.done ? "is-done" : ""}`}>
-                                <Icon name={c.done ? "check square" : "square outline"} /> {c.text}
-                            </div>)}
-                    </div>
+            <div className="mpm-col">
+                <div className="mpm-section-title"><Icon name="tasks" /> Checklist</div>
+                <div className="mpm-checklist">
+                    {(item.checklist || []).map((c) =>
+                        <div key={c.id} className={`mpm-checklist__item ${c.done ? "is-done" : ""}`}>
+                            <Icon name={c.done ? "check square" : "square outline"} link
+                                onClick={() => patch(() => api.items.updateChecklistItem(c.id, { done: !c.done }))} />
+                            <span style={{ flex: 1 }}>{c.text}</span>
+                            <Icon name="trash" link className="mpm-muted"
+                                onClick={() => patch(() => api.items.removeChecklistItem(c.id))} />
+                        </div>)}
                 </div>
-                : null}
+                <div className="mpm-row">
+                    <input className="mpm-input" placeholder="Adicionar item + Enter" value={checkDraft}
+                        onChange={(e) => setCheckDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && checkDraft.trim()) {
+                                const text = checkDraft.trim(); setCheckDraft("")
+                                patch(() => api.items.addChecklistItem(item.id, text))
+                            }
+                        }} />
+                </div>
+            </div>
 
             {item.children && item.children.length > 0
                 ? <div className="mpm-col">

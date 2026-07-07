@@ -50,7 +50,27 @@ const CreateItemsApi = (call: Caller) => ({
         call("Items", "LinkItem", { itemId, relation, target }),
 
     remove: (itemId: string): Promise<any> =>
-        call("Items", "DeleteItem", { itemId })
+        call("Items", "DeleteItem", { itemId }),
+
+    // Checklist — GetItem devolve checklist[] atualizado após cada mutação.
+    addChecklistItem: (itemId: string, text: string): Promise<any> =>
+        call("Items", "AddChecklistItem", { itemId, text }),
+
+    updateChecklistItem: (checklistItemId: string, input: { text?: string; done?: boolean }): Promise<any> =>
+        call("Items", "UpdateChecklistItem", { checklistItemId, ...input }),
+
+    removeChecklistItem: (checklistItemId: string): Promise<any> =>
+        call("Items", "RemoveChecklistItem", { checklistItemId }),
+
+    // Critérios de aceite — GetItem devolve acceptanceCriteria[] após cada mutação.
+    addAcceptanceCriteria: (itemId: string, text: string): Promise<any> =>
+        call("Items", "AddAcceptanceCriteria", { itemId, text }),
+
+    updateAcceptanceCriteria: (criteriaId: string, input: { text?: string; met?: boolean }): Promise<any> =>
+        call("Items", "UpdateAcceptanceCriteria", { criteriaId, ...input }),
+
+    removeAcceptanceCriteria: (criteriaId: string): Promise<any> =>
+        call("Items", "RemoveAcceptanceCriteria", { criteriaId })
 })
 
 export default CreateItemsApi

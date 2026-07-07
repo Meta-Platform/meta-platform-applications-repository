@@ -1,5 +1,6 @@
 import * as React from "react"
 import { useState } from "react"
+import { Icon } from "semantic-ui-react"
 
 import { Board, WorkItem, User } from "../api/types"
 import KanbanColumn from "./KanbanColumn"
@@ -12,13 +13,23 @@ interface KanbanBoardProps {
     // ao soltar num alvo: chama SetItemStatus com o statusKey da coluna destino
     onMoveItem: (itemId: string, statusKey: string) => void
     onQuickAdd?: (statusKey: string) => void
+    onAddColumn?: (name: string) => void
+    onRenameColumn?: (columnId: string, name: string) => void
+    onDeleteColumn?: (columnId: string) => void
 }
 
 // KanbanBoard (spec §11.1): quadro com colunas configuráveis + drag-and-drop
 // nativo entre colunas. Itens sem coluna correspondente caem numa coluna
 // virtual "Sem coluna".
-const KanbanBoard = ({ board, items, usersById, onOpenItem, onMoveItem, onQuickAdd }: KanbanBoardProps) => {
+const KanbanBoard = ({ board, items, usersById, onOpenItem, onMoveItem, onQuickAdd,
+    onAddColumn, onRenameColumn, onDeleteColumn }: KanbanBoardProps) => {
     const [draggingId, setDraggingId] = useState<string | null>(null)
+    const [newColumn, setNewColumn] = useState("")
+
+    const commitAddColumn = () => {
+        const v = newColumn.trim()
+        if (v && onAddColumn) { onAddColumn(v); setNewColumn("") }
+    }
 
     const columns = (board.columns || []).slice().sort((a, b) => a.order - b.order)
     const knownStatuses = new Set(columns.map((c) => c.statusKey))
@@ -45,7 +56,9 @@ const KanbanBoard = ({ board, items, usersById, onOpenItem, onMoveItem, onQuickA
                 onDragStart={setDraggingId}
                 onDragEnd={() => setDraggingId(null)}
                 onDropItem={handleDrop}
-                onQuickAdd={onQuickAdd} />)}
+                onQuickAdd={onQuickAdd}
+                onRenameColumn={onRenameColumn}
+                onDeleteColumn={onDeleteColumn} />)}
         {orphans.length > 0
             ? <KanbanColumn
                 column={{ id: "__orphans__", boardId: board.id, name: "Sem coluna", statusKey: "__orphans__", order: 999, isDoneColumn: false }}
@@ -56,6 +69,18 @@ const KanbanBoard = ({ board, items, usersById, onOpenItem, onMoveItem, onQuickA
                 onDragStart={setDraggingId}
                 onDragEnd={() => setDraggingId(null)}
                 onDropItem={() => setDraggingId(null)} />
+            : null}
+        {onAddColumn
+            ? <section className="mpm-kcol" style={{ background: "transparent", borderStyle: "dashed" }}>
+                <div className="mpm-kcol__body">
+                    <input className="mpm-input" placeholder="Nova coluna..." value={newColumn}
+                        onChange={(e) => setNewColumn(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") commitAddColumn() }} />
+                    <button className="mpm-btn mpm-btn--ghost mpm-btn--sm" disabled={!newColumn.trim()} onClick={commitAddColumn}>
+                        <Icon name="plus" /> Adicionar coluna
+                    </button>
+                </div>
+            </section>
             : null}
     </div>
 }
