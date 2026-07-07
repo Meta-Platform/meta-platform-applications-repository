@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { connect } from "react-redux"
-import { Menu, Icon, Button, Segment, Label, Popup, Header, Confirm } from "semantic-ui-react"
+import { Menu, Icon, Button, Segment, Label, Popup, Header, Confirm, Dropdown } from "semantic-ui-react"
 import styled from "styled-components"
 
 import GetRequestByServer from "../Utils/GetRequestByServer"
@@ -545,7 +545,40 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
                 style={{ flex:"0 0 6px", cursor:"col-resize", background:"var(--mp-line-faint)", opacity:0.6 }} /> }
 
         <EditorArea>
-            {/* Barra de execução no topo (estilo Xcode) — Run/Debug/Stop/Install + status */}
+            {/* Command Center + Run Target (§7 do guia) */}
+            <div style={{display:"flex", alignItems:"center", gap:12, padding:"6px 12px", flexShrink:0,
+                borderBottom:"1px solid var(--mp-line-faint)", background:"var(--color-panel-2, var(--mp-paper-2))"}}>
+                <span style={{fontSize:10, textTransform:"uppercase", letterSpacing:.5, opacity:.5, fontWeight:700}}>Alvo</span>
+                <Dropdown pointing="top left" icon={null}
+                    trigger={
+                        <span style={{display:"inline-flex", alignItems:"center", gap:7, padding:"4px 10px", cursor:"pointer",
+                            border:"1.5px solid var(--mp-border-default, var(--mp-line-soft))", borderRadius:5, background:"var(--color-surface, #fff8e8)"}}>
+                            <span style={{width:8, height:8, borderRadius:2, background:pkgContext(activePkg).color}} />
+                            <strong style={{fontSize:12.5}}>{activePkg.name}<span style={{opacity:.55}}>.{activePkg.ext}</span></strong>
+                            <Icon name="dropdown" style={{margin:0}} />
+                        </span>}>
+                    <Dropdown.Menu>
+                        <Dropdown.Header content="Run target" />
+                        {
+                            pkgs.map((pk:any, i:number) => { const c = pkgContext(pk)
+                                return <Dropdown.Item key={i} active={pk === activePkg} onClick={() => setActivePkg(pk)}>
+                                    <span style={{width:8, height:8, borderRadius:2, background:c.color, display:"inline-block", marginRight:8}} />
+                                    {pk.name}.{pk.ext}<span style={{opacity:.5, marginLeft:8, fontSize:"0.85em"}}>{c.layer}</span>
+                                </Dropdown.Item> })
+                        }
+                    </Dropdown.Menu>
+                </Dropdown>
+
+                <div onClick={() => setPalette("files")} title="Ctrl+P"
+                    style={{flex:1, maxWidth:560, margin:"0 auto", display:"flex", alignItems:"center", gap:8, cursor:"text",
+                        padding:"5px 12px", border:"1.5px solid var(--mp-border-default, var(--mp-line-soft))", borderRadius:6, background:"var(--color-surface, #fff8e8)"}}>
+                    <Icon name="search" style={{margin:0, opacity:.5}} />
+                    <span style={{flex:1, fontSize:12.5, opacity:.55}}>Buscar arquivos, pacotes ou comandos…</span>
+                    <span style={{fontSize:10.5, opacity:.5, border:"1px solid var(--mp-line-faint)", borderRadius:3, padding:"1px 5px"}}>Ctrl+P</span>
+                </div>
+            </div>
+
+            {/* Barra de execução (estilo Xcode) — Run/Debug/Stop/Install + status */}
             <RunControls key={`ctl:${activePkg.path}`} workspace={activePkg.workspace} packageSelected={activePkg}
                 onRun={() => { setRunMounted(true); setRunOpen(true) }} />
 
