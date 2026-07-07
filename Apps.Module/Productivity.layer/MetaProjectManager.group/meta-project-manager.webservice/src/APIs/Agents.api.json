@@ -1,0 +1,156 @@
+{
+    "name": "Agents",
+    "endpoints": [
+        {
+            "summary": "ListAgents",
+            "method": "GET",
+            "path": "/agents"
+        },
+        {
+            "summary": "CreateAgent",
+            "method": "POST",
+            "path": "/agents",
+            "parameters": [
+                {
+                    "name": "provider",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "name",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "owner",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "handle",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "defaultModel",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "GetAgent",
+            "method": "GET",
+            "path": "/agents/:agentId",
+            "parameters": [
+                {
+                    "name": "agentId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "CreateAgentSession",
+            "method": "POST",
+            "path": "/agents/:agentId/sessions",
+            "parameters": [
+                {
+                    "name": "agentId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "model",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "confirm",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "ListAgentSessions",
+            "method": "GET",
+            "path": "/agent-sessions",
+            "parameters": [
+                {
+                    "name": "agent",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "status",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "GetAgentSession",
+            "method": "GET",
+            "path": "/agent-sessions/:sessionId",
+            "parameters": [
+                {
+                    "name": "sessionId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "ConfirmAgentSession",
+            "method": "POST",
+            "path": "/agent-sessions/:sessionId/confirm",
+            "parameters": [
+                {
+                    "name": "sessionId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "RejectAgentSession",
+            "method": "POST",
+            "path": "/agent-sessions/:sessionId/reject",
+            "parameters": [
+                {
+                    "name": "sessionId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "CloseAgentSession",
+            "method": "POST",
+            "path": "/agent-sessions/:sessionId/close",
+            "parameters": [
+                {
+                    "name": "sessionId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        }
+    ]
+}

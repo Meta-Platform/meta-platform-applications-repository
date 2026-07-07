@@ -1,0 +1,15 @@
+[
+    {
+        "namespace": "MetaProjectManagerGuiService",
+        "path": "Services/MetaProjectManagerGui.service",
+        "bound-params": [
+            "metaProjectManagerWebservice",
+            "projectStoreLib"
+        ],
+        "params": [
+            "dbFilePath",
+            "attachmentsDirPath",
+            "maxAttachmentBytes"
+        ]
+    }
+]

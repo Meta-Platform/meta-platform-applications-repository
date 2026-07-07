@@ -1,0 +1,75 @@
+{
+    "name": "Comments",
+    "endpoints": [
+        {
+            "summary": "ListComments",
+            "method": "GET",
+            "path": "/items/:itemId/comments",
+            "parameters": [
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "AddComment",
+            "method": "POST",
+            "path": "/items/:itemId/comments",
+            "parameters": [
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "body",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "format",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "UpdateComment",
+            "method": "PATCH",
+            "path": "/comments/:commentId",
+            "parameters": [
+                {
+                    "name": "commentId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "body",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "DeleteComment",
+            "method": "DELETE",
+            "path": "/comments/:commentId",
+            "parameters": [
+                {
+                    "name": "commentId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        }
+    ]
+}

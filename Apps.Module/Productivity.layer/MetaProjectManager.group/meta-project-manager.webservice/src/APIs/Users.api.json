@@ -1,0 +1,118 @@
+{
+    "name": "Users",
+    "endpoints": [
+        {
+            "summary": "ListUsers",
+            "method": "GET",
+            "path": "/users",
+            "parameters": [
+                {
+                    "name": "type",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "status",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "CreateUser",
+            "method": "POST",
+            "path": "/users",
+            "parameters": [
+                {
+                    "name": "name",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "type",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "handle",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "email",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "GetUser",
+            "method": "GET",
+            "path": "/users/:userId",
+            "parameters": [
+                {
+                    "name": "userId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "UpdateUser",
+            "method": "PATCH",
+            "path": "/users/:userId",
+            "parameters": [
+                {
+                    "name": "userId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "name",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "handle",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "email",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "status",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "DeleteUser",
+            "method": "DELETE",
+            "path": "/users/:userId",
+            "parameters": [
+                {
+                    "name": "userId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        }
+    ]
+}

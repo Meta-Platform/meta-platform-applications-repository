@@ -1,0 +1,307 @@
+const { Op } = require("sequelize")
+const { NewId, Serialize, SerializeMany } = require("../Utils/helpers")
+const { DomainError } = require("../Errors")
+const { WORK_ITEM_TYPES, WORK_ITEM_PRIORITIES, LINK_RELATIONS } = require("../Config")
+
+const WorkItemsStore = (ctx) => {
+    const { models, writeAudit, emit, store } = ctx
+    const { WorkItem, WorkItemLink, WorkItemChecklistItem, WorkItemAcceptanceCriteria } = models
+
+    // Resolve item por id ou key (ex.: MPM-42, case-insensitive).
+    const ResolveItem = async (ref) => {
+        if(!ref) throw new DomainError("VALIDATION_ERROR", "Referência de item é obrigatória.", { field: "item" })
+        const item = await WorkItem.findOne({
+            where: { deletedAt: null, [Op.or]: [{ id: ref }, { key: String(ref).toUpperCase() }] }
+        })
+        if(!item) throw new DomainError("NOT_FOUND", `Item "${ref}" não encontrado.`, { ref })
+        return item
+    }
+
+    // Resolve opcionalmente um usuário (id ou handle) para id; undefined se não informado.
+    const _resolveUserId = async (ref) => {
+        if(ref === undefined || ref === null || ref === "") return undefined
+        const user = await store.ResolveUser(ref)
+        return user.id
+    }
+
+    // Sobe a cadeia de ancestrais de `parentId`; lança se encontrar `itemId` (ciclo).
+    const _assertNoCycle = async (itemId, parentId) => {
+        let cursor = parentId
+        const seen = new Set()
+        while(cursor){
+            if(cursor === itemId) throw new DomainError("VALIDATION_ERROR", "Movimento criaria ciclo na hierarquia.", { itemId, parentId })
+            if(seen.has(cursor)) break
+            seen.add(cursor)
+            const parent = await WorkItem.findOne({ where: { id: cursor } })
+            cursor = parent ? parent.parentId : undefined
+        }
+    }
+
+    const _resolveParent = async (parentRef, projectId) => {
+        if(!parentRef) return undefined
+        const parent = await ResolveItem(parentRef)
+        if(parent.projectId !== projectId)
+            throw new DomainError("VALIDATION_ERROR", "O item pai pertence a outro projeto.", { field: "parent" })
+        return parent
+    }
+
+    const CreateItem = async ({
+        project, type = "task", title, description, parent, board, statusKey, priority = "none",
+        assignee, reporter, dueDate, startDate, estimatePoints, estimateMinutes, labels, actor, ...software
+    } = {}) => {
+        if(!title) throw new DomainError("VALIDATION_ERROR", "Título do item é obrigatório.", { field: "title" })
+        if(!WORK_ITEM_TYPES.includes(type))
+            throw new DomainError("VALIDATION_ERROR", `Tipo inválido: ${type}.`, { field: "type", allowed: WORK_ITEM_TYPES })
+        if(!WORK_ITEM_PRIORITIES.includes(priority))
+            throw new DomainError("VALIDATION_ERROR", `Prioridade inválida: ${priority}.`, { field: "priority", allowed: WORK_ITEM_PRIORITIES })
+
+        const projectInstance = await store.ResolveProject(project)
+        const parentInstance = await _resolveParent(parent, projectInstance.id)
+        const boardId = board ? (await store.ResolveBoard(board)).id : (parentInstance ? parentInstance.boardId : projectInstance.defaultBoardId) || undefined
+        const key = await store.NextItemKey(projectInstance)
+        const order = await WorkItem.count({ where: { projectId: projectInstance.id, parentId: parentInstance ? parentInstance.id : null, deletedAt: null } })
+
+        const softwareFields = {}
+        for(const f of ["repositoryUrl", "branchName", "commitHash", "pullRequestUrl", "environment", "packagePath", "moduleName", "layerName", "groupName"])
+            if(software[f] !== undefined) softwareFields[f] = software[f]
+
+        const item = await WorkItem.create({
+            id: NewId(),
+            projectId: projectInstance.id,
+            boardId,
+            parentId: parentInstance ? parentInstance.id : undefined,
+            type, key, title, description,
+            statusKey: statusKey || "backlog",
+            priority,
+            assigneeUserId: await _resolveUserId(assignee),
+            reporterUserId: await _resolveUserId(reporter),
+            createdByUserId: await _resolveUserId(actor && actor.actorUserId),
+            createdBySessionId: actor && actor.actorSessionId,
+            dueDate, startDate, estimatePoints, estimateMinutes,
+            labels: Array.isArray(labels) ? labels : (labels ? String(labels).split(",").map((s) => s.trim()).filter(Boolean) : []),
+            order,
+            ...softwareFields
+        })
+        const data = Serialize(item)
+        await writeAudit({ projectId: projectInstance.id, entityType: "work-item", entityId: item.id, action: "create", actor, metadata: { key, type, title } })
+        emit("item.created", data)
+        return data
+    }
+
+    const ListItems = async ({ project, type, status, parent, board, assignee, text, priority, limit = 200, offset = 0, sort = "order" } = {}) => {
+        const where = { deletedAt: null }
+        if(project) where.projectId = (await store.ResolveProject(project)).id
+        if(type) where.type = type
+        if(status) where.statusKey = status
+        if(priority) where.priority = priority
+        if(board) where.boardId = board
+        if(parent !== undefined) where.parentId = parent === null || parent === "none" ? null : (await ResolveItem(parent)).id
+        if(assignee) where.assigneeUserId = await _resolveUserId(assignee)
+        if(text) where.title = { [Op.like]: `%${text}%` }
+        const order = sort === "created" ? [["createdAt", "DESC"]] : sort === "priority" ? [["priority", "DESC"]] : [["order", "ASC"]]
+        const rows = await WorkItem.findAll({ where, order, limit: Number(limit), offset: Number(offset) })
+        return SerializeMany(rows)
+    }
+
+    const GetItem = async ({ item } = {}) => {
+        const instance = await ResolveItem(item)
+        const [checklist, acceptanceCriteria, links, children] = await Promise.all([
+            WorkItemChecklistItem.findAll({ where: { workItemId: instance.id }, order: [["order", "ASC"]] }),
+            WorkItemAcceptanceCriteria.findAll({ where: { workItemId: instance.id }, order: [["order", "ASC"]] }),
+            WorkItemLink.findAll({ where: { [Op.or]: [{ sourceItemId: instance.id }, { targetItemId: instance.id }] } }),
+            WorkItem.findAll({ where: { parentId: instance.id, deletedAt: null }, order: [["order", "ASC"]] })
+        ])
+        return {
+            ...Serialize(instance),
+            checklist: SerializeMany(checklist),
+            acceptanceCriteria: SerializeMany(acceptanceCriteria),
+            links: SerializeMany(links),
+            children: SerializeMany(children)
+        }
+    }
+
+    const UpdateItem = async ({ item, actor, ...fields } = {}) => {
+        const instance = await ResolveItem(item)
+        const patch = {}
+        const simple = ["title", "description", "statusKey", "priority", "progress", "dueDate", "startDate", "blockedReason",
+            "estimatePoints", "estimateMinutes", "repositoryUrl", "branchName", "commitHash", "pullRequestUrl",
+            "environment", "packagePath", "moduleName", "layerName", "groupName"]
+        for(const key of simple) if(fields[key] !== undefined) patch[key] = fields[key]
+        if(fields.type !== undefined){
+            if(!WORK_ITEM_TYPES.includes(fields.type)) throw new DomainError("VALIDATION_ERROR", `Tipo inválido: ${fields.type}.`, { field: "type" })
+            patch.type = fields.type
+        }
+        if(fields.priority !== undefined && !WORK_ITEM_PRIORITIES.includes(fields.priority))
+            throw new DomainError("VALIDATION_ERROR", `Prioridade inválida: ${fields.priority}.`, { field: "priority" })
+        if(fields.assignee !== undefined) patch.assigneeUserId = await _resolveUserId(fields.assignee)
+        if(fields.labels !== undefined) patch.labels = Array.isArray(fields.labels) ? fields.labels : String(fields.labels).split(",").map((s) => s.trim()).filter(Boolean)
+        await instance.update(patch)
+        const data = Serialize(instance)
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "update", actor, metadata: patch })
+        emit("item.updated", data)
+        return data
+    }
+
+    const SetStatus = async ({ item, status, actor } = {}) => {
+        if(!status) throw new DomainError("VALIDATION_ERROR", "Status é obrigatório.", { field: "status" })
+        const instance = await ResolveItem(item)
+        const doneStatuses = new Set(["done", "archived", "completed"])
+        const patch = { statusKey: status }
+        if(doneStatuses.has(status)){ patch.completedAt = new Date(); patch.progress = 100 }
+        else if(instance.statusKey && doneStatuses.has(instance.statusKey)) patch.completedAt = null
+        await instance.update(patch)
+        const data = Serialize(instance)
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "set-status", actor, metadata: { status } })
+        emit("item.updated", data)
+        return data
+    }
+
+    const Assign = async ({ item, user, actor } = {}) => {
+        const instance = await ResolveItem(item)
+        const assigneeUserId = await _resolveUserId(user)
+        await instance.update({ assigneeUserId })
+        const data = Serialize(instance)
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "assign", actor, metadata: { assigneeUserId } })
+        emit("item.updated", data)
+        return data
+    }
+
+    const MoveItem = async ({ item, parent, actor } = {}) => {
+        const instance = await ResolveItem(item)
+        let parentId = null
+        if(parent && parent !== "none"){
+            const parentInstance = await _resolveParent(parent, instance.projectId)
+            if(parentInstance.id === instance.id)
+                throw new DomainError("VALIDATION_ERROR", "Não é possível mover um item para dentro de si mesmo.", { field: "parent" })
+            await _assertNoCycle(instance.id, parentInstance.id)
+            parentId = parentInstance.id
+        }
+        await instance.update({ parentId })
+        const data = Serialize(instance)
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "move", actor, metadata: { parentId } })
+        emit("item.moved", data)
+        return data
+    }
+
+    const MoveToBoard = async ({ item, board, status, actor } = {}) => {
+        const instance = await ResolveItem(item)
+        const boardInstance = await store.ResolveBoard(board)
+        const patch = { boardId: boardInstance.id }
+        if(status) patch.statusKey = status
+        await instance.update(patch)
+        const data = Serialize(instance)
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "move-to-board", actor, metadata: patch })
+        emit("item.moved", data)
+        return data
+    }
+
+    const ReorderItem = async ({ item, order, actor } = {}) => {
+        const instance = await ResolveItem(item)
+        await instance.update({ order: Number(order) })
+        emit("item.updated", Serialize(instance))
+        return Serialize(instance)
+    }
+
+    const ConvertItem = async ({ item, type, actor } = {}) => {
+        if(!WORK_ITEM_TYPES.includes(type)) throw new DomainError("VALIDATION_ERROR", `Tipo inválido: ${type}.`, { field: "type", allowed: WORK_ITEM_TYPES })
+        const instance = await ResolveItem(item)
+        await instance.update({ type })
+        const data = Serialize(instance)
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "convert", actor, metadata: { type } })
+        emit("item.updated", data)
+        return data
+    }
+
+    const SetBlocked = async ({ item, reason, actor } = {}) => {
+        const instance = await ResolveItem(item)
+        await instance.update({ statusKey: "blocked", blockedReason: reason || "Bloqueado" })
+        const data = Serialize(instance)
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "block", actor, metadata: { reason } })
+        emit("item.updated", data)
+        return data
+    }
+
+    const LinkItem = async ({ item, relation, target, actor } = {}) => {
+        if(!LINK_RELATIONS.includes(relation))
+            throw new DomainError("VALIDATION_ERROR", `Relação inválida: ${relation}.`, { field: "relation", allowed: LINK_RELATIONS })
+        const src = await ResolveItem(item)
+        const tgt = await ResolveItem(target)
+        const existing = await WorkItemLink.findOne({ where: { sourceItemId: src.id, relation, targetItemId: tgt.id } })
+        if(existing) return Serialize(existing)
+        const link = await WorkItemLink.create({ id: NewId(), projectId: src.projectId, sourceItemId: src.id, relation, targetItemId: tgt.id })
+        const data = Serialize(link)
+        await writeAudit({ projectId: src.projectId, entityType: "work-item-link", entityId: link.id, action: "create", actor, metadata: { relation, source: src.key, target: tgt.key } })
+        emit("item.updated", { id: src.id })
+        return data
+    }
+
+    const UnlinkItem = async ({ item, relation, target, actor } = {}) => {
+        const src = await ResolveItem(item)
+        const tgt = await ResolveItem(target)
+        const count = await WorkItemLink.destroy({ where: { sourceItemId: src.id, relation, targetItemId: tgt.id } })
+        await writeAudit({ projectId: src.projectId, entityType: "work-item-link", entityId: `${src.id}:${tgt.id}`, action: "delete", actor, metadata: { relation } })
+        return { removed: count }
+    }
+
+    const DeleteItem = async ({ item, actor } = {}) => {
+        const instance = await ResolveItem(item)
+        await instance.update({ deletedAt: new Date() })
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "delete", actor })
+        emit("item.deleted", { id: instance.id })
+        return { id: instance.id, deleted: true }
+    }
+
+    // -------- Checklist --------
+    const AddChecklistItem = async ({ item, text, actor } = {}) => {
+        const instance = await ResolveItem(item)
+        const order = await WorkItemChecklistItem.count({ where: { workItemId: instance.id } })
+        const row = await WorkItemChecklistItem.create({ id: NewId(), workItemId: instance.id, text, order })
+        emit("item.updated", { id: instance.id })
+        return Serialize(row)
+    }
+    const UpdateChecklistItem = async ({ checklistItem, text, done } = {}) => {
+        const row = await WorkItemChecklistItem.findOne({ where: { id: checklistItem } })
+        if(!row) throw new DomainError("NOT_FOUND", "Item de checklist não encontrado.", { ref: checklistItem })
+        const patch = {}
+        if(text !== undefined) patch.text = text
+        if(done !== undefined) patch.done = done
+        await row.update(patch)
+        return Serialize(row)
+    }
+    const RemoveChecklistItem = async ({ checklistItem } = {}) => {
+        await WorkItemChecklistItem.destroy({ where: { id: checklistItem } })
+        return { id: checklistItem, deleted: true }
+    }
+
+    // -------- Critérios de aceite --------
+    const AddAcceptanceCriteria = async ({ item, text } = {}) => {
+        const instance = await ResolveItem(item)
+        const order = await WorkItemAcceptanceCriteria.count({ where: { workItemId: instance.id } })
+        const row = await WorkItemAcceptanceCriteria.create({ id: NewId(), workItemId: instance.id, text, order })
+        return Serialize(row)
+    }
+    const UpdateAcceptanceCriteria = async ({ criteria, text, met } = {}) => {
+        const row = await WorkItemAcceptanceCriteria.findOne({ where: { id: criteria } })
+        if(!row) throw new DomainError("NOT_FOUND", "Critério não encontrado.", { ref: criteria })
+        const patch = {}
+        if(text !== undefined) patch.text = text
+        if(met !== undefined) patch.met = met
+        await row.update(patch)
+        return Serialize(row)
+    }
+    const RemoveAcceptanceCriteria = async ({ criteria } = {}) => {
+        await WorkItemAcceptanceCriteria.destroy({ where: { id: criteria } })
+        return { id: criteria, deleted: true }
+    }
+
+    return {
+        ResolveItem,
+        CreateItem, ListItems, GetItem, UpdateItem, SetStatus, Assign,
+        MoveItem, MoveToBoard, ReorderItem, ConvertItem, SetBlocked,
+        LinkItem, UnlinkItem, DeleteItem,
+        AddChecklistItem, UpdateChecklistItem, RemoveChecklistItem,
+        AddAcceptanceCriteria, UpdateAcceptanceCriteria, RemoveAcceptanceCriteria
+    }
+}
+
+module.exports = WorkItemsStore

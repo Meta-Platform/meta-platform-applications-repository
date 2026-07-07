@@ -1,0 +1,211 @@
+{
+    "name": "Boards",
+    "endpoints": [
+        {
+            "summary": "ListBoards",
+            "method": "GET",
+            "path": "/projects/:projectId/boards",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "CreateBoard",
+            "method": "POST",
+            "path": "/projects/:projectId/boards",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "name",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "description",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "type",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "GetBoard",
+            "method": "GET",
+            "path": "/boards/:boardId",
+            "parameters": [
+                {
+                    "name": "boardId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "UpdateBoard",
+            "method": "PATCH",
+            "path": "/boards/:boardId",
+            "parameters": [
+                {
+                    "name": "boardId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "name",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "description",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "type",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "DeleteBoard",
+            "method": "DELETE",
+            "path": "/boards/:boardId",
+            "parameters": [
+                {
+                    "name": "boardId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "AddColumn",
+            "method": "POST",
+            "path": "/boards/:boardId/columns",
+            "parameters": [
+                {
+                    "name": "boardId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "name",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "statusKey",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "color",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "wipLimit",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "isDoneColumn",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "UpdateColumn",
+            "method": "PATCH",
+            "path": "/boards/:boardId/columns/:columnId",
+            "parameters": [
+                {
+                    "name": "boardId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "columnId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "name",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "statusKey",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "color",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "order",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "DeleteColumn",
+            "method": "DELETE",
+            "path": "/boards/:boardId/columns/:columnId",
+            "parameters": [
+                {
+                    "name": "boardId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "columnId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        }
+    ]
+}

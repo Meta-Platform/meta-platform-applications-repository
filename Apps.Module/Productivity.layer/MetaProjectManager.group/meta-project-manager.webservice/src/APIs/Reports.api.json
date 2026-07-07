@@ -1,0 +1,119 @@
+{
+    "name": "Reports",
+    "endpoints": [
+        {
+            "summary": "ListActivity",
+            "method": "GET",
+            "path": "/activity",
+            "parameters": [
+                {
+                    "name": "project",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "limit",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "ReportProjectStatus",
+            "method": "GET",
+            "path": "/reports/project-status",
+            "parameters": [
+                {
+                    "name": "project",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "_",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "ReportBlocked",
+            "method": "GET",
+            "path": "/reports/blocked",
+            "parameters": [
+                {
+                    "name": "project",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "_",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "ReportOverdue",
+            "method": "GET",
+            "path": "/reports/overdue",
+            "parameters": [
+                {
+                    "name": "project",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "_",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "ReportByAssignee",
+            "method": "GET",
+            "path": "/reports/by-assignee",
+            "parameters": [
+                {
+                    "name": "project",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "_",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "ReportByAgent",
+            "method": "GET",
+            "path": "/reports/by-agent",
+            "parameters": [
+                {
+                    "name": "project",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "_",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        }
+    ]
+}

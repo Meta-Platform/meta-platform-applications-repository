@@ -1,0 +1,7 @@
+{
+  "name": "meta-project-manager.cli",
+  "version": "0.0.1",
+  "description": "CLI mpm do Meta Project Manager (paridade com a GUI, saída --json p/ agentes)",
+  "author": "Kaio Cezar <kadisk.shark@gmail.com>",
+  "license": "BSD-3-Clause"
+}

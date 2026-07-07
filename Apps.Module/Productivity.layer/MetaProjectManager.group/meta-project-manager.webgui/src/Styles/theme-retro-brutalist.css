@@ -1,0 +1,571 @@
+/*
+ * Meta System Retro-Brutalist UI — Overlay de tema
+ * ------------------------------------------------------------------
+ * Aplica a direção artística "Retro Technical Neo-Brutalism" por cima
+ * do semantic-ui-css e do CorporateTheme.css existente, SEM reescrever
+ * componentes (estratégia "manter e sobrepor").
+ *
+ * DEVE ser importado DEPOIS de:
+ *   1. semantic-ui-css/semantic.css
+ *   2. tokens.css
+ *   3. CorporateTheme.css
+ *
+ * O truque central: as variáveis legadas --eco-* (lidas por toda a
+ * aplicação) são reapontadas para os tokens --mp-*. Assim segments,
+ * cards, tabelas, inputs, labels e a sidebar adotam a paleta paper/ink
+ * instantaneamente, sem tocar em cada tela.
+ */
+
+/* ================================================================== */
+/* 1. Ponte de compatibilidade: --eco-*  ->  --mp-*                    */
+/* ================================================================== */
+:root {
+    --eco-canvas:    var(--mp-paper);          /* era cinza #dfdfdf  */
+    --eco-surface:   var(--mp-surface);        /* era #f2f4f7        */
+    --eco-surface-2: var(--mp-paper-2);        /* era #e7ebef        */
+    --eco-surface-3: var(--mp-paper-3);        /* era #dce1e6        */
+    --eco-border:    var(--mp-line);           /* borda escura forte */
+    --eco-border-2:  var(--mp-line-strong);
+    --eco-text:      var(--mp-ink);
+    --eco-muted:     var(--mp-muted);
+    --eco-accent:    var(--mp-accent-blue);
+    --eco-radius:    var(--mp-radius-md);
+    --eco-shadow:    var(--mp-shadow-1);       /* sombra dura curta  */
+    --eco-topbar-height: var(--mp-shell-topbar-h);
+}
+
+/* ================================================================== */
+/* 1b. Normalização de texto do Semantic UI → tokens                  */
+/* ------------------------------------------------------------------ */
+/* O Semantic hardcoda cor de texto (rgba(0,0,0,.87)/.6) em menus,    */
+/* listas, forms, dropdowns, etc. — no tema dark isso fica invisível. */
+/* Aqui apontamos tudo para --mp-ink / --mp-muted (legível em qualquer */
+/* tema). NÃO usa !important onde há estados coloridos (links/active). */
+/* ================================================================== */
+.ui.menu:not(.eco-main-menu) .item,
+.ui.list .item .header,
+.ui.list .list > .item .header,
+.ui.list .item > .content,
+.ui.form .field > label,
+.ui.form label,
+.ui.checkbox label,
+.ui.checkbox + label,
+.ui.dropdown .menu > .item,
+.ui.dropdown > .text,
+.ui.dropdown .menu > .header,
+.ui.statistic > .value,
+.ui.modal > .content,
+.ui.card > .content,
+.ui.card .header,
+.ui.items > .item .content,
+.ui.accordion .title:not(.active) {
+    color: var(--mp-ink);
+}
+.ui.list .item .description,
+.ui.list .item > .content > .description,
+.ui.card .meta,
+.ui.card .description {
+    color: var(--mp-muted) !important;
+}
+/* topbar (barra de sistema) sempre com texto em tinta do tema */
+.eco-main-menu.ui.menu .item,
+.eco-main-menu.ui.menu .header.item,
+.eco-main-menu-title,
+.eco-main-menu-path code { color: var(--mp-ink) !important; }
+/* navegador (sidebar): headers de item e subtítulos em tinta legível */
+.eco-navigator .ui.list .item .header,
+.eco-navigator .ui.list .list .item .header { color: var(--mp-ink); }
+.eco-nav-debug-toggle { color: var(--mp-muted) !important; }
+/* placeholders / inputs */
+::placeholder { color: var(--mp-muted-2); }
+/* breadcrumb (componente próprio) herda ink */
+.eco-breadcrumbs, .eco-breadcrumbs * { color: inherit; }
+
+/* ================================================================== */
+/* 2. Canvas: fundo tipo papel com grid técnico sutil                 */
+/* ================================================================== */
+html, body, #gui {
+    background:
+        linear-gradient(var(--mp-grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--mp-grid-line) 1px, transparent 1px),
+        var(--mp-paper) !important;
+    background-size: 16px 16px !important;
+    color: var(--mp-ink);
+}
+
+body {
+    font-family: var(--mp-font-ui);
+}
+
+/* dados técnicos (paths, sockets, hashes, comandos) em monoespaçada */
+code, kbd, samp, pre {
+    font-family: var(--mp-font-mono);
+}
+
+/* ================================================================== */
+/* 3. Superfícies (segments / cards) como objetos de sistema          */
+/* ================================================================== */
+/* ESCALA DE BORDAS (§2.2.1): segments internos são componentes "normais" →
+ * borda 1px suave (não competir). Superfícies estruturais (mastheads, tables,
+ * entity-headers, modais, object-cards) declaram sua própria borda 2px. */
+.ui.segment {
+    border: var(--mp-border-thin) !important;
+    border-radius: var(--mp-radius-md) !important;
+    box-shadow: var(--mp-shadow-1) !important;
+    background: var(--mp-surface);
+}
+.ui.placeholder.segment {
+    background: var(--mp-surface-2);
+    box-shadow: none !important;
+}
+.ui.card,
+.ui.cards > .card {
+    border: var(--mp-border-thin) !important;
+    border-radius: var(--mp-radius-md) !important;
+    box-shadow: var(--mp-shadow-1) !important;
+}
+.ui.card:hover,
+.ui.cards > .card:hover {
+    box-shadow: var(--mp-shadow-2) !important;
+    transform: translate(-1px, -1px);
+}
+
+/* O card externo de cada painel continua "flat" (regra do CorporateTheme).
+ * Reforçamos aqui para vencer a especificidade do bloco acima. */
+.eco-main-content > .ui.segment {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+}
+
+/* ================================================================== */
+/* 4. Botões — táteis, borda visível, sombra dura                     */
+/* ================================================================== */
+.ui.button {
+    border: var(--mp-border-strong) !important;
+    border-radius: var(--mp-radius-md) !important;
+    box-shadow: var(--mp-shadow-1);
+    font-weight: 800;
+    font-family: var(--mp-font-ui);
+    /* botão default/secundário = superfície do tema (evita claro-sobre-claro no
+     * dark, onde o cinza padrão do Semantic + texto claro ficam invisíveis).
+     * Coloridos/basic/secondary sobrescrevem via !important/especificidade. */
+    background: var(--mp-surface);
+    color: var(--mp-ink);
+    transition: transform .1s ease, box-shadow .1s ease;
+}
+.ui.button:hover { background: var(--mp-surface-2); }
+.ui.basic.button { background: transparent !important; color: var(--mp-ink) !important; }
+.ui.button:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: var(--mp-shadow-2);
+}
+.ui.button:active {
+    transform: translate(1px, 1px);
+    box-shadow: none;
+}
+/* botões "basic"/circulares de toolbar continuam discretos (sem sombra dura),
+ * mas ganham a borda escura para leitura de sistema. */
+.ui.basic.button,
+.ui.circular.icon.button {
+    box-shadow: none !important;
+}
+.ui.basic.button:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: var(--mp-shadow-1) !important;
+}
+/* mapeamento semântico das cores do Semantic para tokens de estado.
+ * Cobre também as variantes primary/secondary/positive/negative para que
+ * NENHUM botão use os azuis/verdes/vermelhos padrão do Semantic.
+ * `:not(.basic)` é essencial: sem ele, estas regras sólidas venceriam a
+ * transparência do Semantic e os botões `basic` coloridos virariam blocos
+ * sólidos (em vez de outline). */
+.ui.green.button:not(.basic),   .ui.green.buttons .button:not(.basic),
+.ui.positive.button:not(.basic) { background-color: var(--mp-success) !important; }
+.ui.red.button:not(.basic),     .ui.red.buttons .button:not(.basic),
+.ui.negative.button:not(.basic) { background-color: var(--mp-danger)  !important; }
+.ui.orange.button:not(.basic),  .ui.orange.buttons .button:not(.basic) { background-color: var(--mp-accent-orange) !important; }
+.ui.blue.button:not(.basic),    .ui.blue.buttons .button:not(.basic),
+.ui.primary.button:not(.basic)  { background-color: var(--mp-accent-blue) !important; }
+.ui.secondary.button:not(.basic) { background-color: var(--mp-ink-2) !important; color: var(--mp-paper) !important; }
+.ui.teal.button:not(.basic),    .ui.teal.buttons .button:not(.basic)   { background-color: var(--mp-accent-cyan) !important; }
+.ui.yellow.button:not(.basic),  .ui.yellow.buttons .button:not(.basic) { background-color: var(--mp-accent-yellow) !important; color: var(--mp-ink) !important; }
+
+/* botões "basic" coloridos: fundo transparente + cor semântica no texto/ícone,
+ * com a borda escura do sistema (outline consistente). */
+.ui.basic.green.button,   .ui.basic.positive.button { color: var(--mp-success) !important; }
+.ui.basic.red.button,     .ui.basic.negative.button { color: var(--mp-danger) !important; }
+.ui.basic.orange.button  { color: var(--mp-accent-orange) !important; }
+.ui.basic.blue.button,    .ui.basic.primary.button  { color: var(--mp-accent-blue) !important; }
+.ui.basic.teal.button    { color: var(--mp-accent-cyan) !important; }
+
+.ui.button:focus-visible {
+    outline: 3px solid var(--mp-accent-blue) !important;
+    outline-offset: 2px;
+}
+
+/* ================================================================== */
+/* 5. Badges / labels — linguagem consistente                         */
+/* ================================================================== */
+.ui.label {
+    /* label plano = superfície do tema (era #e8e8e8 do Semantic → pill branco
+     * brilhante no dark). Coloridos/basic sobrescrevem abaixo. */
+    background: var(--mp-surface-2);
+    color: var(--mp-ink-2);
+    border: 1.5px solid var(--mp-line-soft);
+    border-radius: 999px;
+    font-weight: 800;
+    font-family: var(--mp-font-ui);
+}
+.ui.basic.label {
+    background: var(--mp-surface-2) !important;
+    color: var(--mp-ink-2) !important;
+    border-color: var(--mp-line-soft) !important;
+}
+/* contadores circulares (sidebar/masthead): superfície discreta */
+.ui.circular.label,
+.ui.circular.empty.label { background: var(--mp-surface-2); color: var(--mp-ink-2); border-color: var(--mp-line-soft); }
+/* labels retangulares (ex.: tipo de pacote) mantêm cantos levemente suaves */
+.ui.label:not(.circular):not(.tag) {
+    border-radius: var(--mp-radius-sm);
+}
+.ui.green.label  { background-color: var(--mp-success) !important; border-color: var(--mp-line-strong); }
+.ui.red.label    { background-color: var(--mp-danger)  !important; border-color: var(--mp-line-strong); }
+.ui.orange.label { background-color: var(--mp-accent-orange) !important; border-color: var(--mp-line-strong); }
+.ui.blue.label   { background-color: var(--mp-accent-blue) !important; border-color: var(--mp-line-strong); }
+.ui.teal.label   { background-color: var(--mp-accent-cyan) !important; border-color: var(--mp-line-strong); }
+
+/* ================================================================== */
+/* 6. Tabelas — "ledger tables"                                       */
+/* ================================================================== */
+.ui.table {
+    border: var(--mp-border) !important;
+    border-radius: var(--mp-radius-md);
+    color: var(--mp-ink);
+    background: var(--mp-surface) !important;
+}
+.ui.table thead th {
+    background: var(--mp-paper-3) !important;
+    color: var(--mp-ink-2) !important;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    border-bottom: var(--mp-border) !important;
+}
+.ui.table tbody tr:hover {
+    background: var(--mp-surface-2) !important;
+}
+.ui.striped.table tbody tr:nth-child(2n) {
+    background: rgba(23, 23, 19, 0.025);
+}
+.ui.table tr.active,
+.ui.table td.active {
+    background: var(--mp-accent-blue-tint) !important;
+    box-shadow: inset 4px 0 0 var(--mp-accent-blue);
+}
+.ui.basic.table {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+.ui.basic.table tbody tr:not(:last-child) > td {
+    border-bottom: 1px solid var(--mp-line-faint);
+}
+
+/* ================================================================== */
+/* 7. Abas — segmentos de janela técnica                              */
+/* ================================================================== */
+/* TABS (secondary pointing) — usadas em TODAS as telas de detalhe. Robusto p/
+ * qualquer tema: inativo=muted legível, hover não escurece, ativo=acento. */
+.ui.secondary.pointing.menu {
+    border-bottom: var(--mp-border);
+}
+.ui.secondary.pointing.menu .item {
+    color: var(--mp-muted) !important;
+    background: transparent !important;
+    font-weight: 700;
+}
+.ui.secondary.pointing.menu .item:hover {
+    color: var(--mp-ink) !important;
+    background: transparent !important;
+}
+.ui.secondary.pointing.menu .active.item,
+.ui.secondary.pointing.menu .active.item:hover {
+    color: var(--mp-accent-blue) !important;
+    background: transparent !important;
+    border-color: var(--mp-accent-blue) !important;
+    border-bottom-width: 3px;
+}
+.ui.secondary.pointing.menu .item > .icon { color: inherit !important; }
+
+/* ================================================================== */
+/* 8. Inputs / dropdowns — estética retrô técnica                     */
+/* ================================================================== */
+.ui.input > input,
+.ui.selection.dropdown,
+.ui.form input:not([type]),
+.ui.form input[type="text"],
+.ui.form textarea {
+    background: var(--mp-surface) !important;
+    border: var(--mp-border) !important;
+    border-radius: var(--mp-radius-md) !important;
+    color: var(--mp-ink) !important;
+}
+.ui.input > input:focus,
+.ui.selection.dropdown:focus,
+.ui.selection.active.dropdown {
+    outline: 3px solid var(--mp-accent-blue);
+    outline-offset: 1px;
+    border-color: var(--mp-line-strong) !important;
+}
+
+/* ================================================================== */
+/* 9. Faixa de cabeçalho de card (header/toolbar dentro do segment)   */
+/* ================================================================== */
+.ui.segment > .ui.header:first-child,
+.ui.segment > .ui.secondary.menu:first-child {
+    background: var(--mp-paper-2);
+    border-bottom: var(--mp-border) !important;
+}
+.ui.header {
+    color: var(--mp-ink);
+    font-family: var(--mp-font-display);
+    letter-spacing: -0.01em;
+}
+.ui.header .sub.header { color: var(--mp-muted); }
+
+code {
+    background: var(--mp-surface-2);
+    border: 1px solid var(--mp-line-faint);
+    border-radius: var(--mp-radius-sm);
+    color: var(--mp-ink-2);
+}
+
+/* ================================================================== */
+/* 10. Shell — topbar como barra de sistema                          */
+/* ================================================================== */
+.eco-main-menu.ui.menu {
+    background: var(--mp-paper-2) !important;
+    border: none !important;
+    border-bottom: var(--mp-border-strong) !important;
+    box-shadow: var(--mp-shadow-1) !important;
+    min-height: var(--mp-shell-topbar-h);
+}
+.eco-main-menu-title {
+    font-family: var(--mp-font-display);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+}
+/* o path do EcosystemData vira um chip técnico copiável */
+.eco-main-menu-path code {
+    background: var(--mp-surface);
+    border: 1.5px solid var(--mp-line-soft);
+    border-radius: var(--mp-radius-sm);
+    padding: 3px 8px;
+    color: var(--mp-ink-2);
+}
+
+/* ================================================================== */
+/* 11. Shell — sidebar canônica                                       */
+/* ================================================================== */
+.eco-sidebar-fixed,
+.eco-sidebar-drawer {
+    background: var(--mp-paper-2);
+    border-right: var(--mp-border) !important;
+}
+.eco-sidebar-drawer {
+    box-shadow: var(--mp-shadow-soft);
+}
+.eco-navigator .ui.styled.accordion {
+    border: var(--mp-border-thin);
+    border-radius: var(--mp-radius-md);
+    background: var(--mp-surface);
+    box-shadow: none;
+}
+.eco-navigator .ui.styled.accordion > .title {
+    color: var(--mp-ink);
+    font-weight: 700;
+    border-top: 1px solid var(--mp-line-faint);
+}
+/* item ativo: faixa lateral colorida + fundo surface (padrão do guia) */
+.eco-nav-subtitle.active,
+.eco-nav-repo-title.active {
+    color: var(--mp-accent-blue);
+    background: var(--mp-accent-blue-tint);
+    border-left: 3px solid var(--mp-accent-blue);
+    border-radius: 0 var(--mp-radius-sm) var(--mp-radius-sm) 0;
+}
+.eco-nav-subtitle,
+.eco-nav-repo-title {
+    color: var(--mp-ink-3);
+}
+
+/* ================================================================== */
+/* 12. Modais — janelas de sistema                                    */
+/* ================================================================== */
+.ui.modal {
+    background: var(--mp-surface) !important;
+    border: var(--mp-border-strong) !important;
+    border-radius: var(--mp-radius-lg) !important;
+    box-shadow: var(--mp-shadow-2) !important;
+}
+/* corpo do modal temado (senão fica branco no dark) */
+.ui.modal > .content {
+    background: var(--mp-surface) !important;
+    color: var(--mp-ink) !important;
+}
+.ui.modal > .content .description,
+.ui.modal > .content p { color: var(--mp-ink-2); }
+.ui.modal > .header {
+    background: var(--mp-paper-2) !important;
+    border-bottom: var(--mp-border) !important;
+    font-family: var(--mp-font-display);
+    color: var(--mp-ink) !important;
+}
+.ui.modal > .actions {
+    background: var(--mp-surface-2) !important;
+    border-top: var(--mp-border) !important;
+}
+/* titlebar por severidade (ModalWindow) */
+.ui.modal > .header.mp-modal-head--danger { background: var(--mp-danger-tint) !important; border-bottom-color: var(--mp-danger) !important; }
+.ui.modal > .header.mp-modal-head--edit   { background: var(--mp-warning-tint) !important; border-bottom-color: var(--mp-warning) !important; }
+
+/* ================================================================== */
+/* 12b. Superfícies Semantic dark-safe (checkbox, message, dropdown)  */
+/* ------------------------------------------------------------------ */
+/* Estes componentes hardcodam fundo/texto claros → invisíveis/brancos */
+/* no tema dark. Aqui usamos tokens (temam em qualquer tema).          */
+/* ================================================================== */
+/* checkbox / toggle labels (ex.: "auto-scroll", "show -dbg") */
+.ui.checkbox label,
+.ui.checkbox + label,
+.ui.toggle.checkbox label,
+.ui.radio.checkbox label { color: var(--mp-ink) !important; }
+.ui.checkbox .box::before,
+.ui.checkbox label::before { background: var(--mp-surface) !important; border-color: var(--mp-line) !important; }
+
+/* messages / toasts com tint que tema (claro no light, escuro no dark) */
+.ui.message {
+    background: var(--mp-surface-2);
+    color: var(--mp-ink);
+    border: var(--mp-border-thin);
+    box-shadow: var(--mp-shadow-1) !important;
+}
+.ui.message .header,
+.ui.message .content { color: var(--mp-ink) !important; }
+.ui.positive.message, .ui.success.message { background: var(--mp-success-tint) !important; box-shadow: inset 0 0 0 2px var(--mp-success) !important; }
+.ui.negative.message, .ui.error.message   { background: var(--mp-danger-tint) !important;  box-shadow: inset 0 0 0 2px var(--mp-danger) !important; }
+.ui.warning.message                        { background: var(--mp-warning-tint) !important; box-shadow: inset 0 0 0 2px var(--mp-warning) !important; }
+.ui.info.message                           { background: var(--mp-accent-blue-tint) !important; box-shadow: inset 0 0 0 2px var(--mp-accent-blue) !important; }
+
+/* dropdown menu (o popover) temável — cobre `simple`, `.text`, `.header` e ícones */
+.ui.dropdown .menu,
+.ui.dropdown.simple > .menu,
+.eco-main-menu .ui.dropdown .menu {
+    background: var(--mp-surface) !important;
+    border: var(--mp-border) !important;
+    box-shadow: var(--mp-shadow-2) !important;
+}
+.ui.menu .ui.dropdown .menu > .item,
+.ui.dropdown .menu > .item,
+.ui.dropdown .menu > .item > .text,
+.ui.dropdown .menu > .item .text,
+.ui.dropdown.simple > .menu > .item,
+.eco-main-menu .ui.dropdown .menu > .item { color: var(--mp-ink) !important; opacity: 1 !important; }
+.ui.dropdown .menu > .item > .icon,
+.ui.dropdown .menu > .item .icon,
+.ui.dropdown .menu > .header > .icon { color: inherit !important; }
+.ui.dropdown .menu > .header,
+.ui.dropdown .menu > .header > .text { color: var(--mp-muted) !important; }
+.ui.dropdown .menu > .divider { border-top: 1px solid var(--mp-line-faint) !important; }
+.ui.dropdown .menu > .item:hover,
+.ui.dropdown.simple > .menu > .item:hover { background: var(--mp-surface-2) !important; color: var(--mp-ink) !important; }
+.ui.dropdown .menu > .active.item { background: var(--mp-accent-blue-tint) !important; color: var(--mp-ink) !important; }
+/* popup (tooltips) */
+.ui.popup { background: var(--mp-surface) !important; color: var(--mp-ink) !important; border: var(--mp-border) !important; }
+.ui.popup::before { background: var(--mp-surface) !important; box-shadow: -1px -1px 0 0 var(--mp-line) !important; }
+
+/* ---- toggle switch (não pode ser branco brilhante no dark) ---- */
+.ui.toggle.checkbox input ~ label::before,
+.ui.toggle.checkbox input ~ .box::before { background: var(--mp-surface-muted) !important; }
+.ui.toggle.checkbox input:checked ~ label::before,
+.ui.toggle.checkbox input:checked ~ .box::before { background: var(--mp-accent-blue) !important; }
+.ui.toggle.checkbox input ~ label::after,
+.ui.toggle.checkbox input ~ .box::after { background: var(--mp-line-strong) !important; box-shadow: none !important; }
+
+/* ---- tabs (secondary pointing): item sem fundo, texto legível ---- */
+.ui.secondary.pointing.menu .item { background: transparent !important; }
+.ui.secondary.pointing.menu .active.item { background: transparent !important; }
+
+/* ---- hovers: sempre CLAREAR (surface-2), NUNCA escurecer no dark ----
+ * Precisa casar os seletores EXATOS do Semantic (`.selectable.table > tbody
+ * > tr:hover` tem +especificidade que `.ui.table`), senão o rgba(0,0,0,.05)
+ * dele vence e a linha fica preta ao passar o mouse. */
+.ui.selectable.table > tbody > tr:hover,
+.ui.selectable.table > tbody > tr:hover > td,
+.ui.table tbody tr.selectable:hover,
+.ui.table tbody tr.selectable:hover > td,
+.ui.selectable.table tbody tr:hover,
+.ui.selectable.table tbody tr:hover td,
+.ui.table tbody tr:hover,
+.ui.table tbody tr:hover td {
+    background: var(--mp-surface-2) !important;
+    color: var(--mp-ink) !important;
+}
+.ui.striped.table > tbody > tr:nth-child(2n),
+.ui.striped.table tbody tr:nth-child(2n) { background: var(--mp-surface-2) !important; }
+/* menus / listas / dropdown selected */
+.ui.menu:not(.eco-main-menu) .item:hover,
+.ui.list > .item:hover,
+.ui.dropdown .menu > .item.selected,
+.ui.dropdown .menu .selected.item { background: var(--mp-surface-2) !important; color: var(--mp-ink) !important; }
+/* linha/célula ATIVA da tabela: tint de acento (nunca overlay escuro) */
+.ui.table tr.active,
+.ui.table tr.active td,
+.ui.table td.active,
+.ui.selectable.table > tbody > tr.active:hover,
+.ui.selectable.table > tbody > tr.active:hover > td { background: var(--mp-accent-blue-tint) !important; color: var(--mp-ink) !important; }
+
+/* ================================================================== */
+/* 13. Foco visível global (acessibilidade)                          */
+/* ================================================================== */
+.ui.list .item:focus-visible,
+.ui.menu .item:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible,
+.ui.table tbody tr:focus-visible {
+    outline: 3px solid var(--mp-accent-blue) !important;
+    outline-offset: 2px;
+    border-radius: var(--mp-radius-sm);
+}
+
+/* ================================================================== */
+/* 13b. Loaders / dimmers — combinar com o sistema                    */
+/* ================================================================== */
+.ui.loader:after {
+    border-color: var(--mp-accent-blue) transparent transparent !important;
+}
+.ui.loader:before {
+    border-color: var(--mp-line-faint) !important;
+}
+.ui.dimmer {
+    background: rgba(246, 240, 222, 0.55) !important; /* paper translúcido, não preto */
+}
+.ui.inverted.dimmer { background: rgba(11, 16, 32, 0.72) !important; }
+/* Semantic Placeholder (quando ainda usado) em tom papel */
+.ui.placeholder,
+.ui.placeholder .line { background: var(--mp-surface-2) !important; }
+.ui.placeholder .line:after,
+.ui.placeholder .line:before { background: var(--mp-paper) !important; }
+
+/* ================================================================== */
+/* 14. Scrollbars alinhadas ao papel                                  */
+/* ================================================================== */
+*::-webkit-scrollbar-thumb {
+    background: var(--mp-line-soft);
+    border: 2px solid var(--mp-paper);
+    border-radius: var(--mp-radius-sm);
+}
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--mp-muted);
+}

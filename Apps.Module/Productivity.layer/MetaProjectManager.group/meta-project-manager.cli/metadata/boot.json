@@ -1,0 +1,18 @@
+{
+    "executables": [
+        {
+            "dependency": "@//command-group",
+            "executableName": "mpm",
+            "bound-params": {
+                "projectStoreLib": "@/project-store.lib"
+            }
+        },
+        {
+            "dependency": "@//command-group",
+            "executableName": "meta-project-manager",
+            "bound-params": {
+                "projectStoreLib": "@/project-store.lib"
+            }
+        }
+    ]
+}

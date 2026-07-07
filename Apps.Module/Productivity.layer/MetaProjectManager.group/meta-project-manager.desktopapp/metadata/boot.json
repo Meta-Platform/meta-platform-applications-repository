@@ -1,0 +1,45 @@
+{
+    "params": [
+        "serverName",
+        "RT_ENV_GENERATED_DIR_NAME",
+        "MPM_DB_FILE_PATH",
+        "MPM_ATTACHMENTS_DIR_PATH",
+        "MPM_MAX_ATTACHMENT_BYTES"
+    ],
+    "windows": [
+        {
+            "title": "Meta Project Manager",
+            "width": 1360,
+            "height": 860,
+            "dependency": "@/meta-project-manager.webgui",
+            "params": {
+                "serverName": "{{serverName}}",
+                "RT_ENV_GENERATED_DIR_NAME": "{{RT_ENV_GENERATED_DIR_NAME}}",
+                "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+            },
+            "bound-params": {
+                "metaProjectManagerWebgui": "@/meta-project-manager.webgui",
+                "metaProjectManagerGuiService": "@/meta-project-manager-gui.service",
+                "metaProjectManagerWebservice": "@/meta-project-manager.webservice",
+                "projectStoreLib": "@/project-store.lib"
+            },
+            "gui-host": {
+                "webgui": "metaProjectManagerWebgui",
+                "guiService": "guiService",
+                "serviceGraph": [
+                    {
+                        "ref": "guiService",
+                        "package": "metaProjectManagerGuiService",
+                        "factory": "Services/MetaProjectManagerGui.service",
+                        "boundLibs": {
+                            "metaProjectManagerWebservice": "metaProjectManagerWebservice",
+                            "projectStoreLib": "projectStoreLib"
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

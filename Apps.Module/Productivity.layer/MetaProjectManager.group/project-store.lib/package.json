@@ -1,0 +1,11 @@
+{
+  "name": "project-store.lib",
+  "version": "0.0.1",
+  "description": "Domínio, persistência (SQLite/Sequelize) e auditoria do Meta Project Manager",
+  "author": "Kaio Cezar <kadisk.shark@gmail.com>",
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "sequelize": "^6.37.5",
+    "sqlite3": "^5.1.7"
+  }
+}

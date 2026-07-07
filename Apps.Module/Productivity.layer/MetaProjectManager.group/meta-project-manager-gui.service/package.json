@@ -1,0 +1,7 @@
+{
+  "name": "meta-project-manager-gui.service",
+  "version": "0.0.1",
+  "description": "Serviço GUI-host (IPC) do Meta Project Manager para o desktop",
+  "author": "Kaio Cezar <kadisk.shark@gmail.com>",
+  "license": "BSD-3-Clause"
+}

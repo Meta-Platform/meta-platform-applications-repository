@@ -1,0 +1,55 @@
+{
+    "params": [
+        "port",
+        "serverName",
+        "serverManagerUrl",
+        "RT_ENV_GENERATED_DIR_NAME",
+        "isWatch",
+        "MPM_DB_FILE_PATH",
+        "MPM_ATTACHMENTS_DIR_PATH",
+        "MPM_MAX_ATTACHMENT_BYTES"
+    ],
+    "services": [
+        {
+            "namespace": "@@/server-service",
+            "dependency": "@/server-manager.service/services/HTTPServerService",
+            "params": {
+                "name": "{{serverName}}",
+                "port": "{{port}}"
+            }
+        }
+    ],
+    "endpoints": [
+        {
+            "dependency": "@/server-manager.webservice/endpoint-group",
+            "bound-params": {
+                "serverServiceForController": "@@/server-service",
+                "serverService": "@@/server-service"
+            }
+        },
+        {
+            "dependency": "@/meta-project-manager.webservice/endpoint-group",
+            "params": {
+                "MPM_DB_FILE_PATH": "{{MPM_DB_FILE_PATH}}",
+                "MPM_ATTACHMENTS_DIR_PATH": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                "MPM_MAX_ATTACHMENT_BYTES": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+            },
+            "bound-params": {
+                "serverService": "@@/server-service",
+                "projectStoreLib": "@/project-store.lib"
+            }
+        },
+        {
+            "dependency": "@/meta-project-manager.webgui/endpoint-group",
+            "params": {
+                "serverManagerUrl": "{{serverManagerUrl}}",
+                "serverName": "{{serverName}}",
+                "RT_ENV_GENERATED_DIR_NAME": "{{RT_ENV_GENERATED_DIR_NAME}}",
+                "isWatch": "isWatch"
+            },
+            "bound-params": {
+                "serverService": "@@/server-service"
+            }
+        }
+    ]
+}
