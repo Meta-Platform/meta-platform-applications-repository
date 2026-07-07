@@ -15,9 +15,11 @@ const F_EG_ENDPOINT   = [{ key:"url", label:"url" }, { key:"type", label:"type" 
 const F_EXECUTABLE    = [{ key:"executableName", label:"executableName" }, { key:"dependency", label:"dependency" }]
 const F_WINDOW        = [{ key:"title", label:"title" }, { key:"dependency", label:"dependency" }, { key:"width", label:"width", type:"number" }, { key:"height", label:"height", type:"number" }, { key:"params", label:"params", type:"keyvalue" }, { key:"bound-params", label:"bound-params", type:"keyvalue" }]
 
+const HL:any = { background:"var(--mp-accent-soft, rgba(20,214,200,0.16))", boxShadow:"inset 2px 0 0 var(--mp-accent, #14D6C8)", borderRadius:4 }
+
 // Nó colapsável. Caret expande/colapsa; clicar no rótulo seleciona (mostra
 // detalhes no painel), se `detail` for fornecido.
-const TreeNode = ({ icon, color, label, count, detail, onSelect, defaultOpen, children }:any) => {
+const TreeNode = ({ icon, color, label, count, detail, onSelect, defaultOpen, selected, children }:any) => {
     const [open, setOpen] = useState(!!defaultOpen)
     const has = React.Children.count(children) > 0
     return <List.Item>
@@ -26,7 +28,7 @@ const TreeNode = ({ icon, color, label, count, detail, onSelect, defaultOpen, ch
             style={{cursor: has ? "pointer" : "default"}} onClick={() => has && setOpen(!open)} />
         <List.Content style={{minWidth:0, overflow:"hidden"}}>
             <List.Header title={typeof label === "string" ? label : undefined}
-                style={{cursor:"pointer", fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}
+                style={{cursor:"pointer", fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", padding:"1px 4px", ...(selected ? HL : {})}}
                 onClick={() => detail && onSelect && onSelect(detail)}>
                 <Icon name={icon} color={color} />{label}
                 { count != null && <span style={{opacity:0.5, marginLeft:6, fontWeight:400}}>({count})</span> }
@@ -38,10 +40,10 @@ const TreeNode = ({ icon, color, label, count, detail, onSelect, defaultOpen, ch
 
 const nowrap:any = { whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", display:"block", maxWidth:"100%" }
 
-const Leaf = ({ icon, color, title, subtitle, detail, onSelect }:any) =>
+const Leaf = ({ icon, color, title, subtitle, detail, onSelect, selected }:any) =>
     <List.Item style={{cursor:"pointer"}} onClick={() => detail && onSelect && onSelect(detail)}>
         <List.Icon name={icon} color={color} />
-        <List.Content style={{minWidth:0, overflow:"hidden"}}>
+        <List.Content style={{minWidth:0, overflow:"hidden", padding:"1px 4px", ...(selected ? HL : {})}}>
             <List.Header title={title} style={{fontWeight:400, ...nowrap}}>{title}</List.Header>
             { subtitle && <List.Description title={subtitle} style={{fontSize:"0.82em", opacity:0.75, ...nowrap}}>{subtitle}</List.Description> }
         </List.Content>
@@ -60,7 +62,7 @@ const CommandLeaf = ({ cmd, onSelect }:any) => {
 
 // Árvore de componentes de um pacote (Boot / Services / Endpoints / Commands),
 // carregada sob demanda. `onSelect(detail)` mostra os detalhes do item clicado.
-const PackageComponentsTree = ({ HTTPServerManager, workspace, pkg, onSelect }:any) => {
+const PackageComponentsTree = ({ HTTPServerManager, workspace, pkg, onSelect, selectedKey }:any) => {
 
     const [metadata, setMetadata] = useState<any>()
     const [loading, setLoading]   = useState(true)
@@ -97,15 +99,17 @@ const PackageComponentsTree = ({ HTTPServerManager, workspace, pkg, onSelect }:a
     const svcSel  = sel("/metadata/services.json")
     const egSel   = sel("/metadata/endpoint-group.json")
     const cgSel   = sel("/metadata/command-group.json")
+    // Destaca o nó cuja (file#path) casa a aba ativa do editor.
+    const SEL = (file:string, path:any[]) => !!selectedKey && selectedKey === `${file}#${(path || []).join(".")}`
 
     return <>
         {
             hasBoot &&
-            <TreeNode icon="play" color="orange" label="Boot" defaultOpen
+            <TreeNode icon="play" color="orange" label="Boot" defaultOpen selected={SEL("/metadata/boot.json", [])}
                 detail={{ title:"Boot", icon:"play", data: boot, kind:"boot", path:[] }} onSelect={bootSel}>
                 {
                     Array.isArray(boot.params) && boot.params.length > 0 &&
-                    <TreeNode icon="sliders horizontal" color="grey" label="Params" count={boot.params.length}
+                    <TreeNode icon="sliders horizontal" color="grey" label="Params" count={boot.params.length} selected={SEL("/metadata/boot.json", ["params"])}
                         detail={{ title:"Boot · Params", icon:"sliders horizontal", data: boot.params, kind:"strings", path:["params"] }} onSelect={bootSel}>
                         { boot.params.map((p:string, i:number) => <Leaf key={i} icon="dot circle outline" color="grey" title={p}
                             detail={{ title:"Boot · Params", icon:"sliders horizontal", data: boot.params, kind:"strings", path:["params"] }} onSelect={bootSel} />) }
@@ -113,33 +117,33 @@ const PackageComponentsTree = ({ HTTPServerManager, workspace, pkg, onSelect }:a
                 }
                 {
                     Array.isArray(boot.executables) && boot.executables.length > 0 &&
-                    <TreeNode icon="terminal" color="grey" label="Executables" count={boot.executables.length}
+                    <TreeNode icon="terminal" color="grey" label="Executables" count={boot.executables.length} selected={SEL("/metadata/boot.json", ["executables"])}
                         detail={{ title:"Boot · Executables", icon:"terminal", data: boot.executables, kind:"list", path:["executables"], fields: F_EXECUTABLE, emptyItem:{ executableName:"", dependency:"" } }} onSelect={bootSel}>
-                        { boot.executables.map((e:any, i:number) => <Leaf key={i} icon="terminal" color="grey" title={e.executableName} subtitle={e.dependency}
+                        { boot.executables.map((e:any, i:number) => <Leaf key={i} icon="terminal" color="grey" title={e.executableName} subtitle={e.dependency} selected={SEL("/metadata/boot.json", ["executables", i])}
                             detail={{ title:`Executable · ${e.executableName}`, icon:"terminal", data: e, kind:"record", path:["executables", i], fields: F_EXECUTABLE }} onSelect={bootSel} />) }
                     </TreeNode>
                 }
                 {
                     Array.isArray(boot.services) && boot.services.length > 0 &&
-                    <TreeNode icon="cogs" color="green" label="Services" count={boot.services.length}
+                    <TreeNode icon="cogs" color="green" label="Services" count={boot.services.length} selected={SEL("/metadata/boot.json", ["services"])}
                         detail={{ title:"Boot · Services", icon:"cogs", data: boot.services, kind:"list", path:["services"], fields: F_BOOT_SERVICE, emptyItem:{ namespace:"", dependency:"" } }} onSelect={bootSel}>
-                        { boot.services.map((s:any, i:number) => <Leaf key={i} icon="cog" color="green" title={s.namespace} subtitle={s.dependency}
+                        { boot.services.map((s:any, i:number) => <Leaf key={i} icon="cog" color="green" title={s.namespace} subtitle={s.dependency} selected={SEL("/metadata/boot.json", ["services", i])}
                             detail={{ title:`Service · ${s.namespace}`, icon:"cog", data: s, kind:"record", path:["services", i], fields: F_BOOT_SERVICE }} onSelect={bootSel} />) }
                     </TreeNode>
                 }
                 {
                     Array.isArray(boot.endpoints) && boot.endpoints.length > 0 &&
-                    <TreeNode icon="globe" color="blue" label="Endpoints" count={boot.endpoints.length}
+                    <TreeNode icon="globe" color="blue" label="Endpoints" count={boot.endpoints.length} selected={SEL("/metadata/boot.json", ["endpoints"])}
                         detail={{ title:"Boot · Endpoints", icon:"globe", data: boot.endpoints, kind:"list", path:["endpoints"], fields: F_BOOT_ENDPOINT, emptyItem:{ dependency:"" } }} onSelect={bootSel}>
-                        { boot.endpoints.map((e:any, i:number) => <Leaf key={i} icon="linkify" color="blue" title={e.dependency}
+                        { boot.endpoints.map((e:any, i:number) => <Leaf key={i} icon="linkify" color="blue" title={e.dependency} selected={SEL("/metadata/boot.json", ["endpoints", i])}
                             detail={{ title:`Endpoint · ${e.dependency}`, icon:"linkify", data: e, kind:"record", path:["endpoints", i], fields: F_BOOT_ENDPOINT }} onSelect={bootSel} />) }
                     </TreeNode>
                 }
                 {
                     Array.isArray(boot.windows) && boot.windows.length > 0 &&
-                    <TreeNode icon="window maximize outline" color="purple" label="Windows" count={boot.windows.length}
+                    <TreeNode icon="window maximize outline" color="purple" label="Windows" count={boot.windows.length} selected={SEL("/metadata/boot.json", ["windows"])}
                         detail={{ title:"Boot · Windows", icon:"window maximize outline", data: boot.windows, kind:"list", path:["windows"], fields: F_WINDOW, emptyItem:{ title:"", dependency:"" } }} onSelect={bootSel}>
-                        { boot.windows.map((w:any, i:number) => <Leaf key={i} icon="window maximize outline" color="purple" title={w.title} subtitle={w.url || w.dependency}
+                        { boot.windows.map((w:any, i:number) => <Leaf key={i} icon="window maximize outline" color="purple" title={w.title} subtitle={w.url || w.dependency} selected={SEL("/metadata/boot.json", ["windows", i])}
                             detail={{ title:`Window · ${w.title}`, icon:"window maximize outline", data: w, kind:"record", path:["windows", i], fields: F_WINDOW }} onSelect={bootSel} />) }
                     </TreeNode>
                 }
@@ -147,24 +151,24 @@ const PackageComponentsTree = ({ HTTPServerManager, workspace, pkg, onSelect }:a
         }
         {
             hasServices &&
-            <TreeNode icon="cogs" color="green" label="Serviços" count={services.length}
+            <TreeNode icon="cogs" color="green" label="Serviços" count={services.length} selected={SEL("/metadata/services.json", [])}
                 detail={{ title:"Serviços", icon:"cogs", data: services, kind:"list", path:[], fields: F_SERVICE, emptyItem:{ namespace:"", path:"" } }} onSelect={svcSel}>
-                { services.map((s:any, i:number) => <Leaf key={i} icon="cog" color="green" title={s.namespace} subtitle={s.path}
+                { services.map((s:any, i:number) => <Leaf key={i} icon="cog" color="green" title={s.namespace} subtitle={s.path} selected={SEL("/metadata/services.json", [i])}
                     detail={{ title:`Serviço · ${s.namespace}`, icon:"cog", data: s, kind:"record", path:[i], fields: F_SERVICE }} onSelect={svcSel} />) }
             </TreeNode>
         }
         {
             hasEndpoints &&
-            <TreeNode icon="globe" color="blue" label="Endpoints" count={eg.endpoints.length}
+            <TreeNode icon="globe" color="blue" label="Endpoints" count={eg.endpoints.length} selected={SEL("/metadata/endpoint-group.json", ["endpoints"])}
                 detail={{ title:"Endpoints", icon:"globe", data: eg.endpoints, kind:"list", path:["endpoints"], fields: F_EG_ENDPOINT, emptyItem:{ url:"", type:"controller" } }} onSelect={egSel}>
-                { eg.endpoints.map((e:any, i:number) => <Leaf key={i} icon="linkify" color="blue" title={e.url || e.dependency} subtitle={e.type}
+                { eg.endpoints.map((e:any, i:number) => <Leaf key={i} icon="linkify" color="blue" title={e.url || e.dependency} subtitle={e.type} selected={SEL("/metadata/endpoint-group.json", ["endpoints", i])}
                     detail={{ title:`Endpoint · ${e.url || e.dependency}`, icon:"linkify", data: e, kind:"record", path:["endpoints", i], fields: F_EG_ENDPOINT }} onSelect={egSel} />) }
             </TreeNode>
         }
         {
             hasCommands &&
-            <TreeNode icon="terminal" color="teal" label="Comandos" count={cg.commands.length}
-                detail={{ title:"Comandos", icon:"terminal", data: cg.commands }} onSelect={cgSel}>
+            <TreeNode icon="terminal" color="teal" label="Comandos" count={cg.commands.length} selected={SEL("/metadata/command-group.json", ["commands"])}
+                detail={{ title:"Comandos", icon:"terminal", data: cg.commands, kind:"commands", path:["commands"] }} onSelect={cgSel}>
                 { cg.commands.map((c:any, i:number) => <CommandLeaf key={i} cmd={c} onSelect={cgSel} />) }
             </TreeNode>
         }

@@ -1,5 +1,6 @@
 import * as React from "react"
-import { Header, Button, Input, Icon } from "semantic-ui-react"
+import { useState } from "react"
+import { Header, Button, Input, Icon, Menu } from "semantic-ui-react"
 
 import { StringListEditor, RecordListEditor } from "./MetadataFormControls"
 import { setKey, patchRecord, addRecord, removeRecord } from "./metadataFormLogic"
@@ -10,54 +11,56 @@ const Section = ({ title, children }:any) =>
         {children}
     </div>
 
-// ----- boot.json (objeto) — preserva chaves de topo não modeladas -----
+// Sub-tabs para dividir seções de um form (menos scroll).
+const Tabbed = ({ sections }:any) => {
+    const avail = sections.filter(Boolean)
+    const [tab, setTab] = useState<string>(avail[0] ? avail[0].key : "")
+    const active = avail.some((s:any) => s.key === tab) ? tab : (avail[0] ? avail[0].key : "")
+    if(avail.length === 0) return null
+    if(avail.length === 1) return <div>{avail[0].render()}</div>
+    return <div>
+        <Menu pointing secondary size="small" style={{marginBottom:12, flexWrap:"wrap"}}>
+            { avail.map((s:any) => <Menu.Item key={s.key} active={active === s.key} onClick={() => setTab(s.key)}>{s.label}</Menu.Item>) }
+        </Menu>
+        { (avail.find((s:any) => s.key === active) || avail[0]).render() }
+    </div>
+}
+
+// ----- boot.json (objeto) — seções em sub-tabs. Preserva chaves não modeladas. -----
 export const BootForm = ({ value, onChange }:any) => {
     const v = value && typeof value === "object" ? value : {}
     const set = (key:string, val:any) => onChange(setKey(v, key, val))
-    return <div>
-        <Section title="Params">
-            <StringListEditor value={v.params || []} placeholder="port" onChange={(x:any) => set("params", x)} />
-        </Section>
-        <Section title="Executables">
+    return <Tabbed sections={[
+        { key:"params", label:"Params", render: () =>
+            <StringListEditor value={v.params || []} placeholder="port" onChange={(x:any) => set("params", x)} /> },
+        { key:"executables", label:"Executables", render: () =>
             <RecordListEditor value={v.executables || []} onChange={(x:any) => set("executables", x)}
                 emptyItem={{ executableName: "", dependency: "" }}
                 itemLabel={(it:any) => it.executableName || "executable"}
-                fields={[{ key:"executableName", label:"executableName" }, { key:"dependency", label:"dependency" }]} />
-        </Section>
-        <Section title="Services">
+                fields={[{ key:"executableName", label:"executableName" }, { key:"dependency", label:"dependency" }]} /> },
+        { key:"services", label:"Services", render: () =>
             <RecordListEditor value={v.services || []} onChange={(x:any) => set("services", x)}
                 emptyItem={{ namespace: "", dependency: "", params: {}, "bound-params": {} }}
                 itemLabel={(it:any) => it.namespace || "service"}
                 fields={[
-                    { key:"namespace", label:"namespace" },
-                    { key:"dependency", label:"dependency" },
-                    { key:"params", label:"params", type:"keyvalue" },
-                    { key:"bound-params", label:"bound-params", type:"keyvalue" }
-                ]} />
-        </Section>
-        <Section title="Endpoints">
+                    { key:"namespace", label:"namespace" }, { key:"dependency", label:"dependency" },
+                    { key:"params", label:"params", type:"keyvalue" }, { key:"bound-params", label:"bound-params", type:"keyvalue" }
+                ]} /> },
+        { key:"endpoints", label:"Endpoints", render: () =>
             <RecordListEditor value={v.endpoints || []} onChange={(x:any) => set("endpoints", x)}
                 emptyItem={{ dependency: "", "bound-params": {} }}
                 itemLabel={(it:any) => it.dependency || "endpoint"}
-                fields={[
-                    { key:"dependency", label:"dependency" },
-                    { key:"bound-params", label:"bound-params", type:"keyvalue" }
-                ]} />
-        </Section>
-        <Section title="Windows">
+                fields={[{ key:"dependency", label:"dependency" }, { key:"bound-params", label:"bound-params", type:"keyvalue" }]} /> },
+        { key:"windows", label:"Windows", render: () =>
             <RecordListEditor value={v.windows || []} onChange={(x:any) => set("windows", x)}
                 emptyItem={{ title: "", dependency: "", width: 1280, height: 800, params: {}, "bound-params": {} }}
                 itemLabel={(it:any) => it.title || "window"}
                 fields={[
-                    { key:"title", label:"title" },
-                    { key:"dependency", label:"dependency" },
-                    { key:"width", label:"width", type:"number" },
-                    { key:"height", label:"height", type:"number" },
-                    { key:"params", label:"params", type:"keyvalue" },
-                    { key:"bound-params", label:"bound-params", type:"keyvalue" }
-                ]} />
-        </Section>
-    </div>
+                    { key:"title", label:"title" }, { key:"dependency", label:"dependency" },
+                    { key:"width", label:"width", type:"number" }, { key:"height", label:"height", type:"number" },
+                    { key:"params", label:"params", type:"keyvalue" }, { key:"bound-params", label:"bound-params", type:"keyvalue" }
+                ]} /> }
+    ]} />
 }
 
 // ----- services.json (array) -----

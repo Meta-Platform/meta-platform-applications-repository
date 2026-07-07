@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
-import { List, Icon } from "semantic-ui-react"
+import { List, Icon, Input } from "semantic-ui-react"
 
 import PackageIcon from "./PackageIcon"
 import PackageComponentsTree from "./PackageComponentsTree"
@@ -85,7 +85,7 @@ const GroupNode = ({ workspace, group, selectedGroup, selectedPackage, onSelectG
         </div>
         {
             open && <List.List>
-                {(group.packages || []).map((pkg:any, key:number) =>
+                {(group.packages || []).filter(rest.match || (() => true)).map((pkg:any, key:number) =>
                     <PackageItem key={key} workspace={workspace} pkg={pkg}
                         selectedPackage={selectedPackage} onNodeContext={onNodeContext} {...rest} />)}
             </List.List>
@@ -93,12 +93,17 @@ const GroupNode = ({ workspace, group, selectedGroup, selectedPackage, onSelectG
     </List.Item>
 }
 
-const LayerContent = ({ layer, workspace, onNodeContext, ...rest }:any) => <>
-    { (layer.groups || []).map((group:any, key:number) =>
-        <GroupNode key={"g"+key} workspace={workspace} group={group} onNodeContext={onNodeContext} {...rest} />) }
-    { (layer.packages || []).map((pkg:any, key:number) =>
-        <PackageItem key={"p"+key} workspace={workspace} pkg={pkg} onNodeContext={onNodeContext} {...rest} />) }
-</>
+const LayerContent = ({ layer, workspace, onNodeContext, ...rest }:any) => {
+    const match = rest.match || (() => true)
+    // Esconde grupos sem pacotes correspondentes ao filtro.
+    const groups = (layer.groups || []).filter((g:any) => (g.packages || []).some(match))
+    return <>
+        { groups.map((group:any, key:number) =>
+            <GroupNode key={"g"+key} workspace={workspace} group={group} onNodeContext={onNodeContext} {...rest} />) }
+        { (layer.packages || []).filter(match).map((pkg:any, key:number) =>
+            <PackageItem key={"p"+key} workspace={workspace} pkg={pkg} onNodeContext={onNodeContext} {...rest} />) }
+    </>
+}
 
 // Coleta recursiva de todos os pacotes de um nó (repo/module/layer/group).
 const collectPackages = (node:any):any[] => {
@@ -113,52 +118,53 @@ const collectPackages = (node:any):any[] => {
 // Criação de nós é feita pelo menu de contexto (botão direito). Aqui ficam só
 // as ações de leitura/edição de pacotes.
 const PackageTree = ({ workspace, selected, onNodeContext, ...rest }:any) => {
+    const [filter, setFilter] = useState("")
     if(!selected){
         return <p style={{opacity:0.55, padding:"10px"}}>Selecione um Module ou Layer à esquerda.</p>
     }
 
+    const q = filter.trim().toLowerCase()
+    // Filtra por nome OU tipo (ex.: "server" por nome, "lib" por tipo).
+    const match = (pkg:any) => !q || `${pkg.name}.${pkg.ext}`.toLowerCase().indexOf(q) > -1
+    const childProps = { ...rest, match, onNodeContext }
+
+    const FilterBar = <Input icon="filter" iconPosition="left" size="mini" fluid value={filter}
+        placeholder="Filtrar por nome ou tipo…" onChange={(e:any) => setFilter(e.target.value)} style={{marginBottom:8}} />
+
     // Todos os pacotes do repositório (clique no título "Módulos / Layers").
     if(selected.kind === "all"){
-        const pkgs = collectPackages(selected.node)
+        const pkgs = collectPackages(selected.node).filter(match)
         return <div>
-            <div style={{opacity:0.6, fontSize:"0.82em", fontWeight:700, margin:"2px 0 8px 2px"}}>
-                TODOS OS PACOTES ({pkgs.length})
-            </div>
-            <List>
-                { pkgs.map((pkg:any, key:number) =>
-                    <PackageItem key={key} workspace={workspace} pkg={pkg} onNodeContext={onNodeContext} {...rest} />) }
-            </List>
+            {FilterBar}
+            <div style={{opacity:0.6, fontSize:"0.82em", fontWeight:700, margin:"2px 0 8px 2px"}}>TODOS OS PACOTES ({pkgs.length})</div>
+            <List>{ pkgs.map((pkg:any, key:number) => <PackageItem key={key} workspace={workspace} pkg={pkg} {...childProps} />) }</List>
         </div>
     }
 
     // Pacotes de um Grupo específico.
     if(selected.kind === "group"){
+        const pkgs = (selected.node.packages || []).filter(match)
         return <div>
-            <List>
-                { (selected.node.packages || []).map((pkg:any, key:number) =>
-                    <PackageItem key={key} workspace={workspace} pkg={pkg} onNodeContext={onNodeContext} {...rest} />) }
-            </List>
+            {FilterBar}
+            <List>{ pkgs.map((pkg:any, key:number) => <PackageItem key={key} workspace={workspace} pkg={pkg} {...childProps} />) }</List>
         </div>
     }
 
     // Layer: grupos (pastas) + pacotes soltos.
     if(selected.kind === "layer"){
         return <div>
-            <List><LayerContent layer={selected.node} workspace={workspace} onNodeContext={onNodeContext} {...rest} /></List>
+            {FilterBar}
+            <List><LayerContent layer={selected.node} workspace={workspace} {...childProps} /></List>
         </div>
     }
 
     // Module (ou outro container): a coluna Pacotes mostra os PACOTES do módulo
     // (achatados) — nunca as layers (que ficam na coluna Módulos / Layers).
-    const modulePkgs = collectPackages(selected.node)
+    const modulePkgs = collectPackages(selected.node).filter(match)
     return <div>
-        <div style={{opacity:0.6, fontSize:"0.82em", fontWeight:700, margin:"2px 0 8px 2px"}}>
-            PACOTES ({modulePkgs.length})
-        </div>
-        <List>
-            { modulePkgs.map((pkg:any, key:number) =>
-                <PackageItem key={key} workspace={workspace} pkg={pkg} onNodeContext={onNodeContext} {...rest} />) }
-        </List>
+        {FilterBar}
+        <div style={{opacity:0.6, fontSize:"0.82em", fontWeight:700, margin:"2px 0 8px 2px"}}>PACOTES ({modulePkgs.length})</div>
+        <List>{ modulePkgs.map((pkg:any, key:number) => <PackageItem key={key} workspace={workspace} pkg={pkg} {...childProps} />) }</List>
     </div>
 }
 

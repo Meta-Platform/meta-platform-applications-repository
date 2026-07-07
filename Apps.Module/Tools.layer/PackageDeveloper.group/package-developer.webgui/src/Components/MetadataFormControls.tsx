@@ -1,5 +1,6 @@
 import * as React from "react"
-import { Icon } from "semantic-ui-react"
+import { useState } from "react"
+import { Icon, Menu } from "semantic-ui-react"
 import styled from "styled-components"
 
 import {
@@ -14,14 +15,14 @@ import {
 const TextInput = styled.input`
     width: 100%;
     box-sizing: border-box;
-    padding: 5px 9px;
-    border: 1px solid var(--mp-line-faint, rgba(127,127,127,.28));
-    border-radius: 6px;
-    background: rgba(127,127,127,.07);
+    padding: 6px 9px;
+    border: 1.5px solid var(--mp-border-default, var(--mp-line-faint, rgba(120,120,120,.5)));
+    border-radius: 4px;
+    background: var(--mp-panel, rgba(127,127,127,.05));
     color: inherit;
     font-size: .86em;
     font-family: inherit;
-    &:focus { outline: none; border-color: var(--mp-accent, #14D6C8); box-shadow: 0 0 0 2px rgba(20,214,200,.2); }
+    &:focus { outline: none; border-color: var(--mp-accent, #14D6C8); box-shadow: 0 0 0 2px rgba(20,214,200,.25); }
     &::placeholder { opacity: .5; }
 `
 const IconBtn = styled.button`
@@ -50,8 +51,8 @@ const KVRow = styled.div`
     align-items: center; gap: 6px; margin-bottom: 6px;
 `
 const Card = styled.div`
-    border: 1px solid var(--mp-line-faint, rgba(127,127,127,.28));
-    border-radius: 8px; overflow: hidden; margin-bottom: 10px;
+    border: 1.5px solid var(--mp-border-default, var(--mp-line-faint, rgba(120,120,120,.5)));
+    border-radius: 6px; overflow: hidden; margin-bottom: 10px;
     background: rgba(127,127,127,.035);
 `
 const CardHead = styled.div`
@@ -104,28 +105,49 @@ export const KeyValueEditor = ({ value, onChange }:any) => {
     </div>
 }
 
-// Renderiza os campos de UM registro (sem card/lista) — para o form focado de um item.
+// Renderiza os campos de UM registro (sem card/lista) — para o form focado de um
+// item. Divide em SUB-TABS: "Geral" (campos simples) + uma aba por campo aninhado
+// (params, bound-params, …), evitando scroll longo.
 export const RecordFields = ({ value, fields, onChange }:any) => {
     const it = value && typeof value === "object" && !Array.isArray(value) ? value : {}
     const known = fields.map((f:any) => f.key)
     const extra = Object.keys(it).filter((k) => known.indexOf(k) === -1)
     const patch = (key:string, val:any) => onChange({ ...it, [key]: val })
+
+    const scalars = fields.filter((f:any) => f.type !== "keyvalue" && f.type !== "stringlist")
+    const nested  = fields.filter((f:any) => f.type === "keyvalue" || f.type === "stringlist")
+
+    const renderScalar = (f:any) =>
+        <Field key={f.key}>
+            <label>{f.label}</label>
+            {
+                f.type === "number"
+                ? <TextInput type="number" value={it[f.key] != null ? it[f.key] : ""} placeholder={f.placeholder}
+                    onChange={(e:any) => patch(f.key, coerceNumber(e.target.value))} />
+                : <TextInput value={it[f.key] != null ? it[f.key] : ""} placeholder={f.placeholder}
+                    onChange={(e:any) => patch(f.key, e.target.value)} />
+            }
+        </Field>
+    const renderNested = (f:any) =>
+        f.type === "stringlist"
+            ? <StringListEditor value={it[f.key] || []} onChange={(x:any) => patch(f.key, x)} />
+            : <KeyValueEditor value={it[f.key] || {}} onChange={(x:any) => patch(f.key, x)} />
+
+    const subtabs = [ ...(scalars.length ? [{ key:"__geral", label:"Geral" }] : []), ...nested.map((f:any) => ({ key:f.key, label:f.label })) ]
+    const [tab, setTab] = useState<string>(subtabs[0] ? subtabs[0].key : "")
+    const active = subtabs.some((t) => t.key === tab) ? tab : (subtabs[0] ? subtabs[0].key : "")
+
+    const preserved = extra.length > 0 ? <Preserved><Icon name="lock" />preservados: {extra.join(", ")}</Preserved> : null
+
+    if(subtabs.length <= 1)
+        return <div>{ fields.map((f:any) => nested.indexOf(f) > -1 ? <Field key={f.key}><label>{f.label}</label><Nested>{renderNested(f)}</Nested></Field> : renderScalar(f)) }{preserved}</div>
+
     return <div>
-        {
-            fields.map((f:any) =>
-                <Field key={f.key}>
-                    <label>{f.label}</label>
-                    {
-                        f.type === "stringlist" ? <Nested><StringListEditor value={it[f.key] || []} onChange={(x:any) => patch(f.key, x)} /></Nested>
-                        : f.type === "keyvalue" ? <Nested><KeyValueEditor value={it[f.key] || {}} onChange={(x:any) => patch(f.key, x)} /></Nested>
-                        : f.type === "number" ? <TextInput type="number" value={it[f.key] != null ? it[f.key] : ""} placeholder={f.placeholder}
-                            onChange={(e:any) => patch(f.key, coerceNumber(e.target.value))} />
-                        : <TextInput value={it[f.key] != null ? it[f.key] : ""} placeholder={f.placeholder}
-                            onChange={(e:any) => patch(f.key, e.target.value)} />
-                    }
-                </Field>)
-        }
-        { extra.length > 0 && <Preserved><Icon name="lock" />preservados: {extra.join(", ")}</Preserved> }
+        <Menu pointing secondary size="small" style={{marginBottom:10, flexWrap:"wrap"}}>
+            { subtabs.map((t) => <Menu.Item key={t.key} active={active === t.key} onClick={() => setTab(t.key)}>{t.label}</Menu.Item>) }
+        </Menu>
+        { active === "__geral" ? scalars.map(renderScalar) : renderNested(nested.find((f:any) => f.key === active) || nested[0]) }
+        {preserved}
     </div>
 }
 

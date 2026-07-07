@@ -22,6 +22,7 @@ const PackageTypeNav = ({ listDir, onOpenFile, onOpenComponent, onFileContext, s
 
     const [srcDirs, setSrcDirs]   = useState<any[]>([])
     const [srcFiles, setSrcFiles] = useState<any[]>([])
+    const [codeOpen, setCodeOpen] = useState(false)   // CÓDIGO inicia colapsado
 
     useEffect(() => {
         listDir("/src").then((l:any[]) => {
@@ -47,7 +48,11 @@ const PackageTypeNav = ({ listDir, onOpenFile, onOpenComponent, onFileContext, s
         {
             (srcDirs.length > 0 || srcFiles.length > 0) &&
             <List.Item style={{marginTop:8}}>
-            <List.Header style={{textTransform:"uppercase", fontSize:"0.75em", opacity:0.7, letterSpacing:0.5}}>Código</List.Header>
+            <List.Header style={{textTransform:"uppercase", fontSize:"0.75em", opacity:0.7, letterSpacing:0.5, cursor:"pointer"}}
+                onClick={() => setCodeOpen((o) => !o)}>
+                <Icon name={codeOpen ? "caret down" : "caret right"} />Código
+            </List.Header>
+            { codeOpen &&
             <List.List>
                 {
                     // cada diretório de topo em src/ é uma "categoria de tipo"
@@ -68,6 +73,7 @@ const PackageTypeNav = ({ listDir, onOpenFile, onOpenComponent, onFileContext, s
                     })
                 }
             </List.List>
+            }
             </List.Item>
         }
     </List>
