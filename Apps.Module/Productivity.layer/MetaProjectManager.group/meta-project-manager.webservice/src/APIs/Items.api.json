@@ -1,0 +1,241 @@
+{
+    "name": "Items",
+    "endpoints": [
+        {
+            "summary": "ListItems",
+            "method": "GET",
+            "path": "/projects/:projectId/items",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "type",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "status",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "CreateItem",
+            "method": "POST",
+            "path": "/projects/:projectId/items",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "title",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "type",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "description",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "parent",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "board",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "priority",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "status",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "assignee",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "GetItem",
+            "method": "GET",
+            "path": "/items/:itemId",
+            "parameters": [
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "UpdateItem",
+            "method": "PATCH",
+            "path": "/items/:itemId",
+            "parameters": [
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "title",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "description",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "status",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "priority",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "progress",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "assignee",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "MoveItem",
+            "method": "POST",
+            "path": "/items/:itemId/move",
+            "parameters": [
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "parent",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "board",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "status",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "SetItemStatus",
+            "method": "POST",
+            "path": "/items/:itemId/status",
+            "parameters": [
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "status",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "LinkItem",
+            "method": "POST",
+            "path": "/items/:itemId/links",
+            "parameters": [
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "relation",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "target",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "DeleteItem",
+            "method": "DELETE",
+            "path": "/items/:itemId",
+            "parameters": [
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        }
+    ]
+}

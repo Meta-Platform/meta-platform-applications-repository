@@ -1,0 +1,89 @@
+{
+    "name": "Attachments",
+    "endpoints": [
+        {
+            "summary": "ListAttachments",
+            "method": "GET",
+            "path": "/items/:itemId/attachments",
+            "parameters": [
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "AddAttachment",
+            "method": "POST",
+            "path": "/items/:itemId/attachments",
+            "parameters": [
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "name",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "base64",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "url",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "GetAttachment",
+            "method": "GET",
+            "path": "/attachments/:attachmentId",
+            "parameters": [
+                {
+                    "name": "attachmentId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "DeleteAttachment",
+            "method": "DELETE",
+            "path": "/attachments/:attachmentId",
+            "parameters": [
+                {
+                    "name": "attachmentId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "DownloadAttachment",
+            "method": "GET",
+            "path": "/attachments/:attachmentId/download",
+            "parameters": [
+                {
+                    "name": "attachmentId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ],
+            "typeResponse": "file"
+        }
+    ]
+}

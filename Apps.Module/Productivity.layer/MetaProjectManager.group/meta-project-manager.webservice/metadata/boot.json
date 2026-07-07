@@ -1,0 +1,40 @@
+{
+    "params": [
+        "port",
+        "serverName",
+        "MPM_DB_FILE_PATH",
+        "MPM_ATTACHMENTS_DIR_PATH",
+        "MPM_MAX_ATTACHMENT_BYTES"
+    ],
+    "services": [
+        {
+            "namespace": "@@/server-service",
+            "dependency": "@/server-manager.service/services/HTTPServerService",
+            "params": {
+                "name": "{{serverName}}",
+                "port": "{{port}}"
+            }
+        }
+    ],
+    "endpoints": [
+        {
+            "dependency": "@/server-manager.webservice/endpoint-group",
+            "bound-params": {
+                "serverServiceForController": "@@/server-service",
+                "serverService": "@@/server-service"
+            }
+        },
+        {
+            "dependency": "@//endpoint-group",
+            "params": {
+                "MPM_DB_FILE_PATH": "{{MPM_DB_FILE_PATH}}",
+                "MPM_ATTACHMENTS_DIR_PATH": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                "MPM_MAX_ATTACHMENT_BYTES": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+            },
+            "bound-params": {
+                "serverService": "@@/server-service",
+                "projectStoreLib": "@/project-store.lib"
+            }
+        }
+    ]
+}

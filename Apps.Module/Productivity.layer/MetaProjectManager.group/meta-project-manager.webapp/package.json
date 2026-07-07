@@ -1,0 +1,7 @@
+{
+  "name": "meta-project-manager.webapp",
+  "version": "0.0.1",
+  "description": "Empacotamento web (composition root) do Meta Project Manager",
+  "author": "Kaio Cezar <kadisk.shark@gmail.com>",
+  "license": "BSD-3-Clause"
+}

@@ -1,0 +1,205 @@
+{
+    "name": "Projects",
+    "endpoints": [
+        {
+            "summary": "ListProjects",
+            "method": "GET",
+            "path": "/projects",
+            "parameters": [
+                {
+                    "name": "status",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "sort",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "CreateProject",
+            "method": "POST",
+            "path": "/projects",
+            "parameters": [
+                {
+                    "name": "name",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "description",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "slug",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "status",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "icon",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "color",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "keyPrefix",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "repositoryUrl",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "localPath",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "owner",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "GetProject",
+            "method": "GET",
+            "path": "/projects/:projectId",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "UpdateProject",
+            "method": "PATCH",
+            "path": "/projects/:projectId",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "name",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "description",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "status",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "slug",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "icon",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "color",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "ArchiveProject",
+            "method": "POST",
+            "path": "/projects/:projectId/archive",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "RestoreProject",
+            "method": "POST",
+            "path": "/projects/:projectId/restore",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "DeleteProject",
+            "method": "DELETE",
+            "path": "/projects/:projectId",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "ProjectMetrics",
+            "method": "GET",
+            "path": "/projects/:projectId/metrics",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        }
+    ]
+}

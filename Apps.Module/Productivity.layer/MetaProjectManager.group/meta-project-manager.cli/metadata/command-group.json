@@ -1,0 +1,1166 @@
+{
+    "bound-params": [
+        "projectStoreLib"
+    ],
+    "commands": [
+        {
+            "namespace": "Project",
+            "command": "project",
+            "description": "Gerenciar projetos",
+            "children": [
+                {
+                    "namespace": "ProjectCreate",
+                    "path": "Commands/ProjectCreate.command",
+                    "command": "create [name]",
+                    "description": "Criar projeto",
+                    "parameters": [
+                        {
+                            "key": "name",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "Nome do projeto"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ProjectList",
+                    "path": "Commands/ProjectList.command",
+                    "command": "list",
+                    "description": "Listar projetos",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ProjectShow",
+                    "path": "Commands/ProjectShow.command",
+                    "command": "show [project]",
+                    "description": "Detalhar projeto",
+                    "parameters": [
+                        {
+                            "key": "project",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|slug|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ProjectUpdate",
+                    "path": "Commands/ProjectUpdate.command",
+                    "command": "update [project]",
+                    "description": "Atualizar projeto",
+                    "parameters": [
+                        {
+                            "key": "project",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|slug|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ProjectArchive",
+                    "path": "Commands/ProjectArchive.command",
+                    "command": "archive [project]",
+                    "description": "Arquivar projeto",
+                    "parameters": [
+                        {
+                            "key": "project",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|slug|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ProjectRestore",
+                    "path": "Commands/ProjectRestore.command",
+                    "command": "restore [project]",
+                    "description": "Restaurar projeto",
+                    "parameters": [
+                        {
+                            "key": "project",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|slug|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ProjectDelete",
+                    "path": "Commands/ProjectDelete.command",
+                    "command": "delete [project]",
+                    "description": "Excluir projeto (soft delete)",
+                    "parameters": [
+                        {
+                            "key": "project",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|slug|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ProjectMetrics",
+                    "path": "Commands/ProjectMetrics.command",
+                    "command": "metrics [project]",
+                    "description": "Métricas do projeto",
+                    "parameters": [
+                        {
+                            "key": "project",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|slug|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Board",
+            "command": "board",
+            "description": "Gerenciar boards",
+            "children": [
+                {
+                    "namespace": "BoardCreate",
+                    "path": "Commands/BoardCreate.command",
+                    "command": "create",
+                    "description": "Criar board",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "BoardList",
+                    "path": "Commands/BoardList.command",
+                    "command": "list",
+                    "description": "Listar boards do projeto",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "BoardShow",
+                    "path": "Commands/BoardShow.command",
+                    "command": "show [board]",
+                    "description": "Detalhar board (com colunas)",
+                    "parameters": [
+                        {
+                            "key": "board",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do board"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "BoardUpdate",
+                    "path": "Commands/BoardUpdate.command",
+                    "command": "update [board]",
+                    "description": "Atualizar board",
+                    "parameters": [
+                        {
+                            "key": "board",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do board"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "BoardDuplicate",
+                    "path": "Commands/BoardDuplicate.command",
+                    "command": "duplicate [board]",
+                    "description": "Duplicar board",
+                    "parameters": [
+                        {
+                            "key": "board",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do board"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "BoardDelete",
+                    "path": "Commands/BoardDelete.command",
+                    "command": "delete [board]",
+                    "description": "Excluir board",
+                    "parameters": [
+                        {
+                            "key": "board",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do board"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "BoardSetDefault",
+                    "path": "Commands/BoardSetDefault.command",
+                    "command": "set-default [board]",
+                    "description": "Definir board padrão",
+                    "parameters": [
+                        {
+                            "key": "board",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do board"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "BoardColumn",
+                    "command": "column",
+                    "description": "Gerenciar colunas",
+                    "children": [
+                        {
+                            "namespace": "BoardColumnAdd",
+                            "path": "Commands/BoardColumnAdd.command",
+                            "command": "add [board]",
+                            "description": "Adicionar coluna",
+                            "parameters": [
+                                {
+                                    "key": "board",
+                                    "paramType": "positional",
+                                    "valueType": "string",
+                                    "describe": "id do board"
+                                }
+                            ],
+                            "parametersToLoad": [
+                                "projectStoreLib"
+                            ]
+                        },
+                        {
+                            "namespace": "BoardColumnUpdate",
+                            "path": "Commands/BoardColumnUpdate.command",
+                            "command": "update [column]",
+                            "description": "Atualizar coluna",
+                            "parameters": [
+                                {
+                                    "key": "column",
+                                    "paramType": "positional",
+                                    "valueType": "string",
+                                    "describe": "id da coluna"
+                                }
+                            ],
+                            "parametersToLoad": [
+                                "projectStoreLib"
+                            ]
+                        },
+                        {
+                            "namespace": "BoardColumnMove",
+                            "path": "Commands/BoardColumnMove.command",
+                            "command": "move [column]",
+                            "description": "Reordenar coluna",
+                            "parameters": [
+                                {
+                                    "key": "column",
+                                    "paramType": "positional",
+                                    "valueType": "string",
+                                    "describe": "id da coluna"
+                                }
+                            ],
+                            "parametersToLoad": [
+                                "projectStoreLib"
+                            ]
+                        },
+                        {
+                            "namespace": "BoardColumnDelete",
+                            "path": "Commands/BoardColumnDelete.command",
+                            "command": "delete [column]",
+                            "description": "Excluir coluna",
+                            "parameters": [
+                                {
+                                    "key": "column",
+                                    "paramType": "positional",
+                                    "valueType": "string",
+                                    "describe": "id da coluna"
+                                }
+                            ],
+                            "parametersToLoad": [
+                                "projectStoreLib"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Story",
+            "command": "story",
+            "description": "Histórias",
+            "children": [
+                {
+                    "namespace": "StoryCreate",
+                    "path": "Commands/StoryCreate.command",
+                    "command": "create",
+                    "description": "Criar história",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Task",
+            "command": "task",
+            "description": "Tarefas",
+            "children": [
+                {
+                    "namespace": "TaskCreate",
+                    "path": "Commands/TaskCreate.command",
+                    "command": "create",
+                    "description": "Criar tarefa",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Subtask",
+            "command": "subtask",
+            "description": "Subtarefas",
+            "children": [
+                {
+                    "namespace": "SubtaskCreate",
+                    "path": "Commands/SubtaskCreate.command",
+                    "command": "create",
+                    "description": "Criar subtarefa",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Item",
+            "command": "item",
+            "description": "Itens de trabalho (genérico)",
+            "children": [
+                {
+                    "namespace": "ItemCreate",
+                    "path": "Commands/ItemCreate.command",
+                    "command": "create",
+                    "description": "Criar item de qualquer tipo",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemList",
+                    "path": "Commands/ItemList.command",
+                    "command": "list",
+                    "description": "Listar itens",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemShow",
+                    "path": "Commands/ItemShow.command",
+                    "command": "show [item]",
+                    "description": "Detalhar item",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemUpdate",
+                    "path": "Commands/ItemUpdate.command",
+                    "command": "update [item]",
+                    "description": "Atualizar item",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemSetStatus",
+                    "path": "Commands/ItemSetStatus.command",
+                    "command": "set-status [item]",
+                    "description": "Mudar status",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemAssign",
+                    "path": "Commands/ItemAssign.command",
+                    "command": "assign [item]",
+                    "description": "Atribuir responsável",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemMove",
+                    "path": "Commands/ItemMove.command",
+                    "command": "move [item]",
+                    "description": "Mover para outro pai",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemMoveToBoard",
+                    "path": "Commands/ItemMoveToBoard.command",
+                    "command": "move-to-board [item]",
+                    "description": "Mover para board/status",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemReorder",
+                    "path": "Commands/ItemReorder.command",
+                    "command": "reorder [item]",
+                    "description": "Reordenar item",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemConvert",
+                    "path": "Commands/ItemConvert.command",
+                    "command": "convert [item]",
+                    "description": "Converter tipo do item",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemBlock",
+                    "path": "Commands/ItemBlock.command",
+                    "command": "block [item]",
+                    "description": "Marcar como bloqueado",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemLink",
+                    "path": "Commands/ItemLink.command",
+                    "command": "link [item]",
+                    "description": "Vincular a outro item",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemUnlink",
+                    "path": "Commands/ItemUnlink.command",
+                    "command": "unlink [item]",
+                    "description": "Remover vínculo",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemDelete",
+                    "path": "Commands/ItemDelete.command",
+                    "command": "delete [item]",
+                    "description": "Excluir item",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemChecklistAdd",
+                    "path": "Commands/ItemChecklistAdd.command",
+                    "command": "checklist-add [item]",
+                    "description": "Adicionar item de checklist",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemAcceptanceAdd",
+                    "path": "Commands/ItemAcceptanceAdd.command",
+                    "command": "acceptance-add [item]",
+                    "description": "Adicionar critério de aceite",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Attachment",
+            "command": "attachment",
+            "description": "Anexos",
+            "children": [
+                {
+                    "namespace": "AttachmentAdd",
+                    "path": "Commands/AttachmentAdd.command",
+                    "command": "add [item]",
+                    "description": "Anexar arquivo local",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "AttachmentAddLink",
+                    "path": "Commands/AttachmentAddLink.command",
+                    "command": "add-link [item]",
+                    "description": "Anexar link externo",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "AttachmentList",
+                    "path": "Commands/AttachmentList.command",
+                    "command": "list [item]",
+                    "description": "Listar anexos",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "AttachmentShow",
+                    "path": "Commands/AttachmentShow.command",
+                    "command": "show [attachment]",
+                    "description": "Detalhar anexo",
+                    "parameters": [
+                        {
+                            "key": "attachment",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do anexo"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "AttachmentExport",
+                    "path": "Commands/AttachmentExport.command",
+                    "command": "export [attachment]",
+                    "description": "Exportar anexo para arquivo",
+                    "parameters": [
+                        {
+                            "key": "attachment",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do anexo"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "AttachmentRemove",
+                    "path": "Commands/AttachmentRemove.command",
+                    "command": "remove [attachment]",
+                    "description": "Remover anexo",
+                    "parameters": [
+                        {
+                            "key": "attachment",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do anexo"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Comment",
+            "command": "comment",
+            "description": "Comentários",
+            "children": [
+                {
+                    "namespace": "CommentAdd",
+                    "path": "Commands/CommentAdd.command",
+                    "command": "add [item]",
+                    "description": "Comentar item",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "CommentList",
+                    "path": "Commands/CommentList.command",
+                    "command": "list [item]",
+                    "description": "Listar comentários",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "CommentUpdate",
+                    "path": "Commands/CommentUpdate.command",
+                    "command": "update [comment]",
+                    "description": "Editar comentário",
+                    "parameters": [
+                        {
+                            "key": "comment",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do comentário"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "CommentDelete",
+                    "path": "Commands/CommentDelete.command",
+                    "command": "delete [comment]",
+                    "description": "Excluir comentário",
+                    "parameters": [
+                        {
+                            "key": "comment",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do comentário"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "User",
+            "command": "user",
+            "description": "Usuários",
+            "children": [
+                {
+                    "namespace": "UserCreate",
+                    "path": "Commands/UserCreate.command",
+                    "command": "create",
+                    "description": "Criar usuário (human|agent)",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "UserList",
+                    "path": "Commands/UserList.command",
+                    "command": "list",
+                    "description": "Listar usuários",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "UserShow",
+                    "path": "Commands/UserShow.command",
+                    "command": "show [user]",
+                    "description": "Detalhar usuário",
+                    "parameters": [
+                        {
+                            "key": "user",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|handle"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "UserUpdate",
+                    "path": "Commands/UserUpdate.command",
+                    "command": "update [user]",
+                    "description": "Atualizar usuário",
+                    "parameters": [
+                        {
+                            "key": "user",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|handle"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "UserArchive",
+                    "path": "Commands/UserArchive.command",
+                    "command": "archive [user]",
+                    "description": "Arquivar usuário",
+                    "parameters": [
+                        {
+                            "key": "user",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|handle"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Agent",
+            "command": "agent",
+            "description": "Agentes de IA e sessões",
+            "children": [
+                {
+                    "namespace": "AgentCreate",
+                    "path": "Commands/AgentCreate.command",
+                    "command": "create",
+                    "description": "Cadastrar agente",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "AgentList",
+                    "path": "Commands/AgentList.command",
+                    "command": "list",
+                    "description": "Listar agentes",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "AgentShow",
+                    "path": "Commands/AgentShow.command",
+                    "command": "show [agent]",
+                    "description": "Detalhar agente",
+                    "parameters": [
+                        {
+                            "key": "agent",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|handle"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "AgentSession",
+                    "command": "session",
+                    "description": "Sessões de agente",
+                    "children": [
+                        {
+                            "namespace": "AgentSessionRegister",
+                            "path": "Commands/AgentSessionRegister.command",
+                            "command": "register",
+                            "description": "Registrar sessão (sem --confirm fica pendente)",
+                            "parametersToLoad": [
+                                "projectStoreLib"
+                            ]
+                        },
+                        {
+                            "namespace": "AgentSessionList",
+                            "path": "Commands/AgentSessionList.command",
+                            "command": "list",
+                            "description": "Listar sessões",
+                            "parametersToLoad": [
+                                "projectStoreLib"
+                            ]
+                        },
+                        {
+                            "namespace": "AgentSessionShow",
+                            "path": "Commands/AgentSessionShow.command",
+                            "command": "show [session]",
+                            "description": "Detalhar sessão",
+                            "parameters": [
+                                {
+                                    "key": "session",
+                                    "paramType": "positional",
+                                    "valueType": "string",
+                                    "describe": "id da sessão"
+                                }
+                            ],
+                            "parametersToLoad": [
+                                "projectStoreLib"
+                            ]
+                        },
+                        {
+                            "namespace": "AgentSessionConfirm",
+                            "path": "Commands/AgentSessionConfirm.command",
+                            "command": "confirm [session]",
+                            "description": "Confirmar sessão",
+                            "parameters": [
+                                {
+                                    "key": "session",
+                                    "paramType": "positional",
+                                    "valueType": "string",
+                                    "describe": "id da sessão"
+                                }
+                            ],
+                            "parametersToLoad": [
+                                "projectStoreLib"
+                            ]
+                        },
+                        {
+                            "namespace": "AgentSessionReject",
+                            "path": "Commands/AgentSessionReject.command",
+                            "command": "reject [session]",
+                            "description": "Rejeitar sessão",
+                            "parameters": [
+                                {
+                                    "key": "session",
+                                    "paramType": "positional",
+                                    "valueType": "string",
+                                    "describe": "id da sessão"
+                                }
+                            ],
+                            "parametersToLoad": [
+                                "projectStoreLib"
+                            ]
+                        },
+                        {
+                            "namespace": "AgentSessionClose",
+                            "path": "Commands/AgentSessionClose.command",
+                            "command": "close [session]",
+                            "description": "Encerrar sessão",
+                            "parameters": [
+                                {
+                                    "key": "session",
+                                    "paramType": "positional",
+                                    "valueType": "string",
+                                    "describe": "id da sessão"
+                                }
+                            ],
+                            "parametersToLoad": [
+                                "projectStoreLib"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Report",
+            "command": "report",
+            "description": "Relatórios",
+            "children": [
+                {
+                    "namespace": "ReportProjectStatus",
+                    "path": "Commands/ReportProjectStatus.command",
+                    "command": "project-status",
+                    "description": "Status do projeto",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ReportBlocked",
+                    "path": "Commands/ReportBlocked.command",
+                    "command": "blocked",
+                    "description": "Itens bloqueados",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ReportOverdue",
+                    "path": "Commands/ReportOverdue.command",
+                    "command": "overdue",
+                    "description": "Itens atrasados",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ReportByAssignee",
+                    "path": "Commands/ReportByAssignee.command",
+                    "command": "by-assignee",
+                    "description": "Trabalho por responsável",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ReportByAgent",
+                    "path": "Commands/ReportByAgent.command",
+                    "command": "by-agent",
+                    "description": "Trabalho por agente",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Activity",
+            "command": "activity",
+            "description": "Atividade/auditoria",
+            "children": [
+                {
+                    "namespace": "ActivityList",
+                    "path": "Commands/ActivityList.command",
+                    "command": "list",
+                    "description": "Listar atividade recente",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Export",
+            "command": "export",
+            "description": "Exportar",
+            "children": [
+                {
+                    "namespace": "ExportProject",
+                    "path": "Commands/ExportProject.command",
+                    "command": "project [project]",
+                    "description": "Exportar projeto (JSON)",
+                    "parameters": [
+                        {
+                            "key": "project",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|slug|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ExportBoard",
+                    "path": "Commands/ExportBoard.command",
+                    "command": "board [board]",
+                    "description": "Exportar board (JSON)",
+                    "parameters": [
+                        {
+                            "key": "board",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do board"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Import",
+            "command": "import",
+            "description": "Importar",
+            "children": [
+                {
+                    "namespace": "ImportProject",
+                    "path": "Commands/ImportProject.command",
+                    "command": "project [file]",
+                    "description": "Importar projeto (JSON)",
+                    "parameters": [
+                        {
+                            "key": "file",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "arquivo .json"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        }
+    ]
+}

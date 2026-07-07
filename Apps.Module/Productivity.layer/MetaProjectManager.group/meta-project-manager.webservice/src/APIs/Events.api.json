@@ -1,0 +1,29 @@
+{
+    "name": "Events",
+    "endpoints": [
+        {
+            "summary": "GetEvents",
+            "method": "GET",
+            "path": "/events",
+            "parameters": [
+                {
+                    "name": "since",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "limit",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "StreamEvents",
+            "method": "ws",
+            "path": "/events/stream"
+        }
+    ]
+}

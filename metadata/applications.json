@@ -40,5 +40,23 @@
         "executable":"my-desktop",
         "packageNamespace":"Apps.Module/Admin.layer/MyDesktop.group/my-desktop.desktopapp",
         "supervisorSocketFileName":"my-desktop.sock"
+    },
+    {
+        "appType":"APP",
+        "executable":"meta-project-manager",
+        "packageNamespace":"Apps.Module/Productivity.layer/MetaProjectManager.group/meta-project-manager.webapp",
+        "supervisorSocketFileName":"meta-project-manager.sock"
+    },
+    {
+        "appType":"DESKTOP",
+        "executable":"meta-project-manager-desktop",
+        "packageNamespace":"Apps.Module/Productivity.layer/MetaProjectManager.group/meta-project-manager.desktopapp",
+        "supervisorSocketFileName":"meta-project-manager-desktop.sock"
+    },
+    {
+        "appType":"CLI",
+        "executable":"mpm",
+        "packageNamespace":"Apps.Module/Productivity.layer/MetaProjectManager.group/meta-project-manager.cli",
+        "supervisorSocketFileName":"mpm.sock"
     }
 ]

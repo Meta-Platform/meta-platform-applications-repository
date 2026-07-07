@@ -1,0 +1,10 @@
+{
+    "name": "Health",
+    "endpoints": [
+        {
+            "summary": "Health",
+            "method": "GET",
+            "path": "/health"
+        }
+    ]
+}

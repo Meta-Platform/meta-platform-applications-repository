@@ -1,0 +1,203 @@
+{
+    "params": [
+        "MPM_DB_FILE_PATH",
+        "MPM_ATTACHMENTS_DIR_PATH",
+        "MPM_MAX_ATTACHMENT_BYTES"
+    ],
+    "bound-params": [
+        "serverService",
+        "projectStoreLib"
+    ],
+    "endpoints": [
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Health.api.json",
+                "controller": "Controllers/Health.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Projects.api.json",
+                "controller": "Controllers/Projects.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Boards.api.json",
+                "controller": "Controllers/Boards.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Items.api.json",
+                "controller": "Controllers/Items.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Comments.api.json",
+                "controller": "Controllers/Comments.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Attachments.api.json",
+                "controller": "Controllers/Attachments.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Users.api.json",
+                "controller": "Controllers/Users.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Agents.api.json",
+                "controller": "Controllers/Agents.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Reports.api.json",
+                "controller": "Controllers/Reports.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Events.api.json",
+                "controller": "Controllers/Events.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        }
+    ]
+}
