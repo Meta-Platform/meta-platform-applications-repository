@@ -76,7 +76,7 @@ const CodeEditor = ({ value, onChange }:CodeEditorProps) => {
     }}>
         <pre ref={preRef} aria-hidden="true" style={{
             ...FONT, position:"absolute", inset:0, overflow:"auto",
-            color:"var(--mp-text-primary, #F2F7F8)", pointerEvents:"none"
+            color:"#c9d1d9", pointerEvents:"none"
         }} dangerouslySetInnerHTML={{ __html: highlight(value) + "\n" }} />
         <textarea
             ref={taRef}

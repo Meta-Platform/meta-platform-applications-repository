@@ -13,12 +13,14 @@ import RepositoryHierarchy  from "../Components/RepositoryHierarchy"
 import PackageTree          from "../Components/PackageTree"
 import PackageInfo          from "../Components/PackageInfo"
 import PackageEditMode      from "../Components/PackageEditMode"
+import { pkgContext }        from "../Utils/pkgContext"
 import ResizableColumns     from "../Components/ResizableColumns"
 import DirectoryExplorer    from "../Modals/DirectoryExplorer.modal"
 import CreateNodeModal      from "../Modals/CreateNode.modal"
 import RenameNodeModal      from "../Modals/RenameNode.modal"
 
 const COLS_KEY = "ide:nav-columns"
+const RECENT_KEY = "ide:recent-packages"
 const DEFAULT_WIDTHS = [280, 300, 420]
 
 const SUFFIX:any = { module: ".Module", layer: ".layer", group: ".group" }
@@ -71,8 +73,12 @@ const MainPage = ({ HTTPServerManager }:any) => {
     const [selectedPackage, setSelectedPackage] = useState<any>()
     const [selectedGroup, setSelectedGroup]     = useState<any>()
     const [selectedDetail, setSelectedDetail]   = useState<any>()
-    const [editSession, setEditSession]         = useState<any>()
+    // Editor multi-pacote persistente (pacotes de repos/módulos/layers diferentes).
+    const [editPackages, setEditPackages]       = useState<any[]>([])
+    const [editing, setEditing]                 = useState(false)
+    const [editActivePkg, setEditActivePkg]     = useState<any>()
     const [editReq, setEditReq]                 = useState<any>()
+    const [recentPkgs, setRecentPkgs]           = useState<any[]>([])   // histórico de pacotes abertos
     const [browserOpen, setBrowserOpen]         = useState(false)
     const [createReq, setCreateReq]             = useState<any>()
     const [renameReq, setRenameReq]             = useState<any>()
@@ -87,7 +93,7 @@ const MainPage = ({ HTTPServerManager }:any) => {
         setSelectedPackage(undefined)
         setSelectedGroup(undefined)
         setSelectedDetail(undefined)
-        setEditSession(undefined)
+        // editPackages NÃO são limpos: o editor multi-pacote persiste entre repos.
     }, [activeRepository])
 
     // Restaura larguras de coluna salvas.
@@ -95,10 +101,25 @@ const MainPage = ({ HTTPServerManager }:any) => {
         getAppState(COLS_KEY).then((v:any) => {
             try { const arr = typeof v === "string" ? JSON.parse(v) : v; if(Array.isArray(arr) && arr.length >= 3) setColWidths(arr) } catch(e) {}
         }).catch(() => {})
+        getAppState(RECENT_KEY).then((v:any) => {
+            try { const arr = typeof v === "string" ? JSON.parse(v) : v; if(Array.isArray(arr)) setRecentPkgs(arr) } catch(e) {}
+        }).catch(() => {})
     }, [])
 
     const resizeCol = (i:number, w:number) => setColWidths((prev) => prev.map((x, j) => j === i ? w : x))
     const commitWidths = () => setAppState(COLS_KEY, JSON.stringify(widthsRef.current))
+
+    // Registra pacotes no histórico de "recentes" (mais novo primeiro, dedupe, cap 12).
+    const recordRecent = (pkgs:any[]) => {
+        setRecentPkgs((prev) => {
+            const entries = pkgs.map((p) => ({ name: p.name, ext: p.ext, path: p.path, workspace: p.workspace, ts: Date.now() }))
+            const byPath:any = {}
+            ;[...entries, ...prev].forEach((p) => { if(!byPath[p.path]) byPath[p.path] = p })
+            const next = Object.keys(byPath).map((k) => byPath[k]).slice(0, 12)
+            setAppState(RECENT_KEY, JSON.stringify(next))
+            return next
+        })
+    }
 
     const selectedNode = findNode(hierarchy, selectedRef)
 
@@ -122,10 +143,21 @@ const MainPage = ({ HTTPServerManager }:any) => {
         setSelectedDetail(detail)
     }
 
-    // Entrar no modo edição passa por um modal de confirmação.
-    const requestEdit = (session:any) => setEditReq(session)
-    const handleEditPackage = (pkg:any) => requestEdit({ title: `${pkg.name}.${pkg.ext}`, packages: [pkg] })
-    const handleEditGroup   = (group:any) => requestEdit({ title: group.name, packages: group.packages || [] })
+    // Abrir no editor multi-pacote passa por um modal de confirmação. Adiciona
+    // (não substitui) — pode-se acumular pacotes de repos/módulos/layers diferentes.
+    const addPackages = (pkgs:any[]) => {
+        const tagged = pkgs.map((p) => ({ ...p, workspace: p.workspace || activeRepository }))
+        setEditPackages((prev) => {
+            const byPath:any = {}
+            ;[...prev, ...tagged].forEach((p) => { byPath[p.path] = p })
+            return Object.keys(byPath).map((k) => byPath[k])
+        })
+        recordRecent(tagged)
+        setEditing(true)
+    }
+    const requestEdit = (pkgs:any[], label:string) => setEditReq({ packages: pkgs, label })
+    const handleEditPackage = (pkg:any) => requestEdit([pkg], `${pkg.name}.${pkg.ext}`)
+    const handleEditGroup   = (group:any) => requestEdit(group.packages || [], group.name)
 
     const handleAddRepo = (path:string) => {
         const name = basename(path)
@@ -200,14 +232,20 @@ const MainPage = ({ HTTPServerManager }:any) => {
         </PageDefault>
     }
 
-    // ---- Modo edição (VSCode-like, tela cheia) ----
-    if(editSession){
-        return <PageDefault onHome={goToWelcome} centerTitle={editSession.title}>
+    // ---- Modo edição (VSCode-like, tela cheia) — editor multi-pacote ----
+    if(editing && editPackages.length){
+        return <PageDefault onHome={goToWelcome}
+            centerTitle={editActivePkg ? `${editActivePkg.name}.${editActivePkg.ext}` : `${editPackages.length} pacote(s)`}>
             <div data-ide-mode="edit">
                 <PackageEditMode
-                    workspace={activeRepository}
-                    session={editSession}
-                    onClose={() => setEditSession(undefined)} />
+                    packages={editPackages}
+                    onActivePkg={setEditActivePkg}
+                    onRemovePackage={(pkg:any) => setEditPackages((prev) => {
+                        const next = prev.filter((p) => p.path !== pkg.path)
+                        if(next.length === 0) setEditing(false)
+                        return next
+                    })}
+                    onClose={() => setEditing(false)} />
             </div>
         </PageDefault>
     }
@@ -217,6 +255,14 @@ const MainPage = ({ HTTPServerManager }:any) => {
       <div data-ide-mode="nav">
         <ResizableColumns widths={colWidths} onResize={resizeCol} onCommit={commitWidths}>
             <div>
+                {
+                    editPackages.length > 0 &&
+                    <div onClick={() => setEditing(true)} title="Voltar ao editor"
+                        style={{display:"flex", alignItems:"center", gap:8, cursor:"pointer", marginBottom:10, padding:"6px 10px",
+                            border:"1px solid var(--mp-accent, #14D6C8)", borderRadius:6, background:"var(--mp-accent-soft, rgba(20,214,200,0.12))"}}>
+                        <Icon name="edit" style={{margin:0}} /> Editor ({editPackages.length})
+                    </div>
+                }
                 <OpenRepositories
                     repos={openRepositories}
                     active={activeRepository}
@@ -224,6 +270,31 @@ const MainPage = ({ HTTPServerManager }:any) => {
                     onClose={closeOpenRepository}
                     onAdd={() => setBrowserOpen(true)}
                     onHome={goToWelcome} />
+                {
+                    recentPkgs.length > 0 &&
+                    <div style={{marginTop:14}}>
+                        <div style={{textTransform:"uppercase", fontSize:"0.7em", fontWeight:700, opacity:0.55, letterSpacing:0.5, margin:"0 0 6px 2px"}}>Recentes</div>
+                        {
+                            recentPkgs.map((p:any, i:number) => {
+                                const ctx = pkgContext(p)
+                                return <div key={i} title={ctx.breadcrumb} onClick={() => handleEditPackage(p)}
+                                    style={{display:"flex", alignItems:"center", gap:7, cursor:"pointer", padding:"3px 6px", borderRadius:5, marginBottom:1}}
+                                    onMouseEnter={(e:any) => e.currentTarget.style.background = "rgba(127,127,127,.12)"}
+                                    onMouseLeave={(e:any) => e.currentTarget.style.background = "transparent"}>
+                                    <span style={{width:8, height:8, borderRadius:2, background:ctx.color, flexShrink:0}} />
+                                    <div style={{minWidth:0, flex:1}}>
+                                        <div style={{fontSize:"0.84em", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>
+                                            {p.name}<span style={{opacity:0.5}}>.{p.ext}</span>
+                                        </div>
+                                        <div style={{fontSize:"0.66em", opacity:0.5, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>
+                                            {ctx.layer || ctx.repo}
+                                        </div>
+                                    </div>
+                                </div>
+                            })
+                        }
+                    </div>
+                }
             </div>
             <div>
                 <div style={{display:"flex", alignItems:"center"}} onContextMenu={handleRootContext}>
@@ -289,12 +360,12 @@ const MainPage = ({ HTTPServerManager }:any) => {
 
       <Confirm
         open={!!editReq}
-        header="Modo de edição"
-        content={editReq ? `Entrar no modo de edição de "${editReq.title}"?` : ""}
-        confirmButton={{ content: "Editar", primary: true }}
+        header="Abrir no editor"
+        content={editReq ? `Abrir "${editReq.label}" no editor${editPackages.length ? " (adiciona aos já abertos)" : ""}?` : ""}
+        confirmButton={{ content: editPackages.length ? "Adicionar" : "Editar", primary: true }}
         cancelButton="Cancelar"
         onCancel={() => setEditReq(undefined)}
-        onConfirm={() => { setEditSession(editReq); setEditReq(undefined) }} />
+        onConfirm={() => { addPackages(editReq.packages); setEditReq(undefined) }} />
 
       <Confirm
         open={!!deleteReq}

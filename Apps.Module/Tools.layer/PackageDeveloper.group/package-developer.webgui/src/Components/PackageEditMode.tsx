@@ -15,6 +15,7 @@ import TextPromptModal from "../Modals/TextPrompt.modal"
 import MetadataEditor, { isStructuredMetadata } from "./MetadataEditor"
 import FocusedMetadataForm from "./FocusedMetadataForm"
 import { getAtPath, setAtPath } from "./metadataFormLogic"
+import { pkgContext } from "../Utils/pkgContext"
 
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 const basename = (p:string) => p.split("/").filter(Boolean).pop() || p
@@ -48,12 +49,23 @@ const EditorArea = styled.div`
     overflow: hidden;
     min-width: 0;
 `
+// Botão de pacote na Rail: mostra o "×" de fechar ao passar o mouse.
+const RailBtn = styled.div`
+    position: relative;
+    & > .close {
+        position: absolute; top: -5px; right: -3px;
+        width: 15px; height: 15px; border-radius: 50%;
+        background: #c0392b; color: #fff; font-size: 10px; line-height: 15px; text-align: center;
+        cursor: pointer; display: none;
+    }
+    &:hover > .close { display: block; }
+`
 
-const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any) => {
+const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, onRemovePackage }:any) => {
 
-    const packages:any[] = session.packages || []
+    const pkgs:any[] = packages || []
 
-    const [activePkg, setActivePkg] = useState<any>(packages[0])
+    const [activePkg, setActivePkg] = useState<any>(pkgs[0])
     const [navMode, setNavMode]     = useState<"tipo"|"arquivos">("tipo")
     const [tabs, setTabs]           = useState<any[]>([])
     const [active, setActive]       = useState<number>(-1)
@@ -66,6 +78,7 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
     const [navWidth, setNavWidth]   = useState(260)     // largura redimensionável da coluna de navegação
     const navWidthRef = React.useRef(navWidth)
     navWidthRef.current = navWidth
+    const seededRef = React.useRef<any>(new Set())   // pacotes que já receberam aba default
     const [filePrompt, setFilePrompt] = useState<any>() // { mode:"new"|"rename", dirPath?, filePath?, initial }
     const [fileDelete, setFileDelete] = useState<any>() // { filePath }
 
@@ -102,18 +115,21 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
         window.addEventListener("mousemove", move); window.addEventListener("mouseup", up)
     }
 
-    const stateKey = `edit-tabs:${workspace}:${session.title}`
-    const tabKey = (pkg:any, filePath:string) => `${pkg.name}.${pkg.ext}:${filePath}`
+    const stateKey = `edit-open-tabs`   // editor multi-pacote (estado global)
+    const tabKey = (pkg:any, filePath:string) => `${pkg.workspace}:${pkg.name}.${pkg.ext}:${filePath}`
+
+    // Reporta o pacote ativo (para o título na barra superior).
+    useEffect(() => { onActivePkg && onActivePkg(activePkg) }, [activePkg])
 
     const listDir = (pkg:any) => (path:string) =>
-        fsSvc().ListItem({ workspace, packageName: pkg.name, ext: pkg.ext, path })
+        fsSvc().ListItem({ workspace: pkg.workspace, packageName: pkg.name, ext: pkg.ext, path })
             .then(({data}:any) => (data && data.listItem) || [])
 
     const openFile = async (pkg:any, filePath:string) => {
         const key = tabKey(pkg, filePath)
         const idx = tabs.findIndex((t) => t.key === key)
         if(idx > -1){ setActive(idx); return }
-        const { data } = await fsSvc().GetContentItem({ workspace, packageName: pkg.name, ext: pkg.ext, path: filePath })
+        const { data } = await fsSvc().GetContentItem({ workspace: pkg.workspace, packageName: pkg.name, ext: pkg.ext, path: filePath })
         const content = typeof data === "string" ? data : JSON.stringify(data, null, 4)
         setTabs((prev) => {
             const next = [...prev, { key, pkg, filePath, filename: basename(filePath), content, savedContent: content }]
@@ -124,7 +140,7 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
 
     // Abre uma aba de COMPONENTE (formulário focado numa fatia de um arquivo de
     // metadados). Cada item selecionado na árvore vira sua própria aba.
-    const componentKey = (pkg:any, detail:any) => `${pkg.name}.${pkg.ext}:cmp:${detail.file}#${(detail.path || []).join(".")}`
+    const componentKey = (pkg:any, detail:any) => `${pkg.workspace}:${pkg.name}.${pkg.ext}:cmp:${detail.file}#${(detail.path || []).join(".")}`
     const openComponentTab = async (pkg:any, detail:any) => {
         if(!detail || !detail.file){ return }
         const key = componentKey(pkg, detail)
@@ -132,7 +148,7 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
         if(idx > -1){ setActive(idx); return }
         let content = "{}"
         try {
-            const { data } = await fsSvc().GetContentItem({ workspace, packageName: pkg.name, ext: pkg.ext, path: detail.file })
+            const { data } = await fsSvc().GetContentItem({ workspace: pkg.workspace, packageName: pkg.name, ext: pkg.ext, path: detail.file })
             content = typeof data === "string" ? data : JSON.stringify(data, null, 4)
         } catch(e) {}
         setTabs((prev) => {
@@ -148,12 +164,17 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
     const openDefaultFile = async (pkg:any) => {
         for(const candidate of DEFAULT_FILES){
             try {
-                const { data } = await fsSvc().GetContentItem({ workspace, packageName: pkg.name, ext: pkg.ext, path: candidate })
+                const { data } = await fsSvc().GetContentItem({ workspace: pkg.workspace, packageName: pkg.name, ext: pkg.ext, path: candidate })
                 if(data !== undefined && data !== null){
                     // axios pode ter parseado JSON em objeto — normaliza para string.
                     const content = typeof data === "string" ? data : JSON.stringify(data, null, 4)
-                    setTabs([{ key: tabKey(pkg, candidate), pkg, filePath: candidate, filename: basename(candidate), content, savedContent: content }])
-                    setActive(0)
+                    const key = tabKey(pkg, candidate)
+                    setTabs((prev) => {
+                        if(prev.some((t) => t.key === key)) return prev
+                        const next = [...prev, { key, pkg, filePath: candidate, filename: basename(candidate), content, savedContent: content }]
+                        setActive(next.length - 1)
+                        return next
+                    })
                     return true
                 }
             } catch(e) {}
@@ -167,21 +188,20 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
         modSvc().GetAppState({ key: stateKey }).then(async ({data}:any) => {
             let saved:any
             try { saved = typeof data === "string" ? JSON.parse(data) : data } catch(e) {}
-            let opened = false
+            const loaded:any[] = []
             if(saved && Array.isArray(saved.open) && saved.open.length){
-                const loaded:any[] = []
                 for(const item of saved.open){
                     try {
                         if(item.component){
                             const cmp = item.component
                             const { data: content } = await fsSvc().GetContentItem({
-                                workspace, packageName: item.pkg.name, ext: item.pkg.ext, path: cmp.file })
+                                workspace: item.pkg.workspace, packageName: item.pkg.name, ext: item.pkg.ext, path: cmp.file })
                             const c = typeof content === "string" ? content : JSON.stringify(content, null, 4)
                             loaded.push({ key: componentKey(item.pkg, cmp.detail), kind:"component", pkg: item.pkg,
                                 file: cmp.file, path: cmp.path, detail: cmp.detail, filename: cmp.detail.title, content: c, savedContent: c })
                         } else {
                             const { data: content } = await fsSvc().GetContentItem({
-                                workspace, packageName: item.pkg.name, ext: item.pkg.ext, path: item.filePath })
+                                workspace: item.pkg.workspace, packageName: item.pkg.name, ext: item.pkg.ext, path: item.filePath })
                             const c = typeof content === "string" ? content : JSON.stringify(content, null, 4)
                             loaded.push({ key: tabKey(item.pkg, item.filePath), pkg: item.pkg, filePath: item.filePath,
                                 filename: basename(item.filePath), content: c, savedContent: c })
@@ -191,13 +211,31 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
                 if(loaded.length){
                     setTabs(loaded)
                     setActive(typeof saved.active === "number" && saved.active < loaded.length ? saved.active : 0)
-                    opened = true
                 }
             }
-            if(!opened && activePkg) await openDefaultFile(activePkg)
+            // Marca os pacotes já cobertos por abas restauradas (não re-seedar).
+            loaded.forEach((t:any) => seededRef.current.add(`${t.pkg.workspace}:${t.pkg.path}`))
             setRestored(true)
         }).catch(() => setRestored(true))
     }, [])
+
+    // Sincroniza abas com os pacotes abertos: abre default p/ novos, fecha abas de
+    // pacotes removidos, e mantém um pacote ativo válido.
+    useEffect(() => {
+        if(!restored) return
+        const present = new Set(pkgs.map((p) => `${p.workspace}:${p.path}`))
+        setTabs((prev) => {
+            const kept = prev.filter((t) => present.has(`${t.pkg.workspace}:${t.pkg.path}`))
+            if(kept.length !== prev.length) setActive((a) => Math.max(0, Math.min(a, kept.length - 1)))
+            return kept
+        })
+        pkgs.forEach((p) => {
+            const id = `${p.workspace}:${p.path}`
+            if(!seededRef.current.has(id)){ seededRef.current.add(id); openDefaultFile(p) }
+        })
+        Array.from(seededRef.current).forEach((id:any) => { if(!present.has(id)) seededRef.current.delete(id) })
+        if(activePkg && !present.has(`${activePkg.workspace}:${activePkg.path}`)) setActivePkg(pkgs[0])
+    }, [pkgs.length, restored])
 
     // Persiste quais abas estão abertas + a ativa.
     useEffect(() => {
@@ -234,7 +272,7 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
 
     const createFile = async (dirPath:string, filename:string) => {
         const filePath = joinPath(dirPath, filename)
-        await fsSvc().CreateContentItem({ workspace, packageName: activePkg.name, ext: activePkg.ext, path: filePath })
+        await fsSvc().CreateContentItem({ workspace: activePkg.workspace, packageName: activePkg.name, ext: activePkg.ext, path: filePath })
         setTreeVersion((v) => v + 1)
         await openFile(activePkg, filePath)
     }
@@ -242,7 +280,7 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
         const dir = filePath.slice(0, filePath.lastIndexOf("/"))
         const newPath = joinPath(dir, newName)
         if(newPath === filePath) return
-        await fsSvc().RenameContentItem({ workspace, packageName: activePkg.name, ext: activePkg.ext, path: filePath, newPath })
+        await fsSvc().RenameContentItem({ workspace: activePkg.workspace, packageName: activePkg.name, ext: activePkg.ext, path: filePath, newPath })
         setTreeVersion((v) => v + 1)
         // Atualiza a aba aberta (deste pacote) que apontava para o arquivo renomeado.
         setTabs((prev) => prev.map((t) =>
@@ -251,7 +289,7 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
                 : t))
     }
     const deleteFile = async (filePath:string) => {
-        await fsSvc().DeleteContentItem({ workspace, packageName: activePkg.name, ext: activePkg.ext, path: filePath })
+        await fsSvc().DeleteContentItem({ workspace: activePkg.workspace, packageName: activePkg.name, ext: activePkg.ext, path: filePath })
         setTreeVersion((v) => v + 1)
         // Fecha qualquer aba (deste pacote) sob o caminho excluído.
         setTabs((prev) => prev.filter((t) =>
@@ -293,7 +331,7 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
         if(!tab) return
         setSaving(true)
         try {
-            await fsSvc().SaveContentItem({ workspace, packageName: tab.pkg.name, ext: tab.pkg.ext, path: tab.file || tab.filePath, content: tab.content })
+            await fsSvc().SaveContentItem({ workspace: tab.pkg.workspace, packageName: tab.pkg.name, ext: tab.pkg.ext, path: tab.file || tab.filePath, content: tab.content })
             setTabs((prev) => prev.map((t, i) => i === active ? { ...t, savedContent: t.content } : t))
         } finally { setSaving(false) }
     }
@@ -320,13 +358,42 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
                 <Button basic icon="arrow left" size="small" onClick={onClose} />} />
             <div style={{width:32, height:1, background:"var(--mp-border-default)", margin:"4px 0"}} />
             {
-                packages.map((pkg:any, i:number) =>
-                    <Popup key={i} content={`${pkg.name}.${pkg.ext}`} position="right center" trigger={
-                        <Button
-                            primary={pkg === activePkg}
-                            basic={pkg !== activePkg}
-                            icon="box" size="small"
-                            onClick={() => setActivePkg(pkg)} />} />)
+                // Agrupa os pacotes por (repo+módulo+layer) — mesma cor por origem.
+                (() => {
+                    const groups:any[] = []
+                    pkgs.forEach((pkg:any) => {
+                        const ctx = pkgContext(pkg)
+                        let g = groups.find((x) => x.key === ctx.colorKey)
+                        if(!g){ g = { key: ctx.colorKey, color: ctx.color, items: [] }; groups.push(g) }
+                        g.items.push({ pkg, ctx })
+                    })
+                    return groups.map((g:any, gi:number) =>
+                        <div key={g.key} style={{width:"100%", display:"flex", flexDirection:"column", alignItems:"center", gap:6}}>
+                            { gi > 0 && <div style={{width:34, height:2, background:g.color, opacity:0.6, borderRadius:2, margin:"3px 0"}} /> }
+                            {
+                                g.items.map(({ pkg, ctx }:any, i:number) => {
+                                    const isActive = pkg === activePkg
+                                    return <Popup key={i} position="right center" size="small" trigger={
+                                        <RailBtn>
+                                            <button onClick={() => setActivePkg(pkg)} style={{
+                                                width:38, height:34, borderRadius:7, cursor:"pointer",
+                                                border:`2px solid ${ctx.color}`,
+                                                background: isActive ? ctx.color : "transparent",
+                                                color: isActive ? "#fff" : ctx.color,
+                                                display:"flex", alignItems:"center", justifyContent:"center",
+                                                fontWeight:800, fontSize:"0.66em", textTransform:"uppercase"
+                                            }}>{String(pkg.ext).slice(0, 3)}</button>
+                                            <span className="close" title="Fechar pacote"
+                                                onClick={(e:any) => { e.stopPropagation(); onRemovePackage && onRemovePackage(pkg) }}>×</span>
+                                        </RailBtn>
+                                    } content={
+                                        <div><strong>{pkg.name}.{pkg.ext}</strong>
+                                            <div style={{opacity:0.75, fontSize:"0.85em", marginTop:2}}>{ctx.breadcrumb}</div></div>
+                                    } />
+                                })
+                            }
+                        </div>)
+                })()
             }
         </Rail>
 
@@ -346,7 +413,7 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
                     selectedPath={activeTab && activeTab.pkg === activePkg ? activeTab.filePath : undefined} />
                 : <PackageTypeNav
                     key={`${activePkg.name}.${activePkg.ext}:${treeVersion}`}
-                    workspace={workspace} pkg={activePkg}
+                    workspace={activePkg.workspace} pkg={activePkg}
                     listDir={listDir(activePkg)}
                     onOpenFile={(p:string) => openFile(activePkg, p)}
                     onOpenComponent={(d:any) => openComponentTab(activePkg, d)}
@@ -363,7 +430,7 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
 
         <EditorArea>
             {/* Barra de execução no topo (estilo Xcode) — Run/Debug/Stop/Install + status */}
-            <RunControls key={`ctl:${activePkg.path}`} workspace={workspace} packageSelected={activePkg}
+            <RunControls key={`ctl:${activePkg.path}`} workspace={activePkg.workspace} packageSelected={activePkg}
                 onRun={() => { setRunMounted(true); setRunOpen(true) }} />
 
             <div style={{flex:1, minHeight:0, display:"flex", flexDirection:"column", overflow:"hidden"}}>
@@ -378,10 +445,12 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
                         {
                             tabs.map((t:any, i:number) => {
                                 const isDirty = t.content !== t.savedContent
+                                const tcolor = pkgContext(t.pkg).color
                                 return <Menu.Item key={t.key} active={i === active} onClick={() => setActive(i)}
                                     onMouseDown={(e:any) => { if(e.button === 1){ e.preventDefault(); closeTab(i) } }}
-                                    onContextMenu={(e:any) => openCtx(e, tabContextItems(i))}>
-                                    <span className="edit-tab-scope">{t.pkg.name}.{t.pkg.ext}/</span>
+                                    onContextMenu={(e:any) => openCtx(e, tabContextItems(i))}
+                                    style={{ borderTop: `2px solid ${tcolor}` }}>
+                                    <span className="edit-tab-scope" style={{color:tcolor}}>{t.pkg.name}.{t.pkg.ext}/</span>
                                     <span className="edit-tab-file">{t.filename}</span>
                                     { isDirty && <span className="edit-tab-dirty" title="alterações não salvas">●</span> }
                                     <Icon name="close" size="small" className="edit-tab-close" title="Fechar"
@@ -433,7 +502,7 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
                 {
                     runMounted &&
                     <div style={{display: runOpen ? "block" : "none", padding:10, overflow:"auto", maxHeight:"52vh"}}>
-                        <PackageConsole key={activePkg.path} workspace={workspace} packageSelected={activePkg} terminalHeight="30vh" />
+                        <PackageConsole key={activePkg.path} workspace={activePkg.workspace} packageSelected={activePkg} terminalHeight="30vh" />
                     </div>
                 }
             </div>
