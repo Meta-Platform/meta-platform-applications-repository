@@ -4,6 +4,7 @@ import { Header, Button, Input, Icon, Menu } from "semantic-ui-react"
 
 import { StringListEditor, RecordListEditor } from "./MetadataFormControls"
 import { setKey, patchRecord, addRecord, removeRecord } from "./metadataFormLogic"
+import { F_BOOT_SERVICE, F_BOOT_ENDPOINT, F_EXECUTABLE, F_WINDOW, F_SERVICE, F_EG_ENDPOINT } from "./metadataSchema"
 
 const Section = ({ title, children }:any) =>
     <div style={{marginBottom:18}}>
@@ -37,29 +38,22 @@ export const BootForm = ({ value, onChange }:any) => {
             <RecordListEditor value={v.executables || []} onChange={(x:any) => set("executables", x)}
                 emptyItem={{ executableName: "", dependency: "" }}
                 itemLabel={(it:any) => it.executableName || "executable"}
-                fields={[{ key:"executableName", label:"executableName" }, { key:"dependency", label:"dependency" }]} /> },
+                fields={F_EXECUTABLE} /> },
         { key:"services", label:"Services", render: () =>
             <RecordListEditor value={v.services || []} onChange={(x:any) => set("services", x)}
                 emptyItem={{ namespace: "", dependency: "", params: {}, "bound-params": {} }}
                 itemLabel={(it:any) => it.namespace || "service"}
-                fields={[
-                    { key:"namespace", label:"namespace" }, { key:"dependency", label:"dependency" },
-                    { key:"params", label:"params", type:"keyvalue" }, { key:"bound-params", label:"bound-params", type:"keyvalue" }
-                ]} /> },
+                fields={F_BOOT_SERVICE} /> },
         { key:"endpoints", label:"Endpoints", render: () =>
             <RecordListEditor value={v.endpoints || []} onChange={(x:any) => set("endpoints", x)}
                 emptyItem={{ dependency: "", "bound-params": {} }}
                 itemLabel={(it:any) => it.dependency || "endpoint"}
-                fields={[{ key:"dependency", label:"dependency" }, { key:"bound-params", label:"bound-params", type:"keyvalue" }]} /> },
+                fields={F_BOOT_ENDPOINT} /> },
         { key:"windows", label:"Windows", render: () =>
             <RecordListEditor value={v.windows || []} onChange={(x:any) => set("windows", x)}
                 emptyItem={{ title: "", dependency: "", width: 1280, height: 800, params: {}, "bound-params": {} }}
                 itemLabel={(it:any) => it.title || "window"}
-                fields={[
-                    { key:"title", label:"title" }, { key:"dependency", label:"dependency" },
-                    { key:"width", label:"width", type:"number" }, { key:"height", label:"height", type:"number" },
-                    { key:"params", label:"params", type:"keyvalue" }, { key:"bound-params", label:"bound-params", type:"keyvalue" }
-                ]} /> }
+                fields={F_WINDOW} /> }
     ]} />
 }
 
@@ -68,12 +62,7 @@ export const ServicesForm = ({ value, onChange }:any) =>
     <RecordListEditor value={Array.isArray(value) ? value : []} onChange={onChange}
         emptyItem={{ namespace: "", path: "", "bound-params": [], params: [] }}
         itemLabel={(it:any) => it.namespace || "service"}
-        fields={[
-            { key:"namespace", label:"namespace" },
-            { key:"path", label:"path" },
-            { key:"bound-params", label:"bound-params", type:"stringlist" },
-            { key:"params", label:"params", type:"stringlist" }
-        ]} />
+        fields={F_SERVICE} />
 
 // ----- endpoint-group.json (objeto) -----
 export const EndpointGroupForm = ({ value, onChange }:any) => {
@@ -87,12 +76,7 @@ export const EndpointGroupForm = ({ value, onChange }:any) => {
             <RecordListEditor value={v.endpoints || []} onChange={(x:any) => set("endpoints", x)}
                 emptyItem={{ url: "", type: "controller", params: {}, "bound-params": {} }}
                 itemLabel={(it:any) => it.url || "endpoint"}
-                fields={[
-                    { key:"url", label:"url" },
-                    { key:"type", label:"type" },
-                    { key:"params", label:"params", type:"keyvalue" },
-                    { key:"bound-params", label:"bound-params", type:"keyvalue" }
-                ]} />
+                fields={F_EG_ENDPOINT} />
         </Section>
     </div>
 }

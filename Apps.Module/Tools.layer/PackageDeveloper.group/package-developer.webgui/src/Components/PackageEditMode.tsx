@@ -16,6 +16,7 @@ import MetadataEditor, { isStructuredMetadata } from "./MetadataEditor"
 import FocusedMetadataForm from "./FocusedMetadataForm"
 import { getAtPath, setAtPath } from "./metadataFormLogic"
 import { pkgContext } from "../Utils/pkgContext"
+import { validateMetadataFile } from "./metadataSchema"
 import WorkbenchStatusBar from "./WorkbenchStatusBar"
 import CommandPalette from "./CommandPalette"
 import Inspector from "./Inspector"
@@ -383,12 +384,16 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
     const activeTab = tabs[active]
     const dirty = activeTab ? activeTab.content !== activeTab.savedContent : false
 
-    // Problems: arquivos JSON abertos com conteúdo inválido (alimenta o BottomPanel).
-    const problems = tabs.filter((t) => {
-        const isJson = t.kind === "component" || /\.json$/i.test(t.filePath || "")
-        if(!isJson) return false
-        try { JSON.parse(t.content); return false } catch(e) { return true }
-    }).map((t) => ({ file: `${t.pkg.name}.${t.pkg.ext}/${t.filename}`, message: "JSON inválido", severity: "error" }))
+    // Problems: JSON inválido + violações de schema dos metadados abertos.
+    const problems = tabs.flatMap((t) => {
+        const filePath = t.file || t.filePath || ""
+        const isJson = t.kind === "component" || /\.json$/i.test(filePath)
+        if(!isJson) return []
+        const label = `${t.pkg.name}.${t.pkg.ext}/${basename(filePath)}`
+        try { JSON.parse(t.content) } catch(e) { return [{ file: label, path: "", message: "JSON inválido", severity: "error" }] }
+        return validateMetadataFile(filePath, t.content)
+            .map((iss) => ({ file: label, path: iss.path, message: iss.message, severity: iss.level }))
+    })
 
     // ---- Atalhos de teclado (Ctrl+P/Shift+P, Ctrl+S, Ctrl+B, Ctrl+`) ----
     const kbRef = React.useRef<any>({})

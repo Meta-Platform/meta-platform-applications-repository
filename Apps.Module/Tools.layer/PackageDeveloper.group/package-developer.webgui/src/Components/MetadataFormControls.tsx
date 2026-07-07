@@ -9,6 +9,21 @@ import {
     objectToEntries, entriesToObject, setEntryKey, setEntryValue, addEntry, removeEntryAt,
     coerceNumber, isScalar
 } from "./metadataFormLogic"
+import { validateField } from "./metadataSchema"
+
+// Rótulo curto do tipo do campo (badge).
+const TYPE_BADGE:any = { reference:"ref", number:"num", path:"path", boolean:"bool", enum:"enum" }
+// Mensagem de validação abaixo do campo.
+const FieldMsg = ({ issue }:any) => issue
+    ? <div style={{fontSize:11, marginTop:3, display:"flex", alignItems:"center", gap:4,
+        color: issue.level === "error" ? "var(--color-danger, #d94a3f)" : "var(--color-warning, #d78a20)"}}>
+        <Icon name={issue.level === "error" ? "times circle" : "warning circle"} style={{margin:0}} />{issue.message}
+      </div>
+    : null
+// Estilo de borda por severidade.
+const issueBorder = (issue:any) => issue
+    ? { borderColor: issue.level === "error" ? "var(--color-danger, #d94a3f)" : "var(--color-warning, #d78a20)" }
+    : undefined
 
 // ---- Elementos base (estilo limpo, tema-consciente) ----
 
@@ -130,19 +145,25 @@ export const RecordFields = ({ value, fields, onChange }:any) => {
 
     const renderScalar = (f:any) => {
         const val = it[f.key]
-        const isRef = refLike(f.key, val)
+        const isRef = f.type === "reference" || f.type === "path" || refLike(f.key, val)
+        const issue = validateField(f, val)
         return <Field key={f.key}>
-            <label>{f.label}{isRef && <TypeHint>ref</TypeHint>}{f.type === "number" && <TypeHint>num</TypeHint>}</label>
+            <label>
+                {f.label}
+                { f.required && <span title="obrigatório" style={{color:"var(--color-danger, #d94a3f)", marginLeft:3, fontWeight:700}}>*</span> }
+                { f.type && TYPE_BADGE[f.type] && <TypeHint>{TYPE_BADGE[f.type]}</TypeHint> }
+            </label>
             <Row style={{marginBottom:0}}>
                 {
                     f.type === "number"
-                    ? <TextInput type="number" value={val != null ? val : ""} placeholder={f.placeholder}
+                    ? <TextInput type="number" style={issueBorder(issue)} value={val != null ? val : ""} placeholder={f.placeholder}
                         onChange={(e:any) => patch(f.key, coerceNumber(e.target.value))} />
-                    : <TextInput value={val != null ? val : ""} placeholder={f.placeholder}
+                    : <TextInput style={issueBorder(issue)} value={val != null ? val : ""} placeholder={f.placeholder}
                         onChange={(e:any) => patch(f.key, e.target.value)} />
                 }
                 { isRef && <IconBtn title="Copiar" onClick={() => copyVal(val)}><Icon name="copy outline" /></IconBtn> }
             </Row>
+            <FieldMsg issue={issue} />
         </Field>
     }
     const renderNested = (f:any) =>
@@ -185,21 +206,29 @@ export const RecordListEditor = ({ value, fields, onChange, itemLabel, emptyItem
                     </CardHead>
                     <CardBody>
                         {
-                            fields.map((f:any) =>
-                                <Field key={f.key}>
-                                    <label>{f.label}</label>
+                            fields.map((f:any) => {
+                                const nested = f.type === "stringlist" || f.type === "keyvalue"
+                                const issue = nested ? null : validateField(f, it[f.key])
+                                return <Field key={f.key}>
+                                    <label>
+                                        {f.label}
+                                        { f.required && <span title="obrigatório" style={{color:"var(--color-danger, #d94a3f)", marginLeft:3, fontWeight:700}}>*</span> }
+                                        { f.type && TYPE_BADGE[f.type] && <TypeHint>{TYPE_BADGE[f.type]}</TypeHint> }
+                                    </label>
                                     {
                                         f.type === "stringlist"
                                         ? <Nested><StringListEditor value={it[f.key] || []} onChange={(x:any) => onChange(patchRecord(list, i, f.key, x))} /></Nested>
                                         : f.type === "keyvalue"
                                         ? <Nested><KeyValueEditor value={it[f.key] || {}} onChange={(x:any) => onChange(patchRecord(list, i, f.key, x))} /></Nested>
                                         : f.type === "number"
-                                        ? <TextInput type="number" value={it[f.key] != null ? it[f.key] : ""} placeholder={f.placeholder}
+                                        ? <TextInput type="number" style={issueBorder(issue)} value={it[f.key] != null ? it[f.key] : ""} placeholder={f.placeholder}
                                             onChange={(e:any) => onChange(patchRecord(list, i, f.key, coerceNumber(e.target.value)))} />
-                                        : <TextInput value={it[f.key] != null ? it[f.key] : ""} placeholder={f.placeholder}
+                                        : <TextInput style={issueBorder(issue)} value={it[f.key] != null ? it[f.key] : ""} placeholder={f.placeholder}
                                             onChange={(e:any) => onChange(patchRecord(list, i, f.key, e.target.value))} />
                                     }
-                                </Field>)
+                                    <FieldMsg issue={issue} />
+                                </Field>
+                            })
                         }
                         { extra.length > 0 && <Preserved><Icon name="lock" />preservados: {extra.join(", ")}</Preserved> }
                     </CardBody>

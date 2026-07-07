@@ -69,8 +69,11 @@ const BottomPanel = ({ HTTPServerManager, pkg, problems, open, mounted, onToggle
                         ? <div style={{opacity:0.6, fontSize:13, padding:"8px 4px"}}><Icon name="check circle" color="green" />Nenhum problema detectado nos arquivos abertos.</div>
                         : <div>{ problems.map((p:any, i:number) =>
                             <div key={i} style={{display:"flex", alignItems:"center", gap:8, padding:"5px 4px", fontSize:13, borderBottom:"1px solid var(--mp-line-faint)"}}>
-                                <Icon name="times circle" style={{color:"var(--color-danger, #d94a3f)", margin:0}} />
-                                <strong>{p.file}</strong><span style={{opacity:0.75}}>{p.message}</span>
+                                <Icon name={p.severity === "warning" ? "warning circle" : "times circle"}
+                                    style={{color: p.severity === "warning" ? "var(--color-warning, #d78a20)" : "var(--color-danger, #d94a3f)", margin:0}} />
+                                <strong>{p.file}</strong>
+                                { p.path && <span style={{opacity:0.55, fontFamily:"var(--font-mono)", fontSize:"0.88em"}}>{p.path}</span> }
+                                <span style={{opacity:0.8}}>{p.message}</span>
                             </div>) }</div>)
                 }
                 {

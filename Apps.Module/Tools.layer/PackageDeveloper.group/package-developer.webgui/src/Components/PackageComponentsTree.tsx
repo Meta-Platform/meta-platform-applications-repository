@@ -4,16 +4,9 @@ import { connect } from "react-redux"
 import { List, Icon, Loader } from "semantic-ui-react"
 
 import GetRequestByServer from "../Utils/GetRequestByServer"
+import { F_BOOT_SERVICE, F_SERVICE, F_BOOT_ENDPOINT, F_EG_ENDPOINT, F_EXECUTABLE, F_WINDOW } from "./metadataSchema"
 
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
-
-// Field-sets dos formulários focados (por tipo de item).
-const F_BOOT_SERVICE  = [{ key:"namespace", label:"namespace" }, { key:"dependency", label:"dependency" }, { key:"params", label:"params", type:"keyvalue" }, { key:"bound-params", label:"bound-params", type:"keyvalue" }]
-const F_SERVICE       = [{ key:"namespace", label:"namespace" }, { key:"path", label:"path" }, { key:"bound-params", label:"bound-params", type:"stringlist" }, { key:"params", label:"params", type:"stringlist" }]
-const F_BOOT_ENDPOINT = [{ key:"dependency", label:"dependency" }, { key:"bound-params", label:"bound-params", type:"keyvalue" }]
-const F_EG_ENDPOINT   = [{ key:"url", label:"url" }, { key:"type", label:"type" }, { key:"params", label:"params", type:"keyvalue" }, { key:"bound-params", label:"bound-params", type:"keyvalue" }]
-const F_EXECUTABLE    = [{ key:"executableName", label:"executableName" }, { key:"dependency", label:"dependency" }]
-const F_WINDOW        = [{ key:"title", label:"title" }, { key:"dependency", label:"dependency" }, { key:"width", label:"width", type:"number" }, { key:"height", label:"height", type:"number" }, { key:"params", label:"params", type:"keyvalue" }, { key:"bound-params", label:"bound-params", type:"keyvalue" }]
 
 const HL:any = { background:"var(--mp-accent-soft, rgba(20,214,200,0.16))", boxShadow:"inset 2px 0 0 var(--mp-accent, #14D6C8)", borderRadius:4 }
 
