@@ -173,11 +173,44 @@ const DefineModels = (sequelize) => {
         workingDirectory:  { type: DataTypes.STRING },
         repositoryUrl:     { type: DataTypes.STRING },
         branchName:        { type: DataTypes.STRING },
+        commitHash:        { type: DataTypes.STRING },
         objective:         { type: DataTypes.TEXT },
+        // Chave de identidade para find-or-create por identidade inline
+        // (provider + externalSessionId||traceId). Única quando presente.
+        identityKey:       { type: DataTypes.STRING },
+        // Contexto de SO/processo capturado na 1ª tentativa.
+        host:              { type: DataTypes.STRING },
+        osUser:            { type: DataTypes.STRING },
+        pid:               { type: DataTypes.INTEGER },
+        agentVersion:      { type: DataTypes.STRING },
+        // Rastro da 1ª tentativa + atividade.
+        firstAttemptAt:     { type: DataTypes.DATE },
+        firstAttemptAction: { type: DataTypes.STRING },
+        actionCount:        { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        lastActivityAt:     { type: DataTypes.DATE },
         status:            { type: DataTypes.STRING, allowNull: false, defaultValue: "pending_confirmation" },
         confirmedAt:       { type: DataTypes.DATE },
         closedAt:          { type: DataTypes.DATE }
-    }, { tableName: "agent_sessions", indexes: [{ fields: ["agentUserId"] }, { fields: ["status"] }] })
+    }, { tableName: "agent_sessions", indexes: [{ fields: ["agentUserId"] }, { fields: ["status"] }, { fields: ["identityKey"] }] })
+
+    // Pedido de CRIAÇÃO estrutural (projeto ou board) feito por um agente.
+    // Toda criação de projeto/board por agente vira um pedido PENDENTE; ao ser
+    // aprovado por um humano a criação é executada. Itens não passam por aqui.
+    // type: "project" | "board". status: pending | approved | rejected.
+    const CreationRequest = sequelize.define("CreationRequest", {
+        id:              idField,
+        type:            { type: DataTypes.STRING, allowNull: false },
+        agentSessionId:  { type: DataTypes.STRING },
+        projectId:       { type: DataTypes.STRING }, // projeto-pai (quando type=board)
+        status:          { type: DataTypes.STRING, allowNull: false, defaultValue: "pending" },
+        payloadJson:     { type: DataTypes.TEXT },   // params da criação solicitada
+        resultId:        { type: DataTypes.STRING }, // id da entidade criada após aprovação
+        requestedAt:     { type: DataTypes.DATE },
+        decidedAt:       { type: DataTypes.DATE },
+        decidedByUserId: { type: DataTypes.STRING }
+    }, { tableName: "creation_requests", indexes: [
+        { fields: ["agentSessionId"] }, { fields: ["type"] }, { fields: ["status"] }
+    ] })
 
     const AuditEvent = sequelize.define("AuditEvent", {
         id:              idField,
@@ -202,7 +235,7 @@ const DefineModels = (sequelize) => {
         Project, Board, BoardColumn, WorkItem, WorkItemLink,
         WorkItemChecklistItem, WorkItemAcceptanceCriteria,
         Attachment, Comment, User, AgentProfile, AgentSession,
-        AuditEvent, AppState
+        CreationRequest, AuditEvent, AppState
     }
 }
 

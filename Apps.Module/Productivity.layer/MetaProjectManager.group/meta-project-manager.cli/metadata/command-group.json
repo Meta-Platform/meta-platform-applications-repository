@@ -1094,6 +1094,56 @@
                             ]
                         }
                     ]
+                },
+                {
+                    "namespace": "AgentCreation",
+                    "command": "creation",
+                    "description": "Pedidos de criação (projeto/board) por agentes",
+                    "children": [
+                        {
+                            "namespace": "AgentCreationList",
+                            "path": "Commands/AgentCreationList.command",
+                            "command": "list",
+                            "description": "Listar pedidos de criação (padrão: pendentes)",
+                            "parametersToLoad": [
+                                "projectStoreLib"
+                            ]
+                        },
+                        {
+                            "namespace": "AgentCreationApprove",
+                            "path": "Commands/AgentCreationApprove.command",
+                            "command": "approve [request]",
+                            "description": "Aprovar e executar a criação",
+                            "parameters": [
+                                {
+                                    "key": "request",
+                                    "paramType": "positional",
+                                    "valueType": "string",
+                                    "describe": "id do pedido"
+                                }
+                            ],
+                            "parametersToLoad": [
+                                "projectStoreLib"
+                            ]
+                        },
+                        {
+                            "namespace": "AgentCreationReject",
+                            "path": "Commands/AgentCreationReject.command",
+                            "command": "reject [request]",
+                            "description": "Rejeitar o pedido de criação",
+                            "parameters": [
+                                {
+                                    "key": "request",
+                                    "paramType": "positional",
+                                    "valueType": "string",
+                                    "describe": "id do pedido"
+                                }
+                            ],
+                            "parametersToLoad": [
+                                "projectStoreLib"
+                            ]
+                        }
+                    ]
                 }
             ]
         },

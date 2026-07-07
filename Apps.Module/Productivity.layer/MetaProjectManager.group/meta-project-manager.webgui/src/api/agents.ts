@@ -1,5 +1,5 @@
 import { Caller } from "./client"
-import { Agent, AgentSession } from "./types"
+import { Agent, AgentSession, CreationRequest, ApproveCreationResult } from "./types"
 
 export interface CreateAgentInput {
     provider: string
@@ -40,7 +40,18 @@ const CreateAgentsApi = (call: Caller) => ({
         call("Agents", "RejectAgentSession", { sessionId }),
 
     closeSession: (sessionId: string): Promise<AgentSession> =>
-        call("Agents", "CloseAgentSession", { sessionId })
+        call("Agents", "CloseAgentSession", { sessionId }),
+
+    // Pedidos de criação (projeto/board bloqueados de agentes, aguardando
+    // aprovação humana). status default do servidor = pending.
+    listCreationRequests: (query: { type?: string; status?: string } = {}): Promise<CreationRequest[]> =>
+        call("Agents", "ListCreationRequests", query),
+
+    approveCreation: (requestId: string, actorUserId?: string): Promise<ApproveCreationResult> =>
+        call("Agents", "ApproveCreation", { requestId, actorUserId }),
+
+    rejectCreation: (requestId: string, actorUserId?: string): Promise<CreationRequest> =>
+        call("Agents", "RejectCreation", { requestId, actorUserId })
 })
 
 export default CreateAgentsApi

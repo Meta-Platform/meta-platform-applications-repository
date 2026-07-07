@@ -23,6 +23,15 @@ const BoardsStore = (ctx) => {
     const CreateBoard = async ({ project, name, description, type = "kanban", withDefaultColumns = true, setDefault, actor } = {}) => {
         if(!name) throw new DomainError("VALIDATION_ERROR", "Nome do board é obrigatório.", { field: "name" })
         const projectInstance = await store.ResolveProject(project)
+
+        // Gate: criação de board por agente exige aprovação humana (vira pedido pendente).
+        if(store.IsAgentCreation(actor)){
+            const { request } = await store.RequestCreation({ type: "board", projectId: projectInstance.id, payload: { project: projectInstance.id, name, description, type, withDefaultColumns, setDefault }, actor })
+            throw new DomainError("AGENT_SESSION_CONFIRMATION_REQUIRED",
+                "Criação de board por agente requer aprovação humana.",
+                { pendingCreationId: request.id, type: "board", nextCommands: [`mpm agent creation approve ${request.id}`, `mpm agent creation reject ${request.id}`] })
+        }
+
         const board = await Board.create({ id: NewId(), projectId: projectInstance.id, name, description, type })
         if(withDefaultColumns) await _createDefaultColumns(board.id)
         const isFirst = (await Board.count({ where: { projectId: projectInstance.id, deletedAt: null } })) === 1

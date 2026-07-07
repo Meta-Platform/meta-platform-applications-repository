@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
+import usePendingCreations from "../Hooks/usePendingCreations"
 import { Project } from "../api/types"
 
 interface ProjectSidebarProps {
@@ -22,6 +23,7 @@ const NAV: { key: string; label: string; icon: any; to: string }[] = [
 const ProjectSidebar = ({ active, activeProjectId }: ProjectSidebarProps) => {
     const api = useApi()
     const navigate = useNavigate()
+    const { count: pendingCreations } = usePendingCreations()
     const [projects, setProjects] = useState<Project[]>([])
 
     useEffect(() => {
@@ -40,7 +42,10 @@ const ProjectSidebar = ({ active, activeProjectId }: ProjectSidebarProps) => {
                     <a key={n.key}
                         className={`mpm-nav__item ${active === n.key ? "is-active" : ""}`}
                         onClick={() => navigate(n.to)}>
-                        <Icon name={n.icon} /> {n.label}
+                        <Icon name={n.icon} /> <span style={{ flex: 1 }}>{n.label}</span>
+                        {n.key === "agents" && pendingCreations > 0
+                            ? <span className="mpm-chip mpm-chip--warning" title="pedidos de criação pendentes">{pendingCreations}</span>
+                            : null}
                     </a>)}
             </nav>
         </div>
