@@ -7,10 +7,10 @@ import PackageIcon from "./PackageIcon"
 // Folha: pacote (clique seleciona para info; botão direito abre menu de contexto).
 const PackageLeaf = ({ workspace, pkg, selectedPackage, onSelectPackage, onNodeContext }:any) => {
     const isSel = selectedPackage && selectedPackage.path === pkg.path
-    return <List.Item active={isSel} style={{cursor:"pointer"}}
+    return <List.Item style={{cursor:"pointer"}}
         onClick={() => onSelectPackage && onSelectPackage(pkg)}
         onContextMenu={(e:any) => onNodeContext && onNodeContext(e, "package", pkg)}>
-        <List.Content>
+        <List.Content className={isSel ? "eco-nav-active" : ""}>
             <span style={{marginRight:6}}><PackageIcon workspace={workspace} name={pkg.name} ext={pkg.ext} /></span>
             <strong>{pkg.name}</strong><span style={{opacity:0.55}}>.{pkg.ext}</span>
         </List.Content>
@@ -45,11 +45,11 @@ const LayerNode = ({ workspace, mod, layer, selectedPath, onSelect, onNodeContex
     return <List.Item>
         <List.Icon name={open ? "caret down" : "caret right"} link onClick={() => setOpen(!open)} />
         <List.Content>
-            <List.Header
-                style={{cursor:"pointer", color: isSel ? "var(--mp-accent-cyan)" : undefined}}
+            <List.Header className={isSel ? "eco-nav-active" : ""}
+                style={{cursor:"pointer"}}
                 onClick={() => onSelect({ kind: "layer", label: `${mod.name} / ${layer.name}`, node: layer })}
                 onContextMenu={(e:any) => onNodeContext && onNodeContext(e, "layer", layer)}>
-                <Icon name="clone outline" color="teal" />{layer.name}
+                <Icon name="clone outline" color={isSel ? undefined : "teal"} />{layer.name}
             </List.Header>
             {
                 open && <List.List>
@@ -69,8 +69,8 @@ const ModuleNode = ({ workspace, module: mod, selectedPath, onSelect, onNodeCont
     return <List.Item>
         <List.Icon name={open ? "caret down" : "caret right"} link onClick={() => setOpen(!open)} />
         <List.Content>
-            <List.Header
-                style={{cursor:"pointer", color: selectedPath === mod.path ? "var(--mp-accent-cyan)" : undefined}}
+            <List.Header className={selectedPath === mod.path ? "eco-nav-active" : ""}
+                style={{cursor:"pointer"}}
                 onClick={() => onSelect({ kind: "module", label: mod.name, node: mod })}
                 onContextMenu={(e:any) => onNodeContext && onNodeContext(e, "module", mod)}>
                 <Icon name="cubes" color="grey" />{mod.name}

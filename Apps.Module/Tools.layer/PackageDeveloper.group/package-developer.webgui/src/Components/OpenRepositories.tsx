@@ -11,9 +11,9 @@ const OpenRepositories = ({ repos, active, onSwitch, onClose, onAdd, onHome }:an
         <List selection verticalAlign="middle" className="repos-list">
             {
                 (repos || []).map((name:string) =>
-                    <List.Item key={name} active={name === active} onClick={() => onSwitch(name)}>
-                        <List.Icon name="database" color={name === active ? "teal" : "grey"} />
-                        <List.Content style={{minWidth:0}}>
+                    <List.Item key={name} onClick={() => onSwitch(name)}>
+                        <List.Icon name="database" color={name === active ? undefined : "grey"} />
+                        <List.Content className={name === active ? "eco-nav-active" : ""} style={{minWidth:0}}>
                             <div style={{display:"flex", alignItems:"center", minWidth:0}}>
                                 <span title={name} style={{flex:1, minWidth:0, fontWeight: name === active ? 700 : 400,
                                     whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>{name}</span>

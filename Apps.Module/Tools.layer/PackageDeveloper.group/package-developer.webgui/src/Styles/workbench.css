@@ -169,6 +169,16 @@
     font-weight: 800 !important;
 }
 
+/* Navegador (eco): item selecionado com faixa lateral (accent) + fundo tint. */
+.eco-nav-active {
+    color: var(--mp-accent-blue, #2D74C4) !important;
+    background: var(--mp-accent-blue-tint, #E2ECF8) !important;
+    box-shadow: inset 3px 0 0 var(--mp-accent-blue, #2D74C4);
+    border-radius: 0 var(--mp-radius-sm, 4px) var(--mp-radius-sm, 4px) 0;
+    padding: 3px 6px !important;
+}
+.eco-nav-active > .icon, .eco-nav-active .icon:first-child { color: var(--mp-accent-blue, #2D74C4) !important; }
+
 /* Badge de contagem (problemas, mudanças). */
 .ide-badge {
     display: inline-flex; align-items: center; justify-content: center;
