@@ -16,14 +16,38 @@ import MetadataEditor, { isStructuredMetadata } from "./MetadataEditor"
 import FocusedMetadataForm from "./FocusedMetadataForm"
 import { getAtPath, setAtPath } from "./metadataFormLogic"
 import { pkgContext } from "../Utils/pkgContext"
+import WorkbenchStatusBar from "./WorkbenchStatusBar"
 
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 const basename = (p:string) => p.split("/").filter(Boolean).pop() || p
 
-const Wrap = styled.div`
+// Ícone por tipo de aba (arquivo por extensão ou componente de metadado).
+const tabIconName = (t:any):any => {
+    if(t.kind === "component") return (t.detail && t.detail.icon) || "puzzle piece"
+    const f = t.filename || ""
+    if(/\.json$/i.test(f)) return "file code outline"
+    if(/\.md$/i.test(f))   return "file alternate outline"
+    if(/\.(js|jsx|ts|tsx)$/i.test(f)) return "code"
+    return "file outline"
+}
+
+// Trilha (breadcrumbs) de uma aba: pkg › pastas › arquivo (ou pkg › arquivo · item).
+const tabCrumbs = (t:any):string[] => {
+    const pkg = `${t.pkg.name}.${t.pkg.ext}`
+    if(t.kind === "component") return [pkg, basename(t.file), t.detail.title]
+    return [pkg, ...String(t.filePath || "").split("/").filter(Boolean)]
+}
+
+const Shell = styled.div`
     display: flex;
+    flex-direction: column;
     height: calc(100vh - var(--pd-header-h));
     border-top: 2px solid var(--mp-accent, #14D6C8);
+`
+const Wrap = styled.div`
+    display: flex;
+    flex: 1;
+    min-height: 0;
     background: var(--mp-edit-tint, rgba(120,95,190,.06));
 `
 const Rail = styled.div`
@@ -341,7 +365,7 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
 
     // Sessão sem pacotes (ex.: editar um Grupo vazio): nada para editar.
     if(!activePkg){
-        return <Wrap>
+        return <Shell><Wrap>
             <Rail className="edit-rail">
                 <Popup content="Voltar à navegação" position="right center" trigger={
                     <Button basic icon="arrow left" size="small" onClick={onClose} />} />
@@ -349,13 +373,18 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
             <div style={{flex:1, display:"flex", alignItems:"center", justifyContent:"center"}}>
                 <Header icon><Icon name="inbox" color="grey" />Este grupo não tem pacotes para editar.</Header>
             </div>
-        </Wrap>
+        </Wrap></Shell>
     }
 
-    return <Wrap>
+    return <Shell><Wrap>
         <Rail className="edit-rail">
             <Popup content="Voltar à navegação" position="right center" trigger={
                 <Button basic icon="arrow left" size="small" onClick={onClose} />} />
+            <div style={{width:32, height:1, background:"var(--mp-border-default)", margin:"2px 0"}} />
+            <Popup content="Metadados" position="right center" size="small" trigger={
+                <Button basic={navMode !== "tipo"} primary={navMode === "tipo"} icon="sitemap" size="small" onClick={() => setNavMode("tipo")} />} />
+            <Popup content="Arquivos" position="right center" size="small" trigger={
+                <Button basic={navMode !== "arquivos"} primary={navMode === "arquivos"} icon="folder" size="small" onClick={() => setNavMode("arquivos")} />} />
             <div style={{width:32, height:1, background:"var(--mp-border-default)", margin:"4px 0"}} />
             {
                 // Agrupa os pacotes por (repo+módulo+layer) — mesma cor por origem.
@@ -398,10 +427,10 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
         </Rail>
 
         <NavCol style={{width: navWidth, flexShrink:0}}>
-            <Button.Group size="mini" fluid style={{marginBottom:8}}>
-                <Button active={navMode === "tipo"} onClick={() => setNavMode("tipo")}>Tipo</Button>
-                <Button active={navMode === "arquivos"} onClick={() => setNavMode("arquivos")}>Arquivos</Button>
-            </Button.Group>
+            <div className="ide-section-title" style={{display:"flex", alignItems:"center", gap:6, margin:"0 0 8px 2px"}}>
+                <Icon name={navMode === "arquivos" ? "folder" : "sitemap"} style={{margin:0}} />
+                {navMode === "arquivos" ? "Explorer" : "Metadados"}
+            </div>
             {
                 navMode === "arquivos"
                 ? <SourceTree
@@ -450,6 +479,7 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
                                     onMouseDown={(e:any) => { if(e.button === 1){ e.preventDefault(); closeTab(i) } }}
                                     onContextMenu={(e:any) => openCtx(e, tabContextItems(i))}
                                     style={{ borderTop: `2px solid ${tcolor}` }}>
+                                    <Icon name={tabIconName(t)} size="small" style={{margin:"0 5px 0 0", opacity:0.7}} />
                                     <span className="edit-tab-scope" style={{color:tcolor}}>{t.pkg.name}.{t.pkg.ext}/</span>
                                     <span className="edit-tab-file">{t.filename}</span>
                                     { isDirty && <span className="edit-tab-dirty" title="alterações não salvas">●</span> }
@@ -459,6 +489,19 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
                             })
                         }
                     </Menu>
+                    {
+                        activeTab && <div style={{display:"flex", alignItems:"center", gap:5, padding:"4px 10px", fontSize:"11px",
+                            flexShrink:0, borderBottom:"1px solid var(--mp-line-faint)", color:"var(--color-text-muted, #63614f)",
+                            overflowX:"auto", whiteSpace:"nowrap", fontFamily:"var(--font-ui)"}}>
+                            {
+                                tabCrumbs(activeTab).map((c:string, ci:number, arr:string[]) =>
+                                    <React.Fragment key={ci}>
+                                        { ci > 0 && <Icon name="angle right" style={{margin:0, opacity:0.4}} /> }
+                                        <span style={{opacity: ci === arr.length - 1 ? 1 : 0.7, fontWeight: ci === arr.length - 1 ? 700 : 400}}>{c}</span>
+                                    </React.Fragment>)
+                            }
+                        </div>
+                    }
                     {
                         activeTab && <div style={{padding:8, flex:1, minHeight:0, display:"flex", flexDirection:"column"}}>
                             <div style={{marginBottom:6}}>
@@ -529,6 +572,8 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
             onCancel={() => setFileDelete(undefined)}
             onConfirm={() => { const p = fileDelete.filePath; setFileDelete(undefined); deleteFile(p) }} />
     </Wrap>
+    <WorkbenchStatusBar pkg={activePkg} activeTab={activeTab} tabsCount={tabs.length} dirty={dirty} />
+    </Shell>
 }
 
 const mapStateToProps = ({ HTTPServerManager }:any) => ({ HTTPServerManager })
