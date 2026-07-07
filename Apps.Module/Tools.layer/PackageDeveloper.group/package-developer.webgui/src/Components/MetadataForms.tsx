@@ -5,8 +5,8 @@ import { StringListEditor, RecordListEditor } from "./MetadataFormControls"
 import { setKey, patchRecord, addRecord, removeRecord } from "./metadataFormLogic"
 
 const Section = ({ title, children }:any) =>
-    <div style={{marginBottom:14}}>
-        <Header as="h5" style={{marginBottom:6}}>{title}</Header>
+    <div style={{marginBottom:18}}>
+        <Header as="h5" style={{marginBottom:8, textTransform:"uppercase", letterSpacing:0.4, fontSize:"0.8em", opacity:0.75, borderBottom:"1px solid var(--mp-line-faint)", paddingBottom:4}}>{title}</Header>
         {children}
     </div>
 

@@ -54,7 +54,7 @@ const ResizableColumns = ({ widths, minWidth = 160, onResize, onCommit, children
                         flex: isLast ? "1 1 0" : `0 0 ${widths[i] || minWidth}px`,
                         minWidth: isLast ? minWidth : undefined,
                         overflow: "auto",
-                        padding: "4px 14px"
+                        padding: "16px 14px 4px"
                     }}>{col}</div>
                     { !isLast && <Resizer onMouseDown={startDrag(i)} /> }
                 </React.Fragment>

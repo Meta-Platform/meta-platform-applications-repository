@@ -8,7 +8,8 @@ import GetRequestByServer from "../Utils/GetRequestByServer"
 import CodeEditor from "./CodeEditor"
 import SourceTree from "./SourceTree"
 import PackageTypeNav from "./PackageTypeNav"
-import RunPackage from "./RunPackage"
+import RunControls from "./RunControls"
+import PackageConsole from "./PackageConsole"
 import ContextMenu from "./ContextMenu"
 import TextPromptModal from "../Modals/TextPrompt.modal"
 import MetadataEditor, { isStructuredMetadata } from "./MetadataEditor"
@@ -59,6 +60,9 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
     const [runMounted, setRunMounted] = useState(false)
     const [ctxMenu, setCtxMenu]     = useState<any>()
     const [treeVersion, setTreeVersion] = useState(0)   // bump para remontar a árvore após CRUD de arquivo
+    const [navWidth, setNavWidth]   = useState(260)     // largura redimensionável da coluna de navegação
+    const navWidthRef = React.useRef(navWidth)
+    navWidthRef.current = navWidth
     const [filePrompt, setFilePrompt] = useState<any>() // { mode:"new"|"rename", dirPath?, filePath?, initial }
     const [fileDelete, setFileDelete] = useState<any>() // { filePath }
 
@@ -75,6 +79,25 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
 
     const modSvc = () => GetRequestByServer(HTTPServerManager)(SERVER_APP_NAME, "ModuleDeveloper")
     const fsSvc  = () => GetRequestByServer(HTTPServerManager)(SERVER_APP_NAME, "FileSystemNavigator")
+
+    // Largura da coluna de navegação — restaurada e persistida.
+    useEffect(() => {
+        modSvc().GetAppState({ key: "edit-navcol-width" }).then(({data}:any) => {
+            const w = parseInt(data, 10); if(!isNaN(w) && w >= 180) setNavWidth(w)
+        }).catch(() => {})
+    }, [])
+    const startNavDrag = (e:any) => {
+        e.preventDefault()
+        const startX = e.clientX, startW = navWidthRef.current
+        const move = (ev:MouseEvent) => setNavWidth(Math.max(180, Math.min(600, startW + (ev.clientX - startX))))
+        const up = () => {
+            window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up)
+            document.body.style.userSelect = ""
+            modSvc().SetAppState({ key: "edit-navcol-width", value: String(navWidthRef.current) })
+        }
+        document.body.style.userSelect = "none"
+        window.addEventListener("mousemove", move); window.addEventListener("mouseup", up)
+    }
 
     const stateKey = `edit-tabs:${workspace}:${session.title}`
     const tabKey = (pkg:any, filePath:string) => `${pkg.name}.${pkg.ext}:${filePath}`
@@ -269,14 +292,11 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
             }
         </Rail>
 
-        <NavCol>
+        <NavCol style={{width: navWidth, flexShrink:0}}>
             <Button.Group size="mini" fluid style={{marginBottom:8}}>
                 <Button active={navMode === "tipo"} onClick={() => setNavMode("tipo")}>Tipo</Button>
                 <Button active={navMode === "arquivos"} onClick={() => setNavMode("arquivos")}>Arquivos</Button>
             </Button.Group>
-            <div style={{fontSize:"0.78em", opacity:0.6, marginBottom:4, wordBreak:"break-all"}}>
-                {activePkg.name}.{activePkg.ext}
-            </div>
             {
                 navMode === "arquivos"
                 ? <SourceTree
@@ -288,6 +308,7 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
                     selectedPath={activeTab && activeTab.pkg === activePkg ? activeTab.filePath : undefined} />
                 : <PackageTypeNav
                     key={`${activePkg.name}.${activePkg.ext}:${treeVersion}`}
+                    workspace={workspace} pkg={activePkg}
                     listDir={listDir(activePkg)}
                     onOpenFile={(p:string) => openFile(activePkg, p)}
                     onFileContext={onFileContext}
@@ -295,7 +316,15 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
             }
         </NavCol>
 
+        {/* Divisor arrastável entre a navegação e o editor */}
+        <div onMouseDown={startNavDrag} title="Redimensionar"
+            style={{ flex:"0 0 6px", cursor:"col-resize", background:"var(--mp-line-faint)", opacity:0.6 }} />
+
         <EditorArea>
+            {/* Barra de execução no topo (estilo Xcode) — Run/Debug/Stop/Install + status */}
+            <RunControls key={`ctl:${activePkg.path}`} workspace={workspace} packageSelected={activePkg}
+                onRun={() => { setRunMounted(true); setRunOpen(true) }} />
+
             <div style={{flex:1, minHeight:0, display:"flex", flexDirection:"column", overflow:"hidden"}}>
             {
                 tabs.length === 0
@@ -337,19 +366,19 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
             }
             </div>
 
-            {/* Dock Executar / Console — painel inferior recolhível (para o pacote ativo) */}
+            {/* Dock Console — saída (recolhível). Os botões de execução ficam na barra superior. */}
             <div className="edit-run-dock" style={{flex:"0 0 auto"}}>
                 <div className="edit-run-bar" onClick={toggleRun}
                     style={{display:"flex", alignItems:"center", gap:8, padding:"6px 12px", cursor:"pointer", userSelect:"none", fontWeight:700}}>
                     <Icon name={runOpen ? "chevron down" : "chevron up"} style={{margin:0}} />
-                    <Icon name="play" color="teal" style={{margin:0}} />
-                    Executar / Console
+                    <Icon name="terminal" color="teal" style={{margin:0}} />
+                    Console
                     <span style={{opacity:0.6, fontWeight:400, fontSize:"0.85em"}}>{activePkg.name}.{activePkg.ext}</span>
                 </div>
                 {
                     runMounted &&
                     <div style={{display: runOpen ? "block" : "none", padding:10, overflow:"auto", maxHeight:"52vh"}}>
-                        <RunPackage key={activePkg.path} workspace={workspace} packageSelected={activePkg} terminalHeight="30vh" />
+                        <PackageConsole key={activePkg.path} workspace={workspace} packageSelected={activePkg} terminalHeight="30vh" />
                     </div>
                 }
             </div>

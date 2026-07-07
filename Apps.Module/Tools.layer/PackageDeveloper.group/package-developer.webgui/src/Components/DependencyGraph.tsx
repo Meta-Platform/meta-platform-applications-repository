@@ -1,5 +1,4 @@
 import * as React from "react"
-import { Segment, Header, Icon } from "semantic-ui-react"
 
 // Coleta recursiva de todas as strings de um valor de metadata.
 const collectStrings = (node:any, out:string[]) => {
@@ -39,10 +38,7 @@ const DependencyGraph = ({ metadata, pkg }:any) => {
     const H = Math.max(120, refs.length * rowH + top)
     const leftY = H / 2
 
-    return <Segment>
-        <Header as="h4"><Icon name="sitemap" />Dependências entre pacotes (@/)</Header>
-        {
-            <svg viewBox={`0 0 ${rightX + depW + 12} ${H}`} width="100%" style={{maxHeight:420, display:"block"}}>
+    return <svg viewBox={`0 0 ${rightX + depW + 12} ${H}`} width="100%" style={{maxHeight:420, display:"block"}}>
                 {
                     refs.map((r, i) => {
                         const y = top + i * rowH + 15
@@ -69,8 +65,6 @@ const DependencyGraph = ({ metadata, pkg }:any) => {
                     })
                 }
             </svg>
-        }
-    </Segment>
 }
 
 export default DependencyGraph

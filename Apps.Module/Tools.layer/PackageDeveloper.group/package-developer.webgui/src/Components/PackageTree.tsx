@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import { List, Icon } from "semantic-ui-react"
 
 import PackageIcon from "./PackageIcon"
+import PackageComponentsTree from "./PackageComponentsTree"
 
 // Destaque visual do nó selecionado (faixa de acento + fundo suave).
 const SELECTED_STYLE:any = {
@@ -16,26 +17,47 @@ const EditPencil = ({ onClick, title }:any) =>
     <Icon name="pencil" link title={title} style={{margin:0, opacity:0.85}}
         onClick={(e:any) => { e.stopPropagation(); onClick() }} />
 
-// Pacote (folha): clique = seleciona (destaca + info); duplo-clique = editar;
-// botão direito = menu de contexto. O lápis só aparece quando selecionado.
-const PackageItem = ({ workspace, pkg, selectedPackage, onSelectPackage, onEditPackage, onNodeContext }:any) => {
+// Pacote: caret = expande a árvore de componentes (Boot/Services/Endpoints/…);
+// clique no nome = seleciona (destaca + info); duplo-clique = editar; botão direito
+// = menu de contexto. O lápis só aparece quando selecionado.
+const PackageItem = ({ workspace, pkg, selectedPackage, onSelectPackage, onSelectDetail, onEditPackage, onNodeContext }:any) => {
     const isSelected = selectedPackage
         && selectedPackage.name === pkg.name
         && selectedPackage.ext === pkg.ext
         && selectedPackage.path === pkg.path
-    return <List.Item active={isSelected} style={{cursor:"pointer", padding:"4px 6px", ...(isSelected ? SELECTED_STYLE : {})}}
-        onClick={() => onSelectPackage(pkg)}
-        onDoubleClick={() => onEditPackage(pkg)}
-        onContextMenu={(e:any) => onNodeContext && onNodeContext(e, "package", pkg)}>
-        <div style={{display:"flex", alignItems:"center"}}>
-            <div style={{flex:1, display:"flex", alignItems:"center", minWidth:0}}>
-                <span style={{marginRight:8}}><PackageIcon workspace={workspace} name={pkg.name} ext={pkg.ext} /></span>
+    const [open, setOpen] = useState(false)
+    return <List.Item>
+        <div style={{display:"flex", alignItems:"center", padding:"4px 6px", ...(isSelected ? SELECTED_STYLE : {})}}>
+            <Icon name={open ? "caret down" : "caret right"} link title="Expandir componentes"
+                style={{margin:"0 4px 0 0", flexShrink:0}}
+                onClick={(e:any) => { e.stopPropagation(); setOpen(!open) }} />
+            <div style={{flex:1, display:"flex", alignItems:"center", minWidth:0, cursor:"pointer"}}
+                onClick={() => onSelectPackage(pkg)}
+                onDoubleClick={() => onEditPackage(pkg)}
+                onContextMenu={(e:any) => onNodeContext && onNodeContext(e, "package", pkg)}>
+                <span style={{marginRight:8, flexShrink:0}}><PackageIcon workspace={workspace} name={pkg.name} ext={pkg.ext} /></span>
                 <span style={{overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>
                     <strong>{pkg.name}</strong><span style={{opacity:0.55}}>.{pkg.ext}</span>
                 </span>
             </div>
             { isSelected && <EditPencil title="Editar pacote (ou duplo-clique)" onClick={() => onEditPackage(pkg)} /> }
         </div>
+        {
+            open &&
+            <div style={{
+                marginLeft: 22,
+                paddingLeft: 6,
+                borderLeft: "2px solid var(--mp-line-faint)",
+                background: "rgba(0,0,0,0.06)",
+                borderRadius: "4px",
+                marginTop: 2
+            }}>
+                <List.List style={{margin:0, paddingLeft:4}}>
+                    <PackageComponentsTree workspace={workspace} pkg={pkg}
+                        onSelect={(d:any) => onSelectDetail && onSelectDetail({ ...d, pkg })} />
+                </List.List>
+            </div>
+        }
     </List.Item>
 }
 

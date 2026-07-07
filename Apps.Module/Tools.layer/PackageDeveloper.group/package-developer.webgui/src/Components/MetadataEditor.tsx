@@ -50,7 +50,10 @@ const MetadataEditor = ({ filePath, content, onChange }:any) => {
         {
             showForm
             ? <div style={{flex:1, minHeight:0, overflow:"auto", padding:"4px 2px"}}>
-                <Form value={parsed} onChange={emit} />
+                {/* largura limitada — evita inputs esticados por toda a tela ("muro") */}
+                <div style={{maxWidth:820}}>
+                    <Form value={parsed} onChange={emit} />
+                </div>
               </div>
             : <CodeEditor value={content} language="json" onChange={onChange} />
         }

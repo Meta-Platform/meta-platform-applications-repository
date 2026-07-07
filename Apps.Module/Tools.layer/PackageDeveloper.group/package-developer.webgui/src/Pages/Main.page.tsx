@@ -70,6 +70,7 @@ const MainPage = ({ HTTPServerManager }:any) => {
     const [selectedRef, setSelectedRef]         = useState<any>()
     const [selectedPackage, setSelectedPackage] = useState<any>()
     const [selectedGroup, setSelectedGroup]     = useState<any>()
+    const [selectedDetail, setSelectedDetail]   = useState<any>()
     const [editSession, setEditSession]         = useState<any>()
     const [editReq, setEditReq]                 = useState<any>()
     const [browserOpen, setBrowserOpen]         = useState(false)
@@ -85,6 +86,7 @@ const MainPage = ({ HTTPServerManager }:any) => {
         setSelectedRef(undefined)
         setSelectedPackage(undefined)
         setSelectedGroup(undefined)
+        setSelectedDetail(undefined)
         setEditSession(undefined)
     }, [activeRepository])
 
@@ -104,6 +106,7 @@ const MainPage = ({ HTTPServerManager }:any) => {
     // a Layer que o contém (mostra a lista da layer com o pacote destacado).
     const handleSelectPackage = (pkg:any) => {
         setSelectedPackage(pkg)
+        setSelectedDetail(undefined)   // clicar no pacote volta para as abas
         setSelectedGroup(undefined)
         const layer = findLayerOfPackage(hierarchy, pkg.path)
         if(layer) setSelectedRef({ kind: "layer", path: layer.path })
@@ -111,6 +114,12 @@ const MainPage = ({ HTTPServerManager }:any) => {
     const handleSelectGroup = (group:any) => {
         setSelectedGroup(group)
         setSelectedPackage(undefined)
+        setSelectedDetail(undefined)
+    }
+    // Clicar num item da árvore (boot/serviço/endpoint/comando): mostra os detalhes.
+    const handleSelectDetail = (detail:any) => {
+        setSelectedPackage(detail.pkg)
+        setSelectedDetail(detail)
     }
 
     // Entrar no modo edição passa por um modal de confirmação.
@@ -193,7 +202,7 @@ const MainPage = ({ HTTPServerManager }:any) => {
 
     // ---- Modo edição (VSCode-like, tela cheia) ----
     if(editSession){
-        return <PageDefault onHome={goToWelcome}>
+        return <PageDefault onHome={goToWelcome} centerTitle={editSession.title}>
             <div data-ide-mode="edit">
                 <PackageEditMode
                     workspace={activeRepository}
@@ -246,12 +255,14 @@ const MainPage = ({ HTTPServerManager }:any) => {
                     selectedGroup={selectedGroup}
                     onSelectPackage={handleSelectPackage}
                     onSelectGroup={handleSelectGroup}
+                    onSelectDetail={handleSelectDetail}
                     onEditPackage={handleEditPackage}
                     onEditGroup={handleEditGroup}
                     onNodeContext={handleNodeContext} />
             </div>
             <div>
-                { selectedPackage && <PackageInfo workspace={activeRepository} pkg={selectedPackage} /> }
+                { selectedPackage && <PackageInfo workspace={activeRepository} pkg={selectedPackage}
+                    detail={selectedDetail} onBackDetail={() => setSelectedDetail(undefined)} /> }
             </div>
         </ResizableColumns>
       </div>
