@@ -17,6 +17,7 @@ import FocusedMetadataForm from "./FocusedMetadataForm"
 import { getAtPath, setAtPath } from "./metadataFormLogic"
 import { pkgContext } from "../Utils/pkgContext"
 import WorkbenchStatusBar from "./WorkbenchStatusBar"
+import CommandPalette from "./CommandPalette"
 
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 const basename = (p:string) => p.split("/").filter(Boolean).pop() || p
@@ -105,6 +106,10 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
     const seededRef = React.useRef<any>(new Set())   // pacotes que já receberam aba default
     const [filePrompt, setFilePrompt] = useState<any>() // { mode:"new"|"rename", dirPath?, filePath?, initial }
     const [fileDelete, setFileDelete] = useState<any>() // { filePath }
+    const [palette, setPalette]       = useState<""|"files"|"commands">("")  // command palette
+    const [navCollapsed, setNavCollapsed] = useState(false)                   // Ctrl+B
+    const [panelFocus, setPanelFocus] = useState<any>({ tab:"", n:0 })        // foca uma aba do BottomPanel
+    const focusPanel = (tab:string) => { setRunMounted(true); setRunOpen(true); setPanelFocus((f:any) => ({ tab, n: f.n + 1 })) }
 
     const openCtx = (e:any, items:any[]) => {
         e.preventDefault(); e.stopPropagation()
@@ -370,6 +375,49 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
         try { JSON.parse(t.content); return false } catch(e) { return true }
     }).map((t) => ({ file: `${t.pkg.name}.${t.pkg.ext}/${t.filename}`, message: "JSON inválido", severity: "error" }))
 
+    // ---- Atalhos de teclado (Ctrl+P/Shift+P, Ctrl+S, Ctrl+B, Ctrl+`) ----
+    const kbRef = React.useRef<any>({})
+    kbRef.current = {
+        save: () => { const t = tabs[active]; if(t && t.content !== t.savedContent) saveActive() },
+        toggleRun,
+        toggleNav: () => setNavCollapsed((c) => !c),
+        files: () => setPalette("files"),
+        commands: () => setPalette("commands")
+    }
+    useEffect(() => {
+        const h = (e:KeyboardEvent) => {
+            if(!(e.ctrlKey || e.metaKey)) return
+            const k = e.key.toLowerCase()
+            if(k === "p"){ e.preventDefault(); e.shiftKey ? kbRef.current.commands() : kbRef.current.files() }
+            else if(k === "s"){ e.preventDefault(); kbRef.current.save() }
+            else if(k === "b"){ e.preventDefault(); kbRef.current.toggleNav() }
+            else if(e.key === "`"){ e.preventDefault(); kbRef.current.toggleRun() }
+        }
+        window.addEventListener("keydown", h)
+        return () => window.removeEventListener("keydown", h)
+    }, [])
+
+    // Itens da Command Palette conforme o modo (arquivos/abas/pacotes ou comandos).
+    const paletteItems:any[] = palette === "files"
+        ? [
+            ...tabs.map((t:any, i:number) => ({ id:"tab"+i, icon: tabIconName(t), color: pkgContext(t.pkg).color,
+                label: t.filename || `${t.pkg.name}.${t.pkg.ext}`, hint: `${t.pkg.name}.${t.pkg.ext}`, action: () => setActive(i) })),
+            ...pkgs.map((pk:any, i:number) => { const c = pkgContext(pk); return { id:"pkg"+i, icon:"box", color: c.color,
+                label: `${pk.name}.${pk.ext}`, hint: c.layer || c.repo, action: () => setActivePkg(pk) } })
+          ]
+        : palette === "commands"
+        ? [
+            { id:"save", icon:"save", label:"Salvar arquivo", hint:"Ctrl+S", action: () => kbRef.current.save() },
+            { id:"console", icon:"terminal", label:"Alternar Console/Tasks", hint:"Ctrl+`", action: toggleRun },
+            { id:"nav", icon:"columns", label:"Alternar navegação", hint:"Ctrl+B", action: () => setNavCollapsed((c) => !c) },
+            { id:"meta", icon:"sitemap", label:"Ver Metadados", action: () => setNavMode("tipo") },
+            { id:"exp", icon:"folder", label:"Ver Arquivos (Explorer)", action: () => setNavMode("arquivos") },
+            { id:"closetab", icon:"close", label:"Fechar aba atual", action: () => { if(active > -1) closeTab(active) } },
+            ...pkgs.map((pk:any, i:number) => { const c = pkgContext(pk); return { id:"gopkg"+i, icon:"box", color: c.color,
+                label: `Ir para ${pk.name}.${pk.ext}`, hint: c.layer, action: () => setActivePkg(pk) } })
+          ]
+        : []
+
     // Sessão sem pacotes (ex.: editar um Grupo vazio): nada para editar.
     if(!activePkg){
         return <Shell><Wrap>
@@ -392,6 +440,11 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
                 <Button basic={navMode !== "tipo"} primary={navMode === "tipo"} icon="sitemap" size="small" onClick={() => setNavMode("tipo")} />} />
             <Popup content="Arquivos" position="right center" size="small" trigger={
                 <Button basic={navMode !== "arquivos"} primary={navMode === "arquivos"} icon="folder" size="small" onClick={() => setNavMode("arquivos")} />} />
+            <Popup content={`Problems${problems.length ? ` (${problems.length})` : ""}`} position="right center" size="small" trigger={
+                <div style={{position:"relative"}}>
+                    <Button basic icon="warning circle" size="small" onClick={() => focusPanel("problems")} />
+                    { problems.length > 0 && <span className="ide-badge" style={{position:"absolute", top:-1, right:-1, pointerEvents:"none"}}>{problems.length}</span> }
+                </div>} />
             <div style={{width:32, height:1, background:"var(--mp-border-default)", margin:"4px 0"}} />
             {
                 // Agrupa os pacotes por (repo+módulo+layer) — mesma cor por origem.
@@ -433,7 +486,7 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
             }
         </Rail>
 
-        <NavCol style={{width: navWidth, flexShrink:0}}>
+        <NavCol style={{width: navCollapsed ? 0 : navWidth, padding: navCollapsed ? 0 : 8, overflow: navCollapsed ? "hidden" : "auto", flexShrink:0}}>
             <div className="ide-section-title" style={{display:"flex", alignItems:"center", gap:6, margin:"0 0 8px 2px"}}>
                 <Icon name={navMode === "arquivos" ? "folder" : "sitemap"} style={{margin:0}} />
                 {navMode === "arquivos" ? "Explorer" : "Metadados"}
@@ -461,8 +514,9 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
         </NavCol>
 
         {/* Divisor arrastável entre a navegação e o editor */}
-        <div onMouseDown={startNavDrag} title="Redimensionar"
-            style={{ flex:"0 0 6px", cursor:"col-resize", background:"var(--mp-line-faint)", opacity:0.6 }} />
+        { !navCollapsed &&
+            <div onMouseDown={startNavDrag} title="Redimensionar"
+                style={{ flex:"0 0 6px", cursor:"col-resize", background:"var(--mp-line-faint)", opacity:0.6 }} /> }
 
         <EditorArea>
             {/* Barra de execução no topo (estilo Xcode) — Run/Debug/Stop/Install + status */}
@@ -543,7 +597,7 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
             </div>
 
             {/* Painel inferior (Problems / Console / Output / Tasks) — recolhível. */}
-            <BottomPanel key={activePkg.path} pkg={activePkg} problems={problems}
+            <BottomPanel key={activePkg.path} pkg={activePkg} problems={problems} focus={panelFocus}
                 open={runOpen} mounted={runMounted} onToggle={toggleRun} />
         </EditorArea>
 
@@ -567,6 +621,10 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
             cancelButton="Cancelar"
             onCancel={() => setFileDelete(undefined)}
             onConfirm={() => { const p = fileDelete.filePath; setFileDelete(undefined); deleteFile(p) }} />
+
+        <CommandPalette open={!!palette} onClose={() => setPalette("")}
+            placeholder={palette === "commands" ? "Executar um comando…" : "Ir para arquivo ou pacote…"}
+            items={paletteItems} />
     </Wrap>
     <WorkbenchStatusBar pkg={activePkg} activeTab={activeTab} tabsCount={tabs.length} dirty={dirty} />
     </Shell>

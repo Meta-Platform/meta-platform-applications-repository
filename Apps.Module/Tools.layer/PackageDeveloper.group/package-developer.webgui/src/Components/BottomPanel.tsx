@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { connect } from "react-redux"
 import { Icon, Loader } from "semantic-ui-react"
 
@@ -25,10 +25,13 @@ const Tab = ({ active, icon, label, badge, tone, onClick }:any) =>
     </div>
 
 // Painel inferior estilo IDE: Problems / Console / Output / Tasks (com badges).
-const BottomPanel = ({ HTTPServerManager, pkg, problems, open, mounted, onToggle }:any) => {
+const BottomPanel = ({ HTTPServerManager, pkg, problems, open, mounted, onToggle, focus }:any) => {
     const [tab, setTab] = useState("console")
     const { logs, status, busy, install, start, debug, stop } =
         usePackageTasks({ HTTPServerManager, workspace: pkg.workspace, packageSelected: pkg })
+
+    // Foco externo (ex.: clicar em Problems na ActivityBar) troca a aba do painel.
+    useEffect(() => { if(focus && focus.tab) setTab(focus.tab) }, [focus && focus.n])
 
     const select = (k:string) => { setTab(k); if(!open) onToggle() }
 
