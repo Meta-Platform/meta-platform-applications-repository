@@ -225,7 +225,9 @@ const MainPage = ({ HTTPServerManager }:any) => {
         return <PageDefault onHome={goToWelcome}>
             <RepositoryWelcome
                 recents={recents}
+                recentPkgs={recentPkgs}
                 onOpen={openRepository}
+                onOpenPackage={(p:any) => openRepository(p.workspace)}
                 onCreate={createRepository}
                 onScaffold={scaffoldRepository}
                 onRemove={removeRepository} />
