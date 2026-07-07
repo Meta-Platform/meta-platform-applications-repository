@@ -139,6 +139,7 @@ export interface Attachment {
     description?: string
     mimeType?: string
     sizeBytes?: number
+    storagePath?: string
     externalUrl?: string
     createdAt?: string
 }

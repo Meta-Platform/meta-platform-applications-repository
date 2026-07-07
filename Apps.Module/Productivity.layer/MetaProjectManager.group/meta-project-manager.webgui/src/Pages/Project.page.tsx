@@ -6,6 +6,7 @@ import { Icon } from "semantic-ui-react"
 import useApi from "../Hooks/useApi"
 import { Project, ProjectMetrics, Board, ActivityEntry } from "../api/types"
 import AppShell from "../Components/AppShell"
+import NewBoardModal from "../Components/NewBoardModal"
 import { Metric, Progress, StatusChip, Loading, ErrorBanner } from "../Components/Primitives"
 import { formatDateTime, humanizeAction } from "../Utils/format"
 
@@ -21,6 +22,7 @@ const ProjectPage = () => {
     const [boards, setBoards] = useState<Board[]>([])
     const [activity, setActivity] = useState<ActivityEntry[]>([])
     const [error, setError] = useState<string | null>(null)
+    const [creatingBoard, setCreatingBoard] = useState(false)
 
     useEffect(() => {
         if (!projectId) return
@@ -77,7 +79,12 @@ const ProjectPage = () => {
 
                 <div className="mpm-grid-cards">
                     <div className="mpm-panel">
-                        <div className="mpm-panel__title"><Icon name="columns" /> Boards ({boards.length})</div>
+                        <div className="mpm-panel__title">
+                            <Icon name="columns" /> Boards ({boards.length})
+                            <button className="mpm-btn mpm-btn--sm" style={{ marginLeft: "auto" }} onClick={() => setCreatingBoard(true)}>
+                                <Icon name="plus" /> Novo Board
+                            </button>
+                        </div>
                         {boards.length === 0
                             ? <div className="mpm-muted" style={{ fontSize: "12px" }}>nenhum board</div>
                             : <div className="mpm-col">
@@ -109,6 +116,12 @@ const ProjectPage = () => {
                     </div>
                 </div>
             </>}
+
+        {creatingBoard && projectId
+            ? <NewBoardModal projectId={projectId}
+                onClose={() => setCreatingBoard(false)}
+                onCreated={(b) => { setCreatingBoard(false); openBoard(b.id) }} />
+            : null}
     </AppShell>
 }
 

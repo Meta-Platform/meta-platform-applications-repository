@@ -15,6 +15,16 @@ const ItemsController = (params) => {
     const LinkItem = async (p = {}) => Guard(async () => { await ctx.ready; return store.LinkItem({ item: p.itemId, relation: p.relation, target: p.target, actor: Actor(p) }) })
     const DeleteItem = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "itemId"); return store.DeleteItem({ item: id, actor: { source: "api" } }) })
 
+    // Checklist
+    const AddChecklistItem = async (p = {}) => Guard(async () => { await ctx.ready; return store.AddChecklistItem({ item: p.itemId, text: p.text, actor: Actor(p) }) })
+    const UpdateChecklistItem = async (p = {}) => Guard(async () => { await ctx.ready; return store.UpdateChecklistItem({ checklistItem: p.checklistItemId, text: p.text, done: p.done }) })
+    const RemoveChecklistItem = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "checklistItemId"); return store.RemoveChecklistItem({ checklistItem: id }) })
+
+    // Critérios de aceite
+    const AddAcceptanceCriteria = async (p = {}) => Guard(async () => { await ctx.ready; return store.AddAcceptanceCriteria({ item: p.itemId, text: p.text }) })
+    const UpdateAcceptanceCriteria = async (p = {}) => Guard(async () => { await ctx.ready; return store.UpdateAcceptanceCriteria({ criteria: p.criteriaId, text: p.text, met: p.met }) })
+    const RemoveAcceptanceCriteria = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "criteriaId"); return store.RemoveAcceptanceCriteria({ criteria: id }) })
+
     return {
         controllerName: "ItemsController",
         ListItems,
@@ -24,7 +34,13 @@ const ItemsController = (params) => {
         MoveItem,
         SetItemStatus,
         LinkItem,
-        DeleteItem
+        DeleteItem,
+        AddChecklistItem,
+        UpdateChecklistItem,
+        RemoveChecklistItem,
+        AddAcceptanceCriteria,
+        UpdateAcceptanceCriteria,
+        RemoveAcceptanceCriteria
     }
 }
 

@@ -631,6 +631,74 @@
                     "parametersToLoad": [
                         "projectStoreLib"
                     ]
+                },
+                {
+                    "namespace": "ItemChecklistUpdate",
+                    "path": "Commands/ItemChecklistUpdate.command",
+                    "command": "checklist-update [checklistItem]",
+                    "description": "Atualizar item de checklist (--text, --done)",
+                    "parameters": [
+                        {
+                            "key": "checklistItem",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do item de checklist"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemChecklistRemove",
+                    "path": "Commands/ItemChecklistRemove.command",
+                    "command": "checklist-remove [checklistItem]",
+                    "description": "Remover item de checklist",
+                    "parameters": [
+                        {
+                            "key": "checklistItem",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do item de checklist"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemAcceptanceUpdate",
+                    "path": "Commands/ItemAcceptanceUpdate.command",
+                    "command": "acceptance-update [criteria]",
+                    "description": "Atualizar critério de aceite (--text, --met)",
+                    "parameters": [
+                        {
+                            "key": "criteria",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do critério"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemAcceptanceRemove",
+                    "path": "Commands/ItemAcceptanceRemove.command",
+                    "command": "acceptance-remove [criteria]",
+                    "description": "Remover critério de aceite",
+                    "parameters": [
+                        {
+                            "key": "criteria",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do critério"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
                 }
             ]
         },

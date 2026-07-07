@@ -114,6 +114,29 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
 
     const openQuickAdd = (statusKey?: string) => { setQuickAddStatus(statusKey || null); setQuickAddOpen(true) }
 
+    // recarrega o board (GetBoard traz columns[]) após mutação de coluna
+    const reloadBoard = useCallback(() => {
+        if (!board) return Promise.resolve()
+        return api.boards.get(board.id).then(setBoard).catch((e) => setError(e.message))
+    }, [api, board])
+
+    const addColumn = async (name: string) => {
+        if (!board) return
+        try { await api.boards.addColumn(board.id, { name }); await reloadBoard() }
+        catch (e: any) { setError(e.message) }
+    }
+    const renameColumn = async (columnId: string, name: string) => {
+        if (!board) return
+        try { await api.boards.updateColumn(board.id, columnId, { name }); await reloadBoard() }
+        catch (e: any) { setError(e.message) }
+    }
+    const deleteColumn = async (columnId: string) => {
+        if (!board) return
+        if (typeof window !== "undefined" && !window.confirm("Excluir esta coluna?")) return
+        try { await api.boards.deleteColumn(board.id, columnId); await reloadBoard() }
+        catch (e: any) { setError(e.message) }
+    }
+
     const inspector = selected
         ? <WorkItemInspector
             itemId={selected}
@@ -156,7 +179,10 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
                         usersById={usersById}
                         onOpenItem={setSelected}
                         onMoveItem={moveItem}
-                        onQuickAdd={openQuickAdd} />
+                        onQuickAdd={openQuickAdd}
+                        onAddColumn={addColumn}
+                        onRenameColumn={renameColumn}
+                        onDeleteColumn={deleteColumn} />
                     : <EmptyState icon="columns" title="Sem board" hint="Este projeto ainda não tem um board configurado." />)
                 : (items.length === 0
                     ? <EmptyState icon="list" title="Nenhum item"

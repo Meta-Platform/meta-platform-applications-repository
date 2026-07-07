@@ -236,6 +236,60 @@
                     "required": true
                 }
             ]
+        },
+        {
+            "summary": "AddChecklistItem",
+            "method": "POST",
+            "path": "/items/:itemId/checklist",
+            "parameters": [
+                { "name": "itemId", "in": "path", "type": "string", "required": true },
+                { "name": "text", "in": "body", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "UpdateChecklistItem",
+            "method": "PATCH",
+            "path": "/checklist/:checklistItemId",
+            "parameters": [
+                { "name": "checklistItemId", "in": "path", "type": "string", "required": true },
+                { "name": "text", "in": "body", "type": "string", "required": false },
+                { "name": "done", "in": "body", "type": "boolean", "required": false }
+            ]
+        },
+        {
+            "summary": "RemoveChecklistItem",
+            "method": "DELETE",
+            "path": "/checklist/:checklistItemId",
+            "parameters": [
+                { "name": "checklistItemId", "in": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "AddAcceptanceCriteria",
+            "method": "POST",
+            "path": "/items/:itemId/acceptance",
+            "parameters": [
+                { "name": "itemId", "in": "path", "type": "string", "required": true },
+                { "name": "text", "in": "body", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "UpdateAcceptanceCriteria",
+            "method": "PATCH",
+            "path": "/acceptance/:criteriaId",
+            "parameters": [
+                { "name": "criteriaId", "in": "path", "type": "string", "required": true },
+                { "name": "text", "in": "body", "type": "string", "required": false },
+                { "name": "met", "in": "body", "type": "boolean", "required": false }
+            ]
+        },
+        {
+            "summary": "RemoveAcceptanceCriteria",
+            "method": "DELETE",
+            "path": "/acceptance/:criteriaId",
+            "parameters": [
+                { "name": "criteriaId", "in": "path", "type": "string", "required": true }
+            ]
         }
     ]
 }

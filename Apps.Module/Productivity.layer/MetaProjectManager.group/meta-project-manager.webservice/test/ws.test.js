@@ -98,6 +98,22 @@ test("GET /events reflete mutações (buffer realtime)", async () => {
     assert.ok(json.data.cursor > 0)
 })
 
+test("checklist add/update/remove + acceptance via API", async () => {
+    const add = await srv.request("POST", `/items/${itemId}/checklist`, { text: "passo 1" })
+    assert.equal(add.json.ok, true)
+    const clId = add.json.data.id
+    const upd = await srv.request("PATCH", `/checklist/${clId}`, { done: true })
+    assert.equal(upd.json.data.done, true)
+    const got = await srv.request("GET", `/items/${itemId}`)
+    assert.ok(got.json.data.checklist.some((c) => c.id === clId && c.done))
+    const rem = await srv.request("DELETE", `/checklist/${clId}`)
+    assert.equal(rem.json.ok, true)
+    const ac = await srv.request("POST", `/items/${itemId}/acceptance`, { text: "deve compilar" })
+    assert.equal(ac.json.ok, true)
+    const acUpd = await srv.request("PATCH", `/acceptance/${ac.json.data.id}`, { met: true })
+    assert.equal(acUpd.json.data.met, true)
+})
+
 test("erro estruturado 200 com ok:false em NOT_FOUND", async () => {
     const { json } = await srv.request("GET", "/items/MP-999")
     assert.equal(json.ok, false)
