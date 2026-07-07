@@ -71,8 +71,57 @@ const FileSystemNavigatorController = (params) => {
         return DeleteContentItem(packageDevelopmentService, itemPath)
     }
 
+    // Busca no pacote: walk recursivo + grep de conteúdo/nome (server-side).
+    // Pula node_modules/.git/dist e binários; limita arquivos/matches.
+    const _SearchFiles = async ({packageName, workspace, ext, query, path: rootPath}) => {
+        const service = GetPackage(packageHandlerManagerService, {packageName, workspace, ext})
+        if(!service) return { results: [] }
+        const q = String(query || "")
+        if(!q.trim()) return { results: [] }
+        const ql = q.toLowerCase()
+
+        const IGNORE   = /(^|\/)(node_modules|\.git|dist|build|\.cache)(\/|$)/
+        const TEXT_EXT = /\.(js|jsx|ts|tsx|json|md|txt|css|scss|sass|less|html|htm|xml|yml|yaml|sh|env|gitignore|svg)$/i
+        const MAX_FILES = 500, MAX_MATCHES = 300
+        const results = []
+        let filesScanned = 0, matchCount = 0
+
+        const walk = async (dir) => {
+            if(matchCount >= MAX_MATCHES || filesScanned >= MAX_FILES) return
+            let items
+            try { const r = await ListItem(service, dir || "/"); items = (r && r.listItem) || [] } catch(e) { return }
+            for(const it of items){
+                if(matchCount >= MAX_MATCHES || filesScanned >= MAX_FILES) break
+                const p = `${dir || ""}/${it.filename}`.replace(/\/+/g, "/")
+                if(IGNORE.test(p)) continue
+                if(!it.isFile){ await walk(p); continue }
+
+                filesScanned++
+                const nameMatch = it.filename.toLowerCase().indexOf(ql) > -1
+                const fileMatches = []
+                if(TEXT_EXT.test(it.filename)){
+                    let content
+                    try { content = await GetContentItem(service, p) } catch(e) { content = undefined }
+                    const text = typeof content === "string" ? content : (content == null ? "" : JSON.stringify(content, null, 2))
+                    const lines = text.split("\n")
+                    for(let i = 0; i < lines.length && fileMatches.length < 20; i++){
+                        if(lines[i].toLowerCase().indexOf(ql) > -1){
+                            fileMatches.push({ line: i + 1, text: lines[i].trim().slice(0, 220) })
+                            if(++matchCount >= MAX_MATCHES) break
+                        }
+                    }
+                }
+                if(nameMatch || fileMatches.length) results.push({ path: p, filename: it.filename, nameMatch, matches: fileMatches })
+            }
+        }
+
+        await walk(rootPath || "/")
+        return { results, truncated: filesScanned >= MAX_FILES || matchCount >= MAX_MATCHES }
+    }
+
     const controllerServiceObject =  {
         controllerName : "FileSystemNavigatorController",
+        SearchFiles    : _SearchFiles,
         ListItem       : _ListItem,
         GetContentItem : _GetContentItem,
         SaveContentItem : _SaveContentItem,

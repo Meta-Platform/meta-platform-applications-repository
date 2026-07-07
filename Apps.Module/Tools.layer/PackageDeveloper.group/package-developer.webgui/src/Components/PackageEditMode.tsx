@@ -20,6 +20,7 @@ import WorkbenchStatusBar from "./WorkbenchStatusBar"
 import CommandPalette from "./CommandPalette"
 import Inspector from "./Inspector"
 import Outline from "./Outline"
+import Search from "./Search"
 
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 const basename = (p:string) => p.split("/").filter(Boolean).pop() || p
@@ -93,7 +94,7 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
     const pkgs:any[] = packages || []
 
     const [activePkg, setActivePkg] = useState<any>(pkgs[0])
-    const [navMode, setNavMode]     = useState<"tipo"|"arquivos"|"outline">("tipo")
+    const [navMode, setNavMode]     = useState<"tipo"|"arquivos"|"outline"|"search">("tipo")
     const [tabs, setTabs]           = useState<any[]>([])
     const [active, setActive]       = useState<number>(-1)
     const [saving, setSaving]       = useState(false)
@@ -451,6 +452,8 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
                 <Button basic={navMode !== "tipo"} primary={navMode === "tipo"} icon="sitemap" size="small" onClick={() => setNavMode("tipo")} />} />
             <Popup content="Arquivos" position="right center" size="small" trigger={
                 <Button basic={navMode !== "arquivos"} primary={navMode === "arquivos"} icon="folder" size="small" onClick={() => setNavMode("arquivos")} />} />
+            <Popup content="Search" position="right center" size="small" trigger={
+                <Button basic={navMode !== "search"} primary={navMode === "search"} icon="search" size="small" onClick={() => setNavMode("search")} />} />
             <Popup content="Outline" position="right center" size="small" trigger={
                 <Button basic={navMode !== "outline"} primary={navMode === "outline"} icon="list layout" size="small" onClick={() => setNavMode("outline")} />} />
             <Popup content={`Problems${problems.length ? ` (${problems.length})` : ""}`} position="right center" size="small" trigger={
@@ -503,11 +506,14 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
 
         <NavCol style={{width: navCollapsed ? 0 : navWidth, padding: navCollapsed ? 0 : 8, overflow: navCollapsed ? "hidden" : "auto", flexShrink:0}}>
             <div className="ide-section-title" style={{display:"flex", alignItems:"center", gap:6, margin:"0 0 8px 2px"}}>
-                <Icon name={navMode === "arquivos" ? "folder" : navMode === "outline" ? "list layout" : "sitemap"} style={{margin:0}} />
-                {navMode === "arquivos" ? "Explorer" : navMode === "outline" ? "Outline" : "Metadados"}
+                <Icon name={navMode === "arquivos" ? "folder" : navMode === "outline" ? "list layout" : navMode === "search" ? "search" : "sitemap"} style={{margin:0}} />
+                {navMode === "arquivos" ? "Explorer" : navMode === "outline" ? "Outline" : navMode === "search" ? "Search" : "Metadados"}
             </div>
             {
-                navMode === "outline"
+                navMode === "search"
+                ? <Search pkgs={pkgs} onOpen={(pk:any, path:string) => openFile(pk, path)}
+                    searchFiles={(params:any) => fsSvc().SearchFiles(params)} />
+                : navMode === "outline"
                 ? <Outline tab={activeTab} />
                 : navMode === "arquivos"
                 ? <SourceTree
