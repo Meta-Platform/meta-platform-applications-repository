@@ -19,6 +19,7 @@ import { pkgContext } from "../Utils/pkgContext"
 import WorkbenchStatusBar from "./WorkbenchStatusBar"
 import CommandPalette from "./CommandPalette"
 import Inspector from "./Inspector"
+import Outline from "./Outline"
 
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 const basename = (p:string) => p.split("/").filter(Boolean).pop() || p
@@ -92,7 +93,7 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
     const pkgs:any[] = packages || []
 
     const [activePkg, setActivePkg] = useState<any>(pkgs[0])
-    const [navMode, setNavMode]     = useState<"tipo"|"arquivos">("tipo")
+    const [navMode, setNavMode]     = useState<"tipo"|"arquivos"|"outline">("tipo")
     const [tabs, setTabs]           = useState<any[]>([])
     const [active, setActive]       = useState<number>(-1)
     const [saving, setSaving]       = useState(false)
@@ -287,11 +288,19 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
         setTabs((prev) => prev.filter((_, i) => i !== index))
         setActive((cur) => index === cur ? (index > 0 ? index - 1 : (tabs.length > 1 ? 0 : -1)) : (cur > index ? cur - 1 : cur))
     }
-    const closeOthers = (index:number) => { setTabs((prev) => [prev[index]]); setActive(0) }
-    const closeAll    = () => { setTabs([]); setActive(-1) }
+    // Fechar respeita abas fixadas (pinned).
+    const closeOthers = (index:number) => {
+        const target = tabs[index]
+        const keep = tabs.filter((t, idx) => idx === index || t.pinned)
+        setTabs(keep); setActive(keep.indexOf(target))
+    }
+    const closeAll    = () => { const keep = tabs.filter((t) => t.pinned); setTabs(keep); setActive(keep.length ? 0 : -1) }
+    const togglePin   = (i:number) => setTabs((prev) => prev.map((t, idx) => idx === i ? { ...t, pinned: !t.pinned } : t))
 
     // Itens do menu de contexto de uma aba.
     const tabContextItems = (i:number) => [
+        { icon: "thumbtack",     label: tabs[i] && tabs[i].pinned ? "Desafixar" : "Fixar aba", onClick: () => togglePin(i) },
+        { divider: true },
         { icon: "close",         label: "Fechar",         onClick: () => closeTab(i) },
         { icon: "close",         label: "Fechar outras",  disabled: tabs.length <= 1, onClick: () => closeOthers(i) },
         { icon: "close",         label: "Fechar todas",   onClick: () => closeAll() },
@@ -442,6 +451,8 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
                 <Button basic={navMode !== "tipo"} primary={navMode === "tipo"} icon="sitemap" size="small" onClick={() => setNavMode("tipo")} />} />
             <Popup content="Arquivos" position="right center" size="small" trigger={
                 <Button basic={navMode !== "arquivos"} primary={navMode === "arquivos"} icon="folder" size="small" onClick={() => setNavMode("arquivos")} />} />
+            <Popup content="Outline" position="right center" size="small" trigger={
+                <Button basic={navMode !== "outline"} primary={navMode === "outline"} icon="list layout" size="small" onClick={() => setNavMode("outline")} />} />
             <Popup content={`Problems${problems.length ? ` (${problems.length})` : ""}`} position="right center" size="small" trigger={
                 <div style={{position:"relative"}}>
                     <Button basic icon="warning circle" size="small" onClick={() => focusPanel("problems")} />
@@ -492,11 +503,13 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
 
         <NavCol style={{width: navCollapsed ? 0 : navWidth, padding: navCollapsed ? 0 : 8, overflow: navCollapsed ? "hidden" : "auto", flexShrink:0}}>
             <div className="ide-section-title" style={{display:"flex", alignItems:"center", gap:6, margin:"0 0 8px 2px"}}>
-                <Icon name={navMode === "arquivos" ? "folder" : "sitemap"} style={{margin:0}} />
-                {navMode === "arquivos" ? "Explorer" : "Metadados"}
+                <Icon name={navMode === "arquivos" ? "folder" : navMode === "outline" ? "list layout" : "sitemap"} style={{margin:0}} />
+                {navMode === "arquivos" ? "Explorer" : navMode === "outline" ? "Outline" : "Metadados"}
             </div>
             {
-                navMode === "arquivos"
+                navMode === "outline"
+                ? <Outline tab={activeTab} />
+                : navMode === "arquivos"
                 ? <SourceTree
                     key={`${activePkg.path}:${treeVersion}`}
                     listDir={listDir(activePkg)}
@@ -543,18 +556,27 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
                                 const isDirty = t.content !== t.savedContent
                                 const tcolor = pkgContext(t.pkg).color
                                 return <Menu.Item key={t.key} active={i === active} onClick={() => setActive(i)}
-                                    onMouseDown={(e:any) => { if(e.button === 1){ e.preventDefault(); closeTab(i) } }}
+                                    onMouseDown={(e:any) => { if(e.button === 1 && !t.pinned){ e.preventDefault(); closeTab(i) } }}
                                     onContextMenu={(e:any) => openCtx(e, tabContextItems(i))}
                                     style={{ borderTop: `2px solid ${tcolor}` }}>
-                                    <Icon name={tabIconName(t)} size="small" style={{margin:"0 5px 0 0", opacity:0.7}} />
+                                    <Icon name={t.pinned ? "thumbtack" : tabIconName(t)} size="small" style={{margin:"0 5px 0 0", opacity:0.7}} />
                                     <span className="edit-tab-scope" style={{color:tcolor}}>{t.pkg.name}.{t.pkg.ext}/</span>
                                     <span className="edit-tab-file">{t.filename}</span>
                                     { isDirty && <span className="edit-tab-dirty" title="alterações não salvas">●</span> }
-                                    <Icon name="close" size="small" className="edit-tab-close" title="Fechar"
-                                        onClick={(e:any) => { e.stopPropagation(); closeTab(i) }} />
+                                    {
+                                        t.pinned
+                                        ? <Icon name="thumbtack" size="small" className="edit-tab-close" title="Desafixar"
+                                            onClick={(e:any) => { e.stopPropagation(); togglePin(i) }} />
+                                        : <Icon name="close" size="small" className="edit-tab-close" title="Fechar"
+                                            onClick={(e:any) => { e.stopPropagation(); closeTab(i) }} />
+                                    }
                                 </Menu.Item>
                             })
                         }
+                        <Menu.Item onClick={() => setPalette("files")} title="Todas as abas (Ctrl+P)"
+                            style={{marginLeft:"auto", position:"sticky", right:0, background:"var(--mp-paper)", flexShrink:0}}>
+                            <Icon name="ellipsis horizontal" style={{margin:0}} />
+                        </Menu.Item>
                     </Menu>
                     {
                         activeTab && <div style={{display:"flex", alignItems:"center", gap:5, padding:"4px 10px", fontSize:"11px",
