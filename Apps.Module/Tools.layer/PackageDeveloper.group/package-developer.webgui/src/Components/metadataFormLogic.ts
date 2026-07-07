@@ -66,3 +66,16 @@ export const coerceNumber = (v:any) => {
 // objetos e arrays aninhados são preservados como estão.
 export const isScalar = (v:any) =>
     v == null || typeof v === "string" || typeof v === "number" || typeof v === "boolean"
+
+// Navega/atualiza um valor por um caminho de chaves/índices (imutável) — usado
+// para editar uma "fatia" de um arquivo JSON num formulário focado.
+export const getAtPath = (obj:any, path:any[]):any =>
+    (path || []).reduce((o:any, k:any) => (o == null ? undefined : o[k]), obj)
+
+export const setAtPath = (obj:any, path:any[], val:any):any => {
+    if(!path || path.length === 0) return val
+    const [head, ...rest] = path
+    const base:any = Array.isArray(obj) ? [...obj] : { ...(obj || {}) }
+    base[head] = rest.length ? setAtPath(base[head], rest, val) : val
+    return base
+}

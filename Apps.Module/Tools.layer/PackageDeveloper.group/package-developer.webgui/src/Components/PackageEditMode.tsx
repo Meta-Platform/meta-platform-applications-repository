@@ -13,6 +13,8 @@ import PackageConsole from "./PackageConsole"
 import ContextMenu from "./ContextMenu"
 import TextPromptModal from "../Modals/TextPrompt.modal"
 import MetadataEditor, { isStructuredMetadata } from "./MetadataEditor"
+import FocusedMetadataForm from "./FocusedMetadataForm"
+import { getAtPath, setAtPath } from "./metadataFormLogic"
 
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 const basename = (p:string) => p.split("/").filter(Boolean).pop() || p
@@ -20,7 +22,8 @@ const basename = (p:string) => p.split("/").filter(Boolean).pop() || p
 const Wrap = styled.div`
     display: flex;
     height: calc(100vh - var(--pd-header-h));
-    border-top: 1px solid var(--mp-line-faint);
+    border-top: 2px solid var(--mp-accent, #14D6C8);
+    background: var(--mp-edit-tint, rgba(120,95,190,.06));
 `
 const Rail = styled.div`
     width: 54px;
@@ -119,6 +122,27 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
         })
     }
 
+    // Abre uma aba de COMPONENTE (formulário focado numa fatia de um arquivo de
+    // metadados). Cada item selecionado na árvore vira sua própria aba.
+    const componentKey = (pkg:any, detail:any) => `${pkg.name}.${pkg.ext}:cmp:${detail.file}#${(detail.path || []).join(".")}`
+    const openComponentTab = async (pkg:any, detail:any) => {
+        if(!detail || !detail.file){ return }
+        const key = componentKey(pkg, detail)
+        const idx = tabs.findIndex((t) => t.key === key)
+        if(idx > -1){ setActive(idx); return }
+        let content = "{}"
+        try {
+            const { data } = await fsSvc().GetContentItem({ workspace, packageName: pkg.name, ext: pkg.ext, path: detail.file })
+            content = typeof data === "string" ? data : JSON.stringify(data, null, 4)
+        } catch(e) {}
+        setTabs((prev) => {
+            const next = [...prev, { key, kind:"component", pkg, file: detail.file, path: detail.path || [],
+                detail, filename: detail.title, content, savedContent: content }]
+            setActive(next.length - 1)
+            return next
+        })
+    }
+
     // Abre o 1º arquivo padrão que existir (para o editor não iniciar vazio).
     const DEFAULT_FILES = ["/metadata/boot.json", "/metadata/services.json", "/metadata/command-group.json", "/metadata/endpoint-group.json", "/metadata/package.json", "/README.md"]
     const openDefaultFile = async (pkg:any) => {
@@ -148,11 +172,20 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
                 const loaded:any[] = []
                 for(const item of saved.open){
                     try {
-                        const { data: content } = await fsSvc().GetContentItem({
-                            workspace, packageName: item.pkg.name, ext: item.pkg.ext, path: item.filePath })
-                        const c = typeof content === "string" ? content : JSON.stringify(content, null, 4)
-                        loaded.push({ key: tabKey(item.pkg, item.filePath), pkg: item.pkg, filePath: item.filePath,
-                            filename: basename(item.filePath), content: c, savedContent: c })
+                        if(item.component){
+                            const cmp = item.component
+                            const { data: content } = await fsSvc().GetContentItem({
+                                workspace, packageName: item.pkg.name, ext: item.pkg.ext, path: cmp.file })
+                            const c = typeof content === "string" ? content : JSON.stringify(content, null, 4)
+                            loaded.push({ key: componentKey(item.pkg, cmp.detail), kind:"component", pkg: item.pkg,
+                                file: cmp.file, path: cmp.path, detail: cmp.detail, filename: cmp.detail.title, content: c, savedContent: c })
+                        } else {
+                            const { data: content } = await fsSvc().GetContentItem({
+                                workspace, packageName: item.pkg.name, ext: item.pkg.ext, path: item.filePath })
+                            const c = typeof content === "string" ? content : JSON.stringify(content, null, 4)
+                            loaded.push({ key: tabKey(item.pkg, item.filePath), pkg: item.pkg, filePath: item.filePath,
+                                filename: basename(item.filePath), content: c, savedContent: c })
+                        }
                     } catch(e) {}
                 }
                 if(loaded.length){
@@ -169,7 +202,12 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
     // Persiste quais abas estão abertas + a ativa.
     useEffect(() => {
         if(!restored) return
-        const open = tabs.map((t) => ({ pkg: { name: t.pkg.name, ext: t.pkg.ext, path: t.pkg.path }, filePath: t.filePath }))
+        const open = tabs.map((t) => {
+            const pkg = { name: t.pkg.name, ext: t.pkg.ext, path: t.pkg.path }
+            return t.kind === "component"
+                ? { pkg, component: { file: t.file, path: t.path, detail: t.detail } }
+                : { pkg, filePath: t.filePath }
+        })
         modSvc().SetAppState({ key: stateKey, value: JSON.stringify({ open, active }) })
     }, [tabs.length, active, restored])
 
@@ -255,7 +293,7 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
         if(!tab) return
         setSaving(true)
         try {
-            await fsSvc().SaveContentItem({ workspace, packageName: tab.pkg.name, ext: tab.pkg.ext, path: tab.filePath, content: tab.content })
+            await fsSvc().SaveContentItem({ workspace, packageName: tab.pkg.name, ext: tab.pkg.ext, path: tab.file || tab.filePath, content: tab.content })
             setTabs((prev) => prev.map((t, i) => i === active ? { ...t, savedContent: t.content } : t))
         } finally { setSaving(false) }
     }
@@ -311,8 +349,11 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
                     workspace={workspace} pkg={activePkg}
                     listDir={listDir(activePkg)}
                     onOpenFile={(p:string) => openFile(activePkg, p)}
+                    onOpenComponent={(d:any) => openComponentTab(activePkg, d)}
                     onFileContext={onFileContext}
-                    selectedPath={activeTab && activeTab.pkg === activePkg ? activeTab.filePath : undefined} />
+                    selectedComponentKey={activeTab && activeTab.kind === "component" && activeTab.pkg === activePkg
+                        ? `${activeTab.file}#${(activeTab.path || []).join(".")}` : undefined}
+                    selectedPath={activeTab && activeTab.kind !== "component" && activeTab.pkg === activePkg ? activeTab.filePath : undefined} />
             }
         </NavCol>
 
@@ -338,6 +379,7 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
                             tabs.map((t:any, i:number) => {
                                 const isDirty = t.content !== t.savedContent
                                 return <Menu.Item key={t.key} active={i === active} onClick={() => setActive(i)}
+                                    onMouseDown={(e:any) => { if(e.button === 1){ e.preventDefault(); closeTab(i) } }}
                                     onContextMenu={(e:any) => openCtx(e, tabContextItems(i))}>
                                     <span className="edit-tab-scope">{t.pkg.name}.{t.pkg.ext}/</span>
                                     <span className="edit-tab-file">{t.filename}</span>
@@ -353,10 +395,23 @@ const PackageEditMode = ({ HTTPServerManager, workspace, session, onClose }:any)
                             <div style={{marginBottom:6}}>
                                 <Button size="mini" positive icon="save" content="Save"
                                     loading={saving} disabled={!dirty || saving} onClick={saveActive} />
-                                <Label basic size="small" style={{marginLeft:6}}>{activeTab.filePath}{dirty ? " (modificado)" : ""}</Label>
+                                <Label basic size="small" style={{marginLeft:6}}>
+                                    {activeTab.kind === "component" ? `${activeTab.file} · ${activeTab.detail.title}` : activeTab.filePath}{dirty ? " (modificado)" : ""}
+                                </Label>
                             </div>
                             {
-                                isStructuredMetadata(activeTab.filePath)
+                                activeTab.kind === "component"
+                                ? (() => {
+                                    let full:any = {}
+                                    try { full = JSON.parse(activeTab.content) } catch(e) {}
+                                    return <div style={{flex:1, minHeight:0, overflow:"auto"}}>
+                                        <div style={{maxWidth:820}}>
+                                            <FocusedMetadataForm detail={activeTab.detail} value={getAtPath(full, activeTab.path)}
+                                                onChange={(v:any) => updateActive(JSON.stringify(setAtPath(full, activeTab.path, v), null, 4))} />
+                                        </div>
+                                    </div>
+                                  })()
+                                : isStructuredMetadata(activeTab.filePath)
                                 ? <MetadataEditor filePath={activeTab.filePath} content={activeTab.content} onChange={updateActive} />
                                 : <CodeEditor value={activeTab.content} language="plaintext" onChange={updateActive} />
                             }

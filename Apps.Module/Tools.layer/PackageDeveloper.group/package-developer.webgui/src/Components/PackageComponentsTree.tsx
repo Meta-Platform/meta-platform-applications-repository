@@ -7,6 +7,14 @@ import GetRequestByServer from "../Utils/GetRequestByServer"
 
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 
+// Field-sets dos formulários focados (por tipo de item).
+const F_BOOT_SERVICE  = [{ key:"namespace", label:"namespace" }, { key:"dependency", label:"dependency" }, { key:"params", label:"params", type:"keyvalue" }, { key:"bound-params", label:"bound-params", type:"keyvalue" }]
+const F_SERVICE       = [{ key:"namespace", label:"namespace" }, { key:"path", label:"path" }, { key:"bound-params", label:"bound-params", type:"stringlist" }, { key:"params", label:"params", type:"stringlist" }]
+const F_BOOT_ENDPOINT = [{ key:"dependency", label:"dependency" }, { key:"bound-params", label:"bound-params", type:"keyvalue" }]
+const F_EG_ENDPOINT   = [{ key:"url", label:"url" }, { key:"type", label:"type" }, { key:"params", label:"params", type:"keyvalue" }, { key:"bound-params", label:"bound-params", type:"keyvalue" }]
+const F_EXECUTABLE    = [{ key:"executableName", label:"executableName" }, { key:"dependency", label:"dependency" }]
+const F_WINDOW        = [{ key:"title", label:"title" }, { key:"dependency", label:"dependency" }, { key:"width", label:"width", type:"number" }, { key:"height", label:"height", type:"number" }, { key:"params", label:"params", type:"keyvalue" }, { key:"bound-params", label:"bound-params", type:"keyvalue" }]
+
 // Nó colapsável. Caret expande/colapsa; clicar no rótulo seleciona (mostra
 // detalhes no painel), se `detail` for fornecido.
 const TreeNode = ({ icon, color, label, count, detail, onSelect, defaultOpen, children }:any) => {
@@ -42,7 +50,7 @@ const Leaf = ({ icon, color, title, subtitle, detail, onSelect }:any) =>
 // Comando (recursivo).
 const CommandLeaf = ({ cmd, onSelect }:any) => {
     const kids = Array.isArray(cmd.children) ? cmd.children : []
-    const detail = { title: cmd.command || cmd.namespace, icon: "terminal", data: cmd }
+    const detail = { title: cmd.command || cmd.namespace, icon: "terminal", data: cmd, kind: "commands", path: ["commands"] }
     if(kids.length)
         return <TreeNode icon="terminal" color="teal" label={cmd.command || cmd.namespace} detail={detail} onSelect={onSelect}>
             { kids.map((c:any, i:number) => <CommandLeaf key={i} cmd={c} onSelect={onSelect} />) }
@@ -94,45 +102,45 @@ const PackageComponentsTree = ({ HTTPServerManager, workspace, pkg, onSelect }:a
         {
             hasBoot &&
             <TreeNode icon="play" color="orange" label="Boot" defaultOpen
-                detail={{ title:"Boot", icon:"play", data: boot }} onSelect={bootSel}>
+                detail={{ title:"Boot", icon:"play", data: boot, kind:"boot", path:[] }} onSelect={bootSel}>
                 {
                     Array.isArray(boot.params) && boot.params.length > 0 &&
                     <TreeNode icon="sliders horizontal" color="grey" label="Params" count={boot.params.length}
-                        detail={{ title:"Boot · Params", icon:"sliders horizontal", data: boot.params }} onSelect={bootSel}>
+                        detail={{ title:"Boot · Params", icon:"sliders horizontal", data: boot.params, kind:"strings", path:["params"] }} onSelect={bootSel}>
                         { boot.params.map((p:string, i:number) => <Leaf key={i} icon="dot circle outline" color="grey" title={p}
-                            detail={{ title:`Param · ${p}`, icon:"dot circle outline", data: { param: p } }} onSelect={bootSel} />) }
+                            detail={{ title:"Boot · Params", icon:"sliders horizontal", data: boot.params, kind:"strings", path:["params"] }} onSelect={bootSel} />) }
                     </TreeNode>
                 }
                 {
                     Array.isArray(boot.executables) && boot.executables.length > 0 &&
                     <TreeNode icon="terminal" color="grey" label="Executables" count={boot.executables.length}
-                        detail={{ title:"Boot · Executables", icon:"terminal", data: boot.executables }} onSelect={bootSel}>
+                        detail={{ title:"Boot · Executables", icon:"terminal", data: boot.executables, kind:"list", path:["executables"], fields: F_EXECUTABLE, emptyItem:{ executableName:"", dependency:"" } }} onSelect={bootSel}>
                         { boot.executables.map((e:any, i:number) => <Leaf key={i} icon="terminal" color="grey" title={e.executableName} subtitle={e.dependency}
-                            detail={{ title:`Executable · ${e.executableName}`, icon:"terminal", data: e }} onSelect={bootSel} />) }
+                            detail={{ title:`Executable · ${e.executableName}`, icon:"terminal", data: e, kind:"record", path:["executables", i], fields: F_EXECUTABLE }} onSelect={bootSel} />) }
                     </TreeNode>
                 }
                 {
                     Array.isArray(boot.services) && boot.services.length > 0 &&
                     <TreeNode icon="cogs" color="green" label="Services" count={boot.services.length}
-                        detail={{ title:"Boot · Services", icon:"cogs", data: boot.services }} onSelect={bootSel}>
+                        detail={{ title:"Boot · Services", icon:"cogs", data: boot.services, kind:"list", path:["services"], fields: F_BOOT_SERVICE, emptyItem:{ namespace:"", dependency:"" } }} onSelect={bootSel}>
                         { boot.services.map((s:any, i:number) => <Leaf key={i} icon="cog" color="green" title={s.namespace} subtitle={s.dependency}
-                            detail={{ title:`Service · ${s.namespace}`, icon:"cog", data: s }} onSelect={bootSel} />) }
+                            detail={{ title:`Service · ${s.namespace}`, icon:"cog", data: s, kind:"record", path:["services", i], fields: F_BOOT_SERVICE }} onSelect={bootSel} />) }
                     </TreeNode>
                 }
                 {
                     Array.isArray(boot.endpoints) && boot.endpoints.length > 0 &&
                     <TreeNode icon="globe" color="blue" label="Endpoints" count={boot.endpoints.length}
-                        detail={{ title:"Boot · Endpoints", icon:"globe", data: boot.endpoints }} onSelect={bootSel}>
+                        detail={{ title:"Boot · Endpoints", icon:"globe", data: boot.endpoints, kind:"list", path:["endpoints"], fields: F_BOOT_ENDPOINT, emptyItem:{ dependency:"" } }} onSelect={bootSel}>
                         { boot.endpoints.map((e:any, i:number) => <Leaf key={i} icon="linkify" color="blue" title={e.dependency}
-                            detail={{ title:`Endpoint · ${e.dependency}`, icon:"linkify", data: e }} onSelect={bootSel} />) }
+                            detail={{ title:`Endpoint · ${e.dependency}`, icon:"linkify", data: e, kind:"record", path:["endpoints", i], fields: F_BOOT_ENDPOINT }} onSelect={bootSel} />) }
                     </TreeNode>
                 }
                 {
                     Array.isArray(boot.windows) && boot.windows.length > 0 &&
                     <TreeNode icon="window maximize outline" color="purple" label="Windows" count={boot.windows.length}
-                        detail={{ title:"Boot · Windows", icon:"window maximize outline", data: boot.windows }} onSelect={bootSel}>
+                        detail={{ title:"Boot · Windows", icon:"window maximize outline", data: boot.windows, kind:"list", path:["windows"], fields: F_WINDOW, emptyItem:{ title:"", dependency:"" } }} onSelect={bootSel}>
                         { boot.windows.map((w:any, i:number) => <Leaf key={i} icon="window maximize outline" color="purple" title={w.title} subtitle={w.url || w.dependency}
-                            detail={{ title:`Window · ${w.title}`, icon:"window maximize outline", data: w }} onSelect={bootSel} />) }
+                            detail={{ title:`Window · ${w.title}`, icon:"window maximize outline", data: w, kind:"record", path:["windows", i], fields: F_WINDOW }} onSelect={bootSel} />) }
                     </TreeNode>
                 }
             </TreeNode>
@@ -140,17 +148,17 @@ const PackageComponentsTree = ({ HTTPServerManager, workspace, pkg, onSelect }:a
         {
             hasServices &&
             <TreeNode icon="cogs" color="green" label="Serviços" count={services.length}
-                detail={{ title:"Serviços", icon:"cogs", data: services }} onSelect={svcSel}>
+                detail={{ title:"Serviços", icon:"cogs", data: services, kind:"list", path:[], fields: F_SERVICE, emptyItem:{ namespace:"", path:"" } }} onSelect={svcSel}>
                 { services.map((s:any, i:number) => <Leaf key={i} icon="cog" color="green" title={s.namespace} subtitle={s.path}
-                    detail={{ title:`Serviço · ${s.namespace}`, icon:"cog", data: s }} onSelect={svcSel} />) }
+                    detail={{ title:`Serviço · ${s.namespace}`, icon:"cog", data: s, kind:"record", path:[i], fields: F_SERVICE }} onSelect={svcSel} />) }
             </TreeNode>
         }
         {
             hasEndpoints &&
             <TreeNode icon="globe" color="blue" label="Endpoints" count={eg.endpoints.length}
-                detail={{ title:"Endpoints", icon:"globe", data: eg.endpoints }} onSelect={egSel}>
+                detail={{ title:"Endpoints", icon:"globe", data: eg.endpoints, kind:"list", path:["endpoints"], fields: F_EG_ENDPOINT, emptyItem:{ url:"", type:"controller" } }} onSelect={egSel}>
                 { eg.endpoints.map((e:any, i:number) => <Leaf key={i} icon="linkify" color="blue" title={e.url || e.dependency} subtitle={e.type}
-                    detail={{ title:`Endpoint · ${e.url || e.dependency}`, icon:"linkify", data: e }} onSelect={egSel} />) }
+                    detail={{ title:`Endpoint · ${e.url || e.dependency}`, icon:"linkify", data: e, kind:"record", path:["endpoints", i], fields: F_EG_ENDPOINT }} onSelect={egSel} />) }
             </TreeNode>
         }
         {

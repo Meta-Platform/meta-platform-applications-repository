@@ -104,6 +104,31 @@ export const KeyValueEditor = ({ value, onChange }:any) => {
     </div>
 }
 
+// Renderiza os campos de UM registro (sem card/lista) — para o form focado de um item.
+export const RecordFields = ({ value, fields, onChange }:any) => {
+    const it = value && typeof value === "object" && !Array.isArray(value) ? value : {}
+    const known = fields.map((f:any) => f.key)
+    const extra = Object.keys(it).filter((k) => known.indexOf(k) === -1)
+    const patch = (key:string, val:any) => onChange({ ...it, [key]: val })
+    return <div>
+        {
+            fields.map((f:any) =>
+                <Field key={f.key}>
+                    <label>{f.label}</label>
+                    {
+                        f.type === "stringlist" ? <Nested><StringListEditor value={it[f.key] || []} onChange={(x:any) => patch(f.key, x)} /></Nested>
+                        : f.type === "keyvalue" ? <Nested><KeyValueEditor value={it[f.key] || {}} onChange={(x:any) => patch(f.key, x)} /></Nested>
+                        : f.type === "number" ? <TextInput type="number" value={it[f.key] != null ? it[f.key] : ""} placeholder={f.placeholder}
+                            onChange={(e:any) => patch(f.key, coerceNumber(e.target.value))} />
+                        : <TextInput value={it[f.key] != null ? it[f.key] : ""} placeholder={f.placeholder}
+                            onChange={(e:any) => patch(f.key, e.target.value)} />
+                    }
+                </Field>)
+        }
+        { extra.length > 0 && <Preserved><Icon name="lock" />preservados: {extra.join(", ")}</Preserved> }
+    </div>
+}
+
 // ---- Editor de lista de registros (cards) ----
 export const RecordListEditor = ({ value, fields, onChange, itemLabel, emptyItem }:any) => {
     const list:any[] = Array.isArray(value) ? value : []

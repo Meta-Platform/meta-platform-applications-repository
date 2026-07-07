@@ -99,7 +99,7 @@ const CMD_FIELDS = ["command", "namespace", "description", "path"]
 
 const CMD_HANDLED = CMD_FIELDS.concat(["children", "parameters", "parametersToLoad"])
 
-const CommandTree = ({ list, onChange }:any) => {
+export const CommandTree = ({ list, onChange }:any) => {
     const items:any[] = Array.isArray(list) ? list : []
     return <div>
         {

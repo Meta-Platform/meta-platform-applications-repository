@@ -18,7 +18,7 @@ const METADATA_TYPES:any = {
 
 // Navegação do pacote POR TIPO de componente (não por árvore de arquivos):
 // Metadados (Boot/Serviços/Endpoints/Comandos/…) + categorias de código (src/).
-const PackageTypeNav = ({ listDir, onOpenFile, onFileContext, selectedPath, workspace, pkg }:any) => {
+const PackageTypeNav = ({ listDir, onOpenFile, onOpenComponent, onFileContext, selectedPath, selectedComponentKey, workspace, pkg }:any) => {
 
     const [srcDirs, setSrcDirs]   = useState<any[]>([])
     const [srcFiles, setSrcFiles] = useState<any[]>([])
@@ -37,20 +37,18 @@ const PackageTypeNav = ({ listDir, onOpenFile, onFileContext, selectedPath, work
                 {/* Réplica da árvore de componentes da coluna Pacotes; clicar abre o arquivo. */}
                 {
                     pkg
-                    ? <PackageComponentsTree workspace={workspace} pkg={pkg}
-                        onSelect={(d:any) => d.file && onOpenFile(d.file)} />
+                    ? <PackageComponentsTree workspace={workspace} pkg={pkg} selectedKey={selectedComponentKey}
+                        onSelect={(d:any) => onOpenComponent ? onOpenComponent(d) : (d.file && onOpenFile(d.file))} />
                     : <List.Item><span style={{opacity:0.45}}>sem metadados</span></List.Item>
                 }
             </List.List>
         </List.Item>
 
-        <List.Item style={{marginTop:8}}>
+        {
+            (srcDirs.length > 0 || srcFiles.length > 0) &&
+            <List.Item style={{marginTop:8}}>
             <List.Header style={{textTransform:"uppercase", fontSize:"0.75em", opacity:0.7, letterSpacing:0.5}}>Código</List.Header>
             <List.List>
-                {
-                    srcDirs.length === 0 && srcFiles.length === 0 &&
-                    <List.Item><span style={{opacity:0.45}}>sem código</span></List.Item>
-                }
                 {
                     // cada diretório de topo em src/ é uma "categoria de tipo"
                     srcDirs.map((d:any, i:number) =>
@@ -70,7 +68,8 @@ const PackageTypeNav = ({ listDir, onOpenFile, onFileContext, selectedPath, work
                     })
                 }
             </List.List>
-        </List.Item>
+            </List.Item>
+        }
     </List>
 }
 

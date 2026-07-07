@@ -88,8 +88,8 @@ const CodeEditor = ({ value, onChange }:CodeEditorProps) => {
             onKeyDown={handleKeyDown}
             style={{
                 ...FONT, position:"absolute", inset:0, width:"100%", height:"100%", overflow:"auto",
-                background:"transparent", color:"transparent", caretColor:"var(--mp-accent, #14D6C8)",
-                border:"none", outline:"none", resize:"none"
+                background:"transparent", color:"transparent", WebkitTextFillColor:"transparent",
+                caretColor:"var(--mp-accent, #14D6C8)", border:"none", outline:"none", resize:"none"
             }} />
     </div>
 }
