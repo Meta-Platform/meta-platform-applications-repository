@@ -88,12 +88,16 @@ export default createGlobalStyle`
 
     /* editor: rail e área compartilham a base de superfície do tema */
     .edit-rail { background: var(--mp-paper-2) !important; border-right: var(--mp-border); }
-    .code-editor, [data-ide-mode="edit"] textarea, textarea.code-editor {
-        background: var(--mp-code-bg) !important; color: var(--mp-terminal-fg) !important;
-        border: 1px solid var(--mp-code-border) !important; border-radius: var(--mp-radius-md);
-        font-family: var(--mp-font-mono) !important; font-size: 13px; line-height: 1.55;
+    /* O CodeEditor usa overlay: <pre> colorido ATRÁS de um <textarea> transparente.
+       O textarea PRECISA ser transparente (bg + texto) senão cobre o pre e o editor
+       fica "preto vazio". O fundo escuro e a borda vêm do container do CodeEditor. */
+    .code-editor, textarea.code-editor {
+        background: transparent !important; color: transparent !important;
+        -webkit-text-fill-color: transparent !important;
+        caret-color: var(--mp-accent-blue, #2D74C4) !important;
+        border: none !important;
     }
-    .code-editor:focus, [data-ide-mode="edit"] textarea:focus { border-color: var(--mp-accent-blue) !important; box-shadow: var(--mp-focus-ring) !important; }
+    .code-editor:focus, textarea.code-editor:focus { outline: none !important; box-shadow: none !important; }
 
     /* coluna Repositórios: item em flex para o nome truncar com reticências
        (o layout table-cell padrão do Semantic ignora text-overflow) */
