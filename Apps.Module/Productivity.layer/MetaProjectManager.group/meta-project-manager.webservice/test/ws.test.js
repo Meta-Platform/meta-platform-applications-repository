@@ -114,6 +114,26 @@ test("checklist add/update/remove + acceptance via API", async () => {
     assert.equal(acUpd.json.data.met, true)
 })
 
+test("agente criar projeto via API bloqueia + aprovar executa", async () => {
+    const blocked = await srv.request("POST", "/projects", { name: "API Agent Proj", sessionProvider: "claude", sessionModel: "claude-sonnet-4", sessionTrace: "WT-1", sessionHost: "remoteHost" })
+    assert.equal(blocked.json.ok, false)
+    assert.equal(blocked.json.code, "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const list = await srv.request("GET", "/creation-requests?type=project")
+    const req = list.json.data.find((r) => r.payload.name === "API Agent Proj")
+    assert.ok(req)
+    assert.equal(req.session.host, "remoteHost")
+    assert.equal(req.session.provider, "claude")
+    const appr = await srv.request("POST", `/creation-requests/${req.id}/approve`, {})
+    assert.equal(appr.json.ok, true)
+    assert.equal(appr.json.data.result.slug, "api-agent-proj")
+})
+
+test("agente criar ITEM via API é livre (sem gate)", async () => {
+    const it = await srv.request("POST", `/projects/${projectId}/items`, { type: "task", title: "AgentItem", sessionProvider: "claude", sessionModel: "claude-sonnet-4", sessionTrace: "WT-1" })
+    assert.equal(it.json.ok, true)
+    assert.ok(it.json.data.key)
+})
+
 test("erro estruturado 200 com ok:false em NOT_FOUND", async () => {
     const { json } = await srv.request("GET", "/items/MP-999")
     assert.equal(json.ok, false)

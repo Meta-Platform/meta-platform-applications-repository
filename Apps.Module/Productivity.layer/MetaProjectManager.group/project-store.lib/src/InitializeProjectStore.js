@@ -41,7 +41,9 @@ const InitializeProjectStore = (options = {}) => {
 
     const ConnectAndSync = async () => {
         await sequelize.authenticate()
-        await sequelize.sync()
+        // alter:true adiciona colunas/tabelas novas a bancos existentes sem
+        // migrations manuais (evolução de schema; idioma "sync" do repo).
+        await sequelize.sync({ alter: true })
     }
 
     // Emissor de eventos realtime; noop se não houver onEvent.

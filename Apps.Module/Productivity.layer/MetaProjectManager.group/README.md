@@ -43,6 +43,23 @@ repo update ApplicationsRepository
 - **Desktop (Electron):** executa `meta-project-manager-desktop` (DESKTOP, GUI-host).
 - **CLI:** `mpm --help` (ou o alias `meta-project-manager`). Ver `meta-project-manager.cli/README.md`.
 
+## Autorização de agentes (gate de criação)
+
+Regra: **todo agente que tenta criar um PROJETO ou BOARD é bloqueado e o pedido vira
+um "pedido de criação" pendente**; um humano precisa **aprovar** (aí a criação é executada
+de fato) ou **rejeitar**. Itens (histórias/tarefas/subtarefas) e mudança de status **não**
+passam pelo gate — o agente atua neles livremente.
+
+- O agente se identifica **inline**: na CLI, flags `--session-provider/--session-model/
+  --session-trace/--session-external-id/--session-agent` (a CLI captura host, usuário do SO,
+  PID, diretório e git automaticamente); na API, campos `sessionProvider/sessionModel/...`
+  no corpo (o agente remoto envia o contexto).
+- Ao bloquear, retorna `AGENT_SESSION_CONFIRMATION_REQUIRED` com `pendingCreationId` e
+  `nextCommands` (`mpm agent creation approve|reject <id>`).
+- O humano decide na CLI (`mpm agent creation list/approve/reject`), na API
+  (`GET /creation-requests`, `POST /creation-requests/:id/approve|reject`) ou na GUI
+  (tela de pedidos com todos os detalhes da sessão). Aprovar **executa** a criação.
+
 ## Persistência
 
 - Banco: `~/virtual-desk-state/local-databases/meta-project-manager.sqlite`

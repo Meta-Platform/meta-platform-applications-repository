@@ -151,6 +151,63 @@
                     "required": true
                 }
             ]
+        },
+        {
+            "summary": "ListCreationRequests",
+            "method": "GET",
+            "path": "/creation-requests",
+            "parameters": [
+                {
+                    "name": "type",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "status",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "ApproveCreation",
+            "method": "POST",
+            "path": "/creation-requests/:requestId/approve",
+            "parameters": [
+                {
+                    "name": "requestId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "actorUserId",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "RejectCreation",
+            "method": "POST",
+            "path": "/creation-requests/:requestId/reject",
+            "parameters": [
+                {
+                    "name": "requestId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "actorUserId",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
         }
     ]
 }

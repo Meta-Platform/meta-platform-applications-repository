@@ -133,3 +133,66 @@ test("export/import de projeto", async () => {
     assert.ok(dump.items.length >= 4)
     assert.equal(dump.project.slug, "meta-platform")
 })
+
+// ---- Gate de criação estrutural por agente (identidade inline) ----
+const AGENT = { source: "agent", session: { provider: "claude", model: "claude-sonnet-4", traceId: "T-1", externalSessionId: "ext-1", host: "hostA", osUser: "kaio", pid: 4242, workingDirectory: "/w", repositoryUrl: "git@x", branchName: "feat/x", commitHash: "abc123", agentVersion: "claude-code 1.0" } }
+
+test("agente criar PROJETO bloqueia e vira pedido pendente", async () => {
+    await assert.rejects(
+        () => store.CreateProject({ name: "Projeto do Agente", actor: AGENT }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && !!e.details.pendingCreationId && e.details.type === "project"
+    )
+    // não criou o projeto
+    const list = await store.ListProjects({ includeArchived: true })
+    assert.ok(!list.some((p) => p.slug === "projeto-do-agente"))
+})
+
+test("pedido pendente carrega TODOS os detalhes da sessão", async () => {
+    const pend = await store.ListCreationRequests({ status: "pending", type: "project" })
+    assert.ok(pend.length >= 1)
+    const r = pend[0]
+    assert.equal(r.type, "project")
+    assert.equal(r.payload.name, "Projeto do Agente")
+    assert.equal(r.session.provider, "claude")
+    assert.equal(r.session.modelName, "claude-sonnet-4")
+    assert.equal(r.session.host, "hostA")
+    assert.equal(r.session.pid, 4242)
+    assert.equal(r.session.commitHash, "abc123")
+    assert.equal(r.session.firstAttemptAction, "create-project")
+})
+
+test("aprovar pedido EXECUTA a criação do projeto", async () => {
+    const pend = await store.ListCreationRequests({ status: "pending", type: "project" })
+    const { result, request } = await store.ApproveCreation({ request: pend[0].id, actor: { actorUserId: "human-1", source: "gui" } })
+    assert.equal(request.status, "approved")
+    assert.equal(result.slug, "projeto-do-agente")
+    const list = await store.ListProjects({ includeArchived: true })
+    assert.ok(list.some((p) => p.slug === "projeto-do-agente"))
+})
+
+test("agente criar BOARD bloqueia; aprovar cria o board", async () => {
+    await assert.rejects(
+        () => store.CreateBoard({ project: "MP", name: "Board do Agente", actor: AGENT }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.type === "board"
+    )
+    const pend = await store.ListCreationRequests({ status: "pending", type: "board" })
+    assert.ok(pend.length >= 1)
+    const { result } = await store.ApproveCreation({ request: pend[0].id, actor: { actorUserId: "human-1", source: "gui" } })
+    assert.equal(result.name, "Board do Agente")
+})
+
+test("agente mexer em ITEM/STATUS é LIVRE (sem gate)", async () => {
+    const story = await store.CreateItem({ project: "MP", type: "story", title: "Item do agente", actor: AGENT })
+    assert.ok(story.key) // criou sem bloqueio
+    const upd = await store.SetStatus({ item: story.key, status: "in-progress", actor: AGENT })
+    assert.equal(upd.statusKey, "in-progress") // status livre
+})
+
+test("rejeitar pedido não cria nada", async () => {
+    await assert.rejects(() => store.CreateProject({ name: "Rejeitado", actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", type: "project" })).find((r) => r.payload.name === "Rejeitado")
+    const rej = await store.RejectCreation({ request: pend.id, actor: { actorUserId: "human-1", source: "gui" } })
+    assert.equal(rej.status, "rejected")
+    const list = await store.ListProjects({ includeArchived: true })
+    assert.ok(!list.some((p) => p.slug === "rejeitado"))
+})

@@ -4,7 +4,7 @@ const { DomainError } = require("../Errors")
 const { PROJECT_STATUSES } = require("../Config")
 
 const ProjectsStore = (ctx) => {
-    const { models, writeAudit, emit } = ctx
+    const { models, writeAudit, emit, store } = ctx
     const { Project, Board, WorkItem } = models
 
     // Resolve um projeto por id, slug ou keyPrefix (case-insensitive). Lança NOT_FOUND.
@@ -31,6 +31,14 @@ const ProjectsStore = (ctx) => {
         if(!name) throw new DomainError("VALIDATION_ERROR", "Nome de projeto é obrigatório.", { field: "name" })
         if(!PROJECT_STATUSES.includes(status))
             throw new DomainError("VALIDATION_ERROR", `Status inválido: ${status}.`, { field: "status", allowed: PROJECT_STATUSES })
+
+        // Gate: criação de projeto por agente exige aprovação humana (vira pedido pendente).
+        if(store.IsAgentCreation(actor)){
+            const { request } = await store.RequestCreation({ type: "project", payload: { name, slug, description, icon, color, status, keyPrefix, repositoryUrl, localPath, ownerUserId }, actor })
+            throw new DomainError("AGENT_SESSION_CONFIRMATION_REQUIRED",
+                "Criação de projeto por agente requer aprovação humana.",
+                { pendingCreationId: request.id, type: "project", nextCommands: [`mpm agent creation approve ${request.id}`, `mpm agent creation reject ${request.id}`] })
+        }
 
         const finalSlug = Slugify(slug || name)
         if(await Project.findOne({ where: { slug: finalSlug, deletedAt: null } }))

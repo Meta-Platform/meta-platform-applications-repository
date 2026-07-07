@@ -16,6 +16,11 @@ const AgentsController = (params) => {
     const RejectAgentSession = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "sessionId"); return store.RejectSession({ session: id, actor: { source: "api" } }) })
     const CloseAgentSession = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "sessionId"); return store.CloseSession({ session: id, actor: { source: "api" } }) })
 
+    // Pedidos de criação (projeto/board) feitos por agentes (gate de criação).
+    const ListCreationRequests = async (p = {}) => Guard(async () => { await ctx.ready; return store.ListCreationRequests({ type: p.type, status: p.status }) })
+    const ApproveCreation = async (p = {}) => Guard(async () => { await ctx.ready; return store.ApproveCreation({ request: p.requestId, actor: Actor(p) }) })
+    const RejectCreation = async (p = {}) => Guard(async () => { await ctx.ready; return store.RejectCreation({ request: p.requestId, actor: Actor(p) }) })
+
     return {
         controllerName: "AgentsController",
         ListAgents,
@@ -26,7 +31,10 @@ const AgentsController = (params) => {
         GetAgentSession,
         ConfirmAgentSession,
         RejectAgentSession,
-        CloseAgentSession
+        CloseAgentSession,
+        ListCreationRequests,
+        ApproveCreation,
+        RejectCreation
     }
 }
 

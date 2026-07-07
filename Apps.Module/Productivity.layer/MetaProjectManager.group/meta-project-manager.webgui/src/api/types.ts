@@ -188,6 +188,44 @@ export interface AgentSession {
     createdAt?: string
 }
 
+// Detalhes da sessão do agente que originou um pedido de criação (forense).
+export interface CreationRequestSession {
+    provider?: string
+    modelName?: string
+    host?: string
+    osUser?: string
+    pid?: number | string
+    agentVersion?: string
+    workingDirectory?: string
+    repositoryUrl?: string
+    branchName?: string
+    commitHash?: string
+    firstAttemptAt?: string
+    firstAttemptAction?: string
+    actionCount?: number
+    lastActivityAt?: string
+    traceId?: string
+    externalSessionId?: string
+}
+
+export type CreationRequestType = "project" | "board" | string
+export type CreationRequestStatus = "pending" | "approved" | "rejected" | string
+
+export interface CreationRequest {
+    id: ID
+    type: CreationRequestType
+    status: CreationRequestStatus
+    requestedAt?: string
+    payload?: any            // params da criação (ex.: {name, description, type})
+    projectId?: ID           // projeto-pai quando type === "board"
+    session?: CreationRequestSession
+}
+
+export interface ApproveCreationResult {
+    request: CreationRequest
+    result: any              // projeto/board efetivamente criado
+}
+
 export interface ActivityEntry {
     id: ID
     projectId?: ID

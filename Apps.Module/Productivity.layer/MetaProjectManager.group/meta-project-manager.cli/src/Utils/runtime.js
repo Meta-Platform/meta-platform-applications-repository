@@ -12,12 +12,55 @@ const InitStore = async ({ startupParams, params }) => {
     return store
 }
 
-// Actor de auditoria a partir das flags globais. source=agent quando há sessão.
-const BuildActor = (args) => ({
-    actorUserId: args.actorUserId,
-    actorSessionId: args.actorSessionId,
-    source: args.actorSessionId ? "agent" : "cli"
-})
+const os = require("os")
+const { execSync } = require("child_process")
+
+// Best-effort: captura repositório/branch/commit do diretório atual.
+const GitSnapshot = (cwd) => {
+    const run = (cmd) => { try { return execSync(cmd, { cwd, stdio: ["ignore", "pipe", "ignore"] }).toString().trim() } catch(e){ return undefined } }
+    return {
+        repositoryUrl: run("git config --get remote.origin.url"),
+        branchName: run("git rev-parse --abbrev-ref HEAD"),
+        commitHash: run("git rev-parse --short HEAD")
+    }
+}
+
+// Actor de auditoria a partir das flags globais.
+// Se vierem flags de identidade de sessão (--session-provider/model/trace/...),
+// o actor vira AGENTE INLINE (sujeito ao gate de criação) e o contexto de
+// SO/processo/git é capturado automaticamente.
+const BuildActor = (args) => {
+    const hasIdentity = !!(args.sessionProvider || args.sessionModel || args.sessionTrace || args.sessionExternalId || args.sessionAgent)
+    if(hasIdentity){
+        const cwd = process.cwd()
+        return {
+            source: "agent",
+            actorUserId: args.actorUserId,
+            actorSessionId: args.actorSessionId,
+            session: {
+                provider: args.sessionProvider || "other",
+                model: args.sessionModel,
+                traceId: args.sessionTrace,
+                externalSessionId: args.sessionExternalId,
+                agent: args.sessionAgent,
+                owner: args.sessionOwner,
+                sessionUrl: args.sessionUrl,
+                objective: args.sessionObjective,
+                agentVersion: args.sessionVersion,
+                host: os.hostname(),
+                osUser: os.userInfo().username,
+                pid: process.pid,
+                workingDirectory: cwd,
+                ...GitSnapshot(cwd)
+            }
+        }
+    }
+    return {
+        actorUserId: args.actorUserId,
+        actorSessionId: args.actorSessionId,
+        source: args.actorSessionId ? "agent" : "cli"
+    }
+}
 
 // Exige confirmação em ações destrutivas (spec §7.1).
 const RequireConfirm = (args) => {

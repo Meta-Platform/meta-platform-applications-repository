@@ -35,11 +35,30 @@ mpm comment add MPM-42 --body "Use cases prontos." --actor-session-id SESSION_ID
 mpm attachment add MPM-42 --file ./test-output.log --actor-session-id SESSION_ID --json
 ```
 
+## Identidade de agente e gate de criação
+
+Se o comando trouxer flags de identidade de sessão (`--session-provider`, `--session-model`,
+`--session-trace`, `--session-external-id`, `--session-agent`, `--session-owner`), o actor
+vira **agente inline** e a CLI captura automaticamente host, usuário do SO, PID, diretório e
+git (repo/branch/commit). Nesse modo, **criar projeto ou board é bloqueado** com
+`AGENT_SESSION_CONFIRMATION_REQUIRED` (vira pedido pendente); itens/status seguem livres.
+Um humano decide com `mpm agent creation list|approve|reject <id>`.
+
+```bash
+# agente tenta criar board -> bloqueia
+mpm board create --project MPM --name Dev \
+  --session-provider claude --session-model claude-sonnet-4 --session-trace T-1 --json
+# humano aprova (executa a criação)
+mpm agent creation list --json
+mpm agent creation approve <pendingCreationId> --json
+```
+
 ## Grupos de comandos
 
 `project` · `board` (+`column`) · `story|task|subtask` · `item` (create/list/show/update/
 set-status/assign/move/move-to-board/reorder/convert/block/link/unlink/delete/checklist-add/
-acceptance-add) · `attachment` · `comment` · `user` · `agent` (+`session`) · `report` ·
+checklist-update/checklist-remove/acceptance-add/acceptance-update/acceptance-remove) ·
+`attachment` · `comment` · `user` · `agent` (+`session`, +`creation`) · `report` ·
 `activity` · `export` · `import`.
 
 Veja a árvore completa em `metadata/command-group.json`. Rode `mpm <grupo> --help`.
