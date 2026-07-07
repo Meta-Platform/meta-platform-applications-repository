@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 
 const escapeHtml = (s:string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
 
@@ -63,6 +63,8 @@ const CodeEditor = ({ value, onChange }:CodeEditorProps) => {
     const taRef     = useRef<HTMLTextAreaElement>(null)
     const gutterRef = useRef<HTMLDivElement>(null)
     const bandRef   = useRef<HTMLDivElement>(null)
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+    const vpRef     = useRef<HTMLDivElement>(null)
     const [activeLine, setActiveLine] = useState(1)
     const activeLineRef = useRef(1)
     activeLineRef.current = activeLine
@@ -80,6 +82,50 @@ const CodeEditor = ({ value, onChange }:CodeEditorProps) => {
         if(pre){ pre.scrollTop = ta.scrollTop; pre.scrollLeft = ta.scrollLeft }
         if(gut){ gut.scrollTop = ta.scrollTop }
         positionBand()
+        updateViewport()
+    }
+
+    // ---- Minimap (overview em canvas + indicador de viewport) ----
+    const mLineH = () => { const cv = canvasRef.current; if(!cv) return 3; const n = (code.match(/\n/g) || []).length + 1; return Math.min(4, cv.clientHeight / n) }
+
+    const drawMinimap = () => {
+        const cv = canvasRef.current; if(!cv) return
+        const w = cv.width = cv.clientWidth || 60, h = cv.height = cv.clientHeight || 300
+        const ctx = cv.getContext("2d"); if(!ctx) return
+        ctx.clearRect(0, 0, w, h)
+        const lines = code.split("\n"), lh = mLineH()
+        ctx.fillStyle = "rgba(150,168,200,.5)"
+        for(let i = 0; i < lines.length; i++){
+            const ln = lines[i].replace(/\s+$/, "")
+            const indent = (ln.match(/^\s*/) || [""])[0].length
+            const len = Math.min(ln.length, 90)
+            if(len > indent) ctx.fillRect(2 + indent * 0.7, i * lh, (len - indent) * 0.7, Math.max(1, lh - 0.6))
+        }
+    }
+
+    const updateViewport = () => {
+        const ta = taRef.current, vp = vpRef.current
+        if(!ta || !vp) return
+        const lh = mLineH()
+        vp.style.top = `${(ta.scrollTop / LINE_H) * lh}px`
+        vp.style.height = `${Math.max(14, (ta.clientHeight / LINE_H) * lh)}px`
+    }
+
+    useEffect(() => { drawMinimap(); updateViewport() }, [code])
+    useEffect(() => {
+        const on = () => { drawMinimap(); updateViewport() }
+        window.addEventListener("resize", on)
+        const id = setTimeout(on, 50)   // após layout inicial
+        return () => { window.removeEventListener("resize", on); clearTimeout(id) }
+    }, [])
+
+    const onMinimapClick = (e:React.MouseEvent) => {
+        const cv = canvasRef.current, ta = taRef.current
+        if(!cv || !ta) return
+        const y = e.clientY - cv.getBoundingClientRect().top
+        const line = y / mLineH()
+        ta.scrollTop = Math.max(0, line * LINE_H - ta.clientHeight / 2)
+        syncScroll()
     }
 
     const updateCaret = () => {
@@ -150,6 +196,16 @@ const CodeEditor = ({ value, onChange }:CodeEditorProps) => {
                     background:"transparent", color:"transparent", WebkitTextFillColor:"transparent",
                     caretColor:"var(--color-accent, #14D6C8)", border:"none", outline:"none", resize:"none"
                 }} />
+        </div>
+
+        {/* Minimap: overview do arquivo (canvas) + indicador de viewport, click-to-scroll */}
+        <div onClick={onMinimapClick} title="Minimap"
+            style={{position:"relative", width:62, flexShrink:0, cursor:"pointer",
+                borderLeft:"1px solid var(--color-editor-line, #172035)", background:"var(--color-editor-gutter, #0a0f1e)"}}>
+            <canvas ref={canvasRef} style={{width:"100%", height:"100%", display:"block"}} />
+            <div ref={vpRef} style={{position:"absolute", left:0, right:0, top:0,
+                background:"rgba(120,150,200,.16)", borderTop:"1px solid rgba(150,180,220,.35)",
+                borderBottom:"1px solid rgba(150,180,220,.35)", pointerEvents:"none"}} />
         </div>
     </div>
 }
