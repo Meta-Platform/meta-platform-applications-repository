@@ -1,0 +1,138 @@
+/* ==========================================================================
+   Classic Technical Workbench — camada de design tokens + classes base.
+   Escopada ao Package Developer (arquivo próprio; não afeta my-desktop/eco-panel).
+   Carregada por ÚLTIMO em index.tsx, então sobrepõe onde necessário.
+
+   Fase 1 do guia de UX/UI: tokens, base visual e ganhos rápidos de contraste.
+   Mapeia a paleta --color-* do guia sobre a base --mp-* já existente, para que
+   tanto componentes antigos (--mp-*) quanto novos (--color-*) sejam consistentes.
+   ========================================================================== */
+
+:root {
+    /* ---- Base / superfícies ---- */
+    --color-app-bg:   var(--mp-paper);
+    --color-panel:    var(--mp-paper);
+    --color-panel-2:  var(--mp-paper-2);
+    --color-panel-3:  var(--mp-paper-3);
+    --color-surface:  #fff8e8;
+
+    /* ---- Texto ---- */
+    --color-text:        var(--mp-ink);
+    --color-text-muted:  #63614f;   /* mais contraste que o --mp-muted original */
+    --color-text-subtle: var(--mp-muted-2);
+    --color-text-inverse:#f4ead4;
+
+    /* ---- Bordas e sombra (janela clássica: offset seco, sem blur) ---- */
+    --color-border-strong: var(--mp-line-strong);
+    --color-border:        var(--mp-line-soft);
+    --color-border-soft:   var(--mp-line-faint);
+    --shadow-window: 3px 3px 0 rgba(35, 32, 24, 0.82);
+    --shadow-soft:   0 1px 0 rgba(35, 32, 24, 0.18);
+
+    /* ---- Ações / semântica ---- */
+    --color-accent:       var(--mp-accent-cyan);
+    --color-accent-hover: #0f9e9a;
+    --color-accent-soft:  var(--mp-accent-cyan-tint);
+    --color-focus:        var(--mp-accent-blue);
+    --color-success:      #22a65a;
+    --color-warning:      #d78a20;
+    --color-danger:       #d94a3f;
+
+    /* ---- Editor de código (escuro, centro produtivo) ---- */
+    --color-editor-bg:        #080c18;
+    --color-editor-surface:   #0d1324;
+    --color-editor-line:      #172035;
+    --color-editor-gutter:    #0a0f1e;
+    --color-editor-text:      #d9e2f1;
+    --color-editor-muted:     #72809a;
+    --color-editor-selection: rgba(47, 124, 235, 0.32);
+
+    /* ---- Tipografia (stacks de sistema — sem dependência externa) ---- */
+    --font-ui:      "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono:    "JetBrains Mono", "IBM Plex Mono", "Fira Code", "Menlo", Consolas, monospace;
+    --font-display: "IBM Plex Sans", "Inter", system-ui, sans-serif;
+
+    /* ---- Ganho rápido de contraste: muted usado por componentes --mp-* ---- */
+    --mp-muted: #63614f;
+    --mp-text-secondary: #63614f;
+}
+
+/* ============ Classes base reutilizáveis (usadas a partir da Fase 2) ============ */
+
+/* Grid técnico — só para superfícies que queiram a atmosfera de fundo.
+   Áreas de leitura (editor, formulários, README) NÃO devem usar. */
+.app-grid-bg {
+    background-color: var(--color-app-bg);
+    background-image:
+        linear-gradient(var(--mp-grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--mp-grid-line) 1px, transparent 1px);
+    background-size: 16px 16px;
+}
+
+/* Janela clássica: borda escura + sombra offset seca. */
+.retro-panel {
+    background: var(--color-panel);
+    border: 2px solid var(--color-border-strong);
+    box-shadow: var(--mp-shadow-2);
+    border-radius: var(--mp-radius-md, 8px);
+}
+
+.ide-panel {
+    background: var(--color-panel);
+    border-right: 1px solid var(--color-border);
+}
+
+.ide-section-title {
+    font-family: var(--font-ui);
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+}
+
+.ide-button {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 30px; padding: 0 12px;
+    border: 2px solid var(--color-border-strong); border-radius: 4px;
+    background: var(--color-surface); color: var(--color-text);
+    font-family: var(--font-ui); font-size: 12px; font-weight: 700;
+    box-shadow: 2px 2px 0 var(--color-border-strong); cursor: pointer;
+    transition: transform .06s ease, box-shadow .06s ease;
+}
+.ide-button:hover  { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--color-border-strong); }
+.ide-button:active { transform: translate(1px, 1px);   box-shadow: 1px 1px 0 var(--color-border-strong); }
+.ide-button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.ide-button.primary { background: var(--color-accent); color: #061413; }
+.ide-button:disabled { opacity: .5; cursor: default; box-shadow: none; transform: none; }
+
+.ide-input {
+    height: 30px; padding: 0 8px;
+    border: 1px solid var(--color-border); border-radius: 4px;
+    background: var(--color-surface); color: var(--color-text); font-size: 12px;
+}
+.ide-input:focus { outline: 2px solid var(--color-focus); outline-offset: 1px; border-color: var(--color-border-strong); }
+
+/* Pílula de status de execução — cor semântica forte (§7/§15/§18 do guia). */
+.ide-status-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    height: 20px; padding: 0 9px; border-radius: 10px;
+    border: 1px solid var(--color-border-strong);
+    font-family: var(--font-ui); font-size: 11px; font-weight: 700; line-height: 1;
+    text-transform: uppercase; letter-spacing: .03em;
+}
+.ide-status-pill.stopped    { background: var(--color-panel-3); color: var(--color-text-muted); }
+.ide-status-pill.starting   { background: var(--color-warning); color: #1a1200; }
+.ide-status-pill.running    { background: var(--color-success); color: #04140b; }
+.ide-status-pill.restarting { background: var(--color-focus);   color: #04101f; }
+.ide-status-pill.error      { background: var(--color-danger);  color: #fff; }
+.ide-status-pill.unknown    { background: var(--color-panel-3); color: var(--color-text-subtle); }
+
+/* Badge de contagem (problemas, mudanças). */
+.ide-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
+    background: var(--color-danger); color: #fff;
+    font-family: var(--font-ui); font-size: 10px; font-weight: 700; line-height: 1;
+}

@@ -35,11 +35,14 @@ const StatusPill = styled.span<{tone:string}>`
     border: 1px solid rgba(127,127,127,.28);
 `
 
-const TONE:any = {
-    RUNNING:  "var(--mp-success, #2ecc71)",
-    STOPPED:  "var(--mp-text-muted, #7c8795)",
-    ERROR:    "var(--mp-danger, #e0576b)",
-    STOPPING: "var(--mp-warning, #e8a13a)"
+// Estado de execução → classe da pílula semântica (workbench.css).
+const STATUS_CLASS:any = {
+    RUNNING:    "running",
+    STOPPED:    "stopped",
+    ERROR:      "error",
+    STOPPING:   "starting",
+    STARTING:   "starting",
+    INSTALLING: "starting"
 }
 
 // Barra de execução no topo do editor (estilo IDE): Run / Debug / Stop / Install
@@ -72,7 +75,7 @@ const RunControls = ({ HTTPServerManager, packageSelected, workspace, onRun }:an
             { glyph("download", true, "var(--mp-text-secondary, #9aa4b2)", busy === "install") }
         </ToolBtn>
         <span style={{flex:1}} />
-        <StatusPill tone={TONE[status] || TONE.STOPPED}>{status}</StatusPill>
+        <span className={`ide-status-pill ${STATUS_CLASS[status] || "unknown"}`}>{status}</span>
     </div>
 }
 
