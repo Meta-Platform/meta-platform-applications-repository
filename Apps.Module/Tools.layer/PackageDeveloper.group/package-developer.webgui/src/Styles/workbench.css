@@ -139,6 +139,36 @@
 .wb-scroll::-webkit-scrollbar-thumb:hover { background: var(--color-editor-muted, #72809a); background-clip: content-box; }
 .wb-scroll::-webkit-scrollbar-corner { background: transparent; }
 
+/* ============ Shell no estilo eco (my-desktop / eco-panel) ============ */
+/* Topbar como barra de sistema: fundo paper-2, borda inferior forte, sombra seca. */
+.eco-main-menu.ui.menu {
+    background: var(--mp-paper-2, var(--color-panel-2)) !important;
+    border: none !important;
+    border-bottom: var(--mp-border-strong, 2px solid var(--color-border-strong)) !important;
+    border-radius: 0 !important;
+    box-shadow: var(--mp-shadow-1, 2px 2px 0 var(--color-border-strong)) !important;
+    min-height: var(--mp-shell-topbar-h, 48px);
+}
+.eco-main-menu-title {
+    font-family: var(--mp-font-display, var(--font-display)) !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.01em !important;
+}
+
+/* Modais como janelas de sistema clássicas (borda forte + sombra seca). */
+.ui.modal {
+    background: var(--mp-surface, var(--color-surface)) !important;
+    border: var(--mp-border-strong, 2px solid var(--color-border-strong)) !important;
+    border-radius: var(--mp-radius-lg, 12px) !important;
+    box-shadow: var(--mp-shadow-2, 4px 4px 0 var(--color-border-strong)) !important;
+}
+.ui.modal > .header {
+    background: var(--mp-paper-2, var(--color-panel-2)) !important;
+    border-bottom: var(--mp-border, 1px solid var(--color-border)) !important;
+    font-family: var(--mp-font-display, var(--font-display)) !important;
+    font-weight: 800 !important;
+}
+
 /* Badge de contagem (problemas, mudanças). */
 .ide-badge {
     display: inline-flex; align-items: center; justify-content: center;

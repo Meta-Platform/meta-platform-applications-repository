@@ -21,11 +21,11 @@ const MainMenu = ({ onHome, centerTitle }:any) => {
     const [ theme, setTheme ] = useState<ThemeName>(GetSavedTheme())
     const selectTheme = (t:ThemeName) => { setTheme(t); ApplyTheme(t) }
 
-    return <Menu attached="top" style={{position:"relative"}}>
+    return <Menu attached="top" className="eco-main-menu" style={{position:"relative"}}>
                 <AppsMenuItem active onClick={() => onHome && onHome()}
                     style={{cursor:"pointer"}} title="Ir para a home">
                     <Icon name="cube" color="teal" />
-                    <Header style={{margin:0}}>Package Developer</Header>
+                    <Header className="eco-main-menu-title" style={{margin:0}}>Package Developer</Header>
                 </AppsMenuItem>
                 {
                     centerTitle &&
