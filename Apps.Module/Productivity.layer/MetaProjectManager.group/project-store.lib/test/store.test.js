@@ -196,3 +196,81 @@ test("rejeitar pedido não cria nada", async () => {
     const list = await store.ListProjects({ includeArchived: true })
     assert.ok(!list.some((p) => p.slug === "rejeitado"))
 })
+
+// ---- Milestones / Sprints / Roadmap ----
+test("cria milestone e progresso reflete itens", async () => {
+    const m = await store.CreateMilestone({ project: "MP", name: "Release 1", targetDate: "2026-08-01", actor: { source: "cli" } })
+    assert.ok(m.id)
+    await store.AssignItemPlanning({ item: "MP-2", milestone: m.id }) // MP-2 está done
+    const got = await store.GetMilestone({ milestone: m.id })
+    assert.equal(got.totalItems, 1)
+    assert.equal(got.progress, 100)
+})
+
+test("roadmap lista milestones por data com progresso", async () => {
+    const rm = await store.Roadmap({ project: "MP" })
+    assert.ok(rm.length >= 1)
+    assert.ok(rm[0].progress !== undefined && rm[0].targetDate !== undefined)
+})
+
+test("cria sprint e filtra itens por milestone", async () => {
+    const s = await store.CreateSprint({ project: "MP", name: "Sprint 1", startDate: "2026-07-01", endDate: "2026-07-14", actor: { source: "cli" } })
+    assert.equal(s.status, "planned")
+    const rm = await store.Roadmap({ project: "MP" })
+    const items = await store.ListItems({ project: "MP", milestone: rm[0].id })
+    assert.ok(items.some((i) => i.key === "MP-2"))
+})
+
+test("agente criar milestone é gated; aprovar cria", async () => {
+    await assert.rejects(
+        () => store.CreateMilestone({ project: "MP", name: "M do Agente", actor: AGENT }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.type === "milestone"
+    )
+    const pend = (await store.ListCreationRequests({ status: "pending", type: "milestone" }))[0]
+    const { result } = await store.ApproveCreation({ request: pend.id, actor: { actorUserId: "h", source: "gui" } })
+    assert.equal(result.name, "M do Agente")
+})
+
+// ---- Fase 1: modelo de planejamento ----
+test("novos tipos epic/feature e status candidate", async () => {
+    const epic = await store.CreateItem({ project: "MP", type: "epic", title: "Epic Planejamento" })
+    assert.equal(epic.type, "epic")
+    const feat = await store.CreateItem({ project: "MP", type: "feature", title: "Feature X", parent: epic.key })
+    assert.equal(feat.parentId, epic.id)
+    const proj = await store.CreateProject({ name: "Candidato", status: "candidate", actor: { source: "cli" } })
+    assert.equal(proj.status, "candidate")
+})
+
+test("campos de planejamento (horizon/clarity/effort/value/area) + filtros", async () => {
+    const idea = await store.CreateItem({ project: "MP", type: "feature", title: "CLI completa", horizon: "next", clarityState: "ready", effort: "l", value: "high", area: "CLI", ideaOrigin: "diagnóstico" })
+    assert.equal(idea.horizon, "next")
+    assert.equal(idea.area, "CLI")
+    const byHorizon = await store.ListItems({ project: "MP", horizon: "next" })
+    assert.ok(byHorizon.some((i) => i.key === idea.key))
+    const byArea = await store.ListItems({ project: "MP", area: "CLI" })
+    assert.ok(byArea.some((i) => i.key === idea.key))
+})
+
+test("horizon inválido é rejeitado", async () => {
+    await assert.rejects(() => store.CreateItem({ project: "MP", title: "x", horizon: "zzz" }), (e) => e.code === "VALIDATION_ERROR" && e.details.field === "horizon")
+})
+
+test("inbox: item horizon=inbox e RoadmapByHorizon agrupa", async () => {
+    await store.CreateItem({ project: "MP", title: "Ideia bruta", horizon: "inbox", clarityState: "idea" })
+    const buckets = await store.RoadmapByHorizon({ project: "MP" })
+    assert.ok(buckets.inbox.some((i) => i.title === "Ideia bruta"))
+    assert.ok(buckets.next.length >= 1) // da feature "CLI completa"
+})
+
+test("backlog priorizado: sort por valor (semântico)", async () => {
+    await store.CreateItem({ project: "MP", title: "Baixo valor", horizon: "later", value: "low" })
+    await store.CreateItem({ project: "MP", title: "Crítico", horizon: "later", value: "critical" })
+    const sorted = await store.ListItems({ project: "MP", horizon: "later", sort: "value" })
+    assert.equal(sorted[0].value, "critical") // crítico vem primeiro
+})
+
+test("anexo associado a comentário (commentId)", async () => {
+    const c = await store.AddComment({ item: "MP-1", body: "com anexo" })
+    const att = await store.AddBufferAttachment({ item: "MP-1", name: "n.txt", base64: Buffer.from("x").toString("base64"), commentId: c.id })
+    assert.equal(att.commentId, c.id)
+})

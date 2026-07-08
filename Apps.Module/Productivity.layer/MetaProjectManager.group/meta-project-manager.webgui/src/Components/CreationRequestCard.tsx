@@ -2,6 +2,7 @@ import * as React from "react"
 import { Icon } from "semantic-ui-react"
 
 import { CreationRequest } from "../api/types"
+import Markdown from "./Markdown"
 import { formatDateTime } from "../Utils/format"
 
 interface CreationRequestCardProps {
@@ -38,7 +39,7 @@ const CreationRequestCard = ({ request, busy, onApprove, onReject }: CreationReq
         </div>
 
         {payload.description
-            ? <div className="mpm-markdown">{payload.description}</div>
+            ? <Markdown>{payload.description}</Markdown>
             : null}
 
         <div className="mpm-panel" style={{ background: "var(--mp-surface-2)" }}>

@@ -1,7 +1,19 @@
 import { Caller } from "./client"
 import { WorkItem } from "./types"
 
-export interface CreateItemInput {
+// Campos de planejamento/priorização aceitos em create/update.
+export interface ItemPlanningFields {
+    milestoneId?: string
+    sprintId?: string
+    horizon?: string
+    clarityState?: string
+    effort?: string
+    value?: string
+    area?: string
+    ideaOrigin?: string
+}
+
+export interface CreateItemInput extends ItemPlanningFields {
     title: string
     type?: string
     description?: string
@@ -12,8 +24,9 @@ export interface CreateItemInput {
     assignee?: string
 }
 
-export interface UpdateItemInput {
+export interface UpdateItemInput extends ItemPlanningFields {
     title?: string
+    type?: string
     description?: string
     status?: string
     priority?: string
@@ -27,8 +40,25 @@ export interface MoveItemInput {
     status?: string
 }
 
+// Filtros suportados pelo ListItems (Fase 2).
+export interface ListItemsQuery {
+    type?: string
+    status?: string
+    priority?: string
+    assignee?: string
+    text?: string
+    milestone?: string
+    sprint?: string
+    horizon?: string
+    clarityState?: string
+    effort?: string
+    value?: string
+    area?: string
+    sort?: string   // order | created | priority | value
+}
+
 const CreateItemsApi = (call: Caller) => ({
-    list: (projectId: string, query: { type?: string; status?: string } = {}): Promise<WorkItem[]> =>
+    list: (projectId: string, query: ListItemsQuery = {}): Promise<WorkItem[]> =>
         call("Items", "ListItems", { projectId, ...query }),
 
     create: (projectId: string, input: CreateItemInput): Promise<WorkItem> =>

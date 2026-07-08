@@ -7,6 +7,7 @@ import useApi from "../Hooks/useApi"
 import { Project, ProjectMetrics, Board, ActivityEntry } from "../api/types"
 import AppShell from "../Components/AppShell"
 import NewBoardModal from "../Components/NewBoardModal"
+import Markdown from "../Components/Markdown"
 import { Metric, Progress, StatusChip, Loading, ErrorBanner } from "../Components/Primitives"
 import { formatDateTime, humanizeAction } from "../Utils/format"
 
@@ -36,7 +37,7 @@ const ProjectPage = () => {
     const openBoard = (boardId?: string) =>
         navigate(boardId ? `/projects/${projectId}/board/${boardId}` : `/projects/${projectId}/board`)
 
-    return <AppShell active="board" activeProjectId={projectId} activeProjectName={project ? project.name : undefined}>
+    return <AppShell active="overview" activeProjectId={projectId} activeProjectName={project ? project.name : undefined}>
         <ErrorBanner error={error} />
         {!project
             ? <Loading />
@@ -50,12 +51,14 @@ const ProjectPage = () => {
                         <StatusChip status={project.status} />
                         <button className="mpm-btn" onClick={() => openBoard(project.defaultBoardId)}><Icon name="columns" /> Board</button>
                         <button className="mpm-btn" onClick={() => navigate(`/projects/${projectId}/list`)}><Icon name="list" /> Lista</button>
-                        <button className="mpm-btn" onClick={() => navigate(`/projects/${projectId}/backlog`)}><Icon name="inbox" /> Backlog</button>
+                        <button className="mpm-btn" onClick={() => navigate(`/projects/${projectId}/backlog`)}><Icon name="clipboard list" /> Backlog</button>
+                        <button className="mpm-btn" onClick={() => navigate(`/projects/${projectId}/inbox`)}><Icon name="inbox" /> Inbox</button>
+                        <button className="mpm-btn" onClick={() => navigate(`/projects/${projectId}/roadmap`)}><Icon name="road" /> Roadmap</button>
                     </div>
                 </div>
 
                 {project.description
-                    ? <div className="mpm-panel"><div className="mpm-markdown">{project.description}</div></div>
+                    ? <div className="mpm-panel"><Markdown>{project.description}</Markdown></div>
                     : null}
 
                 {metrics

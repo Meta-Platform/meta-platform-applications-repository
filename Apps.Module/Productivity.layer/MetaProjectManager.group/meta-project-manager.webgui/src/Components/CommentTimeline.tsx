@@ -5,6 +5,7 @@ import { Icon } from "semantic-ui-react"
 import useApi from "../Hooks/useApi"
 import { Comment, User } from "../api/types"
 import { Avatar, ErrorBanner } from "./Primitives"
+import Markdown from "./Markdown"
 import { formatDateTime } from "../Utils/format"
 
 interface CommentTimelineProps {
@@ -46,7 +47,7 @@ const CommentTimeline = ({ itemId, usersById }: CommentTimelineProps) => {
                             <strong>{author ? author.displayName : (c.authorSessionId ? "agente" : "sistema")}</strong>
                             <span>{formatDateTime(c.createdAt)}</span>
                         </div>
-                        <div className="mpm-timeline__text">{c.body}</div>
+                        <div className="mpm-timeline__text"><Markdown>{c.body}</Markdown></div>
                     </div>
                 </div>
             })}

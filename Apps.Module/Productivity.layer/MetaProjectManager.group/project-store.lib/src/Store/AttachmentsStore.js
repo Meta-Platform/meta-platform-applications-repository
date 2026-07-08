@@ -33,7 +33,7 @@ const AttachmentsStore = (ctx) => {
     const _writeMeta = async (dir, meta) =>
         fs.writeFile(path.join(dir, "metadata.json"), JSON.stringify(meta, null, 2))
 
-    const _store = async ({ item, name, buffer, mimeType, description, type, actor }) => {
+    const _store = async ({ item, name, buffer, mimeType, description, type, commentId, actor }) => {
         if(buffer.length > maxBytes)
             throw new DomainError("VALIDATION_ERROR", `Anexo excede o limite de ${maxBytes} bytes.`, { sizeBytes: buffer.length, maxBytes })
         const workItem = await store.ResolveItem(item)
@@ -42,7 +42,7 @@ const AttachmentsStore = (ctx) => {
         const finalType = type && ATTACHMENT_TYPES.includes(type) ? type : InferType(safeName, mimeType)
         const { dir, storagePath } = await _persist({ projectId: workItem.projectId, attachmentId: id, fileName: safeName, buffer })
         const attachment = await Attachment.create({
-            id, projectId: workItem.projectId, workItemId: workItem.id,
+            id, projectId: workItem.projectId, workItemId: workItem.id, commentId,
             type: finalType, name: safeName, description, mimeType,
             sizeBytes: buffer.length, sha256: Sha256OfBuffer(buffer), storagePath,
             uploadedByUserId: actor && actor.actorUserId, uploadedBySessionId: actor && actor.actorSessionId
@@ -55,28 +55,28 @@ const AttachmentsStore = (ctx) => {
     }
 
     // A partir de um arquivo local (uso da CLI).
-    const AddFileAttachment = async ({ item, filePath, name, description, type, actor } = {}) => {
+    const AddFileAttachment = async ({ item, filePath, name, description, type, commentId, actor } = {}) => {
         if(!filePath) throw new DomainError("VALIDATION_ERROR", "Caminho do arquivo é obrigatório.", { field: "file" })
         let buffer
         try { buffer = await fs.readFile(ConvertPathToAbsolutPath(filePath)) }
         catch(e){ throw new DomainError("VALIDATION_ERROR", `Não foi possível ler o arquivo: ${filePath}.`, { field: "file" }) }
-        return _store({ item, name: name || path.basename(filePath), buffer, description, type, actor })
+        return _store({ item, name: name || path.basename(filePath), buffer, description, type, commentId, actor })
     }
 
     // A partir de conteúdo em memória (uso do webservice/upload).
-    const AddBufferAttachment = async ({ item, name, buffer, base64, mimeType, description, type, actor } = {}) => {
+    const AddBufferAttachment = async ({ item, name, buffer, base64, mimeType, description, type, commentId, actor } = {}) => {
         const buf = buffer || (base64 ? Buffer.from(base64, "base64") : undefined)
         if(!buf) throw new DomainError("VALIDATION_ERROR", "Conteúdo do anexo é obrigatório.", { field: "content" })
         if(!name) throw new DomainError("VALIDATION_ERROR", "Nome do anexo é obrigatório.", { field: "name" })
-        return _store({ item, name, buffer: buf, mimeType, description, type, actor })
+        return _store({ item, name, buffer: buf, mimeType, description, type, commentId, actor })
     }
 
-    const AddLinkAttachment = async ({ item, url, name, description, actor } = {}) => {
+    const AddLinkAttachment = async ({ item, url, name, description, commentId, actor } = {}) => {
         if(!url || !/^https?:\/\//i.test(url))
             throw new DomainError("VALIDATION_ERROR", "URL externa inválida (use http/https).", { field: "url" })
         const workItem = await store.ResolveItem(item)
         const attachment = await Attachment.create({
-            id: NewId(), projectId: workItem.projectId, workItemId: workItem.id,
+            id: NewId(), projectId: workItem.projectId, workItemId: workItem.id, commentId,
             type: "link", name: name || url, description, externalUrl: url,
             uploadedByUserId: actor && actor.actorUserId, uploadedBySessionId: actor && actor.actorSessionId
         })

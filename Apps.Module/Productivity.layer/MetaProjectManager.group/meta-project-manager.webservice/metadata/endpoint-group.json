@@ -198,6 +198,25 @@
                     "projectStoreLib": "projectStoreLib"
                 }
             }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Planning.api.json",
+                "controller": "Controllers/Planning.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
         }
     ]
 }

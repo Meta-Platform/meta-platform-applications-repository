@@ -69,6 +69,16 @@ const DefineModels = (sequelize) => {
         blockedReason:      { type: DataTypes.STRING },
         order:              { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
         labels:             { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
+        milestoneId:        { type: DataTypes.STRING },
+        sprintId:           { type: DataTypes.STRING },
+        // Planejamento: horizonte (inbox/now/next/later/maybe), maturidade da ideia,
+        // esforço, valor, área técnica/funcional e origem da ideia.
+        horizon:            { type: DataTypes.STRING },
+        clarityState:       { type: DataTypes.STRING },
+        effort:             { type: DataTypes.STRING },
+        value:              { type: DataTypes.STRING },
+        area:               { type: DataTypes.STRING },
+        ideaOrigin:         { type: DataTypes.STRING },
         // SoftwareContext (spec §4.4) achatado no item.
         repositoryUrl:      { type: DataTypes.STRING },
         branchName:         { type: DataTypes.STRING },
@@ -113,6 +123,7 @@ const DefineModels = (sequelize) => {
         id:                  idField,
         projectId:           { type: DataTypes.STRING, allowNull: false },
         workItemId:          { type: DataTypes.STRING, allowNull: false },
+        commentId:           { type: DataTypes.STRING }, // associação opcional a comentário
         type:                { type: DataTypes.STRING, allowNull: false, defaultValue: "file" },
         name:                { type: DataTypes.STRING, allowNull: false },
         description:         { type: DataTypes.TEXT },
@@ -212,6 +223,31 @@ const DefineModels = (sequelize) => {
         { fields: ["agentSessionId"] }, { fields: ["type"] }, { fields: ["status"] }
     ] })
 
+    // Milestone/Release: alvo de entrega por projeto (data-alvo + progresso derivado).
+    const Milestone = sequelize.define("Milestone", {
+        id:          idField,
+        projectId:   { type: DataTypes.STRING, allowNull: false },
+        name:        { type: DataTypes.STRING, allowNull: false },
+        description: { type: DataTypes.TEXT },
+        targetDate:  { type: DataTypes.DATE },
+        status:      { type: DataTypes.STRING, allowNull: false, defaultValue: "planning" },
+        order:       { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        deletedAt:   { type: DataTypes.DATE }
+    }, { tableName: "milestones", indexes: [{ fields: ["projectId"] }, { fields: ["status"] }] })
+
+    // Sprint/Iteração: janela time-boxed por projeto (início/fim + objetivo).
+    const Sprint = sequelize.define("Sprint", {
+        id:        idField,
+        projectId: { type: DataTypes.STRING, allowNull: false },
+        name:      { type: DataTypes.STRING, allowNull: false },
+        goal:      { type: DataTypes.TEXT },
+        startDate: { type: DataTypes.DATE },
+        endDate:   { type: DataTypes.DATE },
+        status:    { type: DataTypes.STRING, allowNull: false, defaultValue: "planned" },
+        order:     { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        deletedAt: { type: DataTypes.DATE }
+    }, { tableName: "sprints", indexes: [{ fields: ["projectId"] }, { fields: ["status"] }] })
+
     const AuditEvent = sequelize.define("AuditEvent", {
         id:              idField,
         projectId:       { type: DataTypes.STRING },
@@ -235,7 +271,7 @@ const DefineModels = (sequelize) => {
         Project, Board, BoardColumn, WorkItem, WorkItemLink,
         WorkItemChecklistItem, WorkItemAcceptanceCriteria,
         Attachment, Comment, User, AgentProfile, AgentSession,
-        CreationRequest, AuditEvent, AppState
+        CreationRequest, Milestone, Sprint, AuditEvent, AppState
     }
 }
 

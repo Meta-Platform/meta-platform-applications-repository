@@ -215,6 +215,8 @@ const AgentsStore = (ctx) => {
         let result
         if(req.type === "project") result = await store.CreateProject({ ...payload, actor: execActor })
         else if(req.type === "board") result = await store.CreateBoard({ ...payload, actor: execActor })
+        else if(req.type === "milestone") result = await store.CreateMilestone({ ...payload, actor: execActor })
+        else if(req.type === "sprint") result = await store.CreateSprint({ ...payload, actor: execActor })
         else throw new DomainError("VALIDATION_ERROR", `Tipo de pedido inválido: ${req.type}.`, { type: req.type })
 
         await req.update({ status: "approved", resultId: result.id, decidedAt: new Date(), decidedByUserId: actor && actor.actorUserId })

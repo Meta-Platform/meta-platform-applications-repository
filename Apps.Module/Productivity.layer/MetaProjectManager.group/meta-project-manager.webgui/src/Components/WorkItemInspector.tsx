@@ -3,11 +3,16 @@ import { useEffect, useState } from "react"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
-import { WorkItem, User } from "../api/types"
+import {
+    WorkItem, User, Milestone, Sprint,
+    WORK_ITEM_TYPES, HORIZONS, CLARITY_STATES, EFFORTS, ITEM_VALUES, AREA_SUGGESTIONS
+} from "../api/types"
+import { horizonLabel } from "../Utils/format"
 import { TypeBadge, PriorityBadge, StatusChip, Avatar, Loading, ErrorBanner } from "./Primitives"
 import AttachmentPanel from "./AttachmentPanel"
 import CommentTimeline from "./CommentTimeline"
 import AuditTimeline from "./AuditTimeline"
+import Markdown from "./Markdown"
 
 const PRIORITIES = ["none", "low", "medium", "high", "urgent"]
 
@@ -29,6 +34,8 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
     const [error, setError] = useState<string | null>(null)
     const [checkDraft, setCheckDraft] = useState("")
     const [critDraft, setCritDraft] = useState("")
+    const [milestones, setMilestones] = useState<Milestone[]>([])
+    const [sprints, setSprints] = useState<Sprint[]>([])
 
     const usersById: { [id: string]: User } = {}
     users.forEach((u) => { usersById[u.id] = u })
@@ -38,6 +45,13 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
         .catch((e) => setError(e.message))
 
     useEffect(() => { setItem(null); setError(null); load() }, [itemId])
+
+    // milestones/sprints do projeto para os seletores de planejamento
+    useEffect(() => {
+        if (!projectId) { setMilestones([]); setSprints([]); return }
+        api.planning.listMilestones(projectId).then((l) => setMilestones(l || [])).catch(() => setMilestones([]))
+        api.planning.listSprints(projectId).then((l) => setSprints(l || [])).catch(() => setSprints([]))
+    }, [projectId, api])
 
     const patch = async (fn: () => Promise<any>) => {
         setError(null)
@@ -91,6 +105,13 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
 
             <div className="mpm-row mpm-wrap">
                 <div className="mpm-field">
+                    <span className="mpm-field__label">Tipo</span>
+                    <select className="mpm-inline-select" value={item.type}
+                        onChange={(e) => patch(() => api.items.update(item.id, { type: e.target.value }))}>
+                        {WORK_ITEM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                </div>
+                <div className="mpm-field">
                     <span className="mpm-field__label">Status</span>
                     <select className="mpm-inline-select" value={item.statusKey}
                         onChange={(e) => patch(() => api.items.setStatus(item.id, e.target.value))}>
@@ -115,6 +136,72 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                         {users.map((u) => <option key={u.id} value={u.id}>{u.displayName}</option>)}
                     </select>
                 </div>
+                <div className="mpm-field">
+                    <span className="mpm-field__label">Milestone</span>
+                    <select className="mpm-inline-select" value={item.milestoneId || ""}
+                        onChange={(e) => patch(() => api.planning.assignItemPlanning(item.id, { milestone: e.target.value || "none" }))}>
+                        <option value="">— nenhum —</option>
+                        {milestones.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                </div>
+                <div className="mpm-field">
+                    <span className="mpm-field__label">Sprint</span>
+                    <select className="mpm-inline-select" value={item.sprintId || ""}
+                        onChange={(e) => patch(() => api.planning.assignItemPlanning(item.id, { sprint: e.target.value || "none" }))}>
+                        <option value="">— nenhum —</option>
+                        {sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                </div>
+            </div>
+
+            <div className="mpm-row mpm-wrap">
+                <div className="mpm-field">
+                    <span className="mpm-field__label">Horizonte</span>
+                    <select className="mpm-inline-select" value={item.horizon || ""}
+                        onChange={(e) => patch(() => api.items.update(item.id, { horizon: e.target.value }))}>
+                        <option value="">—</option>
+                        {HORIZONS.map((h) => <option key={h} value={h}>{horizonLabel(h)}</option>)}
+                    </select>
+                </div>
+                <div className="mpm-field">
+                    <span className="mpm-field__label">Clareza</span>
+                    <select className="mpm-inline-select" value={item.clarityState || ""}
+                        onChange={(e) => patch(() => api.items.update(item.id, { clarityState: e.target.value }))}>
+                        <option value="">—</option>
+                        {CLARITY_STATES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                </div>
+                <div className="mpm-field">
+                    <span className="mpm-field__label">Esforço</span>
+                    <select className="mpm-inline-select" value={item.effort || ""}
+                        onChange={(e) => patch(() => api.items.update(item.id, { effort: e.target.value }))}>
+                        <option value="">—</option>
+                        {EFFORTS.map((ef) => <option key={ef} value={ef}>{ef.toUpperCase()}</option>)}
+                    </select>
+                </div>
+                <div className="mpm-field">
+                    <span className="mpm-field__label">Valor</span>
+                    <select className="mpm-inline-select" value={item.value || ""}
+                        onChange={(e) => patch(() => api.items.update(item.id, { value: e.target.value }))}>
+                        <option value="">—</option>
+                        {ITEM_VALUES.map((v) => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                </div>
+                <div className="mpm-field">
+                    <span className="mpm-field__label">Área</span>
+                    <input className="mpm-inline-select" list="mpm-area-list" defaultValue={item.area || ""}
+                        key={`area-${item.id}-${item.updatedAt || ""}`}
+                        onBlur={(e) => { if (e.target.value !== (item.area || "")) patch(() => api.items.update(item.id, { area: e.target.value })) }} />
+                    <datalist id="mpm-area-list">
+                        {AREA_SUGGESTIONS.map((a) => <option key={a} value={a} />)}
+                    </datalist>
+                </div>
+                <div className="mpm-field">
+                    <span className="mpm-field__label">Origem da ideia</span>
+                    <input className="mpm-inline-select" defaultValue={item.ideaOrigin || ""}
+                        key={`origin-${item.id}-${item.updatedAt || ""}`}
+                        onBlur={(e) => { if (e.target.value !== (item.ideaOrigin || "")) patch(() => api.items.update(item.id, { ideaOrigin: e.target.value })) }} />
+                </div>
             </div>
 
             {item.blockedReason
@@ -129,6 +216,12 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                         if (e.target.value !== (item.description || ""))
                             patch(() => api.items.update(item.id, { description: e.target.value }))
                     }} />
+                {item.description && item.description.trim()
+                    ? <>
+                        <span className="mpm-field__label" style={{ marginTop: "var(--mp-space-2)" }}>Pré-visualização</span>
+                        <Markdown>{item.description}</Markdown>
+                    </>
+                    : null}
             </div>
 
             <div className="mpm-col">

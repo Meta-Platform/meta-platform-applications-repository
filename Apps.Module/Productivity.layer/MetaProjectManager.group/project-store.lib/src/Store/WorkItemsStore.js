@@ -1,7 +1,14 @@
-const { Op } = require("sequelize")
+const { Op, literal } = require("sequelize")
 const { NewId, Serialize, SerializeMany } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
-const { WORK_ITEM_TYPES, WORK_ITEM_PRIORITIES, LINK_RELATIONS } = require("../Config")
+const { WORK_ITEM_TYPES, WORK_ITEM_PRIORITIES, LINK_RELATIONS, WORK_ITEM_HORIZONS, WORK_ITEM_CLARITY, WORK_ITEM_EFFORTS, WORK_ITEM_VALUES } = require("../Config")
+
+// Valida um enum opcional (ignora undefined/null).
+const _assertEnum = (val, allowed, field) => {
+    const { DomainError } = require("../Errors")
+    if(val !== undefined && val !== null && val !== "" && !allowed.includes(val))
+        throw new DomainError("VALIDATION_ERROR", `Valor inválido para ${field}: ${val}.`, { field, allowed })
+}
 
 const WorkItemsStore = (ctx) => {
     const { models, writeAudit, emit, store } = ctx
@@ -47,13 +54,18 @@ const WorkItemsStore = (ctx) => {
 
     const CreateItem = async ({
         project, type = "task", title, description, parent, board, statusKey, priority = "none",
-        assignee, reporter, dueDate, startDate, estimatePoints, estimateMinutes, labels, actor, ...software
+        assignee, reporter, dueDate, startDate, estimatePoints, estimateMinutes, labels, milestoneId, sprintId,
+        horizon, clarityState, effort, value, area, ideaOrigin, actor, ...software
     } = {}) => {
         if(!title) throw new DomainError("VALIDATION_ERROR", "Título do item é obrigatório.", { field: "title" })
         if(!WORK_ITEM_TYPES.includes(type))
             throw new DomainError("VALIDATION_ERROR", `Tipo inválido: ${type}.`, { field: "type", allowed: WORK_ITEM_TYPES })
         if(!WORK_ITEM_PRIORITIES.includes(priority))
             throw new DomainError("VALIDATION_ERROR", `Prioridade inválida: ${priority}.`, { field: "priority", allowed: WORK_ITEM_PRIORITIES })
+        _assertEnum(horizon, WORK_ITEM_HORIZONS, "horizon")
+        _assertEnum(clarityState, WORK_ITEM_CLARITY, "clarityState")
+        _assertEnum(effort, WORK_ITEM_EFFORTS, "effort")
+        _assertEnum(value, WORK_ITEM_VALUES, "value")
 
         const projectInstance = await store.ResolveProject(project)
         const parentInstance = await _resolveParent(parent, projectInstance.id)
@@ -79,6 +91,8 @@ const WorkItemsStore = (ctx) => {
             createdBySessionId: actor && actor.actorSessionId,
             dueDate, startDate, estimatePoints, estimateMinutes,
             labels: Array.isArray(labels) ? labels : (labels ? String(labels).split(",").map((s) => s.trim()).filter(Boolean) : []),
+            milestoneId, sprintId,
+            horizon, clarityState, effort, value, area, ideaOrigin,
             order,
             ...softwareFields
         })
@@ -88,17 +102,27 @@ const WorkItemsStore = (ctx) => {
         return data
     }
 
-    const ListItems = async ({ project, type, status, parent, board, assignee, text, priority, limit = 200, offset = 0, sort = "order" } = {}) => {
+    const ListItems = async ({ project, type, status, parent, board, assignee, text, priority, milestone, sprint, horizon, clarityState, effort, value, area, limit = 200, offset = 0, sort = "order" } = {}) => {
         const where = { deletedAt: null }
         if(project) where.projectId = (await store.ResolveProject(project)).id
         if(type) where.type = type
         if(status) where.statusKey = status
         if(priority) where.priority = priority
         if(board) where.boardId = board
+        if(milestone) where.milestoneId = milestone === "none" ? null : milestone
+        if(sprint) where.sprintId = sprint === "none" ? null : sprint
+        if(horizon) where.horizon = horizon === "none" ? null : horizon
+        if(clarityState) where.clarityState = clarityState
+        if(effort) where.effort = effort
+        if(value) where.value = value
+        if(area) where.area = area
         if(parent !== undefined) where.parentId = parent === null || parent === "none" ? null : (await ResolveItem(parent)).id
         if(assignee) where.assigneeUserId = await _resolveUserId(assignee)
         if(text) where.title = { [Op.like]: `%${text}%` }
-        const order = sort === "created" ? [["createdAt", "DESC"]] : sort === "priority" ? [["priority", "DESC"]] : [["order", "ASC"]]
+        const order = sort === "created" ? [["createdAt", "DESC"]]
+            : sort === "priority" ? [["priority", "DESC"]]
+            : sort === "value" ? [[literal("CASE value WHEN 'critical' THEN 5 WHEN 'high' THEN 4 WHEN 'medium' THEN 3 WHEN 'low' THEN 2 ELSE 1 END"), "DESC"]]
+            : [["order", "ASC"]]
         const rows = await WorkItem.findAll({ where, order, limit: Number(limit), offset: Number(offset) })
         return SerializeMany(rows)
     }
@@ -124,7 +148,9 @@ const WorkItemsStore = (ctx) => {
         const instance = await ResolveItem(item)
         const patch = {}
         const simple = ["title", "description", "statusKey", "priority", "progress", "dueDate", "startDate", "blockedReason",
-            "estimatePoints", "estimateMinutes", "repositoryUrl", "branchName", "commitHash", "pullRequestUrl",
+            "estimatePoints", "estimateMinutes", "milestoneId", "sprintId",
+            "horizon", "clarityState", "effort", "value", "area", "ideaOrigin",
+            "repositoryUrl", "branchName", "commitHash", "pullRequestUrl",
             "environment", "packagePath", "moduleName", "layerName", "groupName"]
         for(const key of simple) if(fields[key] !== undefined) patch[key] = fields[key]
         if(fields.type !== undefined){
@@ -133,6 +159,10 @@ const WorkItemsStore = (ctx) => {
         }
         if(fields.priority !== undefined && !WORK_ITEM_PRIORITIES.includes(fields.priority))
             throw new DomainError("VALIDATION_ERROR", `Prioridade inválida: ${fields.priority}.`, { field: "priority" })
+        _assertEnum(fields.horizon, WORK_ITEM_HORIZONS, "horizon")
+        _assertEnum(fields.clarityState, WORK_ITEM_CLARITY, "clarityState")
+        _assertEnum(fields.effort, WORK_ITEM_EFFORTS, "effort")
+        _assertEnum(fields.value, WORK_ITEM_VALUES, "value")
         if(fields.assignee !== undefined) patch.assigneeUserId = await _resolveUserId(fields.assignee)
         if(fields.labels !== undefined) patch.labels = Array.isArray(fields.labels) ? fields.labels : String(fields.labels).split(",").map((s) => s.trim()).filter(Boolean)
         await instance.update(patch)

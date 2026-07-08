@@ -699,6 +699,125 @@
                     "parametersToLoad": [
                         "projectStoreLib"
                     ]
+                },
+                {
+                    "namespace": "ItemSetMilestone",
+                    "path": "Commands/ItemSetMilestone.command",
+                    "command": "set-milestone [item]",
+                    "description": "Atribuir milestone (--milestone id|none)",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemSetSprint",
+                    "path": "Commands/ItemSetSprint.command",
+                    "command": "set-sprint [item]",
+                    "description": "Atribuir sprint (--sprint id|none)",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemSetHorizon",
+                    "path": "Commands/ItemSetHorizon.command",
+                    "command": "set-horizon [item]",
+                    "description": "Definir horizonte (--horizon inbox|now|next|later|maybe|archived)",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemSetClarity",
+                    "path": "Commands/ItemSetClarity.command",
+                    "command": "set-clarity [item]",
+                    "description": "Definir clareza (--clarity idea|refining|ready)",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemSetEffort",
+                    "path": "Commands/ItemSetEffort.command",
+                    "command": "set-effort [item]",
+                    "description": "Definir esforço (--effort xs|s|m|l|xl)",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemSetValue",
+                    "path": "Commands/ItemSetValue.command",
+                    "command": "set-value [item]",
+                    "description": "Definir valor (--value none|low|medium|high|critical)",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "ItemSetArea",
+                    "path": "Commands/ItemSetArea.command",
+                    "command": "set-area [item]",
+                    "description": "Definir área (--area GUI|CLI|Backend|...)",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id|key"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
                 }
             ]
         },
@@ -1274,6 +1393,248 @@
                             "describe": "arquivo .json"
                         }
                     ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Milestone",
+            "command": "milestone",
+            "description": "Milestones/Releases",
+            "children": [
+                {
+                    "namespace": "MilestoneCreate",
+                    "path": "Commands/MilestoneCreate.command",
+                    "command": "create",
+                    "description": "Criar milestone",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "MilestoneList",
+                    "path": "Commands/MilestoneList.command",
+                    "command": "list",
+                    "description": "Listar milestones (com progresso)",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "MilestoneShow",
+                    "path": "Commands/MilestoneShow.command",
+                    "command": "show [milestone]",
+                    "description": "Detalhar milestone",
+                    "parameters": [
+                        {
+                            "key": "milestone",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do milestone"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "MilestoneUpdate",
+                    "path": "Commands/MilestoneUpdate.command",
+                    "command": "update [milestone]",
+                    "description": "Atualizar milestone",
+                    "parameters": [
+                        {
+                            "key": "milestone",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do milestone"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "MilestoneDelete",
+                    "path": "Commands/MilestoneDelete.command",
+                    "command": "delete [milestone]",
+                    "description": "Excluir milestone",
+                    "parameters": [
+                        {
+                            "key": "milestone",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do milestone"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Sprint",
+            "command": "sprint",
+            "description": "Sprints/Iterações",
+            "children": [
+                {
+                    "namespace": "SprintCreate",
+                    "path": "Commands/SprintCreate.command",
+                    "command": "create",
+                    "description": "Criar sprint",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "SprintList",
+                    "path": "Commands/SprintList.command",
+                    "command": "list",
+                    "description": "Listar sprints (com progresso)",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "SprintShow",
+                    "path": "Commands/SprintShow.command",
+                    "command": "show [sprint]",
+                    "description": "Detalhar sprint",
+                    "parameters": [
+                        {
+                            "key": "sprint",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do sprint"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "SprintUpdate",
+                    "path": "Commands/SprintUpdate.command",
+                    "command": "update [sprint]",
+                    "description": "Atualizar sprint",
+                    "parameters": [
+                        {
+                            "key": "sprint",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do sprint"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "SprintDelete",
+                    "path": "Commands/SprintDelete.command",
+                    "command": "delete [sprint]",
+                    "description": "Excluir sprint",
+                    "parameters": [
+                        {
+                            "key": "sprint",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do sprint"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Roadmap",
+            "path": "Commands/Roadmap.command",
+            "command": "roadmap",
+            "description": "Roadmap: milestones por data-alvo com progresso",
+            "parametersToLoad": [
+                "projectStoreLib"
+            ]
+        },
+        {
+            "namespace": "Epic",
+            "command": "epic",
+            "description": "Epics",
+            "children": [
+                {
+                    "namespace": "EpicCreate",
+                    "path": "Commands/EpicCreate.command",
+                    "command": "create",
+                    "description": "Criar epic",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Feature",
+            "command": "feature",
+            "description": "Features",
+            "children": [
+                {
+                    "namespace": "FeatureCreate",
+                    "path": "Commands/FeatureCreate.command",
+                    "command": "create",
+                    "description": "Criar feature",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Inbox",
+            "command": "inbox",
+            "description": "Captura de ideias (horizon=inbox)",
+            "children": [
+                {
+                    "namespace": "InboxAdd",
+                    "path": "Commands/InboxAdd.command",
+                    "command": "add [title]",
+                    "description": "Capturar ideia bruta no inbox",
+                    "parameters": [
+                        {
+                            "key": "title",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "título da ideia"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "InboxList",
+                    "path": "Commands/InboxList.command",
+                    "command": "list",
+                    "description": "Listar itens do inbox",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Backlog",
+            "command": "backlog",
+            "description": "Backlog futuro",
+            "children": [
+                {
+                    "namespace": "BacklogList",
+                    "path": "Commands/BacklogList.command",
+                    "command": "list",
+                    "description": "Listar backlog (--horizon --area --sort value)",
                     "parametersToLoad": [
                         "projectStoreLib"
                     ]

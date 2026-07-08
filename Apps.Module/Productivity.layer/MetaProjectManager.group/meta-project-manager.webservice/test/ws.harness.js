@@ -8,7 +8,7 @@ const path = require("path")
 const WS_ROOT = path.resolve(__dirname, "..")
 const LIB_SRC = path.resolve(WS_ROOT, "../project-store.lib/src")
 
-const CONTROLLERS = ["Health", "Projects", "Boards", "Items", "Comments", "Attachments", "Users", "Agents", "Reports", "Events"]
+const CONTROLLERS = ["Health", "Projects", "Boards", "Items", "Comments", "Attachments", "Users", "Agents", "Reports", "Events", "Planning"]
 
 const getAllParams = ({ body, params, query }) => ({ ...params, ...body, ...query })
 

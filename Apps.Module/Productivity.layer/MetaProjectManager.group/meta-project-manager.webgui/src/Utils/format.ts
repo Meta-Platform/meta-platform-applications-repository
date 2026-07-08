@@ -21,13 +21,52 @@ export const priorityClass = (priority?: string): string => {
 
 export const typeClass = (type?: string): string => {
     switch ((type || "task").toLowerCase()) {
-        case "epic":    return "mpm-badge--type-epic"
-        case "story":   return "mpm-badge--type-story"
-        case "bug":     return "mpm-badge--type-bug"
-        case "subtask": return "mpm-badge--type-subtask"
-        default:        return "mpm-badge--type-task"
+        case "epic":          return "mpm-badge--type-epic"
+        case "feature":       return "mpm-badge--type-feature"
+        case "story":         return "mpm-badge--type-story"
+        case "bug":           return "mpm-badge--type-bug"
+        case "subtask":       return "mpm-badge--type-subtask"
+        case "improvement":   return "mpm-badge--type-story"
+        case "refactor":      return "mpm-badge--type-refactor"
+        case "documentation": return "mpm-badge--type-doc"
+        case "research":      return "mpm-badge--type-research"
+        case "automation":    return "mpm-badge--type-automation"
+        case "tech-debt":     return "mpm-badge--type-bug"
+        case "decision":      return "mpm-badge--type-decision"
+        default:              return "mpm-badge--type-task"
     }
 }
+
+// classe de badge de valor (--mpm-badge--val-*)
+export const valueClass = (value?: string): string => {
+    switch ((value || "none").toLowerCase()) {
+        case "critical": return "mpm-badge--val-critical"
+        case "high":     return "mpm-badge--val-high"
+        case "medium":   return "mpm-badge--val-medium"
+        case "low":      return "mpm-badge--val-low"
+        default:         return "mpm-badge--val-none"
+    }
+}
+
+// chip de horizonte (--mpm-chip por semântica)
+export const horizonClass = (horizon?: string): string => {
+    switch ((horizon || "").toLowerCase()) {
+        case "now":      return "mpm-chip--success"
+        case "next":     return "mpm-chip--info"
+        case "later":    return "mpm-chip--warning"
+        case "maybe":    return "mpm-chip--neutral"
+        case "inbox":    return "mpm-chip--info"
+        case "archived": return "mpm-chip--neutral"
+        default:         return "mpm-chip--neutral"
+    }
+}
+
+const HORIZON_LABELS: { [k: string]: string } = {
+    inbox: "Inbox", now: "Agora", next: "Próximo", later: "Depois",
+    maybe: "Talvez", archived: "Arquivado", unassigned: "Sem horizonte"
+}
+export const horizonLabel = (horizon?: string): string =>
+    HORIZON_LABELS[(horizon || "").toLowerCase()] || (horizon || "")
 
 export const statusClass = (status?: string): string => {
     const s = (status || "").toLowerCase()

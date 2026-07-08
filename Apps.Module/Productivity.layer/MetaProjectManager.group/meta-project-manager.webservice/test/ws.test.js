@@ -134,6 +134,37 @@ test("agente criar ITEM via API é livre (sem gate)", async () => {
     assert.ok(it.json.data.key)
 })
 
+test("milestone CRUD + roadmap + atribuição via API", async () => {
+    const m = await srv.request("POST", `/projects/${projectId}/milestones`, { name: "Release API", targetDate: "2026-10-01" })
+    assert.equal(m.json.ok, true)
+    const mid = m.json.data.id
+    await srv.request("POST", `/items/${itemId}/planning`, { milestone: mid })
+    const got = await srv.request("GET", `/milestones/${mid}`)
+    assert.ok(got.json.data.totalItems >= 1)
+    const road = await srv.request("GET", `/projects/${projectId}/roadmap`)
+    assert.ok(road.json.data.some((x) => x.id === mid && x.progress !== undefined))
+    const sp = await srv.request("POST", `/projects/${projectId}/sprints`, { name: "Sprint API" })
+    assert.equal(sp.json.data.status, "planned")
+})
+
+test("agente criar milestone via API bloqueia (gate)", async () => {
+    const blk = await srv.request("POST", `/projects/${projectId}/milestones`, { name: "M Agente API", sessionProvider: "claude", sessionModel: "claude-sonnet-4", sessionTrace: "W-M" })
+    assert.equal(blk.json.ok, false)
+    assert.equal(blk.json.code, "AGENT_SESSION_CONFIRMATION_REQUIRED")
+})
+
+test("planejamento via API: tipo feature + horizon + filtro + horizon-board", async () => {
+    const it = await srv.request("POST", `/projects/${projectId}/items`, { type: "feature", title: "CLI api", horizon: "next", value: "high", area: "CLI" })
+    assert.equal(it.json.ok, true)
+    assert.equal(it.json.data.type, "feature")
+    assert.equal(it.json.data.horizon, "next")
+    assert.equal(it.json.data.area, "CLI")
+    const byH = await srv.request("GET", `/projects/${projectId}/items?horizon=next`)
+    assert.ok(byH.json.data.some((i) => i.id === it.json.data.id))
+    const hb = await srv.request("GET", `/projects/${projectId}/horizon-board`)
+    assert.ok(hb.json.data.next.length >= 1)
+})
+
 test("erro estruturado 200 com ok:false em NOT_FOUND", async () => {
     const { json } = await srv.request("GET", "/items/MP-999")
     assert.equal(json.ok, false)

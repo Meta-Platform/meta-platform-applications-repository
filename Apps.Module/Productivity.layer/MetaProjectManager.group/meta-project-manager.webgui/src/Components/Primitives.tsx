@@ -2,7 +2,7 @@ import * as React from "react"
 import { Icon } from "semantic-ui-react"
 
 import { WorkItem, User } from "../api/types"
-import { priorityClass, typeClass, statusClass, initials } from "../Utils/format"
+import { priorityClass, typeClass, statusClass, valueClass, horizonClass, horizonLabel, initials } from "../Utils/format"
 
 export const TypeBadge = ({ type }: { type?: string }) =>
     <span className={`mpm-badge ${typeClass(type)}`}>{type || "task"}</span>
@@ -14,6 +14,26 @@ export const PriorityBadge = ({ priority }: { priority?: string }) =>
 
 export const StatusChip = ({ status }: { status?: string }) =>
     <span className={`mpm-chip ${statusClass(status)}`}>{(status || "").replace(/[-_]/g, " ")}</span>
+
+export const ValueBadge = ({ value }: { value?: string }) =>
+    (!value || value === "none")
+        ? null
+        : <span className={`mpm-badge ${valueClass(value)}`} title={`valor: ${value}`}>◆ {value}</span>
+
+export const EffortBadge = ({ effort }: { effort?: string }) =>
+    !effort
+        ? null
+        : <span className="mpm-badge mpm-badge--effort" title={`esforço: ${effort}`}>{effort.toUpperCase()}</span>
+
+export const AreaBadge = ({ area }: { area?: string }) =>
+    !area
+        ? null
+        : <span className="mpm-chip mpm-chip--neutral" title={`área: ${area}`}>{area}</span>
+
+export const HorizonChip = ({ horizon }: { horizon?: string }) =>
+    !horizon
+        ? null
+        : <span className={`mpm-chip ${horizonClass(horizon)}`}>{horizonLabel(horizon)}</span>
 
 export const Avatar = ({ user, name }: { user?: User; name?: string }) => {
     const isAgent = user && user.type === "agent"

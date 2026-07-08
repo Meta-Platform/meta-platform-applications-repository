@@ -5,6 +5,8 @@
     { "path": "/projects/:projectId/board/:boardId","page": "BoardPage" },
     { "path": "/projects/:projectId/list",         "page": "ListPage" },
     { "path": "/projects/:projectId/backlog",      "page": "BacklogPage" },
+    { "path": "/projects/:projectId/inbox",        "page": "InboxPage" },
+    { "path": "/projects/:projectId/roadmap",      "page": "RoadmapPage" },
     { "path": "/users",                            "page": "UsersPage" },
     { "path": "/agents",                           "page": "AgentsPage" },
     { "path": "/reports",                          "page": "ReportsPage" }

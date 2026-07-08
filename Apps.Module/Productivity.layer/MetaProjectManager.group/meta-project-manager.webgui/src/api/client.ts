@@ -19,6 +19,7 @@ import CreateUsersApi       from "./users"
 import CreateAgentsApi      from "./agents"
 import CreateReportsApi     from "./reports"
 import CreateEventsApi      from "./events"
+import CreatePlanningApi    from "./planning"
 
 export class ApiError extends Error {
     code: string
@@ -66,7 +67,8 @@ export const createApiClient = (serverManagerInformation: any) => {
         users:       CreateUsersApi(call),
         agents:      CreateAgentsApi(call),
         reports:     CreateReportsApi(call),
-        events:      CreateEventsApi(call)
+        events:      CreateEventsApi(call),
+        planning:    CreatePlanningApi(call)
     }
 }
 
