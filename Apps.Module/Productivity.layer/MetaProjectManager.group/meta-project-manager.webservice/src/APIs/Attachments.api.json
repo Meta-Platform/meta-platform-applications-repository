@@ -90,6 +90,19 @@
                 }
             ],
             "typeResponse": "file"
+        },
+        {
+            "summary": "ReadAttachmentContent",
+            "method": "GET",
+            "path": "/attachments/:attachmentId/content",
+            "parameters": [
+                {
+                    "name": "attachmentId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
         }
     ]
 }

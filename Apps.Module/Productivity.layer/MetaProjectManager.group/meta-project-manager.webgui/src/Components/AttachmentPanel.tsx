@@ -7,6 +7,7 @@ import useApi from "../Hooks/useApi"
 import { Attachment } from "../api/types"
 import { ErrorBanner } from "./Primitives"
 import GetAttachmentDownloadUrl from "../Utils/GetAttachmentDownloadUrl"
+import { triggerBase64Download } from "../Utils/triggerDownload"
 import AttachmentPreview from "./AttachmentPreview"
 
 // AttachmentPanel (spec §11.1): lista anexos do item; permite adicionar link
@@ -61,12 +62,19 @@ const AttachmentPanel = ({ itemId }: { itemId: string }) => {
 
     const isLink = (a: Attachment) => a.type === "link" || (!!a.externalUrl && !a.storagePath)
 
-    // Link -> abre externalUrl. Arquivo -> abre a URL binária de DownloadAttachment
-    // resolvida do serverManagerInformation (indisponível no Electron GUI-host).
-    const open = (a: Attachment) => {
+    // Link -> abre externalUrl. Arquivo (browser) -> abre a URL binária de
+    // DownloadAttachment. Arquivo (Electron GUI-host, sem URL HTTP) -> baixa via
+    // IPC (ReadAttachmentContent devolve base64) usando data URI.
+    const open = async (a: Attachment) => {
         if (isLink(a)) { if (a.externalUrl) window.open(a.externalUrl, "_blank") ; return }
         const url = GetAttachmentDownloadUrl(serverManagerInformation, a.id)
-        if (url) window.open(url, "_blank")
+        if (url) { window.open(url, "_blank"); return }
+        try {
+            const c = await api.attachments.readContent(a.id)
+            triggerBase64Download(c.name, c.mimeType, c.base64)
+        } catch (e: any) {
+            setError(e?.message || "Falha ao baixar anexo")
+        }
     }
 
     return <div className="mpm-col">
@@ -76,7 +84,8 @@ const AttachmentPanel = ({ itemId }: { itemId: string }) => {
             const link = isLink(a)
             // arquivo só é baixável se conseguimos resolver a URL (browser, não Electron)
             const downloadUrl = link ? undefined : GetAttachmentDownloadUrl(serverManagerInformation, a.id)
-            const canOpen = link ? !!a.externalUrl : !!downloadUrl
+            // arquivo é sempre baixável: por URL no browser ou via IPC (base64) no Electron
+            const canOpen = link ? !!a.externalUrl : true
             // preview disponível para links (externalUrl) e arquivos com URL resolvida
             const canPreview = link ? !!a.externalUrl : !!downloadUrl
             const isOpen = !!preview[a.id]

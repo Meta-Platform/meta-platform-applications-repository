@@ -23,7 +23,11 @@ const CreateAttachmentsApi = (call: Caller) => ({
 
     // Download não usa envelope: devolve o corpo bruto (arquivo).
     download: (attachmentId: string): Promise<any> =>
-        call("Attachments", "DownloadAttachment", { attachmentId })
+        call("Attachments", "DownloadAttachment", { attachmentId }),
+
+    // Conteúdo em base64 (envelope normal) — usado para baixar via IPC no desktop.
+    readContent: (attachmentId: string): Promise<{ name: string; mimeType?: string; base64: string; sizeBytes?: number }> =>
+        call("Attachments", "ReadAttachmentContent", { attachmentId })
 })
 
 export default CreateAttachmentsApi

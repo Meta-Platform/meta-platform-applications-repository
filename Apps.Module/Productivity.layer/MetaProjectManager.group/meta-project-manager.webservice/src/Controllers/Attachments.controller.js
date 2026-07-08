@@ -14,6 +14,13 @@ const AttachmentsController = (params) => {
         await ctx.ready; const id = idOf(arg, "attachmentId")
         const att = await store.GetAttachment({ attachment: id }); if(!att.storagePath) throw new Error("Anexo sem arquivo"); return att.storagePath
     }
+    // Conteúdo em base64 — usado pelo download via IPC no desktop (Electron), onde
+    // não há URL HTTP para baixar. Envelope normal { ok, data:{ name, mimeType, base64 } }.
+    const ReadAttachmentContent = async (arg) => Guard(async () => {
+        await ctx.ready; const id = idOf(arg, "attachmentId")
+        const r = await store.ReadAttachment({ attachment: id })
+        return { name: r.name, mimeType: r.mimeType, sizeBytes: r.sizeBytes, base64: r.buffer.toString("base64") }
+    })
 
     return {
         controllerName: "AttachmentsController",
@@ -21,7 +28,8 @@ const AttachmentsController = (params) => {
         AddAttachment,
         GetAttachment,
         DeleteAttachment,
-        DownloadAttachment
+        DownloadAttachment,
+        ReadAttachmentContent
     }
 }
 
