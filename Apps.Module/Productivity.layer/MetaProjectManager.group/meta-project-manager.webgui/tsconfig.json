@@ -8,5 +8,6 @@
         "jsx": "react",
         "lib":["esnext", "dom"],
         "types": ["react", "node"]
-    }
+    },
+    "exclude": ["node_modules", "test", "dist"]
 }

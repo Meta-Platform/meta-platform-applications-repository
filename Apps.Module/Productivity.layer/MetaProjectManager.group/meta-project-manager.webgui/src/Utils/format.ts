@@ -74,7 +74,7 @@ export const statusClass = (status?: string): string => {
     if (s === "blocked") return "mpm-chip--danger"
     if (s === "in-progress") return "mpm-chip--info"
     if (["active", "planning"].indexOf(s) >= 0) return "mpm-chip--info"
-    if (["on-hold"].indexOf(s) >= 0) return "mpm-chip--warning"
+    if (["paused"].indexOf(s) >= 0) return "mpm-chip--warning"
     return "mpm-chip--neutral"
 }
 
@@ -103,3 +103,15 @@ export const formatDateTime = (value?: string | null): string => {
 
 export const humanizeAction = (action?: string): string =>
     (action || "").replace(/[._]/g, " ")
+
+// Reduz markdown a texto plano para previews (ex.: descrição no card de projeto).
+export const plainText = (md?: string): string =>
+    (md || "")
+        .replace(/```[\s\S]*?```/g, " ")          // blocos de código
+        .replace(/`([^`]*)`/g, "$1")              // código inline
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")    // imagens
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")  // links -> texto
+        .replace(/^#{1,6}\s+/gm, "")              // títulos
+        .replace(/[*_~>#`]/g, "")                 // marcas de ênfase
+        .replace(/\s+/g, " ")
+        .trim()

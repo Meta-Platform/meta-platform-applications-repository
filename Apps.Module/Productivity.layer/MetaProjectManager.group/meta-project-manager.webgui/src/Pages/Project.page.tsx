@@ -44,6 +44,20 @@ const ProjectPage = () => {
     const openBoard = (boardId?: string) =>
         navigate(boardId ? `/projects/${projectId}/board/${boardId}` : `/projects/${projectId}/board`)
 
+    const reloadProject = async () => {
+        try { setProject(await api.projects.get(projectId)) } catch (e: any) { setError(e.message) }
+    }
+    const archive = async () => {
+        try { await api.projects.archive(projectId); await reloadProject() } catch (e: any) { setError(e.message) }
+    }
+    const restore = async () => {
+        try { await api.projects.restore(projectId); await reloadProject() } catch (e: any) { setError(e.message) }
+    }
+    const removeProject = async () => {
+        if (!window.confirm(`Excluir o projeto "${project ? project.name : ""}"? (soft delete — some da lista)`)) return
+        try { await api.projects.remove(projectId); navigate("/") } catch (e: any) { setError(e.message) }
+    }
+
     return <AppShell active="overview" activeProjectId={projectId} activeProjectName={project ? project.name : undefined}>
         <ErrorBanner error={error} />
         {!project
@@ -62,6 +76,10 @@ const ProjectPage = () => {
                         <button className="mpm-btn" onClick={() => navigate(`/projects/${projectId}/inbox`)}><Icon name="inbox" /> Inbox</button>
                         <button className="mpm-btn" onClick={() => navigate(`/projects/${projectId}/roadmap`)}><Icon name="road" /> Roadmap</button>
                         <button className="mpm-btn" title="Exportar projeto (.json)" onClick={exportProject}><Icon name="download" /> Exportar</button>
+                        {project.status === "archived"
+                            ? <button className="mpm-btn" title="Restaurar projeto" onClick={restore}><Icon name="undo" /> Restaurar</button>
+                            : <button className="mpm-btn" title="Arquivar projeto" onClick={archive}><Icon name="archive" /> Arquivar</button>}
+                        <button className="mpm-btn mpm-btn--danger" title="Excluir projeto" onClick={removeProject}><Icon name="trash" /> Excluir</button>
                     </div>
                 </div>
 

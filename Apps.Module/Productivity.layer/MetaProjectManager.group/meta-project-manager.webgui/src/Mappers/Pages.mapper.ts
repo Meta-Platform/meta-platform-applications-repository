@@ -8,6 +8,7 @@ import RoadmapPage from "../Pages/Roadmap.page"
 import UsersPage   from "../Pages/Users.page"
 import AgentsPage  from "../Pages/Agents.page"
 import ReportsPage from "../Pages/Reports.page"
+import AgentGuidePage from "../Pages/AgentGuide.page"
 
 export default {
     HomePage,
@@ -19,5 +20,6 @@ export default {
     RoadmapPage,
     UsersPage,
     AgentsPage,
-    ReportsPage
+    ReportsPage,
+    AgentGuidePage
 }

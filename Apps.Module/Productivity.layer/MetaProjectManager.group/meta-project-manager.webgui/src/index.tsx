@@ -4,6 +4,7 @@ import { Provider }                     from "react-redux"
 import { combineReducers, createStore } from "redux"
 
 import "semantic-ui-css/semantic.css"
+import "@uiw/react-md-editor/markdown-editor.css"
 import "./Styles/tokens.css"
 import "./Styles/CorporateTheme.css"
 import "./Styles/theme-retro-brutalist.css"

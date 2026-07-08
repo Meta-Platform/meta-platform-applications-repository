@@ -56,8 +56,11 @@ export const Metric = ({ value, label }: { value: React.ReactNode; label: string
         <div className="mpm-metric__label">{label}</div>
     </div>
 
-export const Loading = ({ text = "carregando..." }: { text?: string }) =>
-    <div className="mpm-loading"><Icon name="circle notch" loading /> {text}</div>
+export const Loading = ({ text = "Carregando…" }: { text?: string }) =>
+    <div className="mpm-loading">
+        <Icon name="circle notch" loading size="large" />
+        <span>{text}</span>
+    </div>
 
 export const EmptyState = ({ icon = "inbox", title, hint, action }:
     { icon?: any; title: string; hint?: string; action?: React.ReactNode }) =>

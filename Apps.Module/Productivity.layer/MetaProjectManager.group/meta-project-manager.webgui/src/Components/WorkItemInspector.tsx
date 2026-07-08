@@ -12,9 +12,9 @@ import { TypeBadge, PriorityBadge, StatusChip, Avatar, Loading, ErrorBanner } fr
 import AttachmentPanel from "./AttachmentPanel"
 import CommentTimeline from "./CommentTimeline"
 import AuditTimeline from "./AuditTimeline"
-import Markdown from "./Markdown"
 import LinkPanel from "./LinkPanel"
 import SoftwareContextSection from "./SoftwareContextSection"
+import DescriptionEditor from "./DescriptionEditor"
 
 const PRIORITIES = ["none", "low", "medium", "high", "urgent"]
 
@@ -210,21 +210,10 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 ? <div className="mpm-error-banner"><Icon name="ban" /> Bloqueado: {item.blockedReason}</div>
                 : null}
 
-            <div className="mpm-field">
-                <span className="mpm-field__label">Descrição (markdown)</span>
-                <textarea className="mpm-textarea" defaultValue={item.description || ""}
-                    key={`desc-${item.id}-${item.updatedAt || ""}`}
-                    onBlur={(e) => {
-                        if (e.target.value !== (item.description || ""))
-                            patch(() => api.items.update(item.id, { description: e.target.value }))
-                    }} />
-                {item.description && item.description.trim()
-                    ? <>
-                        <span className="mpm-field__label" style={{ marginTop: "var(--mp-space-2)" }}>Pré-visualização</span>
-                        <Markdown>{item.description}</Markdown>
-                    </>
-                    : null}
-            </div>
+            <DescriptionEditor
+                key={`desc-${item.id}`}
+                value={item.description || ""}
+                onSave={(md) => patch(() => api.items.update(item.id, { description: md }))} />
 
             <div className="mpm-col">
                 <div className="mpm-section-title"><Icon name="check circle outline" /> Critérios de aceite</div>

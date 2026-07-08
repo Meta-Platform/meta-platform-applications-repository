@@ -225,7 +225,8 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
         active={view === "list" ? "list" : "board"}
         activeProjectId={projectId}
         activeProjectName={project ? project.name : undefined}
-        inspector={inspector}>
+        inspector={inspector}
+        onInspectorClose={() => setSelected(null)}>
 
         <div className="mpm-page-head">
             <div className="mpm-page-head__titles">
