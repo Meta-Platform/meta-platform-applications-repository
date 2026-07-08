@@ -1,9 +1,15 @@
-# meta-project-manager.mcp
+# meta-project-manager-mcp.cli
 
 Servidor **MCP (Model Context Protocol)** por **stdio** do Meta Project Manager.
 Permite que agentes de IA (Claude Code, Codex, OpenCode…) operem projetos,
 boards, tarefas, comentários e anexos **nativamente por tools MCP** — em vez de
 (ou além de) chamar a CLI `mpm`.
+
+> **Tipo de pacote:** `.cli`. A plataforma não tem um tipo `.mcp` (extensões
+> válidas: `app|cli|webapp|desktopapp|webgui|webservice|service|lib`); um servidor
+> MCP stdio é, mecanicamente, um **executável de command-group** — igual ao
+> `instance-manager-daemon.cli`. O executável instalado chama-se
+> `meta-project-manager-mcp`.
 
 É um **adaptador fino** sobre a mesma camada de domínio `@/project-store.lib`
 usada pela CLI e pela GUI: as validações, o **gate de aprovação humana** para
@@ -79,6 +85,10 @@ Garanta o executável no `PATH` da sessão (ou use o caminho completo).
 **Acompanhar:** `list_projects`, `get_project`, `list_boards`, `project_status`,
 `roadmap`, `list_activity`.
 
+**Descobrir / decidir:** `search_items` (busca em TODOS os projetos),
+`list_milestones`, `list_sprints`, `report_blocked`, `report_overdue` — para
+decidir entre criar novo e atualizar existente e ver conflitos.
+
 > Aprovar/rejeitar pedidos de criação e confirmar sessões **não** são tools MCP:
 > são ações **humanas** (na GUI ou pela CLI `mpm`). Deleção física também fica
 > fora do MCP.
@@ -90,6 +100,13 @@ repo install ApplicationsRepository LOCAL_FS --executables meta-project-manager-
 # após editar o código:
 repo update ApplicationsRepository
 ```
+
+> **Aqueça o ambiente após (re)instalar.** No **primeiro run**, a plataforma
+> constrói o ambiente e instala as dependências, emitindo logs em **stdout** —
+> o que corromperia o handshake MCP do cliente nessa primeira vez. Rode uma vez
+> para "aquecer" (`echo | meta-project-manager-mcp serve`); os runs seguintes
+> têm stdout limpo (só o protocolo). O ambiente fica cacheado por hash de
+> metadados, então edições de código não re-disparam o build.
 
 ## Estrutura
 
