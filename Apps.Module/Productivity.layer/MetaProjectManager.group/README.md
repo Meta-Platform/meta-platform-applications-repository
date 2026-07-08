@@ -18,15 +18,22 @@ não-interativa, idempotente).
 | `meta-project-manager.webapp` | Composition root web (server + webservice + webgui) — registrado como **APP**. |
 | `meta-project-manager.desktopapp` | Shell Electron (GUI-host) — registrado como **DESKTOP**. |
 | `meta-project-manager.cli` | CLI `mpm` (paridade com a GUI). |
+| `meta-project-manager-mcp.cli` | Servidor **MCP (stdio)** para agentes de IA (Claude Code, Codex…) — expõe tools nativas sobre o mesmo store/gate/auditoria. Executável `meta-project-manager-mcp`. Ver seu `README.md`. |
 
-Arquitetura (spec §10.1): **CLI e webservice não duplicam regra** — ambos reusam
-`@/project-store.lib`. A GUI fala com o webservice (HTTP) ou com o gui.service (IPC no desktop).
+Arquitetura (spec §10.1): **CLI, webservice e MCP não duplicam regra** — todos reusam
+`@/project-store.lib`. A GUI fala com o webservice (HTTP) ou com o gui.service (IPC no desktop);
+o agente de IA fala pela CLI (`--json`) ou pelo servidor MCP (tools).
 
 ```
-GUI  ─HTTP→ webservice ─┐
-CLI  ────────────────────┼─→ project-store.lib (use cases + SQLite + auditoria)
-Desktop ─IPC→ gui.service┘
+GUI     ─HTTP→ webservice ─┐
+CLI  (mpm) ─────────────────┤
+MCP (stdio) ────────────────┼─→ project-store.lib (use cases + SQLite + auditoria)
+Desktop ─IPC→ gui.service ──┘
 ```
+
+> **Nota de tipo de pacote:** o servidor MCP é um **`.cli`** (a plataforma não tem tipo `.mcp`;
+> extensões válidas: `app|cli|webapp|desktopapp|webgui|webservice|service|lib`). Um servidor
+> MCP stdio é, mecanicamente, um executável de command-group — igual ao `instance-manager-daemon.cli`.
 
 ## Como rodar
 
@@ -34,7 +41,7 @@ Provisionamento local (LOCAL_FS):
 
 ```bash
 repo install ApplicationsRepository LOCAL_FS \
-  --executables meta-project-manager meta-project-manager-desktop mpm
+  --executables meta-project-manager meta-project-manager-desktop mpm meta-project-manager-mcp
 # após editar código:
 repo update ApplicationsRepository
 ```
@@ -42,6 +49,7 @@ repo update ApplicationsRepository
 - **Web (browser):** executa o app `meta-project-manager` (APP) → abre a webgui servida pelo webapp.
 - **Desktop (Electron):** executa `meta-project-manager-desktop` (DESKTOP, GUI-host).
 - **CLI:** `mpm --help` (ou o alias `meta-project-manager`). Ver `meta-project-manager.cli/README.md`.
+- **MCP (agentes):** registre `meta-project-manager-mcp serve` no cliente (Claude Code: `claude mcp add … -- <caminho absoluto>/meta-project-manager-mcp serve`; Codex: bloco `[mcp_servers.…]` em `~/.codex/config.toml`). Passo a passo no Guia de IA da GUI e em `meta-project-manager-mcp.cli/README.md`. **Aqueça 1x após instalar** (o 1º run constrói o ambiente e loga em stdout).
 
 ## Autorização de agentes (gate de criação)
 
