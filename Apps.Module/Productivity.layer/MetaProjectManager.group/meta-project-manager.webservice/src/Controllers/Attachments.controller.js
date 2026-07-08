@@ -7,7 +7,7 @@ const AttachmentsController = (params) => {
     const { store } = ctx
 
     const ListAttachments = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "itemId"); return store.ListAttachments({ item: id }) })
-    const AddAttachment = async (p = {}) => Guard(async () => { await ctx.ready; return p.url ? store.AddLinkAttachment({ item: p.itemId, url: p.url, name: p.name, description: p.description, actor: Actor(p) }) : store.AddBufferAttachment({ item: p.itemId, name: p.name, base64: p.base64, mimeType: p.mimeType, description: p.description, type: p.type, actor: Actor(p) }) })
+    const AddAttachment = async (p = {}) => Guard(async () => { await ctx.ready; return p.url ? store.AddLinkAttachment({ item: p.itemId, url: p.url, name: p.name, description: p.description, commentId: p.commentId, actor: Actor(p) }) : store.AddBufferAttachment({ item: p.itemId, name: p.name, base64: p.base64, mimeType: p.mimeType, description: p.description, type: p.type, commentId: p.commentId, actor: Actor(p) }) })
     const GetAttachment = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "attachmentId"); return store.GetAttachment({ attachment: id }) })
     const DeleteAttachment = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "attachmentId"); return store.RemoveAttachment({ attachment: id, actor: { source: "api" } }) })
     const DownloadAttachment = async (arg) => {

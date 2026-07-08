@@ -165,6 +165,36 @@ test("planejamento via API: tipo feature + horizon + filtro + horizon-board", as
     assert.ok(hb.json.data.next.length >= 1)
 })
 
+test("GUI 1-7 backend: link/unlink, reorder, contexto de software", async () => {
+    const a = await srv.request("POST", `/projects/${projectId}/items`, { type: "task", title: "A-link" })
+    const bItem = await srv.request("POST", `/projects/${projectId}/items`, { type: "task", title: "B-link" })
+    const link = await srv.request("POST", `/items/${a.json.data.id}/links`, { relation: "blocks", target: bItem.json.data.key })
+    assert.equal(link.json.ok, true)
+    const unlink = await srv.request("POST", `/items/${a.json.data.id}/unlink`, { relation: "blocks", target: bItem.json.data.key })
+    assert.equal(unlink.json.data.removed, 1)
+    const reorder = await srv.request("POST", `/items/${a.json.data.id}/reorder`, { order: 3 })
+    assert.equal(reorder.json.data.order, 3)
+    const upd = await srv.request("PATCH", `/items/${a.json.data.id}`, { branchName: "feat/x", commitHash: "abc", environment: "dev", moduleName: "Apps.Module" })
+    assert.equal(upd.json.data.branchName, "feat/x")
+    assert.equal(upd.json.data.environment, "dev")
+})
+
+test("GUI 3: anexo associado a comentário (commentId via API)", async () => {
+    const c = await srv.request("POST", `/items/${itemId}/comments`, { body: "com anexo" })
+    const att = await srv.request("POST", `/items/${itemId}/attachments`, { name: "n.txt", base64: Buffer.from("x").toString("base64"), commentId: c.json.data.id })
+    assert.equal(att.json.data.commentId, c.json.data.id)
+})
+
+test("GUI 6-7: export projeto + app-state", async () => {
+    const exp = await srv.request("GET", `/projects/${projectId}/export`)
+    assert.equal(exp.json.ok, true)
+    assert.ok(exp.json.data.items.length >= 1)
+    const set = await srv.request("POST", "/app-state/lastProject", { value: { id: projectId, view: "board" } })
+    assert.equal(set.json.ok, true)
+    const get = await srv.request("GET", "/app-state/lastProject")
+    assert.equal(get.json.data.value.view, "board")
+})
+
 test("erro estruturado 200 com ok:false em NOT_FOUND", async () => {
     const { json } = await srv.request("GET", "/items/MP-999")
     assert.equal(json.ok, false)

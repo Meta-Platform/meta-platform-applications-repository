@@ -54,6 +54,16 @@ const InitializeProjectStore = (options = {}) => {
         }
     }
 
+    // App state (memória da GUI): último projeto, view ativa, larguras, filtros nomeados.
+    const GetAppState = async ({ key } = {}) => {
+        const s = await models.AppState.findOne({ where: { key } })
+        return s ? s.value : undefined
+    }
+    const SetAppState = async ({ key, value } = {}) => {
+        await models.AppState.upsert({ key, value })
+        return { key, value }
+    }
+
     const { WriteAudit, ListActivity } = AuditStore({ models })
     const writeAudit = async (entry) => {
         const event = await WriteAudit(entry)
@@ -76,7 +86,7 @@ const InitializeProjectStore = (options = {}) => {
         AgentsStore(ctx),
         ReportsStore(ctx),
         PlanningStore(ctx),
-        { ListActivity },
+        { ListActivity, GetAppState, SetAppState },
     )
     Object.assign(store, ImportExport(ctx))
 
