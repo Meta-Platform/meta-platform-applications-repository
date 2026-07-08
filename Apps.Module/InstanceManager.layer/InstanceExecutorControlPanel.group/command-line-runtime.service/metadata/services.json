@@ -1,0 +1,12 @@
+[
+    {
+        "namespace": "CommandLineRuntime",
+        "path": "Services/CommandLineRuntime.service",
+        "bound-params": [
+            "instanceManagerClientLib"
+        ],
+        "params": [
+            "platformApplicationSocketPath"
+        ]
+    }
+]

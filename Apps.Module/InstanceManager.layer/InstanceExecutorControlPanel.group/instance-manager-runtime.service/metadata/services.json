@@ -1,0 +1,12 @@
+[
+    {
+        "namespace": "InstanceManagerRuntimeService",
+        "path": "Services/InstanceManagerRuntime.service",
+        "bound-params": [
+            "instanceManagerClientLib"
+        ],
+        "params": [
+            "platformApplicationSocketPath"
+        ]
+    }
+]

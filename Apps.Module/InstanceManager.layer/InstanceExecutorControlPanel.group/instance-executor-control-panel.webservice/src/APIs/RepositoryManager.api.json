@@ -1,0 +1,174 @@
+{
+    "name": "RepositoryManager",
+    "endpoints": [
+        {
+            "summary": "ListRepositories",
+            "method": "GET",
+            "path": "/repos/list"
+        },
+        {
+          "summary": "RegisterRepository",
+          "method": "POST",
+          "path": "/repos/register",
+          "parameters": [
+            {
+              "name": "namespace",
+              "in": "body",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "path",
+              "in": "body",
+              "type": "string",
+              "required": true
+            }
+          ]
+        },
+        {
+            "summary": "ListModules",
+            "method": "GET",
+            "path": "/module/list"
+        },
+        {
+            "summary": "ListLayers",
+            "method": "GET",
+            "path": "/layer/list"
+        },
+        {
+            "summary": "ListPackages",
+            "method": "GET",
+            "path": "/package/list"
+        },
+        {
+            "summary": "GetPackageIcon",
+            "method": "GET",
+            "path": "/package/:namespaceRepo/:moduleName/:layerName/:packageName/:ext/icon",
+            "typeResponse" : "file",
+            "parameters": [
+              {
+                "name": "namespaceRepo",
+                "in": "path",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "moduleName",
+                "in": "path",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "layerName",
+                "in": "path",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "packageName",
+                "in": "path",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "ext",
+                "in": "path",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "parentGroup",
+                "in": "query",
+                "type": "string",
+                "required": true
+              }
+            ]
+          },
+          {
+            "summary": "GetMetadataHierarchy",
+            "method": "GET",
+            "path": "/package/:namespaceRepo/:moduleName/:layerName/:packageName/:ext/metadata-hierarchy",
+            "parameters": [
+              {
+                "name": "namespaceRepo",
+                "in": "path",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "moduleName",
+                "in": "path",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "layerName",
+                "in": "path",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "packageName",
+                "in": "path",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "ext",
+                "in": "path",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "parentGroup",
+                "in": "query",
+                "type": "string",
+                "required": true
+              }
+            ]
+          },
+          {
+            "summary": "GetPackageDependencyHierarchy",
+            "method": "GET",
+            "path": "/package/:namespaceRepo/:moduleName/:layerName/:packageName/:ext/dependency-hierarchy",
+            "parameters": [
+              {
+                "name": "namespaceRepo",
+                "in": "path",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "moduleName",
+                "in": "path",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "layerName",
+                "in": "path",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "packageName",
+                "in": "path",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "ext",
+                "in": "path",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "parentGroup",
+                "in": "query",
+                "type": "string",
+                "required": true
+              }
+            ]
+          }
+    ]
+}

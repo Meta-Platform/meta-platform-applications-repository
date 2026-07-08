@@ -1,0 +1,159 @@
+{
+    "params" : [
+        "serverName",
+        "RT_ENV_GENERATED_DIR_NAME",
+        "installDataDirPath",
+        "REPOS_CONF_FILENAME_REPOS_DATA",
+        "REPOS_CONF_EXT_MODULE_DIR",
+        "REPOS_CONF_EXT_LAYER_DIR",
+        "REPOS_CONF_EXT_GROUP_DIR",
+        "REPOS_CONF_EXTLIST_PKG_TYPE",
+        "PKG_CONF_DIRNAME_METADATA",
+        "EXECUTIONDATA_CONF_DIRNAME_DEPENDENCIES",
+        "ECOSYSTEMDATA_CONF_FILENAME_PKG_GRAPH_DATA",
+        "platformApplicationSocketPath"
+    ],
+    "windows": [
+        {
+            "title": "Instance Executor Control Panel",
+            "width": 1280,
+            "height": 800,
+            "dependency": "@/instance-executor-control-panel.webgui",
+            "params": {
+                "serverName":                                 "{{serverName}}",
+                "RT_ENV_GENERATED_DIR_NAME":                  "{{RT_ENV_GENERATED_DIR_NAME}}",
+                "installDataDirPath":                         "{{installDataDirPath}}",
+                "ECO_DIRPATH_INSTALL_DATA":                   "{{installDataDirPath}}",
+                "REPOS_CONF_FILENAME_REPOS_DATA":             "{{REPOS_CONF_FILENAME_REPOS_DATA}}",
+                "REPOS_CONF_EXT_MODULE_DIR":                  "{{REPOS_CONF_EXT_MODULE_DIR}}",
+                "REPOS_CONF_EXT_LAYER_DIR":                   "{{REPOS_CONF_EXT_LAYER_DIR}}",
+                "REPOS_CONF_EXT_GROUP_DIR":                   "{{REPOS_CONF_EXT_GROUP_DIR}}",
+                "REPOS_CONF_EXTLIST_PKG_TYPE":                "{{REPOS_CONF_EXTLIST_PKG_TYPE}}",
+                "PKG_CONF_DIRNAME_METADATA":                  "{{PKG_CONF_DIRNAME_METADATA}}",
+                "EXECUTIONDATA_CONF_DIRNAME_DEPENDENCIES":    "{{EXECUTIONDATA_CONF_DIRNAME_DEPENDENCIES}}",
+                "ECOSYSTEMDATA_CONF_FILENAME_PKG_GRAPH_DATA": "{{ECOSYSTEMDATA_CONF_FILENAME_PKG_GRAPH_DATA}}",
+                "platformApplicationSocketPath":              "{{platformApplicationSocketPath}}"
+            },
+            "bound-params": {
+                "instanceExecutorControlPanelWebgui":     "@/instance-executor-control-panel.webgui",
+                "instanceExecutorControlPanelGuiService": "@/instance-executor-control-panel-gui.service",
+                "instanceExecutorControlPanelWebservice": "@/instance-executor-control-panel.webservice",
+                "commandLineRuntimeService":              "@/command-line-runtime.service",
+                "instanceManagerRuntimeService":          "@/instance-manager-runtime.service",
+                "instanceManagerClientLib":               "@/instance-manager-client.lib",
+                "repositoryManagerService":               "@/repository-manager.service",
+                "taskExecutorMachineService":             "@/task-executor-machine.service",
+                "environmentRuntimeManagerService":       "@/environment-runtime-manager.service",
+                "ecosystemManagerService":                "@/ecosystem-manager.service",
+                "repositoryUtilitiesLib":                 "@/repository-utilities.lib",
+                "dependencyGraphBuilderLib":              "@/dependency-graph-builder.lib",
+                "applicationInstanceLib":                 "@/application-instance.lib",
+                "installNodejsPackageDependenciesLib":    "@/install-nodejs-package-dependencies.lib",
+                "nodejsPackageLib":                       "@/nodejs-package.lib",
+                "serviceInstanceLib":                     "@/service-instance.lib",
+                "endpointInstanceLib":                    "@/endpoint-instance.lib",
+                "desktopWindowInstanceLib":               "@/desktop-window-instance.lib",
+                "commandApplicationLib":                  "@/command-application.lib",
+                "taskExecutorLib":                        "@/task-executor.lib",
+                "utilitiesLib":                           "@/utilities.lib",
+                "jsonFileUtilitiesLib":                   "@/json-file-utilities.lib",
+                "executionParamsGeneratorLib":            "@/execution-params-generator.lib",
+                "repositoryConfigHandlerLib":             "@/repository-config-handler.lib",
+                "environmentHandlerLib":                  "@/environment-handler.lib",
+                "metadataHierarchyHandlerLib":            "@/metadata-hierarchy-handler.lib",
+                "resolvePackageNameLib":                  "@/resolve-package-name.lib"
+            },
+            "gui-host": {
+                "webgui": "instanceExecutorControlPanelWebgui",
+                "guiService": "guiService",
+                "serviceGraph": [
+                    {
+                        "ref": "repositoryManager",
+                        "package": "repositoryManagerService",
+                        "factory": "Services/RepositoryManager.service",
+                        "boundLibs": {
+                            "repositoryUtilitiesLib": "repositoryUtilitiesLib",
+                            "dependencyGraphBuilderLib": "dependencyGraphBuilderLib"
+                        }
+                    },
+                    {
+                        "ref": "standardTaskExecutorMachine",
+                        "package": "taskExecutorMachineService",
+                        "factory": "Services/StandardTaskExecutorMachine.service",
+                        "boundLibs": {
+                            "applicationInstanceLib": "applicationInstanceLib",
+                            "installNodejsPackageDependenciesLib": "installNodejsPackageDependenciesLib",
+                            "nodejsPackageLib": "nodejsPackageLib",
+                            "serviceInstanceLib": "serviceInstanceLib",
+                            "endpointInstanceLib": "endpointInstanceLib",
+                            "desktopWindowInstanceLib": "desktopWindowInstanceLib",
+                            "commandApplicationLib": "commandApplicationLib",
+                            "taskExecutorLib": "taskExecutorLib",
+                            "utilitiesLib": "utilitiesLib"
+                        }
+                    },
+                    {
+                        "ref": "environmentRuntime",
+                        "package": "environmentRuntimeManagerService",
+                        "factory": "Services/EnvironmentRuntime.service",
+                        "boundServices": {
+                            "taskExecutorMachineService": "standardTaskExecutorMachine"
+                        },
+                        "boundLibs": {
+                            "jsonFileUtilitiesLib": "jsonFileUtilitiesLib",
+                            "executionParamsGeneratorLib": "executionParamsGeneratorLib"
+                        }
+                    },
+                    {
+                        "ref": "ecosystemManager",
+                        "package": "ecosystemManagerService",
+                        "factory": "Managers/Ecosystem.manager",
+                        "boundServices": {
+                            "repositoryManagerService": "repositoryManager",
+                            "environmentRuntimeService": "environmentRuntime"
+                        },
+                        "boundLibs": {
+                            "repositoryConfigHandlerLib": "repositoryConfigHandlerLib",
+                            "environmentHandlerLib": "environmentHandlerLib",
+                            "dependencyGraphBuilderLib": "dependencyGraphBuilderLib",
+                            "metadataHierarchyHandlerLib": "metadataHierarchyHandlerLib",
+                            "resolvePackageNameLib": "resolvePackageNameLib",
+                            "jsonFileUtilitiesLib": "jsonFileUtilitiesLib"
+                        }
+                    },
+                    {
+                        "ref": "commandLineRuntime",
+                        "package": "commandLineRuntimeService",
+                        "factory": "Services/CommandLineRuntime.service",
+                        "boundLibs": {
+                            "instanceManagerClientLib": "instanceManagerClientLib"
+                        }
+                    },
+                    {
+                        "ref": "instanceManagerRuntime",
+                        "package": "instanceManagerRuntimeService",
+                        "factory": "Services/InstanceManagerRuntime.service",
+                        "boundLibs": {
+                            "instanceManagerClientLib": "instanceManagerClientLib"
+                        }
+                    },
+                    {
+                        "ref": "guiService",
+                        "package": "instanceExecutorControlPanelGuiService",
+                        "factory": "Services/InstanceExecutorControlPanelGui.service",
+                        "boundServices": {
+                            "taskExecutorMachineService": "standardTaskExecutorMachine",
+                            "repositoryManagerService": "repositoryManager",
+                            "ecosystemManagerService": "ecosystemManager",
+                            "commandLineRuntimeService": "commandLineRuntime",
+                            "instanceManagerRuntimeService": "instanceManagerRuntime"
+                        },
+                        "boundLibs": {
+                            "instanceExecutorControlPanelWebservice": "instanceExecutorControlPanelWebservice"
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

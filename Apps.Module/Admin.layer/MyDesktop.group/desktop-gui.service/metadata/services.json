@@ -8,10 +8,12 @@
             "repositoryManagerService",
             "jsonFileUtilitiesLib",
             "ecosystemInstallUtilitiesLib",
-            "executionManagerWebservice"
+            "executionManagerWebservice",
+            "instanceManagerClientLib"
         ],
         "params": [
-            "ecosystemDefaultsFileRelativePath"
+            "ecosystemDefaultsFileRelativePath",
+            "platformApplicationSocketPath"
         ]
     }
 ]

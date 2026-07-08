@@ -1,0 +1,15 @@
+[
+    {
+        "namespace": "InstanceExecutorControlPanelGuiService",
+        "path": "Services/InstanceExecutorControlPanelGui.service",
+        "bound-params": [
+            "taskExecutorMachineService",
+            "repositoryManagerService",
+            "ecosystemManagerService",
+            "commandLineRuntimeService",
+            "instanceManagerRuntimeService",
+            "instanceExecutorControlPanelWebservice"
+        ],
+        "params": []
+    }
+]

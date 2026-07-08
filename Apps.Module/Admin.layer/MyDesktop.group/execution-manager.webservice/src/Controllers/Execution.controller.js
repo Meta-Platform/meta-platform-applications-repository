@@ -1,42 +1,42 @@
-const path = require("path")
-const { spawn } = require("node:child_process")
-
+// Execução de aplicações do MyDesktop — DELEGADA ao daemon executor-manager.
+//
+// O painel não spawna mais `run package` diretamente: resolve o caminho do
+// pacote e pede ao daemon (via @/instance-manager-client.lib) que o execute.
+// A execução é, assim, centralizada num único ponto (o daemon).
 const ExecutionController = (params) => {
 
     const {
-        ecosystemdataHandlerService,
-        ecosystemDefaultsFileRelativePath,
-        jsonFileUtilitiesLib,
         repositoryManagerService,
-        notificationHubService
+        notificationHubService,
+        instanceManagerClientLib,
+        platformApplicationSocketPath
     } = params
 
-    const ReadJsonFile = jsonFileUtilitiesLib.require("ReadJsonFile")
     const { NotifyEvent } = notificationHubService
 
-    // Registro em memória das instâncias iniciadas pelo MyDesktop nesta sessão.
-    // Chave = executableName (ou o packagePath, se o executável não for informado).
-    // Guardamos o processo `run` (que hospeda/supervisiona a instância) para
-    // saber o que está em execução e poder encerrá-lo depois.
-    const runningRegistry = new Map()
+    const CreateInstanceManagerClient = instanceManagerClientLib.require("CreateInstanceManagerClient")
+    const instanceManager = CreateInstanceManagerClient({ platformApplicationSocketPath })
+
+    // Mapa em memória do que ESTE painel iniciou nesta sessão: executableName ->
+    // packagePath. Usado para casar o contrato do webgui (que fala em
+    // executableName) com o daemon (que fala em packagePath).
+    const startedByPanel = new Map()
 
     const _Notify = (origin, type, message) =>
         NotifyEvent({ origin, type: "log", content: { sourceName: origin, type, message } })
 
-    const _GetExecutablesDirPath = async () => {
-        const ecosystemDefaults = await ReadJsonFile(
-            path.resolve(ecosystemdataHandlerService.GetEcosystemDataPath(), ecosystemDefaultsFileRelativePath))
-        return path.resolve(ecosystemdataHandlerService.GetEcosystemDataPath(), ecosystemDefaults.ECOSYSTEMDATA_CONF_DIRNAME_GLOBAL_EXECUTABLES_DIR)
+    // Caminhos dos pacotes atualmente em serviço no daemon.
+    const _GetRunningPackagePaths = async () => {
+        const supervised = await instanceManager.ListPackages()
+        return new Set((supervised || [])
+            .filter((p) => p && p.packageInService && p.applicationInServiceState)
+            .map((p) => p.applicationInServiceState.staticParameters && p.applicationInServiceState.staticParameters.rootPath)
+            .filter(Boolean))
     }
 
-    const _IsAlive = (pid) => {
-        try { process.kill(pid, 0); return true } catch(e) { return false }
-    }
-
-    // Lança uma aplicação de desktop instalada. Recebe a IDENTIDADE do pacote
-    // (namespaceRepo/moduleName/...) — o caminho absoluto é resolvido aqui pelo
-    // repository-manager. `executableName` (opcional) é usado como chave de
-    // rastreio das instâncias em execução.
+    // Lança uma aplicação instalada. Recebe a IDENTIDADE do pacote
+    // (namespaceRepo/moduleName/...) — o caminho é resolvido aqui e a execução
+    // é feita PELO DAEMON.
     const RunApplication = async ({ namespaceRepo, moduleName, layerName, packageName, ext, parentGroup, executableName }) => {
         const packageData = { namespaceRepo, moduleName, layerName, packageName, ext, parentGroup }
         const packagePath = await repositoryManagerService.GetPackagePath(packageData)
@@ -47,61 +47,55 @@ const ExecutionController = (params) => {
             throw message
         }
 
-        const registryKey = executableName || packagePath
-        const executablesDirPath = await _GetExecutablesDirPath()
-        const env = { ...process.env, PATH: `${executablesDirPath}:${process.env.PATH}` }
+        if(!(await instanceManager.IsAvailable())){
+            const message = "Instance Manager (daemon) indisponível — não foi possível executar."
+            _Notify("Execution.RunApplication", "error", message)
+            throw message
+        }
 
         try {
-            // detached: cria um novo GRUPO de processos (pgid = pid) para podermos
-            // encerrar a árvore inteira depois com process.kill(-pid).
-            const child = spawn(path.resolve(executablesDirPath, "run"), ["package", packagePath], {
-                cwd: ecosystemdataHandlerService.GetEcosystemDataPath(),
-                env,
-                detached: true,
-                stdio: "ignore"
-            })
-
-            runningRegistry.set(registryKey, { executableName: registryKey, pid: child.pid, packagePath, startedAt: Date.now(), child })
-            child.on("exit", () => {
-                const entry = runningRegistry.get(registryKey)
-                if(entry && entry.pid === child.pid) runningRegistry.delete(registryKey)
-            })
-            child.unref()
-
-            _Notify("Execution.RunApplication", "info", `Iniciando aplicação: ${packagePath} (pid ${child.pid})`)
-            return { started: true, packagePath, pid: child.pid, executableName: registryKey }
+            await instanceManager.RunPackage({ packagePath })
+            if(executableName) startedByPanel.set(executableName, packagePath)
+            _Notify("Execution.RunApplication", "info", `Execução solicitada ao daemon: ${packagePath}`)
+            return { started: true, packagePath, executableName }
         } catch (e) {
-            _Notify("Execution.RunApplication", "error", `Falha ao iniciar ${packagePath}: ${e.message || e}`)
+            _Notify("Execution.RunApplication", "error", `Falha ao executar ${packagePath}: ${e.message || e}`)
             throw e
         }
     }
 
-    // Lista as instâncias iniciadas pelo MyDesktop que ainda estão vivas.
+    // Lista as aplicações iniciadas por este painel que ainda estão em serviço
+    // no daemon. Mantém o contrato: { running: [{ executableName }] }.
     const ListRunning = async () => {
+        let runningPaths
+        try {
+            runningPaths = await _GetRunningPackagePaths()
+        } catch (e) {
+            return { running: [] }
+        }
+
         const running = []
-        for(const [key, entry] of runningRegistry) {
-            if(_IsAlive(entry.pid)) {
-                running.push({ executableName: entry.executableName, pid: entry.pid, packagePath: entry.packagePath, startedAt: entry.startedAt })
-            } else {
-                runningRegistry.delete(key)
-            }
+        for(const [executableName, packagePath] of startedByPanel){
+            if(runningPaths.has(packagePath))
+                running.push({ executableName, packagePath })
+            else
+                startedByPanel.delete(executableName)
         }
         return { running }
     }
 
-    // Encerra uma instância iniciada pelo MyDesktop (mata o grupo de processos).
-    // Endpoint de 1 parâmetro → recebe o VALOR posicional (contrato do servidor).
+    // Encerra uma aplicação pelo executableName (endpoint de 1 parâmetro → valor
+    // posicional). Delega o encerramento ao daemon via packagePath.
     const StopApplication = async (executableName) => {
-        const entry = runningRegistry.get(executableName)
-        if(!entry)
+        const packagePath = startedByPanel.get(executableName)
+        if(!packagePath)
             throw `Nenhuma instância em execução para "${executableName}".`
 
         try {
-            // sinal para o GRUPO (pgid negativo) → encerra a árvore (run + app)
-            try { process.kill(-entry.pid, "SIGTERM") } catch(e) { process.kill(entry.pid, "SIGTERM") }
-            runningRegistry.delete(executableName)
-            _Notify("Execution.StopApplication", "info", `Instância encerrada: ${executableName} (pid ${entry.pid})`)
-            return { stopped: true, executableName }
+            const result = await instanceManager.StopPackage({ packagePath })
+            startedByPanel.delete(executableName)
+            _Notify("Execution.StopApplication", "info", `Encerramento solicitado ao daemon: ${executableName}`)
+            return { stopped: true, executableName, ...result }
         } catch (e) {
             _Notify("Execution.StopApplication", "error", `Falha ao encerrar ${executableName}: ${e.message || e}`)
             throw e

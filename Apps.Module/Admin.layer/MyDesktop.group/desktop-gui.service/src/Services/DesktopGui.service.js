@@ -42,6 +42,8 @@ const DesktopGuiService = (params) => {
         ecosystemInstallUtilitiesLib,
         executionManagerWebservice,
         ecosystemDefaultsFileRelativePath,
+        instanceManagerClientLib,
+        platformApplicationSocketPath,
         onReady
     } = params
 
@@ -53,7 +55,9 @@ const DesktopGuiService = (params) => {
         repositoryManagerService,
         jsonFileUtilitiesLib,
         ecosystemInstallUtilitiesLib,
-        ecosystemDefaultsFileRelativePath
+        ecosystemDefaultsFileRelativePath,
+        instanceManagerClientLib,
+        platformApplicationSocketPath
     }
 
     // Instancia cada controller e monta o manifesto + o mapa de parâmetros

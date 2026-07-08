@@ -10,7 +10,8 @@
         "REPOS_CONF_EXT_LAYER_DIR",
         "REPOS_CONF_EXT_GROUP_DIR",
         "REPOS_CONF_EXTLIST_PKG_TYPE",
-        "PKG_CONF_DIRNAME_METADATA"
+        "PKG_CONF_DIRNAME_METADATA",
+        "platformApplicationSocketPath"
     ],
     "windows": [
         {
@@ -29,7 +30,8 @@
                 "REPOS_CONF_EXT_LAYER_DIR": "{{REPOS_CONF_EXT_LAYER_DIR}}",
                 "REPOS_CONF_EXT_GROUP_DIR": "{{REPOS_CONF_EXT_GROUP_DIR}}",
                 "REPOS_CONF_EXTLIST_PKG_TYPE": "{{REPOS_CONF_EXTLIST_PKG_TYPE}}",
-                "PKG_CONF_DIRNAME_METADATA": "{{PKG_CONF_DIRNAME_METADATA}}"
+                "PKG_CONF_DIRNAME_METADATA": "{{PKG_CONF_DIRNAME_METADATA}}",
+                "platformApplicationSocketPath": "{{platformApplicationSocketPath}}"
             },
             "bound-params": {
                 "homeScreenWebgui":             "@/home-screen.webgui",
@@ -40,7 +42,8 @@
                 "jsonFileUtilitiesLib":         "@/json-file-utilities.lib",
                 "ecosystemInstallUtilitiesLib": "@/ecosystem-install-utilities.lib",
                 "repositoryUtilitiesLib":       "@/repository-utilities.lib",
-                "dependencyGraphBuilderLib":    "@/dependency-graph-builder.lib"
+                "dependencyGraphBuilderLib":    "@/dependency-graph-builder.lib",
+                "instanceManagerClientLib":     "@/instance-manager-client.lib"
             },
             "gui-host": {
                 "webgui": "homeScreenWebgui",
@@ -77,7 +80,8 @@
                         "boundLibs": {
                             "jsonFileUtilitiesLib": "jsonFileUtilitiesLib",
                             "ecosystemInstallUtilitiesLib": "ecosystemInstallUtilitiesLib",
-                            "executionManagerWebservice": "executionManagerWebservice"
+                            "executionManagerWebservice": "executionManagerWebservice",
+                            "instanceManagerClientLib": "instanceManagerClientLib"
                         }
                     }
                 ]

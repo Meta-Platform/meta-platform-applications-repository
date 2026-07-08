@@ -1,0 +1,40 @@
+{
+    "params" : [
+        "port", 
+        "serverName",
+        "serverManagerUrl",
+        "RT_ENV_GENERATED_DIR_NAME",
+        "isWatch"
+    ],
+    "services": [
+        {
+            "namespace": "@@/server-service",
+            "dependency": "@/server-manager.service/services/HTTPServerService",
+            "params":{
+                "name":"{{serverName}}",
+                "port": "{{port}}"
+            }
+        }
+    ],
+    "endpoints": [
+        {
+            "dependency": "@/server-manager.webservice/endpoint-group",
+            "bound-params":{
+               "serverServiceForController":"@@/server-service",
+               "serverService": "@@/server-service"
+            }
+        },
+        {
+            "dependency": "@//endpoint-group",
+            "params":{
+                "serverManagerUrl":"{{serverManagerUrl}}",
+                "serverName":"{{serverName}}",
+                "RT_ENV_GENERATED_DIR_NAME":"{{RT_ENV_GENERATED_DIR_NAME}}",
+                "isWatch": "isWatch"
+            },
+            "bound-params":{
+                "serverService": "@@/server-service"
+            }
+        }
+    ]
+}

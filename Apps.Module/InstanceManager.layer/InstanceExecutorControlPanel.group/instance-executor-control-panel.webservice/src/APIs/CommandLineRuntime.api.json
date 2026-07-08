@@ -1,0 +1,37 @@
+{
+	"name": "CommandLineRuntime",
+	"endpoints": [
+		{
+			"summary": "RunPackage",
+			"method": "POST",
+			"path": "/run-package",
+			"parameters": [
+				{ "name": "packagePath", "in": "body", "type": "string", "required": true },
+				{ "name": "commandLineArgs", "in": "body", "type": "string", "required": false },
+				{ "name": "cols", "in": "body", "type": "number", "required": false },
+				{ "name": "rows", "in": "body", "type": "number", "required": false }
+			]
+		},
+		{
+			"summary": "List",
+			"method": "GET",
+			"path": "/list"
+		},
+		{
+			"summary": "Kill",
+			"method": "POST",
+			"path": "/kill",
+			"parameters": [
+				{ "name": "terminalId", "in": "body", "type": "string", "required": true }
+			]
+		},
+		{
+			"summary": "TerminalStream",
+			"method": "WS",
+			"path": "/terminal-stream/:terminalId",
+			"parameters": [
+				{ "name": "terminalId", "in": "path", "type": "string", "required": true }
+			]
+		}
+	]
+}

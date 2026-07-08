@@ -9,5 +9,6 @@
     "REPOS_CONF_EXT_LAYER_DIR":"layer",
     "REPOS_CONF_EXT_GROUP_DIR":"group",
     "REPOS_CONF_EXTLIST_PKG_TYPE":"app|cli|webapp|desktopapp|webgui|webservice|service|lib",
-    "PKG_CONF_DIRNAME_METADATA":"metadata"
+    "PKG_CONF_DIRNAME_METADATA":"metadata",
+    "platformApplicationSocketPath":"/home/kadisk/EcosystemData/sockets/ecosystem-instance-manager.app.sock"
 }
