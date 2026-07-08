@@ -1,9 +1,7 @@
 {
     "bound-params":[
         "serverService",
-        "taskExecutorMachineService",
         "repositoryManagerService",
-        "ecosystemManagerService",
         "commandLineRuntimeService",
         "instanceManagerRuntimeService"
     ],
