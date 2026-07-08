@@ -1,0 +1,82 @@
+{
+    "name": "System",
+    "endpoints": [
+        {
+            "summary": "ExportProject",
+            "method": "GET",
+            "path": "/projects/:projectId/export",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "ExportBoard",
+            "method": "GET",
+            "path": "/boards/:boardId/export",
+            "parameters": [
+                {
+                    "name": "boardId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "ImportProject",
+            "method": "POST",
+            "path": "/import/project",
+            "parameters": [
+                {
+                    "name": "data",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "actorUserId",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "GetAppState",
+            "method": "GET",
+            "path": "/app-state/:key",
+            "parameters": [
+                {
+                    "name": "key",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "SetAppState",
+            "method": "POST",
+            "path": "/app-state/:key",
+            "parameters": [
+                {
+                    "name": "key",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "value",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        }
+    ]
+}

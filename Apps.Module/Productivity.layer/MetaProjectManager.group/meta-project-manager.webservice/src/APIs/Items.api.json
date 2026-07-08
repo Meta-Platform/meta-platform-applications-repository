@@ -308,6 +308,60 @@
                     "in": "body",
                     "type": "string",
                     "required": false
+                },
+                {
+                    "name": "repositoryUrl",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "branchName",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "commitHash",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "pullRequestUrl",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "environment",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "packagePath",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "moduleName",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "layerName",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "groupName",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
                 }
             ]
         },
@@ -508,6 +562,50 @@
                 {
                     "name": "criteriaId",
                     "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "UnlinkItem",
+            "method": "POST",
+            "path": "/items/:itemId/unlink",
+            "parameters": [
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "relation",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "target",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "ReorderItem",
+            "method": "POST",
+            "path": "/items/:itemId/reorder",
+            "parameters": [
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "order",
+                    "in": "body",
                     "type": "string",
                     "required": true
                 }
