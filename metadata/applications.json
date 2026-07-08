@@ -58,5 +58,11 @@
         "executable":"mpm",
         "packageNamespace":"Apps.Module/Productivity.layer/MetaProjectManager.group/meta-project-manager.cli",
         "supervisorSocketFileName":"mpm.sock"
+    },
+    {
+        "appType":"CLI",
+        "executable":"meta-project-manager-mcp",
+        "packageNamespace":"Apps.Module/Productivity.layer/MetaProjectManager.group/meta-project-manager.mcp",
+        "supervisorSocketFileName":"meta-project-manager-mcp.sock"
     }
 ]

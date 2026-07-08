@@ -1,0 +1,17 @@
+{
+    "bound-params": [
+        "projectStoreLib"
+    ],
+    "commands": [
+        {
+            "namespace": "Serve",
+            "path": "Commands/Serve.command",
+            "command": "serve",
+            "description": "Servidor MCP (stdio) do Meta Project Manager para agentes de IA",
+            "isNotStopAllTasks": true,
+            "parametersToLoad": [
+                "projectStoreLib"
+            ]
+        }
+    ]
+}

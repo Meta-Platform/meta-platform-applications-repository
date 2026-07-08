@@ -751,39 +751,138 @@ html, body, #gui { height: 100%; margin: 0; }
 /* ============================================================ */
 /* Guia de IA (agentes)                                         */
 /* ============================================================ */
-.mpm-guide { display: flex; flex-direction: column; gap: var(--mp-space-4); }
+.mpm-guide { display: flex; flex-direction: column; gap: var(--mp-space-4); max-width: 1040px; }
+
+/* callout de introdução (uma linha de texto, ícone à esquerda) */
 .mpm-guide-intro {
-    display: flex; gap: var(--mp-space-2); align-items: flex-start;
-    padding: var(--mp-space-4); color: var(--mp-ink-2); line-height: var(--mp-line-md);
+    display: flex; gap: var(--mp-space-3); align-items: flex-start;
+    padding: var(--mp-space-4);
+    border-left: 3px solid var(--mp-accent-blue);
+    background: var(--mp-accent-blue-tint);
+    color: var(--mp-ink); line-height: var(--mp-line-md);
 }
-.mpm-guide-intro .icon { color: var(--mp-accent-blue); margin-top: 2px; }
-.mpm-guide-section { padding: var(--mp-space-4); display: flex; flex-direction: column; gap: var(--mp-space-3); }
+.mpm-guide-intro > .icon { color: var(--mp-accent-blue); font-size: 1.2em; flex: 0 0 auto; margin: 1px 0 0 !important; }
+.mpm-guide-intro > span { flex: 1; min-width: 0; }
+
+.mpm-guide-section { padding: var(--mp-space-5); display: flex; flex-direction: column; gap: var(--mp-space-3); }
 .mpm-guide-h2 {
-    display: flex; align-items: center; gap: var(--mp-space-2);
+    display: flex; align-items: center; gap: var(--mp-space-3);
     font-family: var(--mp-font-display); font-size: var(--mp-text-lg); font-weight: 700;
-    margin: 0; color: var(--mp-ink);
+    margin: 0 0 var(--mp-space-1); color: var(--mp-ink);
 }
 .mpm-guide-num {
-    display: inline-grid; place-items: center; width: 26px; height: 26px;
-    background: var(--mp-accent-blue-tint); border: var(--mp-border-thin);
-    border-radius: var(--mp-radius-sm); color: var(--mp-accent-blue);
-    font-size: var(--mp-text-sm); font-weight: 800;
+    display: inline-grid; place-items: center; width: 28px; height: 28px; flex: 0 0 auto;
+    background: var(--mp-accent-blue); color: #fff;
+    border-radius: var(--mp-radius-sm); font-size: var(--mp-text-sm); font-weight: 800;
 }
 .mpm-guide-section p { margin: 0; color: var(--mp-ink-2); line-height: var(--mp-line-md); }
+/* subtítulo (ex.: por cliente MCP: Claude Code / Codex) */
+.mpm-guide-h3 {
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    font-family: var(--mp-font-display); font-size: var(--mp-text-md); font-weight: 700;
+    margin: var(--mp-space-2) 0 0; color: var(--mp-ink);
+}
+.mpm-guide-h3::before {
+    content: ""; width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto;
+    background: var(--mp-accent-blue);
+}
+
+/* ------------------------------------------------------------ */
+/* Layout estilo documentação: conteúdo + menu de tópicos à direita */
+.mpm-docs { display: grid; grid-template-columns: minmax(0, 1fr) 244px; gap: var(--mp-space-5); align-items: start; }
+.mpm-docs-main { display: flex; flex-direction: column; gap: var(--mp-space-4); min-width: 0; }
+.mpm-docs-nav {
+    position: sticky; top: var(--mp-space-4); align-self: start;
+    display: flex; flex-direction: column; gap: 2px;
+    padding: var(--mp-space-3); border: var(--mp-border-thin);
+    border-radius: var(--mp-radius-md); background: var(--mp-surface);
+    max-height: calc(100vh - 120px); overflow-y: auto;
+}
+.mpm-docs-nav__title {
+    font-family: var(--mp-font-display); font-size: var(--mp-text-xs); font-weight: 800;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--mp-ink-3);
+    padding: var(--mp-space-2) var(--mp-space-2) var(--mp-space-2);
+}
+.mpm-docs-nav__item {
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    padding: var(--mp-space-2); text-align: left;
+    background: transparent; border: 0; border-radius: var(--mp-radius-sm);
+    color: var(--mp-ink-2); font-size: var(--mp-text-sm); cursor: pointer;
+    font-family: inherit; line-height: 1.25;
+}
+.mpm-docs-nav__item:hover { background: var(--mp-surface-2); color: var(--mp-ink); }
+.mpm-docs-nav__item.is-active {
+    background: var(--mp-accent-blue-tint); color: var(--mp-ink); font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--mp-accent-blue);
+}
+.mpm-docs-nav__item > .icon { flex: 0 0 auto; color: var(--mp-ink-3); margin: 0 !important; }
+.mpm-docs-nav__item.is-active > .icon { color: var(--mp-accent-blue); }
+.mpm-docs-nav__num {
+    flex: 0 0 auto; width: 16px; text-align: right; font-variant-numeric: tabular-nums;
+    color: var(--mp-ink-3); font-size: var(--mp-text-xs); font-weight: 700;
+}
+.mpm-docs-nav__label { flex: 1; min-width: 0; }
+
+/* cabeçalho de um tópico */
+.mpm-docs-topichead { display: flex; flex-direction: column; gap: var(--mp-space-1); }
+.mpm-docs-h2 {
+    font-family: var(--mp-font-display); font-size: var(--mp-text-xl); font-weight: 800;
+    margin: 0; color: var(--mp-ink); line-height: 1.2;
+    display: flex; align-items: center; gap: var(--mp-space-3);
+}
+.mpm-docs-h2 > .icon { color: var(--mp-accent-blue); font-size: .95em; margin: 0 !important; }
+.mpm-docs-lead { color: var(--mp-ink-2); line-height: var(--mp-line-md); margin: 0; }
+.mpm-docs-nav-btns { display: flex; justify-content: space-between; gap: var(--mp-space-2); margin-top: var(--mp-space-2); }
+
+/* tabela de referência (env vars, providers, tools) */
+.mpm-doc-table__wrap { overflow-x: auto; border: var(--mp-border-thin); border-radius: var(--mp-radius-md); }
+.mpm-doc-table { width: 100%; border-collapse: collapse; font-size: var(--mp-text-sm); }
+.mpm-doc-table th, .mpm-doc-table td {
+    text-align: left; padding: var(--mp-space-2) var(--mp-space-3);
+    border-bottom: 1px solid var(--mp-border); vertical-align: top;
+}
+.mpm-doc-table tr:last-child td { border-bottom: 0; }
+.mpm-doc-table th { color: var(--mp-ink-3); font-weight: 700; font-size: var(--mp-text-xs); text-transform: uppercase; letter-spacing: .04em; background: var(--mp-surface-2); }
+.mpm-doc-table td { color: var(--mp-ink-2); }
+
+@media (max-width: 900px) {
+    .mpm-docs { grid-template-columns: 1fr; }
+    .mpm-docs-nav { position: static; max-height: none; order: -1; }
+}
 .mpm-guide-list {
     margin: 0; padding-left: var(--mp-space-5); color: var(--mp-ink-2);
-    display: flex; flex-direction: column; gap: var(--mp-space-1); line-height: var(--mp-line-md);
+    display: flex; flex-direction: column; gap: var(--mp-space-2); line-height: var(--mp-line-md);
 }
+
+/* bloco de comando estilo terminal — mesmo visual em tema claro e escuro */
 .mpm-guide-code {
-    border: var(--mp-border-thin); border-radius: var(--mp-radius-md);
-    overflow: hidden; background: var(--mp-paper-2);
+    border-radius: var(--mp-radius-md); overflow: hidden;
+    border: var(--mp-border-thin); background: var(--mp-terminal-bg);
+    box-shadow: var(--mp-shadow-1);
 }
 .mpm-guide-code__bar {
     display: flex; align-items: center; justify-content: space-between;
-    padding: var(--mp-space-1) var(--mp-space-2);
-    background: var(--mp-surface-2); border-bottom: var(--mp-border-thin);
+    padding: var(--mp-space-2) var(--mp-space-3);
+    background: rgba(0, 0, 0, 0.25); border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
-.mpm-guide-code .mpm-code-block { margin: 0; border: none; border-radius: 0; }
+.mpm-guide-code__bar > .mpm-mono { color: var(--mp-terminal-muted); font-size: var(--mp-text-xs); }
+.mpm-guide-code__bar .mpm-btn {
+    background: transparent; color: var(--mp-terminal-fg);
+    border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: none;
+}
+.mpm-guide-code__bar .mpm-btn:hover { background: rgba(255, 255, 255, 0.10); color: #fff; }
+.mpm-guide-code .mpm-code-block {
+    margin: 0; padding: var(--mp-space-3) var(--mp-space-4);
+    white-space: pre; overflow-x: auto;
+    font-family: var(--mp-font-mono); font-size: var(--mp-text-sm); line-height: 1.7;
+    color: var(--mp-terminal-fg); background: var(--mp-terminal-bg);
+    border: none; border-radius: 0;
+}
+.mpm-guide-code .mpm-code-block code { background: none; color: inherit; padding: 0; font: inherit; }
+.mpm-guide-code .mpm-code-block code span,
+.mpm-guide-code .mpm-code-block code { text-decoration: none !important; border: 0 !important; box-shadow: none !important; }
+.mpm-guide-code .mpm-code-comment { color: var(--mp-terminal-green); }
+
 .mpm-guide-ref { display: flex; flex-direction: column; gap: var(--mp-space-2); }
-.mpm-guide-ref__row { display: flex; gap: var(--mp-space-3); align-items: baseline; }
-.mpm-guide-ref__row .mpm-chip { flex: 0 0 130px; text-align: center; }
+.mpm-guide-ref__row { display: flex; gap: var(--mp-space-3); align-items: baseline; flex-wrap: wrap; }
+.mpm-guide-ref__row .mpm-chip { flex: 0 0 132px; text-align: center; }

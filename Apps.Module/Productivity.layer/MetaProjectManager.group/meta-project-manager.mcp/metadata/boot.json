@@ -1,0 +1,11 @@
+{
+    "executables": [
+        {
+            "dependency": "@//command-group",
+            "executableName": "meta-project-manager-mcp",
+            "bound-params": {
+                "projectStoreLib": "@/project-store.lib"
+            }
+        }
+    ]
+}

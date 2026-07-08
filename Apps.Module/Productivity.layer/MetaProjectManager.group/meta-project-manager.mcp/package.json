@@ -1,0 +1,7 @@
+{
+  "name": "meta-project-manager.mcp",
+  "version": "0.0.1",
+  "description": "Servidor MCP (stdio) do Meta Project Manager — agentes de IA operam projetos/tarefas com o mesmo domínio, gate de aprovação e auditoria da CLI/GUI. Zero dependências externas.",
+  "author": "Kaio Cezar <kadisk.shark@gmail.com>",
+  "license": "BSD-3-Clause"
+}
