@@ -34,8 +34,8 @@ const GetRequestByServer = ({list_web_servers_running}:any) => (serverName:strin
 		 ...acc, 
 		 [summary] : 
 			 method.toUpperCase() !== "WS"
-			 ? GetRequest(port, method, servicePath+path, parameters)
-			 : getSocket(port, servicePath+path, parameters)
+			 ? GetRequest(port, method, `${servicePath}${path}`.replace(/\/{2,}/g, "/"), parameters)
+			 : getSocket(port, `${servicePath}${path}`.replace(/\/{2,}/g, "/"), parameters)
 	  }), {})
 }
 
