@@ -202,6 +202,17 @@ html, body, #gui { height: 100%; margin: 0; }
 }
 .mpm-filterbar .mpm-inline-select { min-width: 0; }
 
+.mpm-bulkbar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: var(--mp-space-2);
+    padding: var(--mp-space-2) var(--mp-space-3);
+    background: var(--mp-accent-blue-tint);
+    border: var(--mp-border);
+    border-radius: var(--mp-radius-md);
+    box-shadow: var(--mp-shadow-1);
+    position: sticky; top: 0; z-index: var(--mp-z-drawer);
+}
+.mpm-witem.is-selected { outline: 2px solid var(--mp-accent-blue); outline-offset: -2px; }
+
 /* ============================================================ */
 /* Botões                                                       */
 /* ============================================================ */
@@ -463,6 +474,20 @@ html, body, #gui { height: 100%; margin: 0; }
 /* ============================================================ */
 /* Inspector (drawer lateral)                                   */
 /* ============================================================ */
+.mpm-inspector-wrap {
+    position: relative;
+    min-width: 0;
+    display: flex;
+    overflow: hidden;
+}
+.mpm-inspector-wrap .mpm-inspector { flex: 1; }
+.mpm-resizer {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
+    cursor: col-resize; z-index: 5;
+    background: transparent;
+}
+.mpm-resizer:hover { background: var(--mp-accent-blue); opacity: 0.5; }
+
 .mpm-inspector {
     background: var(--mp-surface);
     border-left: var(--mp-border);

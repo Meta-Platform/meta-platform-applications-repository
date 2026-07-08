@@ -12,17 +12,20 @@ interface KanbanBoardProps {
     onOpenItem: (id: string) => void
     // ao soltar num alvo: chama SetItemStatus com o statusKey da coluna destino
     onMoveItem: (itemId: string, statusKey: string) => void
+    onReorderItem?: (itemId: string, order: number) => void
     onQuickAdd?: (statusKey: string) => void
     onAddColumn?: (name: string) => void
     onRenameColumn?: (columnId: string, name: string) => void
     onDeleteColumn?: (columnId: string) => void
+    selectedIds?: string[]
+    onToggleSelect?: (id: string) => void
 }
 
 // KanbanBoard (spec §11.1): quadro com colunas configuráveis + drag-and-drop
 // nativo entre colunas. Itens sem coluna correspondente caem numa coluna
 // virtual "Sem coluna".
-const KanbanBoard = ({ board, items, usersById, onOpenItem, onMoveItem, onQuickAdd,
-    onAddColumn, onRenameColumn, onDeleteColumn }: KanbanBoardProps) => {
+const KanbanBoard = ({ board, items, usersById, onOpenItem, onMoveItem, onReorderItem, onQuickAdd,
+    onAddColumn, onRenameColumn, onDeleteColumn, selectedIds, onToggleSelect }: KanbanBoardProps) => {
     const [draggingId, setDraggingId] = useState<string | null>(null)
     const [newColumn, setNewColumn] = useState("")
 
@@ -56,9 +59,12 @@ const KanbanBoard = ({ board, items, usersById, onOpenItem, onMoveItem, onQuickA
                 onDragStart={setDraggingId}
                 onDragEnd={() => setDraggingId(null)}
                 onDropItem={handleDrop}
+                onReorder={onReorderItem}
                 onQuickAdd={onQuickAdd}
                 onRenameColumn={onRenameColumn}
-                onDeleteColumn={onDeleteColumn} />)}
+                onDeleteColumn={onDeleteColumn}
+                selectedIds={selectedIds}
+                onToggleSelect={onToggleSelect} />)}
         {orphans.length > 0
             ? <KanbanColumn
                 column={{ id: "__orphans__", boardId: board.id, name: "Sem coluna", statusKey: "__orphans__", order: 999, isDoneColumn: false }}

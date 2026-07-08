@@ -14,18 +14,33 @@ interface KanbanColumnProps {
     onDragStart: (id: string) => void
     onDragEnd: () => void
     onDropItem: (statusKey: string) => void
+    onReorder?: (itemId: string, order: number) => void
     onQuickAdd?: (statusKey: string) => void
     onRenameColumn?: (columnId: string, name: string) => void
     onDeleteColumn?: (columnId: string) => void
+    selectedIds?: string[]
+    onToggleSelect?: (id: string) => void
 }
 
 // KanbanColumn (spec §11.1): coluna configurável; alvo de drop (HTML5 nativo).
+// Drop numa coluna diferente muda o status; drop sobre um card da MESMA coluna
+// reordena (feature 5).
 const KanbanColumn = ({ column, items, usersById, draggingId,
-    onOpenItem, onDragStart, onDragEnd, onDropItem, onQuickAdd,
-    onRenameColumn, onDeleteColumn }: KanbanColumnProps) => {
+    onOpenItem, onDragStart, onDragEnd, onDropItem, onReorder, onQuickAdd,
+    onRenameColumn, onDeleteColumn, selectedIds, onToggleSelect }: KanbanColumnProps) => {
     const [over, setOver] = useState(false)
     const [editing, setEditing] = useState(false)
     const [name, setName] = useState(column.name)
+
+    const ordered = items.slice().sort((a, b) => (a.order || 0) - (b.order || 0))
+    const inThisColumn = draggingId ? ordered.some((i) => i.id === draggingId) : false
+
+    const dropAt = (index: number) => {
+        setOver(false)
+        if (!draggingId) return
+        if (inThisColumn) { if (onReorder) onReorder(draggingId, index) }
+        else onDropItem(column.statusKey)
+    }
 
     const commitRename = () => {
         setEditing(false)
@@ -38,7 +53,7 @@ const KanbanColumn = ({ column, items, usersById, draggingId,
         className={`mpm-kcol ${over ? "is-dragover" : ""}`}
         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (!over) setOver(true) }}
         onDragLeave={() => setOver(false)}
-        onDrop={(e) => { e.preventDefault(); setOver(false); onDropItem(column.statusKey) }}>
+        onDrop={(e) => { e.preventDefault(); dropAt(ordered.length) }}>
         <div className="mpm-kcol__head">
             <span className="mpm-kcol__swatch" style={column.color ? { background: column.color } : undefined} />
             {editing
@@ -63,14 +78,17 @@ const KanbanColumn = ({ column, items, usersById, draggingId,
                 : null}
         </div>
         <div className="mpm-kcol__body">
-            {items.map((it) =>
+            {ordered.map((it, index) =>
                 <WorkItemCard key={it.id}
                     item={it}
                     usersById={usersById}
                     onOpen={onOpenItem}
                     onDragStart={onDragStart}
                     onDragEnd={onDragEnd}
-                    dragging={draggingId === it.id} />)}
+                    dragging={draggingId === it.id}
+                    selected={!!selectedIds && selectedIds.indexOf(it.id) >= 0}
+                    onToggleSelect={onToggleSelect}
+                    onDropCard={onReorder ? () => dropAt(index) : undefined} />)}
         </div>
         {onQuickAdd
             ? <button className="mpm-btn mpm-btn--ghost mpm-btn--sm mpm-kcol__add" onClick={() => onQuickAdd(column.statusKey)}>

@@ -5,6 +5,7 @@ export interface AddAttachmentInput {
     name?: string
     base64?: string
     url?: string
+    commentId?: string   // quando o anexo pertence a um comentário
 }
 
 const CreateAttachmentsApi = (call: Caller) => ({

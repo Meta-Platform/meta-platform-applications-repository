@@ -24,7 +24,20 @@ export interface CreateItemInput extends ItemPlanningFields {
     assignee?: string
 }
 
-export interface UpdateItemInput extends ItemPlanningFields {
+// Contexto de software (achatado no item) — editável via UpdateItem.
+export interface SoftwareContextFields {
+    repositoryUrl?: string
+    branchName?: string
+    commitHash?: string
+    pullRequestUrl?: string
+    environment?: string
+    packagePath?: string
+    moduleName?: string
+    layerName?: string
+    groupName?: string
+}
+
+export interface UpdateItemInput extends ItemPlanningFields, SoftwareContextFields {
     title?: string
     type?: string
     description?: string
@@ -78,6 +91,12 @@ const CreateItemsApi = (call: Caller) => ({
 
     link: (itemId: string, relation: string, target: string): Promise<any> =>
         call("Items", "LinkItem", { itemId, relation, target }),
+
+    unlink: (itemId: string, relation: string, target: string): Promise<any> =>
+        call("Items", "UnlinkItem", { itemId, relation, target }),
+
+    reorder: (itemId: string, order: number | string): Promise<any> =>
+        call("Items", "ReorderItem", { itemId, order: String(order) }),
 
     remove: (itemId: string): Promise<any> =>
         call("Items", "DeleteItem", { itemId }),

@@ -1,31 +1,103 @@
 import * as React from "react"
 import { useEffect, useState } from "react"
+import { useSelector } from "react-redux"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
-import { Comment, User } from "../api/types"
+import { Comment, Attachment, User } from "../api/types"
 import { Avatar, ErrorBanner } from "./Primitives"
 import Markdown from "./Markdown"
 import { formatDateTime } from "../Utils/format"
+import GetAttachmentDownloadUrl from "../Utils/GetAttachmentDownloadUrl"
 
 interface CommentTimelineProps {
     itemId: string
     usersById: { [id: string]: User }
 }
 
-// CommentTimeline (spec §11.1): histórico de comentários + composição.
+// Anexos de um comentário (feature 3): listar + adicionar link/arquivo com o
+// commentId, e abrir/baixar/remover.
+const CommentAttachments = ({ itemId, commentId, attachments, onChanged }:
+    { itemId: string; commentId: string; attachments: Attachment[]; onChanged: () => void }) => {
+    const api = useApi()
+    const serverManagerInformation = useSelector((state: any) => state.HTTPServerManager)
+    const [linkUrl, setLinkUrl] = useState("")
+    const [open, setOpen] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    const isLink = (a: Attachment) => a.type === "link" || (!!a.externalUrl && !a.storagePath)
+    const openAtt = (a: Attachment) => {
+        if (isLink(a)) { if (a.externalUrl) window.open(a.externalUrl, "_blank"); return }
+        const url = GetAttachmentDownloadUrl(serverManagerInformation, a.id)
+        if (url) window.open(url, "_blank")
+    }
+
+    const addLink = async () => {
+        if (!linkUrl.trim()) return
+        setError(null)
+        try { await api.attachments.add(itemId, { url: linkUrl.trim(), name: linkUrl.trim(), commentId }); setLinkUrl(""); onChanged() }
+        catch (e: any) { setError(e.message) }
+    }
+    const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files && e.target.files[0]
+        if (!file) return
+        const reader = new FileReader()
+        reader.onload = async () => {
+            setError(null)
+            try {
+                const result = String(reader.result || "")
+                const base64 = result.indexOf(",") >= 0 ? result.split(",")[1] : result
+                await api.attachments.add(itemId, { name: file.name, base64, commentId }); onChanged()
+            } catch (err: any) { setError(err.message) }
+        }
+        reader.readAsDataURL(file)
+    }
+    const remove = async (id: string) => {
+        setError(null)
+        try { await api.attachments.remove(id); onChanged() } catch (e: any) { setError(e.message) }
+    }
+
+    return <div className="mpm-col" style={{ gap: "2px", marginTop: "4px" }}>
+        <ErrorBanner error={error} />
+        {attachments.map((a) =>
+            <div key={a.id} className="mpm-attach" style={{ padding: "4px 8px" }}>
+                <Icon name={isLink(a) ? "linkify" : "file outline"} />
+                <span className="mpm-attach__name" title={a.name}>{a.name}</span>
+                <span className="mpm-iconbtn mpm-btn--sm" title="Abrir" onClick={() => openAtt(a)}><Icon name={isLink(a) ? "external" : "download"} /></span>
+                <span className="mpm-iconbtn mpm-btn--sm" title="Remover" onClick={() => remove(a.id)}><Icon name="trash" /></span>
+            </div>)}
+        {open
+            ? <div className="mpm-row">
+                <input className="mpm-input" placeholder="https://... (link)" value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)} />
+                <button className="mpm-btn mpm-btn--sm" onClick={addLink}><Icon name="linkify" /></button>
+                <label className="mpm-btn mpm-btn--ghost mpm-btn--sm" style={{ cursor: "pointer" }}>
+                    <Icon name="upload" /><input type="file" style={{ display: "none" }} onChange={onFile} />
+                </label>
+            </div>
+            : <button className="mpm-btn mpm-btn--ghost mpm-btn--sm" onClick={() => setOpen(true)}>
+                <Icon name="paperclip" /> Anexar
+            </button>}
+    </div>
+}
+
+// CommentTimeline (spec §11.1 / feature 3): histórico de comentários + anexos
+// agrupados sob cada comentário.
 const CommentTimeline = ({ itemId, usersById }: CommentTimelineProps) => {
     const api = useApi()
     const [comments, setComments] = useState<Comment[]>([])
+    const [attachments, setAttachments] = useState<Attachment[]>([])
     const [draft, setDraft] = useState("")
     const [error, setError] = useState<string | null>(null)
     const [busy, setBusy] = useState(false)
 
-    const load = () => api.comments.list(itemId)
-        .then((l) => setComments(l || []))
+    const load = () => Promise.all([api.comments.list(itemId), api.attachments.list(itemId)])
+        .then(([cs, as]) => { setComments(cs || []); setAttachments(as || []) })
         .catch((e) => setError(e.message))
 
     useEffect(() => { load() }, [itemId])
+
+    const attFor = (commentId: string) => attachments.filter((a) => a.commentId === commentId)
 
     const add = async () => {
         if (!draft.trim()) return
@@ -48,6 +120,7 @@ const CommentTimeline = ({ itemId, usersById }: CommentTimelineProps) => {
                             <span>{formatDateTime(c.createdAt)}</span>
                         </div>
                         <div className="mpm-timeline__text"><Markdown>{c.body}</Markdown></div>
+                        <CommentAttachments itemId={itemId} commentId={c.id} attachments={attFor(c.id)} onChanged={load} />
                     </div>
                 </div>
             })}

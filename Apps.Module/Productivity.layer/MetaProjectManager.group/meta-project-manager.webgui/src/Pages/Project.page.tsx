@@ -10,6 +10,7 @@ import NewBoardModal from "../Components/NewBoardModal"
 import Markdown from "../Components/Markdown"
 import { Metric, Progress, StatusChip, Loading, ErrorBanner } from "../Components/Primitives"
 import { formatDateTime, humanizeAction } from "../Utils/format"
+import downloadJson from "../Utils/downloadJson"
 
 // ProjectPage / Overview (spec §11): nome, descrição, progresso (ProjectMetrics),
 // boards e atividade recente.
@@ -34,6 +35,12 @@ const ProjectPage = () => {
         api.reports.activity({ project: projectId, limit: "20" }).then((l) => setActivity(l || [])).catch(() => {})
     }, [projectId, api])
 
+    const exportProject = async () => {
+        if (!projectId) return
+        try { downloadJson(await api.system.exportProject(projectId), `project-${project ? project.slug : projectId}`) }
+        catch (e: any) { setError(e.message) }
+    }
+
     const openBoard = (boardId?: string) =>
         navigate(boardId ? `/projects/${projectId}/board/${boardId}` : `/projects/${projectId}/board`)
 
@@ -54,6 +61,7 @@ const ProjectPage = () => {
                         <button className="mpm-btn" onClick={() => navigate(`/projects/${projectId}/backlog`)}><Icon name="clipboard list" /> Backlog</button>
                         <button className="mpm-btn" onClick={() => navigate(`/projects/${projectId}/inbox`)}><Icon name="inbox" /> Inbox</button>
                         <button className="mpm-btn" onClick={() => navigate(`/projects/${projectId}/roadmap`)}><Icon name="road" /> Roadmap</button>
+                        <button className="mpm-btn" title="Exportar projeto (.json)" onClick={exportProject}><Icon name="download" /> Exportar</button>
                     </div>
                 </div>
 

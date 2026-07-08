@@ -20,12 +20,32 @@ const HomePage = () => {
     const [filter, setFilter] = useState("all")
     const [error, setError] = useState<string | null>(null)
     const [creating, setCreating] = useState(false)
+    const [importing, setImporting] = useState(false)
 
     const load = () => api.projects.list({})
         .then((l) => setProjects(l || []))
         .catch((e) => setError(e.message))
 
     useEffect(() => { load() }, [api])
+
+    // Feature 6: importar projeto de um arquivo .json exportado.
+    const onImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files && e.target.files[0]
+        e.target.value = ""
+        if (!file) return
+        const reader = new FileReader()
+        reader.onload = async () => {
+            setError(null); setImporting(true)
+            try {
+                const data = JSON.parse(String(reader.result || "{}"))
+                const result = await api.system.importProject(data)
+                await load()
+                if (result && result.id) navigate(`/projects/${result.id}`)
+            } catch (err: any) { setError(err.message || "arquivo inválido") }
+            finally { setImporting(false) }
+        }
+        reader.readAsText(file)
+    }
 
     const shown = (projects || []).filter((p) => filter === "all" || p.status === filter)
 
@@ -36,6 +56,10 @@ const HomePage = () => {
                 <div className="mpm-page-subtitle">gerencie iniciativas, boards e work items</div>
             </div>
             <div className="mpm-page-head__actions">
+                <label className="mpm-btn" style={{ cursor: "pointer" }} title="Importar projeto (.json)">
+                    <Icon name="upload" /> {importing ? "Importando..." : "Importar"}
+                    <input type="file" accept="application/json,.json" style={{ display: "none" }} onChange={onImportFile} disabled={importing} />
+                </label>
                 <button className="mpm-btn mpm-btn--primary" onClick={() => setCreating(true)}><Icon name="plus" /> Novo Projeto</button>
             </div>
         </div>
