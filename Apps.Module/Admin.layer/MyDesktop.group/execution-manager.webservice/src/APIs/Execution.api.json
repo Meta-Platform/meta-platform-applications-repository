@@ -27,6 +27,11 @@
 			"parameters": [
 				{ "name": "executableName", "in": "body", "type": "string", "required": true }
 			]
+		},
+		{
+			"summary": "BuildProgressStream",
+			"method": "WS",
+			"path": "/build-progress"
 		}
 	]
 }

@@ -48,7 +48,11 @@ const ExecutionController = (params) => {
         }
 
         if(!(await instanceManager.IsAvailable())){
-            const message = "Instance Manager (daemon) indisponível — não foi possível executar."
+            const message = "O serviço de execução da plataforma não está em execução, "
+                + "por isso nenhuma aplicação pode ser iniciada.\n\n"
+                + "**O que fazer:**\n"
+                + "1. Abra um terminal e execute `executor-manager`.\n"
+                + "2. Clique novamente no aplicativo."
             _Notify("Execution.RunApplication", "error", message)
             throw message
         }
@@ -102,11 +106,34 @@ const ExecutionController = (params) => {
         }
     }
 
+    // Ponte WebSocket: repassa o stream de progresso de lançamento do daemon
+    // (abrindo → build → aberto) para o renderer/navegador. Só daemon→cliente.
+    const BuildProgressStream = async (ws) => {
+        const _safeSend = (payload) => {
+            try { ws.send(typeof payload === "string" ? payload : JSON.stringify(payload)) } catch(e){}
+        }
+
+        let daemonWs
+        try {
+            daemonWs = await instanceManager.OpenLaunchProgressStream()
+        } catch(error) {
+            try { ws.close() } catch(e){}
+            return
+        }
+
+        daemonWs.on("message", (data) => _safeSend(data.toString()))
+        daemonWs.on("close",   () => { try { ws.close() } catch(e){} })
+        daemonWs.on("error",   () => { try { ws.close() } catch(e){} })
+
+        ws.on && ws.on("close", () => { try { daemonWs.close() } catch(e){} })
+    }
+
     return {
         controllerName: "ExecutionController",
         RunApplication,
         ListRunning,
-        StopApplication
+        StopApplication,
+        BuildProgressStream
     }
 }
 

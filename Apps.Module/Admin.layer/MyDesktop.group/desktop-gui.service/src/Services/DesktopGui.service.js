@@ -96,6 +96,21 @@ const DesktopGuiService = (params) => {
         return controller[method](data)
     }
 
+    // Streaming (WebSocket) sobre IPC. Espelha o contrato WS do server-manager:
+    //   0 params → method(ws); 1 → method(ws, valor); 2+ → method(ws, objeto).
+    // O `wsShim` (mesma API do `ws`) é fornecido pelo host Electron; sem este
+    // método o electron-main recusa a abertura de streams (metaGui:stream:open).
+    const InvokeStream = (serviceName, method, data, wsShim) => {
+        const controller = registry[serviceName]
+        if(!controller || typeof controller[method] !== "function")
+            throw new Error(`Stream desconhecido: ${serviceName}.${method}`)
+
+        const parameters = (parametersBySummary[serviceName] || {})[method] || []
+        if(parameters.length === 0)  return controller[method](wsShim)
+        if(parameters.length === 1)  return controller[method](wsShim, (data || {})[parameters[0].name])
+        return controller[method](wsShim, data)
+    }
+
     // Lista de services + métodos, para o webgui montar a mesma superfície de
     // API que teria via HTTP (chaves = summaries do .api.json).
     const GetManifest = () => manifest
@@ -115,6 +130,7 @@ const DesktopGuiService = (params) => {
 
     return {
         Invoke,
+        InvokeStream,
         GetManifest,
         GetIcon
     }

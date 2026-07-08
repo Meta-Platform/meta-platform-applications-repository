@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react"
 import { Loader, Button, Icon } from "semantic-ui-react"
 
 import GetAPI                 from "../Utils/GetAPI"
+import GetBuildProgressSocket from "../Utils/GetBuildProgressSocket"
 import GetApplicationIconURL  from "../Utils/GetApplicationIconURL"
 import FormatAppName          from "../Utils/FormatAppName"
 import { GetSavedTheme, ApplyTheme, ThemeName, THEMES } from "../Utils/theme"
@@ -24,6 +25,23 @@ const WELCOME_STORAGE_KEY = "myd-welcome-seen"
 const DRAG_THRESHOLD = 4
 const ICON_BOX = { w: 96, h: 104 }
 
+// Renderiza a mensagem de um toast com um subconjunto mínimo de marcação para
+// DESTACAR as ações que o usuário precisa executar: `comando` vira um chip
+// monoespaçado e **texto** vira negrito. Quebras de linha (\n) são preservadas.
+const RenderRichMessage = (text: string): React.ReactNode =>
+    text.split("\n").map((line, li) => (
+        <React.Fragment key={li}>
+            {li > 0 && <br/>}
+            {line.split(/(`[^`]+`|\*\*[^*]+\*\*)/g).map((part, pi) => {
+                if(/^`[^`]+`$/.test(part))
+                    return <code key={pi} className="myd-msg-code">{part.slice(1, -1)}</code>
+                if(/^\*\*[^*]+\*\*$/.test(part))
+                    return <strong key={pi} className="myd-msg-strong">{part.slice(2, -2)}</strong>
+                return <React.Fragment key={pi}>{part}</React.Fragment>
+            })}
+        </React.Fragment>
+    ))
+
 type DesktopApplication = {
     packageNamespace?: string
     executable?: string
@@ -31,7 +49,10 @@ type DesktopApplication = {
     packageData: any
 }
 
-type Toast = { tone: "exec" | "success" | "danger", title: string, message: string, spinner?: boolean }
+type LaunchPhase = "launching" | "window-ready" | "building" | "ready"
+type LaunchInfo  = { phase: LaunchPhase, percentage?: number }
+
+type Toast = { tone: "exec" | "success" | "danger", title: string, message: string, spinner?: boolean, iconUrl?: string }
 type ConfirmState = { title: string, message: string, confirmLabel: string, danger?: boolean, onConfirm: () => void }
 type ContextMenuState = { x: number, y: number, items: ContextMenuItem[] }
 type Rect = { x: number, y: number, x2: number, y2: number }
@@ -63,6 +84,19 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     const [ surfaceHeight, setSurfaceHeight ]     = useState<number>(600)
     const [ marquee, setMarquee ]                 = useState<Rect>()
     const [ runningExecutables, setRunningExecutables ] = useState<string[]>([])
+    // Apps abertos detectados pelo STREAM de lançamento (ready → aberto, closed →
+    // fechado). Necessário porque apps desktop rodam destacados e NÃO aparecem no
+    // ListRunning do daemon (o polling não os vê) — então a marcação de "rodando"
+    // precisa vir do stream para se manter enquanto o app estiver aberto.
+    const [ launchOpenExecs, setLaunchOpenExecs ] = useState<string[]>([])
+    // Progresso de lançamento por ícone (av.key). Alimentado pelo stream do
+    // daemon (BuildProgressStream), que fala em launchId = packagePath; o mapa
+    // pathToKey correlaciona com o ícone. Eventos que chegam antes de sabermos
+    // o packagePath (o "launching" é emitido antes do RunApplication retornar)
+    // ficam em pendingPath até o mapeamento existir.
+    const [ launchByKey, setLaunchByKey ] = useState<{ [key:string]: LaunchInfo }>({})
+    const pathToKeyRef   = useRef<{ [path:string]: string }>({})
+    const pendingPathRef = useRef<{ [path:string]: LaunchInfo }>({})
 
     const [ theme, setTheme ]                     = useState<ThemeName>(GetSavedTheme())
     const [ isWelcomeOpen, setIsWelcomeOpen ]     = useState<boolean>(false)
@@ -101,6 +135,61 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
         } catch(_) { /* backend pode não expor ainda */ }
     }
 
+    // Aplica um evento de progresso ao ícone correspondente. Enquanto o
+    // packagePath não estiver mapeado para uma key, o evento fica pendente.
+    const _ApplyProgress = (launchId:string, phase:LaunchPhase, percentage?:number) => {
+        const key = pathToKeyRef.current[launchId]
+        if(!key){ pendingPathRef.current[launchId] = { phase, percentage }; return }
+        const av = appViewsRef.current.find((a:any) => a.key === key)
+
+        if(phase === "closed" as any){
+            setLaunchByKey((prev) => { const next = { ...prev }; delete next[key]; return next })
+            if(av && av.executableName)
+                setLaunchOpenExecs((prev) => prev.filter((e) => e !== av.executableName))
+            setToast({ tone: "exec", title: "Encerrado", message: `${av ? av.label : "Aplicativo"} foi fechado.`, iconUrl: av && av.iconUrl })
+            return
+        }
+
+        setLaunchByKey((prev) => ({ ...prev, [key]: { phase, ...(percentage !== undefined ? { percentage } : {}) } }))
+
+        // "ready": build concluído → a barra some (isBuilding vira false) e a
+        // marcação de "aberto" passa a valer (via launchOpenExecs) e se mantém
+        // enquanto o app estiver aberto. O destaque de "aberto" (pulso) some após
+        // um instante, deixando só o badge permanente.
+        if(phase === "ready"){
+            if(av && av.executableName)
+                setLaunchOpenExecs((prev) => prev.includes(av.executableName) ? prev : [...prev, av.executableName])
+            setToast({ tone: "success", title: "Pronto", message: `${av ? av.label : "Aplicativo"} está pronto para uso.`, iconUrl: av && av.iconUrl })
+            setTimeout(() => setLaunchByKey((prev) =>
+                (prev[key] && prev[key].phase === "ready")
+                    ? (() => { const n = { ...prev }; delete n[key]; return n })()
+                    : prev
+            ), 2600)
+        }
+    }
+
+    // Correlaciona um packagePath recém-lançado a uma key de ícone e drena
+    // eventuais eventos que chegaram antes do mapeamento.
+    const _RegisterLaunchPath = (packagePath:string, key:string) => {
+        if(!packagePath) return
+        pathToKeyRef.current[packagePath] = key
+        const pending = pendingPathRef.current[packagePath]
+        if(pending){ delete pendingPathRef.current[packagePath]; _ApplyProgress(packagePath, pending.phase, pending.percentage) }
+    }
+
+    // Stream de progresso de lançamento (aberto uma vez, vive com o desktop).
+    useEffect(() => {
+        const socket = GetBuildProgressSocket(serverManagerInformation)
+        if(!socket) return
+        socket.onmessage = (evt:any) => {
+            try {
+                const { launchId, phase, percentage } = JSON.parse(evt.data)
+                if(launchId && phase) _ApplyProgress(launchId, phase, percentage)
+            } catch(e){}
+        }
+        return () => { try { socket.close() } catch(e){} }
+    }, [])
+
     useEffect(() => {
         fetchApplicationList()
         fetchRunning()
@@ -127,6 +216,12 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     // refs espelho para os handlers globais (pointer) sempre verem o estado atual
     const positionsRef = useRef(positions);   positionsRef.current = positions
     const appViewsRef  = useRef(appViews);     appViewsRef.current = appViews
+
+    // "rodando/aberto" = detectado pelo daemon (polling) OU pelo stream de
+    // lançamento (apps desktop destacados, que o polling não vê).
+    const isAppRunning = (av:any) =>
+        Boolean(av && av.executableName && (runningExecutables.includes(av.executableName) || launchOpenExecs.includes(av.executableName)))
+    const openCount = new Set([...runningExecutables, ...launchOpenExecs]).size
     const selectedRef  = useRef(selectedKeys); selectedRef.current = selectedKeys
 
     // mede a altura da superfície (para o layout padrão em colunas)
@@ -273,11 +368,24 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     // ---- lançar ------------------------------------------------------------
     const handleLaunch = async (av:any) => {
         setToast({ tone: "exec", title: "Execução", message: `Iniciando ${av.label}…`, spinner: true })
+        // Feedback imediato no ícone (spinner), antes mesmo do daemon responder.
+        setLaunchByKey((prev) => ({ ...prev, [av.key]: { phase: "launching" } }))
+        // Rede de segurança: se nada avançar (app loadURL sem sinais, build que
+        // falhou, etc.), limpa o spinner após um tempo em vez de deixá-lo preso.
+        setTimeout(() => setLaunchByKey((prev) =>
+            (prev[av.key] && prev[av.key].phase === "launching")
+                ? (() => { const n = { ...prev }; delete n[av.key]; return n })()
+                : prev
+        ), 30000)
         try {
-            await _GetExecutionAPI().RunApplication({ ...av.packageData, executableName: av.executableName })
-            setToast({ tone: "success", title: "Execução", message: `${av.label} foi iniciado.` })
+            const response = await _GetExecutionAPI().RunApplication({ ...av.packageData, executableName: av.executableName })
+            const packagePath = response && response.data && response.data.packagePath
+            if(packagePath) _RegisterLaunchPath(packagePath, av.key)
+            // O toast de sucesso definitivo ("pronto para uso") vem no evento
+            // "ready" (com o ícone do app); aqui não emitimos intermediário.
             fetchRunning()
         } catch(e:any) {
+            setLaunchByKey((prev) => { const next = { ...prev }; delete next[av.key]; return next })
             setToast({ tone: "danger", title: "Falha ao iniciar", message: (typeof e === "string" ? e : e?.message) || "Falha ao iniciar." })
         }
     }
@@ -407,7 +515,7 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
         let targetKeys = selectedKeys
         if(!selectedKeys.includes(av.key)) { targetKeys = [ av.key ]; setSelectedKeys(targetKeys) }
         const many = targetKeys.length > 1
-        const isRunning = runningExecutables.includes(av.executableName)
+        const isRunning = isAppRunning(av)
 
         const items:ContextMenuItem[] = many
             ? [
@@ -427,7 +535,7 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     // Menu de contexto do dock (item único) — não altera a seleção da área de trabalho.
     const openDockMenu = (e:React.MouseEvent, av:any) => {
         e.preventDefault()
-        const isRunning = runningExecutables.includes(av.executableName)
+        const isRunning = isAppRunning(av)
         setContextMenu({ x: e.clientX, y: e.clientY, items: [
             { label: "Abrir", icon: "external", onClick: () => handleLaunch(av) },
             ...(isRunning ? [{ label: "Encerrar", icon: "power off", onClick: () => handleClose(av) } as ContextMenuItem] : []),
@@ -473,7 +581,8 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
                         title={av.title}
                         iconUrl={av.iconUrl}
                         selected={selectedKeys.includes(av.key)}
-                        running={runningExecutables.includes(av.executableName)}
+                        running={isAppRunning(av)}
+                        launch={launchByKey[av.key]}
                         position={position}
                         dragging={interaction.current.mode === "dragging" && selectedKeys.includes(av.key)}
                         onPointerDown={(e) => onIconPointerDown(e, av)}
@@ -496,7 +605,8 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
 
         <Dock apps={appViews.map((av) => ({
             key: av.key, label: av.label, iconUrl: av.iconUrl,
-            running: runningExecutables.includes(av.executableName),
+            running: isAppRunning(av),
+            launch: launchByKey[av.key],
             onOpen: () => handleLaunch(av),
             onContextMenu: (e:React.MouseEvent) => openDockMenu(e, av)
         }))}/>
@@ -531,7 +641,7 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
                         <p className="myd-about__sub">Meta Platform · área de trabalho local</p>
                         <dl className="myd-about__specs">
                             <div><dt>Apps instalados</dt><dd>{appViews.length}</dd></div>
-                            <div><dt>Em execução</dt><dd>{runningExecutables.length}</dd></div>
+                            <div><dt>Em execução</dt><dd>{openCount}</dd></div>
                             <div><dt>Tema</dt><dd>{theme}</dd></div>
                         </dl>
                     </div>
@@ -562,11 +672,13 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
                 <Window title={toast.title} tone={toast.tone} width={340}>
                     <div className="myd-dialog myd-dialog--compact">
                         {
-                            toast.spinner
-                                ? <Loader active inline size="small"/>
-                                : <Icon name={toast.tone === "danger" ? "warning sign" : "check circle"} color={toast.tone === "danger" ? "red" : "green"}/>
+                            toast.iconUrl
+                                ? <img className="myd-toast-appicon" src={toast.iconUrl} alt=""/>
+                                : toast.spinner
+                                    ? <Loader active inline size="small"/>
+                                    : <Icon name={toast.tone === "danger" ? "warning sign" : "check circle"} color={toast.tone === "danger" ? "red" : "green"}/>
                         }
-                        <span>{toast.message}</span>
+                        <span>{RenderRichMessage(toast.message)}</span>
                     </div>
                 </Window>
             </div>
