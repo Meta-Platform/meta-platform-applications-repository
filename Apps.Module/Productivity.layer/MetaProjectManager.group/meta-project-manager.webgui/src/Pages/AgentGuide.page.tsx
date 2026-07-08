@@ -98,13 +98,13 @@ repo update ApplicationsRepository`}</CodeBlock>
             <H3>Passo 2a — Claude Code</H3>
             <p>Um comando registra o servidor para <b>todas as novas sessões</b>. <M>--scope user</M> vale em todos os projetos; <M>--scope project</M> grava um <M>.mcp.json</M> versionável (compartilha com o time).</p>
             <CodeBlock title="uma vez, no terminal">{`claude mcp add \\
-  --scope user \\
-  --transport stdio \\
   --env MPM_SESSION_PROVIDER=claude \\
   --env MPM_SESSION_MODEL=claude-opus-4 \\
+  --scope user \\
+  --transport stdio \\
   meta-project-manager \\
   -- ${mcpPath} serve`}</CodeBlock>
-            <p className="mpm-muted">O <M>--</M> é obrigatório (tudo à direita vai para o servidor). As tools aparecem como <M>mcp__meta_project_manager__&lt;tool&gt;</M>.</p>
+            <p className="mpm-muted"><b>A ordem importa:</b> as flags <M>--env</M> vêm <b>antes</b> de <M>--scope</M>/<M>--transport</M>. O <M>--env</M> é variádico — se ficar logo antes do nome, ele engole <M>meta-project-manager</M> (erro <M>Invalid environment variable format</M>). O <M>--</M> também é obrigatório (tudo à direita vai para o servidor). As tools aparecem como <M>mcp__meta_project_manager__&lt;tool&gt;</M>.</p>
 
             <H3>Passo 2b — Codex</H3>
             <p>O Codex não tem comando de adicionar — <b>acrescente</b> este bloco ao <M>{codexConfigPath}</M> (sem mexer no resto):</p>
