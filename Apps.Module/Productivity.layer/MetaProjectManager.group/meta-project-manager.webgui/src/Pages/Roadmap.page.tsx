@@ -96,7 +96,8 @@ const RoadmapPage = () => {
         : undefined
 
     return <AppShell active="roadmap" activeProjectId={projectId} activeProjectName={project ? project.name : undefined}
-        inspector={mode === "horizon" ? inspector : undefined}>
+        inspector={mode === "horizon" ? inspector : undefined}
+        onInspectorClose={() => setSelected(null)}>
         <div className="mpm-page-head">
             <div className="mpm-page-head__titles">
                 <h1 className="mpm-page-title">Roadmap</h1>

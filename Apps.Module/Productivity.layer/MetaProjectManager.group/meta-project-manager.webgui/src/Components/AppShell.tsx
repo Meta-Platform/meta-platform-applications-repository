@@ -1,51 +1,28 @@
 import * as React from "react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Icon } from "semantic-ui-react"
 
 import ProjectSidebar from "./ProjectSidebar"
 import CommandBar from "./CommandBar"
 import ThemeMenu from "./ThemeMenu"
-import useAppState from "../Hooks/useAppState"
 
 interface AppShellProps {
     active: string
     activeProjectId?: string
     activeProjectName?: string
     inspector?: React.ReactNode
+    onInspectorClose?: () => void
     onCreateProject?: () => void
     children: React.ReactNode
 }
 
-// AppShell (spec §11.1): Topbar + ProjectSidebar + área principal + Inspector
-// lateral. Estrutura em grid; o Inspector só ocupa coluna quando presente.
-const AppShell = ({ active, activeProjectId, activeProjectName, inspector, onCreateProject, children }: AppShellProps) => {
+// AppShell (spec §11.1): Topbar + ProjectSidebar + área principal. Ao abrir uma
+// tarefa, o Inspector é exibido como MODAL CENTRALIZADO (overlay), não como
+// painel lateral. Fecha por Esc ou clique fora (onInspectorClose) e pelo X do inspector.
+const AppShell = ({ active, activeProjectId, activeProjectName, inspector, onInspectorClose, onCreateProject, children }: AppShellProps) => {
     const navigate = useNavigate()
     const [cmdOpen, setCmdOpen] = useState(false)
-
-    // Feature 7: largura do inspector persistida no servidor (panelWidths).
-    const [panelWidths, savePanelWidths] = useAppState<{ inspector?: number }>("panelWidths", {})
-    const [width, setWidth] = useState<number>(380)
-    const widthRef = useRef(width)
-    widthRef.current = width
-    useEffect(() => { if (panelWidths && panelWidths.inspector) setWidth(panelWidths.inspector) }, [panelWidths])
-
-    const startResize = (e: React.MouseEvent) => {
-        e.preventDefault()
-        const startX = e.clientX
-        const startW = widthRef.current
-        const onMove = (ev: MouseEvent) => {
-            const w = Math.max(300, Math.min(720, startW - (ev.clientX - startX)))
-            setWidth(w)
-        }
-        const onUp = () => {
-            document.removeEventListener("mousemove", onMove)
-            document.removeEventListener("mouseup", onUp)
-            savePanelWidths({ ...(panelWidths || {}), inspector: widthRef.current })
-        }
-        document.addEventListener("mousemove", onMove)
-        document.addEventListener("mouseup", onUp)
-    }
 
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
@@ -56,6 +33,14 @@ const AppShell = ({ active, activeProjectId, activeProjectName, inspector, onCre
         window.addEventListener("keydown", onKey)
         return () => window.removeEventListener("keydown", onKey)
     }, [])
+
+    // Esc fecha o modal do inspector quando aberto.
+    useEffect(() => {
+        if (!inspector || !onInspectorClose) return
+        const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onInspectorClose() }
+        window.addEventListener("keydown", onKey)
+        return () => window.removeEventListener("keydown", onKey)
+    }, [inspector, onInspectorClose])
 
     return <div className="mpm-app">
         <header className="mpm-topbar">
@@ -77,17 +62,19 @@ const AppShell = ({ active, activeProjectId, activeProjectName, inspector, onCre
             <ThemeMenu />
         </header>
 
-        <div className={`mpm-body ${inspector ? "mpm-body--with-inspector" : ""}`}
-            style={inspector ? { gridTemplateColumns: `var(--mp-shell-sidebar-w) 1fr ${width}px` } : undefined}>
+        <div className="mpm-body">
             <ProjectSidebar active={active} activeProjectId={activeProjectId} />
             <main className="mpm-content">{children}</main>
-            {inspector
-                ? <div className="mpm-inspector-wrap">
-                    <div className="mpm-resizer" onMouseDown={startResize} title="Arraste para redimensionar" />
+        </div>
+
+        {inspector
+            ? <div className="mpm-overlay"
+                onMouseDown={(e) => { if (e.target === e.currentTarget && onInspectorClose) onInspectorClose() }}>
+                <div className="mpm-modal mpm-modal--inspector" role="dialog" aria-modal="true">
                     {inspector}
                 </div>
-                : null}
-        </div>
+            </div>
+            : null}
 
         {cmdOpen
             ? <CommandBar

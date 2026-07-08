@@ -14,11 +14,12 @@ export const THEMES: { key: ThemeName, label: string, icon: string }[] = [
 
 const STORAGE_KEY = "mp-theme"
 
+// Default do app = dark (estética de IDE), consistente entre browser e desktop.
 export const GetSavedTheme = ():ThemeName => {
     try {
         const t = window.localStorage.getItem(STORAGE_KEY) as ThemeName
-        return (t && THEMES.some((x) => x.key === t)) ? t : "light"
-    } catch(_) { return "light" }
+        return (t && THEMES.some((x) => x.key === t)) ? t : "dark"
+    } catch(_) { return "dark" }
 }
 
 export const ApplyTheme = (theme:ThemeName) => {

@@ -102,9 +102,6 @@ html, body, #gui { height: 100%; margin: 0; }
     grid-template-columns: var(--mp-shell-sidebar-w) 1fr;
     min-height: 0;
 }
-.mpm-body--with-inspector {
-    grid-template-columns: var(--mp-shell-sidebar-w) 1fr var(--mp-shell-drawer-w);
-}
 
 .mpm-sidebar {
     background: var(--mp-surface);
@@ -474,19 +471,6 @@ html, body, #gui { height: 100%; margin: 0; }
 /* ============================================================ */
 /* Inspector (drawer lateral)                                   */
 /* ============================================================ */
-.mpm-inspector-wrap {
-    position: relative;
-    min-width: 0;
-    display: flex;
-    overflow: hidden;
-}
-.mpm-inspector-wrap .mpm-inspector { flex: 1; }
-.mpm-resizer {
-    position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
-    cursor: col-resize; z-index: 5;
-    background: transparent;
-}
-.mpm-resizer:hover { background: var(--mp-accent-blue); opacity: 0.5; }
 
 .mpm-inspector {
     background: var(--mp-surface);
@@ -568,6 +552,20 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-modal__body { padding: var(--mp-space-4); display: flex; flex-direction: column; gap: var(--mp-space-3); }
 .mpm-modal__foot { padding: var(--mp-space-3) var(--mp-space-4); border-top: var(--mp-border); display: flex; gap: var(--mp-space-2); justify-content: flex-end; }
 
+/* Inspector de tarefa como MODAL centralizado (abrir tarefa). */
+.mpm-overlay:has(.mpm-modal--inspector) { padding-top: 8vh; }
+.mpm-modal--inspector {
+    width: min(920px, 95vw);
+    height: 84vh; max-height: 84vh;
+    padding: 0; overflow: hidden;
+}
+.mpm-modal--inspector .mpm-inspector {
+    flex: 1; min-height: 0;
+    border-left: none;
+    background: transparent;
+    border-radius: var(--mp-radius-md);
+}
+
 .mpm-cmd { z-index: var(--mp-z-palette); }
 .mpm-cmd__input {
     width: 100%; padding: var(--mp-space-3) var(--mp-space-4);
@@ -595,7 +593,16 @@ html, body, #gui { height: 100%; margin: 0; }
     border: 2px dashed var(--mp-line-soft); border-radius: var(--mp-radius-md);
     background: var(--mp-surface);
 }
-.mpm-loading { padding: var(--mp-space-12); text-align: center; color: var(--mp-muted); }
+.mpm-loading {
+    padding: var(--mp-space-8) var(--mp-space-6);
+    display: flex; align-items: center; justify-content: center; gap: var(--mp-space-3);
+    color: var(--mp-ink);
+    font-weight: 600; font-size: var(--mp-text-md);
+    background: var(--mp-surface-2);
+    border: var(--mp-border-thin);
+    border-radius: var(--mp-radius-md);
+}
+.mpm-loading .icon { color: var(--mp-accent-blue) !important; margin: 0 !important; }
 .mpm-error-banner {
     padding: var(--mp-space-2) var(--mp-space-3);
     background: var(--mp-danger-tint); color: var(--mp-danger);
@@ -662,3 +669,121 @@ html, body, #gui { height: 100%; margin: 0; }
     font-family: var(--mp-font-mono); font-size: var(--mp-text-sm);
     color: var(--mp-ink-2);
 }
+
+/* ============================================================ */
+/* Editor de descrição (@uiw/react-md-editor) — tema --mp-*      */
+/* ------------------------------------------------------------ */
+/* A lib traz um tema próprio; aqui reapontamos suas superfícies */
+/* e acentos para os tokens do design system.                    */
+/* ============================================================ */
+.mpm-md-editor .w-md-editor {
+    background: var(--mp-surface) !important;
+    color: var(--mp-ink) !important;
+    border: var(--mp-border);
+    border-radius: var(--mp-radius-sm);
+    box-shadow: var(--mp-shadow-1);
+    --color-border-default: var(--mp-line);
+}
+/* toolbar */
+.mpm-md-editor .w-md-editor-toolbar {
+    background: var(--mp-surface-2) !important;
+    border-bottom: var(--mp-border-thin) !important;
+    border-radius: var(--mp-radius-sm) var(--mp-radius-sm) 0 0;
+}
+.mpm-md-editor .w-md-editor-toolbar li > button {
+    color: var(--mp-ink-2) !important;
+}
+.mpm-md-editor .w-md-editor-toolbar li > button:hover,
+.mpm-md-editor .w-md-editor-toolbar li.active > button {
+    background: var(--mp-accent-blue-tint) !important;
+    color: var(--mp-accent-blue) !important;
+}
+.mpm-md-editor .w-md-editor-toolbar-divider {
+    background-color: var(--mp-line-soft) !important;
+}
+/* área de edição (markdown cru) */
+.mpm-md-editor .w-md-editor-content,
+.mpm-md-editor .w-md-editor-area,
+.mpm-md-editor .w-md-editor-input {
+    background: var(--mp-surface) !important;
+}
+.mpm-md-editor .w-md-editor-text,
+.mpm-md-editor .w-md-editor-text-pre,
+.mpm-md-editor .w-md-editor-text-input,
+.mpm-md-editor .w-md-editor-text > .w-md-editor-text-pre > code {
+    color: var(--mp-ink) !important;
+    font-family: var(--mp-font-mono) !important;
+    font-size: var(--mp-text-sm) !important;
+    -webkit-text-fill-color: var(--mp-ink) !important;
+    caret-color: var(--mp-accent-blue);
+    background: transparent !important;
+}
+.mpm-md-editor .w-md-editor-text-input::placeholder { color: var(--mp-muted-2) !important; }
+/* preview (markdown renderizado) */
+.mpm-md-editor .w-md-editor-preview {
+    background: var(--mp-paper-2) !important;
+    box-shadow: inset 1px 0 0 0 var(--mp-line-soft) !important;
+}
+.mpm-md-editor .wmde-markdown {
+    background: transparent !important;
+    color: var(--mp-ink-2) !important;
+    font-family: var(--mp-font-ui) !important;
+    font-size: var(--mp-text-sm) !important;
+}
+.mpm-md-editor .wmde-markdown code {
+    background: var(--mp-surface-2) !important;
+    color: var(--mp-ink) !important;
+}
+.mpm-md-editor .wmde-markdown pre,
+.mpm-md-editor .wmde-markdown pre code {
+    background: var(--mp-terminal-bg) !important;
+    color: var(--mp-terminal-fg) !important;
+}
+.mpm-md-editor .wmde-markdown a { color: var(--mp-accent-blue) !important; }
+.mpm-md-editor .wmde-markdown blockquote {
+    color: var(--mp-muted) !important;
+    border-left-color: var(--mp-accent-blue) !important;
+}
+/* barra de redimensionamento */
+.mpm-md-editor .w-md-editor-bar { color: var(--mp-muted); }
+.mpm-md-editor .w-md-editor-bar svg { fill: var(--mp-muted); }
+
+/* ============================================================ */
+/* Guia de IA (agentes)                                         */
+/* ============================================================ */
+.mpm-guide { display: flex; flex-direction: column; gap: var(--mp-space-4); }
+.mpm-guide-intro {
+    display: flex; gap: var(--mp-space-2); align-items: flex-start;
+    padding: var(--mp-space-4); color: var(--mp-ink-2); line-height: var(--mp-line-md);
+}
+.mpm-guide-intro .icon { color: var(--mp-accent-blue); margin-top: 2px; }
+.mpm-guide-section { padding: var(--mp-space-4); display: flex; flex-direction: column; gap: var(--mp-space-3); }
+.mpm-guide-h2 {
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    font-family: var(--mp-font-display); font-size: var(--mp-text-lg); font-weight: 700;
+    margin: 0; color: var(--mp-ink);
+}
+.mpm-guide-num {
+    display: inline-grid; place-items: center; width: 26px; height: 26px;
+    background: var(--mp-accent-blue-tint); border: var(--mp-border-thin);
+    border-radius: var(--mp-radius-sm); color: var(--mp-accent-blue);
+    font-size: var(--mp-text-sm); font-weight: 800;
+}
+.mpm-guide-section p { margin: 0; color: var(--mp-ink-2); line-height: var(--mp-line-md); }
+.mpm-guide-list {
+    margin: 0; padding-left: var(--mp-space-5); color: var(--mp-ink-2);
+    display: flex; flex-direction: column; gap: var(--mp-space-1); line-height: var(--mp-line-md);
+}
+.mpm-guide-code {
+    border: var(--mp-border-thin); border-radius: var(--mp-radius-md);
+    overflow: hidden; background: var(--mp-paper-2);
+}
+.mpm-guide-code__bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: var(--mp-space-1) var(--mp-space-2);
+    background: var(--mp-surface-2); border-bottom: var(--mp-border-thin);
+}
+.mpm-guide-code .mpm-code-block { margin: 0; border: none; border-radius: 0; }
+.mpm-guide-ref { display: flex; flex-direction: column; gap: var(--mp-space-2); }
+.mpm-guide-ref__row { display: flex; gap: var(--mp-space-3); align-items: baseline; }
+.mpm-guide-ref__row .mpm-chip { flex: 0 0 130px; text-align: center; }

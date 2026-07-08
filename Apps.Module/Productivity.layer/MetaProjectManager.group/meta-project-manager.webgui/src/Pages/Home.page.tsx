@@ -8,9 +8,9 @@ import { Project } from "../api/types"
 import AppShell from "../Components/AppShell"
 import NewProjectModal from "../Components/NewProjectModal"
 import { StatusChip, Loading, EmptyState, ErrorBanner } from "../Components/Primitives"
-import { initials } from "../Utils/format"
+import { initials, plainText } from "../Utils/format"
 
-const STATUS_FILTERS = ["all", "planning", "candidate", "active", "on-hold", "completed", "archived"]
+const STATUS_FILTERS = ["all", "planning", "candidate", "active", "paused", "completed", "archived"]
 
 // HomePage (spec §11): grade de projetos com filtro por status.
 const HomePage = () => {
@@ -91,7 +91,7 @@ const HomePage = () => {
                                     <div className="mpm-project-card__key">{p.keyPrefix}</div>
                                 </div>
                             </div>
-                            <div className="mpm-project-card__desc">{p.description || "sem descrição"}</div>
+                            <div className="mpm-project-card__desc">{p.description ? plainText(p.description) : "sem descrição"}</div>
                             <div className="mpm-row"><StatusChip status={p.status} /></div>
                         </div>)}
                 </div>}

@@ -16,7 +16,8 @@ const NAV: { key: string; label: string; icon: any; to: string }[] = [
     { key: "home",    label: "Projetos",    icon: "th large",  to: "/" },
     { key: "users",   label: "Usuários",    icon: "users",     to: "/users" },
     { key: "agents",  label: "Agentes",     icon: "microchip", to: "/agents" },
-    { key: "reports", label: "Relatórios",  icon: "chart bar", to: "/reports" }
+    { key: "reports", label: "Relatórios",  icon: "chart bar", to: "/reports" },
+    { key: "guide",   label: "Guia de IA",  icon: "book",      to: "/guide" }
 ]
 
 // Sub-navegação do projeto atual (aparece quando há projeto ativo).

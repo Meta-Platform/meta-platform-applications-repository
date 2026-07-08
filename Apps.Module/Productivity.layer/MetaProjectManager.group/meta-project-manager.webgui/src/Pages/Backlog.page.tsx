@@ -79,7 +79,8 @@ const BacklogPage = () => {
         : undefined
 
     return <AppShell active="backlog" activeProjectId={projectId}
-        activeProjectName={project ? project.name : undefined} inspector={inspector}>
+        activeProjectName={project ? project.name : undefined} inspector={inspector}
+        onInspectorClose={() => setSelected(null)}>
         <div className="mpm-page-head">
             <div className="mpm-page-head__titles">
                 <h1 className="mpm-page-title">Backlog</h1>

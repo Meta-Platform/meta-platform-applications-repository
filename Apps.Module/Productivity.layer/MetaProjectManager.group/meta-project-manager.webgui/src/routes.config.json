@@ -9,5 +9,6 @@
     { "path": "/projects/:projectId/roadmap",      "page": "RoadmapPage" },
     { "path": "/users",                            "page": "UsersPage" },
     { "path": "/agents",                           "page": "AgentsPage" },
-    { "path": "/reports",                          "page": "ReportsPage" }
+    { "path": "/reports",                          "page": "ReportsPage" },
+    { "path": "/guide",                            "page": "AgentGuidePage" }
 ]

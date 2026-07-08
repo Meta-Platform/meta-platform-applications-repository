@@ -5,7 +5,7 @@
 export type ID = string
 
 export type ProjectStatus =
-    "planning" | "candidate" | "active" | "on-hold" | "completed" | "archived" | string
+    "planning" | "candidate" | "active" | "paused" | "completed" | "archived" | string
 
 export interface Project {
     id: ID

@@ -42,9 +42,13 @@ const InitializeProjectStore = (options = {}) => {
 
     const ConnectAndSync = async () => {
         await sequelize.authenticate()
-        // alter:true adiciona colunas/tabelas novas a bancos existentes sem
-        // migrations manuais (evolução de schema; idioma "sync" do repo).
-        await sequelize.sync({ alter: true })
+        // busy_timeout: espera o lock (ms) em vez de estourar SQLITE_BUSY quando
+        // CLI e webapp acessam o mesmo arquivo. WAL melhora leitura concorrente.
+        await sequelize.query("PRAGMA busy_timeout = 8000")
+        await sequelize.query("PRAGMA journal_mode = WAL")
+        // sync() cria tabelas/índices faltantes (rápido). alter:true recriava as
+        // tabelas a cada startup (lento + lock), então só migramos sob demanda.
+        await sequelize.sync()
     }
 
     // Emissor de eventos realtime; noop se não houver onEvent.
