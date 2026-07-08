@@ -1,7 +1,9 @@
 import * as React from "react"
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Icon } from "semantic-ui-react"
 
+import useApi from "../Hooks/useApi"
+import { EnvironmentInfo } from "../api/system"
 import AppShell from "../Components/AppShell"
 
 // Bloco de comando/código com botão "Copiar" (linhas de comentário em verde).
@@ -58,8 +60,11 @@ Regras:
 // ------------------------------------------------------------------
 // Tópicos da documentação (renderizados um por vez).
 type Topic = { key: string; label: string; icon: any; lead: string; body: React.ReactNode }
+type Paths = { mcpPath: string; cliPath: string; codexConfigPath: string }
 
-const TOPICS: Topic[] = [
+// Constrói os tópicos com os CAMINHOS REAIS desta máquina (via System.GetEnvironmentInfo),
+// para os comandos saírem prontos para copiar/colar sem editar nada.
+const buildTopics = ({ mcpPath, cliPath, codexConfigPath }: Paths): Topic[] => [
     {
         key: "overview", label: "Visão geral", icon: "home",
         lead: "O que é, como um agente se conecta e as regras que valem para todos.",
@@ -88,7 +93,7 @@ const TOPICS: Topic[] = [
             <CodeBlock title="uma vez, no terminal">{`repo install ApplicationsRepository LOCAL_FS --executables meta-project-manager-mcp
 # depois de qualquer alteração no código do pacote:
 repo update ApplicationsRepository`}</CodeBlock>
-            <p className="mpm-muted">Instala em <M>~/EcosystemData/executables/meta-project-manager-mcp</M>. Clientes MCP <b>não expandem o <M>~</M></b> — use o <b>caminho absoluto</b> na config.</p>
+            <p className="mpm-muted">Instala em <M>{mcpPath}</M> (caminho já usado nos comandos abaixo). Clientes MCP <b>não expandem o <M>~</M></b> — por isso os comandos usam o caminho <b>absoluto</b> desta máquina.</p>
 
             <H3>Passo 2a — Claude Code</H3>
             <p>Um comando registra o servidor para <b>todas as novas sessões</b>. <M>--scope user</M> vale em todos os projetos; <M>--scope project</M> grava um <M>.mcp.json</M> versionável (compartilha com o time).</p>
@@ -98,13 +103,13 @@ repo update ApplicationsRepository`}</CodeBlock>
   --env MPM_SESSION_PROVIDER=claude \\
   --env MPM_SESSION_MODEL=claude-opus-4 \\
   meta-project-manager \\
-  -- /home/SEU_USUARIO/EcosystemData/executables/meta-project-manager-mcp serve`}</CodeBlock>
+  -- ${mcpPath} serve`}</CodeBlock>
             <p className="mpm-muted">O <M>--</M> é obrigatório (tudo à direita vai para o servidor). As tools aparecem como <M>mcp__meta_project_manager__&lt;tool&gt;</M>.</p>
 
             <H3>Passo 2b — Codex</H3>
-            <p>O Codex não tem comando de adicionar — <b>acrescente</b> este bloco ao <M>~/.codex/config.toml</M> (sem mexer no resto):</p>
-            <CodeBlock title="~/.codex/config.toml">{`[mcp_servers."meta-project-manager"]
-command = "/home/SEU_USUARIO/EcosystemData/executables/meta-project-manager-mcp"
+            <p>O Codex não tem comando de adicionar — <b>acrescente</b> este bloco ao <M>{codexConfigPath}</M> (sem mexer no resto):</p>
+            <CodeBlock title={codexConfigPath}>{`[mcp_servers."meta-project-manager"]
+command = "${mcpPath}"
 args = ["serve"]
 [mcp_servers."meta-project-manager".env]
 MPM_SESSION_PROVIDER = "codex"
@@ -119,7 +124,7 @@ MPM_SESSION_MODEL = "gpt-5.5"`}</CodeBlock>
         key: "connect-cli", label: "Conectar pela CLI", icon: "terminal",
         lead: "O executável mpm, o PATH e o formato de saída --json.",
         body: <>
-            <p>A CLI é instalada como o executável <M>mpm</M> (alias <M>meta-project-manager</M>), em <M>~/EcosystemData/executables/mpm</M>.</p>
+            <p>A CLI é instalada como o executável <M>mpm</M> (alias <M>meta-project-manager</M>), em <M>{cliPath}</M>.</p>
             <CodeBlock title="instalar / atualizar">{`repo install ApplicationsRepository LOCAL_FS --executables mpm
 repo update ApplicationsRepository   # após editar o código`}</CodeBlock>
             <p>Garanta o executável no <M>PATH</M> do ambiente da sessão (ou use o caminho completo).</p>
@@ -323,10 +328,26 @@ mpm agent session list    --agent claude-kaio`}</CodeBlock>
     }
 ]
 
+const FALLBACK_EXEC_DIR = "/home/SEU_USUARIO/EcosystemData/executables"
+
 const AgentGuidePage = () => {
-    const [active, setActive] = useState(TOPICS[0].key)
-    const idx = Math.max(0, TOPICS.findIndex((t) => t.key === active))
-    const topic = TOPICS[idx]
+    const api = useApi()
+    const [env, setEnv] = useState<EnvironmentInfo | null>(null)
+    useEffect(() => {
+        let live = true
+        api.system.getEnvironmentInfo().then((e) => { if (live) setEnv(e) }).catch(() => { /* usa fallback */ })
+        return () => { live = false }
+    }, [api])
+
+    const topics = useMemo(() => buildTopics({
+        mcpPath: (env && env.mcpExecutablePath) || `${FALLBACK_EXEC_DIR}/meta-project-manager-mcp`,
+        cliPath: (env && env.cliExecutablePath) || `${FALLBACK_EXEC_DIR}/mpm`,
+        codexConfigPath: (env && env.codexConfigPath) || "~/.codex/config.toml"
+    }), [env])
+
+    const [active, setActive] = useState(topics[0].key)
+    const idx = Math.max(0, topics.findIndex((t) => t.key === active))
+    const topic = topics[idx]
     const go = (key: string) => { setActive(key); try { window.scrollTo({ top: 0 }) } catch (_) { /* noop */ } }
 
     return <AppShell active="guide">
@@ -345,18 +366,18 @@ const AgentGuidePage = () => {
                 </div>
                 <section className="mpm-panel mpm-guide-section">{topic.body}</section>
                 <div className="mpm-docs-nav-btns">
-                    <button className="mpm-btn" disabled={idx === 0} onClick={() => idx > 0 && go(TOPICS[idx - 1].key)}>
-                        <Icon name="arrow left" /> {idx > 0 ? TOPICS[idx - 1].label : ""}
+                    <button className="mpm-btn" disabled={idx === 0} onClick={() => idx > 0 && go(topics[idx - 1].key)}>
+                        <Icon name="arrow left" /> {idx > 0 ? topics[idx - 1].label : ""}
                     </button>
-                    <button className="mpm-btn mpm-btn--primary" disabled={idx === TOPICS.length - 1} onClick={() => idx < TOPICS.length - 1 && go(TOPICS[idx + 1].key)}>
-                        {idx < TOPICS.length - 1 ? TOPICS[idx + 1].label : ""} <Icon name="arrow right" />
+                    <button className="mpm-btn mpm-btn--primary" disabled={idx === topics.length - 1} onClick={() => idx < topics.length - 1 && go(topics[idx + 1].key)}>
+                        {idx < topics.length - 1 ? topics[idx + 1].label : ""} <Icon name="arrow right" />
                     </button>
                 </div>
             </main>
 
             <nav className="mpm-docs-nav" aria-label="Tópicos do guia">
                 <div className="mpm-docs-nav__title">Tópicos</div>
-                {TOPICS.map((t, i) =>
+                {topics.map((t, i) =>
                     <button key={t.key} className={`mpm-docs-nav__item ${t.key === active ? "is-active" : ""}`} onClick={() => go(t.key)}>
                         <span className="mpm-docs-nav__num">{i + 1}</span>
                         <Icon name={t.icon} />

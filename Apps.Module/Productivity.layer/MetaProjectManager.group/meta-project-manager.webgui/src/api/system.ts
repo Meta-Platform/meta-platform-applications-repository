@@ -5,6 +5,18 @@ export interface AppStateEntry {
     value: any
 }
 
+// Caminhos reais desta máquina (para o Guia montar comandos prontos p/ colar).
+export interface EnvironmentInfo {
+    home: string
+    osUser?: string
+    platform: string
+    executablesDir: string
+    mcpExecutablePath: string
+    cliExecutablePath: string
+    codexConfigPath: string
+    dbPath?: string
+}
+
 // SystemController: export/import de projeto/board e app-state (memória da GUI).
 const CreateSystemApi = (call: Caller) => ({
     // Export/Import — dump JSON no envelope { ok, data }.
@@ -22,7 +34,11 @@ const CreateSystemApi = (call: Caller) => ({
         call("System", "GetAppState", { key }),
 
     setAppState: (key: string, value: any): Promise<AppStateEntry> =>
-        call("System", "SetAppState", { key, value })
+        call("System", "SetAppState", { key, value }),
+
+    // Caminhos reais desta máquina, para o Guia gerar comandos copiar-e-colar.
+    getEnvironmentInfo: (): Promise<EnvironmentInfo> =>
+        call("System", "GetEnvironmentInfo", {})
 })
 
 export default CreateSystemApi

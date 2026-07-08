@@ -77,6 +77,12 @@
                     "required": false
                 }
             ]
+        },
+        {
+            "summary": "GetEnvironmentInfo",
+            "method": "GET",
+            "path": "/environment",
+            "parameters": []
         }
     ]
 }
