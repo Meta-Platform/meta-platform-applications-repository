@@ -183,6 +183,10 @@ test("GUI 3: anexo associado a comentário (commentId via API)", async () => {
     const c = await srv.request("POST", `/items/${itemId}/comments`, { body: "com anexo" })
     const att = await srv.request("POST", `/items/${itemId}/attachments`, { name: "n.txt", base64: Buffer.from("x").toString("base64"), commentId: c.json.data.id })
     assert.equal(att.json.data.commentId, c.json.data.id)
+    // #16: conteúdo base64 para download via IPC no desktop
+    const content = await srv.request("GET", `/attachments/${att.json.data.id}/content`)
+    assert.equal(content.json.ok, true)
+    assert.equal(Buffer.from(content.json.data.base64, "base64").toString(), "x")
 })
 
 test("GUI 6-7: export projeto + app-state", async () => {
