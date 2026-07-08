@@ -10,7 +10,7 @@ import NewProjectModal from "../Components/NewProjectModal"
 import { StatusChip, Loading, EmptyState, ErrorBanner } from "../Components/Primitives"
 import { initials } from "../Utils/format"
 
-const STATUS_FILTERS = ["all", "planning", "active", "on-hold", "completed", "archived"]
+const STATUS_FILTERS = ["all", "planning", "candidate", "active", "on-hold", "completed", "archived"]
 
 // HomePage (spec §11): grade de projetos com filtro por status.
 const HomePage = () => {

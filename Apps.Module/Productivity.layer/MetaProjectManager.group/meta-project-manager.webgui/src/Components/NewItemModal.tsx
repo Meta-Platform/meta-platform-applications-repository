@@ -2,10 +2,10 @@ import * as React from "react"
 import { useState } from "react"
 
 import useApi from "../Hooks/useApi"
-import { WorkItem } from "../api/types"
+import { WorkItem, WORK_ITEM_TYPES } from "../api/types"
 import { Modal, ErrorBanner } from "./Primitives"
 
-const TYPES = ["epic", "story", "task", "subtask", "bug"]
+const TYPES = WORK_ITEM_TYPES
 const PRIORITIES = ["none", "low", "medium", "high", "urgent"]
 
 interface NewItemModalProps {

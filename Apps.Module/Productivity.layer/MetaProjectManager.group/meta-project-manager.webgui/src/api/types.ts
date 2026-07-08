@@ -5,7 +5,7 @@
 export type ID = string
 
 export type ProjectStatus =
-    "planning" | "active" | "on-hold" | "completed" | "archived" | string
+    "planning" | "candidate" | "active" | "on-hold" | "completed" | "archived" | string
 
 export interface Project {
     id: ID
@@ -62,8 +62,29 @@ export interface Board {
     updatedAt?: string
 }
 
-export type WorkItemType = "epic" | "story" | "task" | "subtask" | "bug" | string
+export type WorkItemType =
+    "epic" | "feature" | "story" | "task" | "subtask" | "bug" | "improvement"
+    | "refactor" | "documentation" | "research" | "automation" | "tech-debt" | "decision" | string
 export type WorkItemPriority = "none" | "low" | "medium" | "high" | "urgent" | string
+
+// Campos de planejamento/priorização (Fase 2)
+export type Horizon = "inbox" | "now" | "next" | "later" | "maybe" | "archived" | string
+export type ClarityState = "idea" | "refining" | "ready" | string
+export type Effort = "xs" | "s" | "m" | "l" | "xl" | string
+export type ItemValue = "none" | "low" | "medium" | "high" | "critical" | string
+
+export const WORK_ITEM_TYPES: string[] = [
+    "epic", "feature", "story", "task", "subtask", "bug", "improvement",
+    "refactor", "documentation", "research", "automation", "tech-debt", "decision"
+]
+export const HORIZONS: string[] = ["inbox", "now", "next", "later", "maybe", "archived"]
+export const CLARITY_STATES: string[] = ["idea", "refining", "ready"]
+export const EFFORTS: string[] = ["xs", "s", "m", "l", "xl"]
+export const ITEM_VALUES: string[] = ["none", "low", "medium", "high", "critical"]
+export const AREA_SUGGESTIONS: string[] = [
+    "GUI", "CLI", "Backend", "Database", "Agents", "Infra", "UX",
+    "Documentation", "Automation", "Integrations"
+]
 
 export interface WorkItemLink {
     id: ID
@@ -102,6 +123,14 @@ export interface WorkItem {
     priority: WorkItemPriority
     assigneeUserId?: ID | null
     reporterUserId?: ID | null
+    milestoneId?: ID | null
+    sprintId?: ID | null
+    horizon?: Horizon
+    clarityState?: ClarityState
+    effort?: Effort
+    value?: ItemValue
+    area?: string
+    ideaOrigin?: string
     progress?: number
     dueDate?: string | null
     blockedReason?: string | null
@@ -249,4 +278,53 @@ export interface PlatformEvent {
 export interface EventsResponse {
     cursor: number
     events: PlatformEvent[]
+}
+
+// ---- Planejamento (milestones / sprints / roadmap) ----
+
+export type MilestoneStatus = "open" | "closed" | "completed" | string
+
+export interface Milestone {
+    id: ID
+    projectId: ID
+    name: string
+    description?: string
+    targetDate?: string | null
+    status: MilestoneStatus
+    totalItems?: number
+    doneItems?: number
+    progress?: number
+    createdAt?: string
+    updatedAt?: string
+}
+
+export type SprintStatus = "planned" | "active" | "completed" | "archived" | string
+
+export interface Sprint {
+    id: ID
+    projectId: ID
+    name: string
+    goal?: string
+    startDate?: string | null
+    endDate?: string | null
+    status: SprintStatus
+    totalItems?: number
+    doneItems?: number
+    progress?: number
+    createdAt?: string
+    updatedAt?: string
+}
+
+// Roadmap = milestones ordenados por targetDate, cada um com progresso.
+export type RoadmapEntry = Milestone
+
+// Roadmap por horizonte: itens agrupados por horizon.
+export interface HorizonBoard {
+    inbox: WorkItem[]
+    now: WorkItem[]
+    next: WorkItem[]
+    later: WorkItem[]
+    maybe: WorkItem[]
+    archived: WorkItem[]
+    unassigned: WorkItem[]
 }

@@ -19,12 +19,23 @@ const NAV: { key: string; label: string; icon: any; to: string }[] = [
     { key: "reports", label: "Relatórios",  icon: "chart bar", to: "/reports" }
 ]
 
-// ProjectSidebar (spec §11.1): navegação global + lista de projetos ativos.
+// Sub-navegação do projeto atual (aparece quando há projeto ativo).
+const PROJECT_NAV: { key: string; label: string; icon: any; path: (id: string) => string }[] = [
+    { key: "overview", label: "Visão geral", icon: "home",    path: (id) => `/projects/${id}` },
+    { key: "board",    label: "Board",       icon: "columns", path: (id) => `/projects/${id}/board` },
+    { key: "list",     label: "Lista",       icon: "list",    path: (id) => `/projects/${id}/list` },
+    { key: "backlog",  label: "Backlog",     icon: "clipboard list", path: (id) => `/projects/${id}/backlog` },
+    { key: "inbox",    label: "Inbox",       icon: "inbox",   path: (id) => `/projects/${id}/inbox` },
+    { key: "roadmap",  label: "Roadmap",     icon: "road",    path: (id) => `/projects/${id}/roadmap` }
+]
+
+// ProjectSidebar (spec §11.1): navegação global + projeto atual + lista de projetos.
 const ProjectSidebar = ({ active, activeProjectId }: ProjectSidebarProps) => {
     const api = useApi()
     const navigate = useNavigate()
     const { count: pendingCreations } = usePendingCreations()
     const [projects, setProjects] = useState<Project[]>([])
+    const [inboxCount, setInboxCount] = useState(0)
 
     useEffect(() => {
         let alive = true
@@ -33,6 +44,15 @@ const ProjectSidebar = ({ active, activeProjectId }: ProjectSidebarProps) => {
             .catch(() => { if (alive) setProjects([]) })
         return () => { alive = false }
     }, [api])
+
+    useEffect(() => {
+        if (!activeProjectId) { setInboxCount(0); return }
+        let alive = true
+        api.items.list(activeProjectId, { horizon: "inbox" })
+            .then((l) => { if (alive) setInboxCount((l || []).length) })
+            .catch(() => { if (alive) setInboxCount(0) })
+        return () => { alive = false }
+    }, [activeProjectId, api, active])
 
     return <aside className="mpm-sidebar">
         <div>
@@ -49,6 +69,23 @@ const ProjectSidebar = ({ active, activeProjectId }: ProjectSidebarProps) => {
                     </a>)}
             </nav>
         </div>
+
+        {activeProjectId
+            ? <div>
+                <div className="mpm-sidebar__section-title">Projeto atual</div>
+                <nav className="mpm-nav">
+                    {PROJECT_NAV.map((n) =>
+                        <a key={n.key}
+                            className={`mpm-nav__item ${active === n.key ? "is-active" : ""}`}
+                            onClick={() => navigate(n.path(activeProjectId))}>
+                            <Icon name={n.icon} /> <span style={{ flex: 1 }}>{n.label}</span>
+                            {n.key === "inbox" && inboxCount > 0
+                                ? <span className="mpm-chip mpm-chip--info" title="ideias na inbox">{inboxCount}</span>
+                                : null}
+                        </a>)}
+                </nav>
+            </div>
+            : null}
 
         <div>
             <div className="mpm-sidebar__section-title">Projetos</div>

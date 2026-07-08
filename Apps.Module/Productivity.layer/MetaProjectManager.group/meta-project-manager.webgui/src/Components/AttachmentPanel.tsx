@@ -7,6 +7,7 @@ import useApi from "../Hooks/useApi"
 import { Attachment } from "../api/types"
 import { ErrorBanner } from "./Primitives"
 import GetAttachmentDownloadUrl from "../Utils/GetAttachmentDownloadUrl"
+import AttachmentPreview from "./AttachmentPreview"
 
 // AttachmentPanel (spec §11.1): lista anexos do item; permite adicionar link
 // ou upload (arquivo -> base64) e remover.
@@ -18,6 +19,7 @@ const AttachmentPanel = ({ itemId }: { itemId: string }) => {
     const [linkName, setLinkName] = useState("")
     const [error, setError] = useState<string | null>(null)
     const [busy, setBusy] = useState(false)
+    const [preview, setPreview] = useState<{ [id: string]: boolean }>({})
 
     const load = () => api.attachments.list(itemId)
         .then((l) => setItems(l || []))
@@ -74,15 +76,29 @@ const AttachmentPanel = ({ itemId }: { itemId: string }) => {
             // arquivo só é baixável se conseguimos resolver a URL (browser, não Electron)
             const downloadUrl = link ? undefined : GetAttachmentDownloadUrl(serverManagerInformation, a.id)
             const canOpen = link ? !!a.externalUrl : !!downloadUrl
-            return <div key={a.id} className="mpm-attach">
-                <Icon name={link ? "linkify" : "file outline"} />
-                <span className="mpm-attach__name" title={a.name}>{a.name}</span>
-                {canOpen
-                    ? <span className="mpm-iconbtn mpm-btn--sm" title={link ? "Abrir link" : "Baixar"} onClick={() => open(a)}>
-                        <Icon name={link ? "external" : "download"} />
-                    </span>
+            // preview disponível para links (externalUrl) e arquivos com URL resolvida
+            const canPreview = link ? !!a.externalUrl : !!downloadUrl
+            const isOpen = !!preview[a.id]
+            return <div key={a.id} className="mpm-col" style={{ gap: "var(--mp-space-1)" }}>
+                <div className="mpm-attach">
+                    <Icon name={link ? "linkify" : "file outline"} />
+                    <span className="mpm-attach__name" title={a.name}>{a.name}</span>
+                    {canPreview
+                        ? <span className="mpm-iconbtn mpm-btn--sm" title="Pré-visualizar"
+                            onClick={() => setPreview((s) => ({ ...s, [a.id]: !s[a.id] }))}>
+                            <Icon name={isOpen ? "eye slash" : "eye"} />
+                        </span>
+                        : null}
+                    {canOpen
+                        ? <span className="mpm-iconbtn mpm-btn--sm" title={link ? "Abrir link" : "Baixar"} onClick={() => open(a)}>
+                            <Icon name={link ? "external" : "download"} />
+                        </span>
+                        : null}
+                    <span className="mpm-iconbtn mpm-btn--sm" title="Remover" onClick={() => remove(a.id)}><Icon name="trash" /></span>
+                </div>
+                {isOpen
+                    ? <AttachmentPreview attachment={a} downloadUrl={downloadUrl} isLink={link} />
                     : null}
-                <span className="mpm-iconbtn mpm-btn--sm" title="Remover" onClick={() => remove(a.id)}><Icon name="trash" /></span>
             </div>
         })}
         <div className="mpm-col">

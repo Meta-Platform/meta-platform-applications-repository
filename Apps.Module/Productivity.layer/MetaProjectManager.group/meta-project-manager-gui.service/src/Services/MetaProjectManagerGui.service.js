@@ -18,7 +18,8 @@ const CONTROLLER_MODULES = {
     Users:       { controller: "Controllers/Users.controller",       api: "APIs/Users.api.json" },
     Agents:      { controller: "Controllers/Agents.controller",      api: "APIs/Agents.api.json" },
     Reports:     { controller: "Controllers/Reports.controller",     api: "APIs/Reports.api.json" },
-    Events:      { controller: "Controllers/Events.controller",      api: "APIs/Events.api.json" }
+    Events:      { controller: "Controllers/Events.controller",      api: "APIs/Events.api.json" },
+    Planning:    { controller: "Controllers/Planning.controller",    api: "APIs/Planning.api.json" }
 }
 
 const MetaProjectManagerGuiService = (params) => {

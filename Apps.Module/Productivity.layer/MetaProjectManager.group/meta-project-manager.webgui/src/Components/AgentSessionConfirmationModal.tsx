@@ -3,6 +3,7 @@ import { Icon } from "semantic-ui-react"
 
 import { AgentSession } from "../api/types"
 import { Modal } from "./Primitives"
+import Markdown from "./Markdown"
 import { formatDateTime } from "../Utils/format"
 
 interface AgentSessionConfirmationModalProps {
@@ -30,7 +31,7 @@ const AgentSessionConfirmationModal = ({ session, onConfirm, onReject, onClose, 
         </div>
         {session.objective
             ? <div className="mpm-field"><span className="mpm-field__label">Objetivo</span>
-                <div className="mpm-markdown">{session.objective}</div></div>
+                <Markdown>{session.objective}</Markdown></div>
             : null}
         <div className="mpm-muted" style={{ fontSize: "12px" }}>
             Confirmar autoriza a sessão a atuar no workspace; rejeitar a descarta.

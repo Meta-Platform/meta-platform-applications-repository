@@ -23,6 +23,72 @@
                     "in": "query",
                     "type": "string",
                     "required": false
+                },
+                {
+                    "name": "milestone",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "sprint",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "horizon",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "clarityState",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "effort",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "value",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "area",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "sort",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "priority",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "assignee",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "text",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
                 }
             ]
         },
@@ -81,6 +147,54 @@
                 },
                 {
                     "name": "assignee",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "milestoneId",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "sprintId",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "horizon",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "clarityState",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "effort",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "value",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "area",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "ideaOrigin",
                     "in": "body",
                     "type": "string",
                     "required": false
@@ -143,6 +257,54 @@
                 },
                 {
                     "name": "assignee",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "milestoneId",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "sprintId",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "horizon",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "clarityState",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "effort",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "value",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "area",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "ideaOrigin",
                     "in": "body",
                     "type": "string",
                     "required": false
@@ -242,8 +404,18 @@
             "method": "POST",
             "path": "/items/:itemId/checklist",
             "parameters": [
-                { "name": "itemId", "in": "path", "type": "string", "required": true },
-                { "name": "text", "in": "body", "type": "string", "required": true }
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "text",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -251,9 +423,24 @@
             "method": "PATCH",
             "path": "/checklist/:checklistItemId",
             "parameters": [
-                { "name": "checklistItemId", "in": "path", "type": "string", "required": true },
-                { "name": "text", "in": "body", "type": "string", "required": false },
-                { "name": "done", "in": "body", "type": "boolean", "required": false }
+                {
+                    "name": "checklistItemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "text",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "done",
+                    "in": "body",
+                    "type": "boolean",
+                    "required": false
+                }
             ]
         },
         {
@@ -261,7 +448,12 @@
             "method": "DELETE",
             "path": "/checklist/:checklistItemId",
             "parameters": [
-                { "name": "checklistItemId", "in": "path", "type": "string", "required": true }
+                {
+                    "name": "checklistItemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -269,8 +461,18 @@
             "method": "POST",
             "path": "/items/:itemId/acceptance",
             "parameters": [
-                { "name": "itemId", "in": "path", "type": "string", "required": true },
-                { "name": "text", "in": "body", "type": "string", "required": true }
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "text",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -278,9 +480,24 @@
             "method": "PATCH",
             "path": "/acceptance/:criteriaId",
             "parameters": [
-                { "name": "criteriaId", "in": "path", "type": "string", "required": true },
-                { "name": "text", "in": "body", "type": "string", "required": false },
-                { "name": "met", "in": "body", "type": "boolean", "required": false }
+                {
+                    "name": "criteriaId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "text",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "met",
+                    "in": "body",
+                    "type": "boolean",
+                    "required": false
+                }
             ]
         },
         {
@@ -288,7 +505,12 @@
             "method": "DELETE",
             "path": "/acceptance/:criteriaId",
             "parameters": [
-                { "name": "criteriaId", "in": "path", "type": "string", "required": true }
+                {
+                    "name": "criteriaId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
             ]
         }
     ]

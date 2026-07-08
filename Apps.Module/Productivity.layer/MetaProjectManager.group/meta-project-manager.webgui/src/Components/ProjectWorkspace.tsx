@@ -1,16 +1,18 @@
 import * as React from "react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
 import useEvents from "../Hooks/useEvents"
-import { Project, Board, WorkItem, User } from "../api/types"
+import useItemFilters from "../Hooks/useItemFilters"
+import { Project, Board, WorkItem, User, Milestone, Sprint } from "../api/types"
 import AppShell from "./AppShell"
 import KanbanBoard from "./KanbanBoard"
 import WorkItemList from "./WorkItemList"
 import WorkItemInspector from "./WorkItemInspector"
 import NewItemModal from "./NewItemModal"
+import ItemFilterBar from "./ItemFilterBar"
 import { Loading, EmptyState, ErrorBanner } from "./Primitives"
 
 type ViewMode = "board" | "list"
@@ -25,11 +27,17 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
     const api = useApi()
     const navigate = useNavigate()
     const { projectId, boardId } = useParams<{ projectId: string; boardId?: string }>()
+    const { filters, setFilter, group, setGroup, reset, activeCount } = useItemFilters("workspace", projectId)
+    const filtersKey = JSON.stringify(filters)
+    const filtersRef = useRef(filters)
+    filtersRef.current = filters
 
     const [project, setProject] = useState<Project | null>(null)
     const [board, setBoard] = useState<Board | null>(null)
     const [items, setItems] = useState<WorkItem[]>([])
     const [users, setUsers] = useState<User[]>([])
+    const [milestones, setMilestones] = useState<Milestone[]>([])
+    const [sprints, setSprints] = useState<Sprint[]>([])
     const [view, setView] = useState<ViewMode>(initialView)
     const [selected, setSelected] = useState<string | null>(null)
     const [quickAddStatus, setQuickAddStatus] = useState<string | null>(null)
@@ -48,12 +56,17 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
             .map((c) => ({ statusKey: c.statusKey, name: c.name })),
         [board])
 
+    // usa os filtros atuais (via ref) para manter a função estável — o polling
+    // e a resolução inicial reaproveitam a mesma referência.
     const loadItems = useCallback(() => {
         if (!projectId) return Promise.resolve()
-        return api.items.list(projectId, {})
+        return api.items.list(projectId, filtersRef.current)
             .then((l) => setItems(l || []))
             .catch((e) => setError(e.message))
     }, [api, projectId])
+
+    // recarrega quando os filtros mudam (sem recarregar o board)
+    useEffect(() => { if (projectId) loadItems() }, [filtersKey])
 
     // resolve projeto + board + usuários + itens
     useEffect(() => {
@@ -63,14 +76,18 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
 
         const run = async () => {
             try {
-                const [proj, userList, boardList] = await Promise.all([
+                const [proj, userList, boardList, msList, spList] = await Promise.all([
                     api.projects.get(projectId),
                     api.users.list({}),
-                    api.boards.list(projectId)
+                    api.boards.list(projectId),
+                    api.planning.listMilestones(projectId),
+                    api.planning.listSprints(projectId)
                 ])
                 if (!alive) return
                 setProject(proj)
                 setUsers(userList || [])
+                setMilestones(msList || [])
+                setSprints(spList || [])
 
                 const targetBoardId = boardId
                     || proj.defaultBoardId
@@ -93,8 +110,21 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
         return () => { alive = false }
     }, [projectId, boardId, api, loadItems])
 
-    // realtime por polling: recarrega itens quando há eventos
-    useEvents(useCallback(() => { loadItems() }, [loadItems]), 3000)
+    // Reatividade do board (frente B): enquanto esta tela está montada, o polling
+    // roda mais rápido (~1.2s) e recarrega os itens quando o batch contém eventos
+    // que afetam o quadro (criação/edição/movimento/exclusão de item) ou os badges
+    // (comentário/anexo). Assim, mexer numa aba reflete na outra sem refresh manual.
+    const BOARD_EVENT_TYPES = [
+        "item.created", "item.updated", "item.moved", "item.deleted", "item.status",
+        "comment.created", "attachment.created", "item.planning"
+    ]
+    const onBoardEvents = useCallback((events: any[]) => {
+        const relevant = events.some((e) =>
+            typeof e.type === "string" &&
+            (BOARD_EVENT_TYPES.indexOf(e.type) >= 0 || e.type.indexOf("item") >= 0))
+        if (relevant) loadItems()
+    }, [loadItems])
+    useEvents(onBoardEvents, 1200)
 
     const moveItem = async (itemId: string, statusKey: string) => {
         // otimista: reflete a mudança de coluna imediatamente
@@ -167,6 +197,10 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
             </div>
         </div>
 
+        <ItemFilterBar filters={filters} setFilter={setFilter} group={group} setGroup={setGroup}
+            reset={reset} activeCount={activeCount} users={users} milestones={milestones} sprints={sprints}
+            showGroup={view === "list"} />
+
         <ErrorBanner error={error} />
 
         {loading
@@ -186,12 +220,15 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
                     : <EmptyState icon="columns" title="Sem board" hint="Este projeto ainda não tem um board configurado." />)
                 : (items.length === 0
                     ? <EmptyState icon="list" title="Nenhum item"
-                        hint="Crie o primeiro work item."
+                        hint="Nenhum item corresponde aos filtros — ajuste ou crie um novo."
                         action={<button className="mpm-btn mpm-btn--primary" onClick={() => openQuickAdd()}><Icon name="plus" /> Novo item</button>} />
                     : <WorkItemList
                         items={items}
                         usersById={usersById}
                         statusOptions={statusOptions}
+                        groupBy={group}
+                        milestones={milestones}
+                        sprints={sprints}
                         onOpenItem={setSelected}
                         onSetStatus={setStatus}
                         onSetPriority={setPriority} />)}

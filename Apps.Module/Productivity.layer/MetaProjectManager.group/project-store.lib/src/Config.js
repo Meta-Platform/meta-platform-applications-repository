@@ -1,10 +1,23 @@
 // Constantes de domínio compartilhadas pela lib, CLI e webservice.
 
-const PROJECT_STATUSES   = ["planning", "active", "paused", "completed", "archived"]
+const PROJECT_STATUSES   = ["planning", "candidate", "active", "paused", "completed", "archived"]
 
-const WORK_ITEM_TYPES    = ["story", "task", "subtask", "bug", "improvement", "research", "decision"]
+const WORK_ITEM_TYPES    = ["epic", "feature", "story", "task", "subtask", "bug", "improvement", "refactor", "documentation", "research", "automation", "tech-debt", "decision"]
 
 const WORK_ITEM_PRIORITIES = ["none", "low", "medium", "high", "urgent", "critical"]
+
+// Planejamento (spec de planejamento futuro: inbox/ideias/backlog/roadmap).
+const WORK_ITEM_HORIZONS = ["inbox", "now", "next", "later", "maybe", "archived"]
+
+const WORK_ITEM_CLARITY  = ["idea", "refining", "ready"]
+
+const WORK_ITEM_EFFORTS  = ["xs", "s", "m", "l", "xl"]
+
+const WORK_ITEM_VALUES   = ["none", "low", "medium", "high", "critical"]
+
+// Vocabulário sugerido de áreas (não obrigatório — o campo aceita string livre,
+// permitindo também nomes de módulo da Meta Platform).
+const AREAS              = ["GUI", "CLI", "Backend", "Database", "Agents", "Infra", "UX", "Documentation", "Automation", "Integrations"]
 
 const LINK_RELATIONS     = ["blocks", "depends", "relates", "duplicates", "implements", "tests"]
 
@@ -19,6 +32,10 @@ const AGENT_SESSION_STATUSES = ["pending_confirmation", "active", "closed", "rej
 const AUDIT_SOURCES      = ["gui", "cli", "api", "agent"]
 
 const ENVIRONMENTS       = ["local", "dev", "staging", "homologation", "production"]
+
+const MILESTONE_STATUSES = ["planning", "active", "released", "archived"]
+
+const SPRINT_STATUSES    = ["planned", "active", "completed", "archived"]
 
 // Colunas/status padrão de um board recém-criado (spec §4.2).
 const DEFAULT_COLUMNS = [
@@ -38,8 +55,15 @@ module.exports = {
     PROJECT_STATUSES,
     WORK_ITEM_TYPES,
     WORK_ITEM_PRIORITIES,
+    WORK_ITEM_HORIZONS,
+    WORK_ITEM_CLARITY,
+    WORK_ITEM_EFFORTS,
+    WORK_ITEM_VALUES,
+    AREAS,
     LINK_RELATIONS,
     ATTACHMENT_TYPES,
+    MILESTONE_STATUSES,
+    SPRINT_STATUSES,
     USER_TYPES,
     AGENT_PROVIDERS,
     AGENT_SESSION_STATUSES,

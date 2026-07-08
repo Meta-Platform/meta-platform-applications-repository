@@ -59,7 +59,16 @@ mpm agent creation approve <pendingCreationId> --json
 set-status/assign/move/move-to-board/reorder/convert/block/link/unlink/delete/checklist-add/
 checklist-update/checklist-remove/acceptance-add/acceptance-update/acceptance-remove) ·
 `attachment` · `comment` · `user` · `agent` (+`session`, +`creation`) · `report` ·
-`activity` · `export` · `import`.
+`activity` · `milestone` · `sprint` · `roadmap` · `epic` · `feature` · `inbox` · `backlog` ·
+`export` · `import`.
+
+**Planejamento:** `inbox add/list` (captura de ideias, `horizon=inbox`), `backlog list`
+(`--horizon --area --sort value`), `epic/feature create`, `roadmap --by horizon`,
+`item set-horizon/set-clarity/set-effort/set-value/set-area`, e `item set-milestone/set-sprint`.
+`item create/update` aceitam `--horizon/--clarity/--effort/--value/--area/--idea-origin`;
+`item list` filtra por todos eles. Tipos: epic/feature/story/task/subtask/bug/improvement/
+refactor/documentation/research/automation/tech-debt/decision. Criar milestone/sprint por
+agente entra no gate de criação.
 
 Veja a árvore completa em `metadata/command-group.json`. Rode `mpm <grupo> --help`.
 

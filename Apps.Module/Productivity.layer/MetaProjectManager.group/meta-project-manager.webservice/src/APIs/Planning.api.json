@@ -1,0 +1,294 @@
+{
+    "name": "Planning",
+    "endpoints": [
+        {
+            "summary": "ListMilestones",
+            "method": "GET",
+            "path": "/projects/:projectId/milestones",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "CreateMilestone",
+            "method": "POST",
+            "path": "/projects/:projectId/milestones",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "name",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "description",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "targetDate",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "status",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "GetMilestone",
+            "method": "GET",
+            "path": "/milestones/:milestoneId",
+            "parameters": [
+                {
+                    "name": "milestoneId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "UpdateMilestone",
+            "method": "PATCH",
+            "path": "/milestones/:milestoneId",
+            "parameters": [
+                {
+                    "name": "milestoneId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "name",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "description",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "targetDate",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "status",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "DeleteMilestone",
+            "method": "DELETE",
+            "path": "/milestones/:milestoneId",
+            "parameters": [
+                {
+                    "name": "milestoneId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "Roadmap",
+            "method": "GET",
+            "path": "/projects/:projectId/roadmap",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "RoadmapByHorizon",
+            "method": "GET",
+            "path": "/projects/:projectId/horizon-board",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "ListSprints",
+            "method": "GET",
+            "path": "/projects/:projectId/sprints",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "CreateSprint",
+            "method": "POST",
+            "path": "/projects/:projectId/sprints",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "name",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "goal",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "startDate",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "endDate",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "status",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "GetSprint",
+            "method": "GET",
+            "path": "/sprints/:sprintId",
+            "parameters": [
+                {
+                    "name": "sprintId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "UpdateSprint",
+            "method": "PATCH",
+            "path": "/sprints/:sprintId",
+            "parameters": [
+                {
+                    "name": "sprintId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "name",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "goal",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "startDate",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "endDate",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "status",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "DeleteSprint",
+            "method": "DELETE",
+            "path": "/sprints/:sprintId",
+            "parameters": [
+                {
+                    "name": "sprintId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "AssignItemPlanning",
+            "method": "POST",
+            "path": "/items/:itemId/planning",
+            "parameters": [
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "milestone",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "sprint",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        }
+    ]
+}

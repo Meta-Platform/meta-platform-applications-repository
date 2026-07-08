@@ -12,6 +12,7 @@ const CommentsStore   = require("./Store/CommentsStore")
 const UsersStore      = require("./Store/UsersStore")
 const AgentsStore     = require("./Store/AgentsStore")
 const ReportsStore    = require("./Store/ReportsStore")
+const PlanningStore   = require("./Store/PlanningStore")
 const ImportExport    = require("./Store/ImportExportStore")
 
 /**
@@ -74,6 +75,7 @@ const InitializeProjectStore = (options = {}) => {
         UsersStore(ctx),
         AgentsStore(ctx),
         ReportsStore(ctx),
+        PlanningStore(ctx),
         { ListActivity },
     )
     Object.assign(store, ImportExport(ctx))
