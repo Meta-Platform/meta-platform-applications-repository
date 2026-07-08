@@ -131,6 +131,16 @@ export interface WorkItem {
     value?: ItemValue
     area?: string
     ideaOrigin?: string
+    // SoftwareContext (achatado no item)
+    repositoryUrl?: string
+    branchName?: string
+    commitHash?: string
+    pullRequestUrl?: string
+    environment?: string
+    packagePath?: string
+    moduleName?: string
+    layerName?: string
+    groupName?: string
     progress?: number
     dueDate?: string | null
     blockedReason?: string | null
@@ -163,6 +173,7 @@ export interface Attachment {
     id: ID
     projectId: ID
     workItemId: ID
+    commentId?: ID | null
     type: string
     name: string
     description?: string

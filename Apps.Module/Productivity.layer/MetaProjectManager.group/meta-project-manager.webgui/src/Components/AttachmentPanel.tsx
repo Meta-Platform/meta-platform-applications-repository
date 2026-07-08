@@ -21,8 +21,9 @@ const AttachmentPanel = ({ itemId }: { itemId: string }) => {
     const [busy, setBusy] = useState(false)
     const [preview, setPreview] = useState<{ [id: string]: boolean }>({})
 
+    // apenas anexos do item (os de comentário aparecem sob o comentário)
     const load = () => api.attachments.list(itemId)
-        .then((l) => setItems(l || []))
+        .then((l) => setItems((l || []).filter((a) => !a.commentId)))
         .catch((e) => setError(e.message))
 
     useEffect(() => { load() }, [itemId])

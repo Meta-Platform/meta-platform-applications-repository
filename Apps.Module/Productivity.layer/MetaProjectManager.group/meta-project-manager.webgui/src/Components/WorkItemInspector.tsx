@@ -13,6 +13,8 @@ import AttachmentPanel from "./AttachmentPanel"
 import CommentTimeline from "./CommentTimeline"
 import AuditTimeline from "./AuditTimeline"
 import Markdown from "./Markdown"
+import LinkPanel from "./LinkPanel"
+import SoftwareContextSection from "./SoftwareContextSection"
 
 const PRIORITIES = ["none", "low", "medium", "high", "urgent"]
 
@@ -284,16 +286,9 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 </div>
                 : null}
 
-            {item.links && item.links.length > 0
-                ? <div className="mpm-col">
-                    <div className="mpm-section-title"><Icon name="linkify" /> Links</div>
-                    {item.links.map((l) =>
-                        <div key={l.id} className="mpm-row">
-                            <span className="mpm-chip mpm-chip--neutral">{l.relation}</span>
-                            <span className="mpm-mono mpm-muted">{l.targetItemId}</span>
-                        </div>)}
-                </div>
-                : null}
+            <LinkPanel item={item} projectId={pid} onChanged={() => patch(async () => {})} />
+
+            <SoftwareContextSection item={item} onSave={(input) => patch(() => api.items.update(item.id, input))} />
 
             <AttachmentPanel itemId={item.id} />
             <CommentTimeline itemId={item.id} usersById={usersById} />

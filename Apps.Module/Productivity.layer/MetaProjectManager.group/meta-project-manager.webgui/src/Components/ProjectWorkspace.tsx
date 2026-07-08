@@ -6,6 +6,7 @@ import { Icon } from "semantic-ui-react"
 import useApi from "../Hooks/useApi"
 import useEvents from "../Hooks/useEvents"
 import useItemFilters from "../Hooks/useItemFilters"
+import useAppState, { useAppStateWriter } from "../Hooks/useAppState"
 import { Project, Board, WorkItem, User, Milestone, Sprint } from "../api/types"
 import AppShell from "./AppShell"
 import KanbanBoard from "./KanbanBoard"
@@ -13,6 +14,8 @@ import WorkItemList from "./WorkItemList"
 import WorkItemInspector from "./WorkItemInspector"
 import NewItemModal from "./NewItemModal"
 import ItemFilterBar from "./ItemFilterBar"
+import BulkActionBar from "./BulkActionBar"
+import downloadJson from "../Utils/downloadJson"
 import { Loading, EmptyState, ErrorBanner } from "./Primitives"
 
 type ViewMode = "board" | "list"
@@ -40,10 +43,22 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
     const [sprints, setSprints] = useState<Sprint[]>([])
     const [view, setView] = useState<ViewMode>(initialView)
     const [selected, setSelected] = useState<string | null>(null)
+    const [selectedIds, setSelectedIds] = useState<string[]>([])
     const [quickAddStatus, setQuickAddStatus] = useState<string | null>(null)
     const [quickAddOpen, setQuickAddOpen] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
+
+    // Persistência de preferências no servidor (feature 7): view por projeto +
+    // último projeto aberto. Restaura a view salva ao carregar.
+    const [savedView, saveView, viewLoaded] = useAppState<string>(`view:${projectId || "_"}`, initialView)
+    const writeState = useAppStateWriter()
+    useEffect(() => {
+        if (viewLoaded && (savedView === "board" || savedView === "list")) setView(savedView as ViewMode)
+    }, [viewLoaded, savedView])
+    useEffect(() => { if (projectId) writeState("lastProject", projectId) }, [projectId])
+
+    const changeView = (v: ViewMode) => { setView(v); saveView(v) }
 
     const usersById = useMemo(() => {
         const m: { [id: string]: User } = {}
@@ -167,6 +182,35 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
         catch (e: any) { setError(e.message) }
     }
 
+    // Feature 5: reordenar dentro da coluna (ReorderItem com o novo índice).
+    const reorderItem = async (itemId: string, order: number) => {
+        try { await api.items.reorder(itemId, order); await loadItems() }
+        catch (e: any) { setError(e.message); loadItems() }
+    }
+
+    // Feature 4: seleção múltipla + ações em lote (chamadas por item em paralelo).
+    const toggleSelect = (id: string) =>
+        setSelectedIds((prev) => prev.indexOf(id) >= 0 ? prev.filter((x) => x !== id) : [...prev, id])
+    const clearSelection = () => setSelectedIds([])
+    const bulk = async (fn: (id: string) => Promise<any>) => {
+        setError(null)
+        try { await Promise.all(selectedIds.map(fn)) }
+        catch (e: any) { setError(e.message) }
+        finally { await loadItems(); clearSelection() }
+    }
+
+    // Feature 6: exportar projeto/board como .json.
+    const exportProject = async () => {
+        if (!projectId) return
+        try { downloadJson(await api.system.exportProject(projectId), `project-${project ? project.slug : projectId}`) }
+        catch (e: any) { setError(e.message) }
+    }
+    const exportBoard = async () => {
+        if (!board) return
+        try { downloadJson(await api.system.exportBoard(board.id), `board-${board.name}`) }
+        catch (e: any) { setError(e.message) }
+    }
+
     const inspector = selected
         ? <WorkItemInspector
             itemId={selected}
@@ -190,9 +234,11 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
             </div>
             <div className="mpm-page-head__actions">
                 <div className="mpm-seg">
-                    <button className={`mpm-seg__btn ${view === "board" ? "is-active" : ""}`} onClick={() => setView("board")}><Icon name="columns" /> Board</button>
-                    <button className={`mpm-seg__btn ${view === "list" ? "is-active" : ""}`} onClick={() => setView("list")}><Icon name="list" /> Lista</button>
+                    <button className={`mpm-seg__btn ${view === "board" ? "is-active" : ""}`} onClick={() => changeView("board")}><Icon name="columns" /> Board</button>
+                    <button className={`mpm-seg__btn ${view === "list" ? "is-active" : ""}`} onClick={() => changeView("list")}><Icon name="list" /> Lista</button>
                 </div>
+                <button className="mpm-btn" title="Exportar projeto" onClick={exportProject}><Icon name="download" /> Exportar</button>
+                {view === "board" && board ? <button className="mpm-btn" title="Exportar board" onClick={exportBoard}><Icon name="table" /> Board</button> : null}
                 <button className="mpm-btn mpm-btn--primary" onClick={() => openQuickAdd()}><Icon name="plus" /> Item</button>
             </div>
         </div>
@@ -200,6 +246,23 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
         <ItemFilterBar filters={filters} setFilter={setFilter} group={group} setGroup={setGroup}
             reset={reset} activeCount={activeCount} users={users} milestones={milestones} sprints={sprints}
             showGroup={view === "list"} />
+
+        {selectedIds.length > 0
+            ? <BulkActionBar
+                count={selectedIds.length}
+                users={users}
+                statusOptions={statusOptions}
+                milestones={milestones}
+                sprints={sprints}
+                onSetStatus={(s) => bulk((id) => api.items.setStatus(id, s))}
+                onSetPriority={(p) => bulk((id) => api.items.update(id, { priority: p }))}
+                onAssign={(u) => bulk((id) => api.items.update(id, { assignee: u === "__none__" ? "" : u }))}
+                onSetHorizon={(h) => bulk((id) => api.items.update(id, { horizon: h }))}
+                onSetMilestone={(m) => bulk((id) => api.planning.assignItemPlanning(id, { milestone: m }))}
+                onSetSprint={(s) => bulk((id) => api.planning.assignItemPlanning(id, { sprint: s }))}
+                onDelete={() => { if (typeof window === "undefined" || window.confirm(`Excluir ${selectedIds.length} item(ns)?`)) bulk((id) => api.items.remove(id)) }}
+                onClear={clearSelection} />
+            : null}
 
         <ErrorBanner error={error} />
 
@@ -213,10 +276,13 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
                         usersById={usersById}
                         onOpenItem={setSelected}
                         onMoveItem={moveItem}
+                        onReorderItem={reorderItem}
                         onQuickAdd={openQuickAdd}
                         onAddColumn={addColumn}
                         onRenameColumn={renameColumn}
-                        onDeleteColumn={deleteColumn} />
+                        onDeleteColumn={deleteColumn}
+                        selectedIds={selectedIds}
+                        onToggleSelect={toggleSelect} />
                     : <EmptyState icon="columns" title="Sem board" hint="Este projeto ainda não tem um board configurado." />)
                 : (items.length === 0
                     ? <EmptyState icon="list" title="Nenhum item"
@@ -229,6 +295,8 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
                         groupBy={group}
                         milestones={milestones}
                         sprints={sprints}
+                        selectedIds={selectedIds}
+                        onToggleSelect={toggleSelect}
                         onOpenItem={setSelected}
                         onSetStatus={setStatus}
                         onSetPriority={setPriority} />)}

@@ -18,6 +18,8 @@ interface WorkItemListProps {
     groupBy?: GroupBy
     milestones?: Milestone[]
     sprints?: Sprint[]
+    selectedIds?: string[]
+    onToggleSelect?: (id: string) => void
     onOpenItem: (id: string) => void
     onSetStatus: (id: string, status: string) => void
     onSetPriority: (id: string, priority: string) => void
@@ -27,10 +29,12 @@ interface TreeNode extends WorkItem { _children: TreeNode[] }
 
 // WorkItemList (spec §11.1 / Fase 2): tabela hierárquica (epic→feature→story→
 // task→subtask) expansível com edição inline; ou agrupada por horizonte/área/
-// sprint quando groupBy != none/parent.
+// sprint quando groupBy != none/parent. Suporta seleção múltipla (feature 4).
 const WorkItemList = ({ items, usersById, statusOptions, groupBy, milestones, sprints,
-    onOpenItem, onSetStatus, onSetPriority }: WorkItemListProps) => {
+    selectedIds, onToggleSelect, onOpenItem, onSetStatus, onSetPriority }: WorkItemListProps) => {
     const [collapsed, setCollapsed] = useState<{ [id: string]: boolean }>({})
+    const selectable = !!onToggleSelect
+    const isSelected = (id: string) => !!selectedIds && selectedIds.indexOf(id) >= 0
 
     const byId: { [id: string]: TreeNode } = {}
     items.forEach((i) => { byId[i.id] = { ...i, _children: [] } as TreeNode })
@@ -63,6 +67,11 @@ const WorkItemList = ({ items, usersById, statusOptions, groupBy, milestones, sp
         const isCollapsed = collapsed[node.id]
         const rows: React.ReactNode[] = [
             <tr key={node.id} className="mpm-table__row--clickable">
+                {selectable
+                    ? <td onClick={(e) => e.stopPropagation()} style={{ width: 32 }}>
+                        <input type="checkbox" checked={isSelected(node.id)} onChange={() => onToggleSelect!(node.id)} />
+                    </td>
+                    : null}
                 <td>
                     <span className="mpm-tree-indent" style={{ width: depth * 18 }} />
                     {hasChildren
@@ -99,6 +108,7 @@ const WorkItemList = ({ items, usersById, statusOptions, groupBy, milestones, sp
 
     const header = <thead>
         <tr>
+            {selectable ? <th style={{ width: 32 }} /> : null}
             <th>Item</th>
             <th style={{ width: 150 }}>Status</th>
             <th style={{ width: 110 }}>Prioridade</th>
