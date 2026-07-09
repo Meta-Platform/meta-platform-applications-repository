@@ -308,6 +308,9 @@
     box-shadow: var(--mp-shadow-1);
     padding: var(--mp-space-4) var(--mp-space-5);
     margin-bottom: var(--mp-space-4);
+    /* Dentro de uma coluna flex de altura fixa (as telas do painel), sem isto o
+       masthead encolhe e seu conteúdo é cortado por baixo da topbar. */
+    flex: 0 0 auto;
 }
 .mp-masthead__top {
     display: flex;

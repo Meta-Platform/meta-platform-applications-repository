@@ -80,11 +80,14 @@ const ControlPanelPage = ({
 		}
 	}
 
-	return <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+	// A topbar (.eco-main-menu) é `position: fixed` no design system, então sai do
+	// fluxo. O shell `.eco-control-body` reserva a altura dela via padding-top —
+	// sem isso o conteúdo passa por baixo da barra.
+	return <div className="eco-control-shell">
 			<TopMenu
 				activeItem={activeItem}
 				onSelectMenu={handleSelectMenu}/>
-			<div style={{ flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}>
+			<div className="eco-control-body" style={{ height: "100vh", boxSizing: "border-box", overflow: "hidden" }}>
 				{ activeItem && renderActivePanel() }
 			</div>
 		</div>

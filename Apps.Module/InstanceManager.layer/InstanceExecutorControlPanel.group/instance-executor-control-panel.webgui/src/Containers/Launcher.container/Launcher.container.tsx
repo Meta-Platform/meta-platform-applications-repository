@@ -159,7 +159,7 @@ const LauncherContainer = ({ serverManagerInformation, QueryParams, AddQueryPara
     const totalRunning = packageList.filter((p) => p.packageInService).length
     const totalBootable = packageList.filter((p) => IsBootable(p)).length
 
-    return <div style={{ padding: "10px", height: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
+    return <div style={{ padding: "16px", height: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
 
         <PageMasthead
             icon="rocket"

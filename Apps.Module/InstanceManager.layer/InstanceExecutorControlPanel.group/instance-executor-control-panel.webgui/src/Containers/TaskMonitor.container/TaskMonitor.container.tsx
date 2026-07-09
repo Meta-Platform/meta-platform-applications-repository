@@ -168,7 +168,7 @@ const TaskMonitorContainer = ({ HTTPServerManager }:any) => {
 
     const isDetailOpen = selectedTaskId !== undefined
 
-    return <div style={{ padding: "10px", height: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
+    return <div style={{ padding: "16px", height: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", overflow: "auto" }}>
 
         <PageMasthead
             icon="microchip"
@@ -259,7 +259,7 @@ const TaskMonitorContainer = ({ HTTPServerManager }:any) => {
             <Label circular size="mini" style={{ marginLeft: "2px" }}>{filteredTaskList.length}</Label>
         </div>
 
-        <div style={{ flex: "1 1 auto", minHeight: 0, display: "flex", gap: "10px" }}>
+        <div style={{ flex: "1 1 auto", minHeight: "240px", display: "flex", gap: "10px" }}>
             <div style={{ flex: isDetailOpen ? "1 1 60%" : "1 1 100%", minWidth: 0, display: "flex", flexDirection: "column" }}>
                 <TaskTable
                     taskList={filteredTaskList}
