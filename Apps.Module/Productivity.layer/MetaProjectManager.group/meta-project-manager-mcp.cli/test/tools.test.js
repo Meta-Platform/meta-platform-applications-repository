@@ -107,3 +107,50 @@ test("delete tools + activity tools estão no catálogo", () => {
     for (const n of ["delete_project","delete_board","delete_item","list_audit_events","get_audit_event","add_activity_note","list_activity_notes","get_activity_context"])
         assert.ok(names.indexOf(n) >= 0, `faltou ${n}`)
 })
+
+test("#5 assign_item_planning vincula item a milestone/sprint via MCP", async () => {
+    const p = await store.CreateProject({ name: "MCP Plan", keyPrefix: "MCPP", actor: { source: "cli" } })
+    const m = await store.CreateMilestone({ project: p.id, name: "M" })
+    const it = await store.CreateItem({ project: p.id, type: "task", title: "vincular" })
+    await byName("assign_item_planning").handler({ item: it.key, milestone: m.id })
+    assert.equal((await store.ListMilestones({ project: p.id }))[0].totalItems, 1)
+})
+
+test("#7 link_item expõe as relações reais no schema (sem depends-on)", () => {
+    const enumv = byName("link_item").inputSchema.properties.relation.enum
+    assert.ok(enumv.includes("depends") && enumv.includes("relates"))
+    assert.ok(!enumv.includes("depends-on") && !enumv.includes("relates-to"))
+})
+
+test("#4 add_activity_note por agente atribui ao usuário-agente", async () => {
+    const it = await store.CreateItem({ project: "MCP", type: "task", title: "nota agente" })
+    const note = await byName("add_activity_note").handler({ item: it.key, text: "do agente" })
+    const author = await store.GetUser({ user: note.authorUserId })
+    assert.equal(author.type, "agent")
+})
+
+test("#3 add_link_attachment aceita file://", async () => {
+    const it = await store.CreateItem({ project: "MCP", type: "task", title: "anexo" })
+    const att = await byName("add_link_attachment").handler({ item: it.key, url: "file:///tmp/a.log" })
+    assert.equal(att.type, "link")
+})
+
+test("get_guidance devolve instruções + restrições reais do domínio", async () => {
+    const out = await byName("get_guidance").handler({})
+    assert.ok(out.instructions.includes("Meta Project Manager"))
+    // as restrições precisam bater com o domínio, não ser texto solto
+    assert.deepEqual(out.constraints.linkRelations, ["blocks","depends","relates","duplicates","implements","tests"])
+    assert.equal(out.constraints.keyPrefixMaxChars, 5)
+    assert.deepEqual(out.constraints.gatedActions.delete, ["project","board","item"])
+    assert.ok(out.constraints.linkAttachmentSchemes.includes("file"))
+    assert.equal(out.session.provider, "claude")
+})
+
+test("as instruções listam as relações reais e AVISAM sobre as inexistentes", async () => {
+    const { instructions } = await byName("get_guidance").handler({})
+    // as válidas aparecem
+    for (const r of ["`blocks`", "`depends`", "`relates`"]) assert.ok(instructions.includes(r), `faltou ${r}`)
+    // as inválidas só aparecem dentro do aviso "Não existe ..."
+    assert.ok(/Não existe `depends-on` nem\s+`relates-to`/.test(instructions),
+        "depends-on/relates-to só podem aparecer na forma negativa")
+})

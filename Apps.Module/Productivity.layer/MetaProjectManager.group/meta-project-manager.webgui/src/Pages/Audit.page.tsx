@@ -8,40 +8,14 @@ import useEvents from "../Hooks/useEvents"
 import { ActivityEntry, ActivityFilters, ActivityNote, Project, User, PlatformEvent } from "../api/types"
 import AppShell from "../Components/AppShell"
 import { Loading, EmptyState, ErrorBanner } from "../Components/Primitives"
-import { formatDateTime, humanizeAction } from "../Utils/format"
+import { formatDateTime } from "../Utils/format"
+import { activityTitle, activityDetail, activityIcon, actorName } from "../Utils/activity"
 
 type ViewMode = "timeline" | "table"
 
 const ACTOR_TYPES = ["", "human", "agent", "system", "desktop"]
 const SOURCES = ["", "gui", "cli", "api", "agent", "mcp", "desktop"]
 const PROVIDERS = ["", "claude", "codex", "chatgpt", "other"]
-
-// Ícone por tipo de ação (leitura rápida da timeline).
-const actionIcon = (action: string): any => {
-    if (action.indexOf("delete") >= 0) return "trash"
-    if (action.indexOf("approve") >= 0) return "check circle"
-    if (action.indexOf("reject") >= 0) return "ban"
-    if (action.indexOf("request") >= 0) return "shield"
-    if (action.indexOf("create") >= 0) return "plus circle"
-    if (action.indexOf("status") >= 0) return "exchange"
-    if (action.indexOf("archive") >= 0) return "archive"
-    return "pencil"
-}
-
-const actorLabel = (e: ActivityEntry, usersById: Record<string, User>): string => {
-    const u = e.actorUserId ? usersById[e.actorUserId] : undefined
-    if (u) return u.displayName
-    if (e.actorType === "agent") return e.provider ? `Agente (${e.provider})` : "Agente"
-    if (e.actorType === "desktop") return "Usuário Desktop"
-    return e.actorType || "Sistema"
-}
-
-// "Claude atualizou status de work-item para done"
-const humanTitle = (e: ActivityEntry, usersById: Record<string, User>): string => {
-    const who = actorLabel(e, usersById)
-    const what = (e.metadata && (e.metadata.key || e.metadata.name || e.metadata.title)) || e.entityType
-    return `${who} · ${humanizeAction(e.action)} ${what}`
-}
 
 // Diff antes → depois, campo a campo.
 const DiffView = ({ entry }: { entry: ActivityEntry }) => {
@@ -95,6 +69,14 @@ const AuditPage = () => {
     const [view, setView] = useState<ViewMode>("timeline")
     const [error, setError] = useState<string | null>(null)
     const [noteText, setNoteText] = useState("")
+    const [showAdvanced, setShowAdvanced] = useState(false)
+    const [showNotes, setShowNotes] = useState(false)
+
+    // Contagem de filtros ativos (para o botão "Mais" e o "Limpar (n)").
+    const ADVANCED_KEYS: (keyof ActivityFilters)[] = ["source", "provider", "model", "from", "to"]
+    const advancedCount = ADVANCED_KEYS.filter((k) => !!filters[k]).length
+    const activeCount = (Object.keys(filters) as (keyof ActivityFilters)[])
+        .filter((k) => k !== "limit" && !!filters[k]).length
 
     const usersById = useMemo(() => {
         const m: Record<string, User> = {}
@@ -177,68 +159,73 @@ const AuditPage = () => {
             </div>
         </div>
 
-        {/* Filtros */}
-        <div className="mpm-panel mpm-audit__filters">
-            <div className="mpm-audit__filter-row">
-                <label className="mpm-field" title="Restringe a um projeto; vazio = todos os projetos">
-                    <span className="mpm-field__label">Projeto</span>
-                    <select className="mpm-select" value={filters.project || ""} onChange={(e) => setFilter("project", e.target.value)}>
-                        <option value="">Todos os projetos</option>
-                        {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                </label>
-                <label className="mpm-field" title="Humano, agente de IA, sistema ou usuario-desktop">
-                    <span className="mpm-field__label">Tipo de ator</span>
-                    <select className="mpm-select" value={filters.actorType || ""} onChange={(e) => setFilter("actorType", e.target.value)}>
-                        {ACTOR_TYPES.map((t) => <option key={t} value={t}>{t || "Todos"}</option>)}
-                    </select>
-                </label>
-                <label className="mpm-field" title="De onde a ação partiu">
-                    <span className="mpm-field__label">Fonte</span>
-                    <select className="mpm-select" value={filters.source || ""} onChange={(e) => setFilter("source", e.target.value)}>
-                        {SOURCES.map((t) => <option key={t} value={t}>{t || "Todas"}</option>)}
-                    </select>
-                </label>
-                <label className="mpm-field" title="Provider do agente de IA">
-                    <span className="mpm-field__label">Provider</span>
-                    <select className="mpm-select" value={filters.provider || ""} onChange={(e) => setFilter("provider", e.target.value)}>
-                        {PROVIDERS.map((t) => <option key={t} value={t}>{t || "Todos"}</option>)}
-                    </select>
-                </label>
-            </div>
-            <div className="mpm-audit__filter-row">
-                <label className="mpm-field" title="Nome do modelo (ex.: claude-opus-4)">
-                    <span className="mpm-field__label">Modelo</span>
-                    <input className="mpm-input" value={filters.model || ""} placeholder="claude-opus-4"
-                        onChange={(e) => setFilter("model", e.target.value)} />
-                </label>
-                <label className="mpm-field" title="Ex.: create, update, set-status, approve, delete">
-                    <span className="mpm-field__label">Ação</span>
-                    <input className="mpm-input" value={filters.action || ""} placeholder="set-status"
-                        onChange={(e) => setFilter("action", e.target.value)} />
-                </label>
-                <label className="mpm-field" title="Data/hora inicial">
-                    <span className="mpm-field__label">De</span>
-                    <input className="mpm-input" type="date" value={filters.from || ""} onChange={(e) => setFilter("from", e.target.value)} />
-                </label>
-                <label className="mpm-field" title="Data/hora final">
-                    <span className="mpm-field__label">Até</span>
-                    <input className="mpm-input" type="date" value={filters.to || ""} onChange={(e) => setFilter("to", e.target.value)} />
-                </label>
-                <button className="mpm-btn mpm-btn--ghost" style={{ alignSelf: "flex-end" }} onClick={reset}>
-                    <Icon name="undo" /> Limpar
+        {/* Filtros: barra compacta de UMA linha; os avançados ficam recolhidos.
+            Antes ocupavam ~180px de altura fixa e dominavam a tela. */}
+        <div className="mpm-audit__bar">
+            <Icon name="filter" className="mpm-muted" />
+            <select className="mpm-inline-select" title="Restringe a um projeto; vazio = todos"
+                value={filters.project || ""} onChange={(e) => setFilter("project", e.target.value)}>
+                <option value="">Todos os projetos</option>
+                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <select className="mpm-inline-select" title="Humano, agente de IA, sistema ou usuario-desktop"
+                value={filters.actorType || ""} onChange={(e) => setFilter("actorType", e.target.value)}>
+                {ACTOR_TYPES.map((t) => <option key={t} value={t}>{t ? `Ator: ${t}` : "Ator: todos"}</option>)}
+            </select>
+            <input className="mpm-inline-select" style={{ minWidth: 130 }} title="Ex.: create, update, set-status"
+                value={filters.action || ""} placeholder="ação…" onChange={(e) => setFilter("action", e.target.value)} />
+
+            <button className={`mpm-btn mpm-btn--sm ${showAdvanced ? "mpm-btn--primary" : "mpm-btn--ghost"}`}
+                title="Mais filtros: fonte, provider, modelo e período"
+                onClick={() => setShowAdvanced((v) => !v)}>
+                <Icon name="sliders horizontal" /> Mais
+                {advancedCount > 0 ? <span className="mpm-chip mpm-chip--info">{advancedCount}</span> : null}
+            </button>
+            {activeCount > 0
+                ? <button className="mpm-btn mpm-btn--sm mpm-btn--ghost" onClick={reset} title="Limpar todos os filtros">
+                    <Icon name="undo" /> Limpar ({activeCount})
                 </button>
-            </div>
+                : null}
+            <span style={{ flex: 1 }} />
+            <span className="mpm-muted mpm-mono" style={{ fontSize: 12 }}>
+                {events ? `${events.length} evento(s)` : ""}
+            </span>
         </div>
+
+        {showAdvanced
+            ? <div className="mpm-audit__bar mpm-audit__bar--adv">
+                <select className="mpm-inline-select" title="De onde a ação partiu"
+                    value={filters.source || ""} onChange={(e) => setFilter("source", e.target.value)}>
+                    {SOURCES.map((t) => <option key={t} value={t}>{t ? `Fonte: ${t}` : "Fonte: todas"}</option>)}
+                </select>
+                <select className="mpm-inline-select" title="Provider do agente de IA"
+                    value={filters.provider || ""} onChange={(e) => setFilter("provider", e.target.value)}>
+                    {PROVIDERS.map((t) => <option key={t} value={t}>{t ? `Provider: ${t}` : "Provider: todos"}</option>)}
+                </select>
+                <input className="mpm-inline-select" style={{ minWidth: 150 }} title="Nome do modelo"
+                    value={filters.model || ""} placeholder="modelo (claude-opus-4)…"
+                    onChange={(e) => setFilter("model", e.target.value)} />
+                <label className="mpm-audit__date" title="Data inicial">
+                    de <input className="mpm-inline-select" type="date" value={filters.from || ""} onChange={(e) => setFilter("from", e.target.value)} />
+                </label>
+                <label className="mpm-audit__date" title="Data final">
+                    até <input className="mpm-inline-select" type="date" value={filters.to || ""} onChange={(e) => setFilter("to", e.target.value)} />
+                </label>
+            </div>
+            : null}
 
         <ErrorBanner error={error} />
 
-        {/* Anotações do escopo (usuario-desktop) */}
+        {/* Anotações do escopo (usuario-desktop) — recolhidas por padrão */}
         {filters.project
             ? <div className="mpm-panel">
-                <div className="mpm-panel__title">
+                <div className="mpm-panel__title" style={{ cursor: "pointer" }}
+                    onClick={() => setShowNotes((v) => !v)}
+                    title="Anotações manuais deste projeto (lidas também pelos agentes)">
+                    <Icon name={showNotes ? "caret down" : "caret right"} />
                     <Icon name="sticky note" /> Anotações do projeto ({notes.length})
                 </div>
+                {!showNotes ? null : <>
                 <div className="mpm-row" style={{ gap: "var(--mp-space-2)" }}>
                     <input className="mpm-input" style={{ flex: 1 }} value={noteText}
                         placeholder="Registrar uma anotação manual (atribuída ao usuario-desktop)…"
@@ -262,6 +249,7 @@ const AuditPage = () => {
                             </div>)}
                     </div>
                     : null}
+                </>}
             </div>
             : null}
 
@@ -278,11 +266,11 @@ const AuditPage = () => {
                                 <div className="mpm-panel__title"><Icon name="calendar outline" /> {g.day}</div>
                                 <div className="mpm-timeline">
                                     {g.events.map((e) =>
-                                        <div key={e.id} className="mpm-timeline__item mpm-audit__event">
-                                            <span className="mpm-avatar"><Icon name={actionIcon(e.action)} size="small" style={{ margin: 0 }} /></span>
+                                        <div key={e.id} className="mpm-timeline__item mpm-audit__event mpm-activity" title={activityDetail(e)}>
+                                            <span className="mpm-avatar"><Icon name={activityIcon(e.action)} size="small" style={{ margin: 0 }} /></span>
                                             <div className="mpm-timeline__body" style={{ minWidth: 0 }}>
                                                 <div className="mpm-audit__title">
-                                                    <strong>{humanTitle(e, usersById)}</strong>
+                                                    <strong className="mpm-activity__text">{activityTitle(e, usersById)}</strong>
                                                     {e.actorType === "agent"
                                                         ? <span className="mpm-chip mpm-chip--info">{e.model || e.provider}</span>
                                                         : null}
@@ -323,7 +311,7 @@ const AuditPage = () => {
                                 {events.map((e) =>
                                     <tr key={e.id}>
                                         <td className="mpm-mono">{formatDateTime(e.createdAt)}</td>
-                                        <td>{actorLabel(e, usersById)}</td>
+                                        <td>{actorName(e, usersById)}</td>
                                         <td><span className="mpm-chip mpm-chip--neutral">{e.actorType || "—"}</span></td>
                                         <td className="mpm-mono">{e.action}</td>
                                         <td className="mpm-mono">{e.entityType}</td>

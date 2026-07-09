@@ -68,6 +68,32 @@ Aponte o cliente para ele passando o subcomando `serve`:
 
 Garanta o executável no `PATH` da sessão (ou use o caminho completo).
 
+## Orientação do agente (`instructions` + `get_guidance`)
+
+O servidor devolve, no `InitializeResult` do MCP, o campo **`instructions`** — um
+guia operacional que o cliente injeta no contexto do agente. É o que faz o agente
+já chegar sabendo as regras, em vez de descobri-las errando (batendo no gate,
+escrevendo descrições enormes, usando relações de vínculo inexistentes).
+
+Fonte única: `src/Server/Instructions.js`. Também é devolvido pela tool
+**`get_guidance`**, para clientes que ignoram `instructions`.
+
+O guia cobre:
+
+| Tema | O que o agente aprende |
+|---|---|
+| Investigar antes de criar | `search_items`, `get_activity_context` — atualizar em vez de duplicar |
+| Ler antes de agir | `get_item` + `list_comments`; comentários de **feedback** são instruções diretas |
+| Como escrever | título imperativo curto; `shortDescription` de 1 linha; `description` em seções, sem despejo de logs |
+| Livre × sob gate | itens/status/comentários são livres; **criar** projeto/board/milestone/sprint e **remover** projeto/board/item exigem aprovação humana |
+| Aprovar é humano | não existem tools de aprovar/rejeitar/confirmar — não tente burlar |
+| Armadilhas | relações exatas (`blocks`, `depends`, `relates`, `duplicates`, `implements`, `tests`); `assign_item_planning` é o que vincula milestone/sprint; `keyPrefix` ≤ 5 chars; `file://` vale em link |
+| Códigos de erro | o que fazer em `AGENT_SESSION_CONFIRMATION_REQUIRED`, `REJECTED_BY_HUMAN`, `APPROVAL_TIMEOUT`, `FORBIDDEN`, `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT` |
+
+> **Ao editar `Instructions.js`:** só documente o que o código realmente faz. Os
+> testes (`test/tools.test.js`) verificam que as restrições anunciadas batem com
+> o domínio — por exemplo, que as relações de vínculo listadas são as reais.
+
 ## Tools expostas
 
 **Planejar (gate — exige aprovação humana):** `create_project`, `create_board`,
@@ -87,7 +113,7 @@ pediu (provider/modelo/sessão). Não tente burlar o gate.
 
 **Executar (livre):** `create_item`, `add_to_inbox`, `list_items`, `get_item`,
 `update_item`, `set_item_status`, `assign_item`, `move_item_to_board`,
-`block_item`, `link_item`.
+`block_item`, `link_item`, `assign_item_planning`.
 
 **Interagir:** `add_comment`, `list_comments`, `add_link_attachment`,
 `add_file_attachment`.

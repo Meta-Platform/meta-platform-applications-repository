@@ -1,4 +1,4 @@
-const { NewId, Serialize, SerializeMany } = require("../Utils/helpers")
+const { NewId, Serialize, SerializeMany, PatchDiff } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
 const { MILESTONE_STATUSES, SPRINT_STATUSES } = require("../Config")
 
@@ -62,9 +62,10 @@ const PlanningStore = (ctx) => {
         const patch = {}
         for(const k of ["name", "shortDescription", "description", "targetDate", "status", "order"]) if(fields[k] !== undefined) patch[k] = fields[k]
         if(patch.status && !MILESTONE_STATUSES.includes(patch.status)) throw new DomainError("VALIDATION_ERROR", `Status inválido: ${patch.status}.`, { field: "status", allowed: MILESTONE_STATUSES })
+        const before = PatchDiff(m, patch)
         await m.update(patch)
         const data = Serialize(m)
-        await writeAudit({ projectId: m.projectId, entityType: "milestone", entityId: m.id, action: "update", actor, metadata: patch })
+        await writeAudit({ projectId: m.projectId, entityType: "milestone", entityId: m.id, action: "update", actor, metadata: patch, before, after: patch })
         emit("milestone.updated", data)
         return data
     }
@@ -139,9 +140,10 @@ const PlanningStore = (ctx) => {
         const patch = {}
         for(const k of ["name", "shortDescription", "goal", "startDate", "endDate", "status", "order"]) if(fields[k] !== undefined) patch[k] = fields[k]
         if(patch.status && !SPRINT_STATUSES.includes(patch.status)) throw new DomainError("VALIDATION_ERROR", `Status inválido: ${patch.status}.`, { field: "status", allowed: SPRINT_STATUSES })
+        const before = PatchDiff(s, patch)
         await s.update(patch)
         const data = Serialize(s)
-        await writeAudit({ projectId: s.projectId, entityType: "sprint", entityId: s.id, action: "update", actor, metadata: patch })
+        await writeAudit({ projectId: s.projectId, entityType: "sprint", entityId: s.id, action: "update", actor, metadata: patch, before, after: patch })
         emit("sprint.updated", data)
         return data
     }
@@ -161,9 +163,10 @@ const PlanningStore = (ctx) => {
         const patch = {}
         if(milestone !== undefined) patch.milestoneId = (milestone && milestone !== "none") ? (await ResolveMilestone(milestone)).id : null
         if(sprint !== undefined) patch.sprintId = (sprint && sprint !== "none") ? (await ResolveSprint(sprint)).id : null
+        const before = PatchDiff(workItem, patch)
         await workItem.update(patch)
         const data = Serialize(workItem)
-        await writeAudit({ projectId: workItem.projectId, entityType: "work-item", entityId: workItem.id, action: "assign-planning", actor, metadata: patch })
+        await writeAudit({ projectId: workItem.projectId, entityType: "work-item", entityId: workItem.id, action: "assign-planning", actor, metadata: patch, before, after: patch })
         emit("item.updated", data)
         return data
     }

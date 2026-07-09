@@ -16,6 +16,7 @@ import NewItemModal from "./NewItemModal"
 import ItemFilterBar from "./ItemFilterBar"
 import BulkActionBar from "./BulkActionBar"
 import ConfirmActionModal from "./ConfirmActionModal"
+import AgentFeedbackModal from "./AgentFeedbackModal"
 import downloadJson from "../Utils/downloadJson"
 import { Loading, EmptyState, ErrorBanner } from "./Primitives"
 
@@ -56,6 +57,9 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
     const [selected, setSelected] = useState<string | null>(null)
     const [selectedIds, setSelectedIds] = useState<string[]>([])
     const [confirm, setConfirm] = useState<PendingConfirm | null>(null)
+    // Menu de contexto (botão direito) sobre um card/linha de item.
+    const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; item: WorkItem } | null>(null)
+    const [feedbackItem, setFeedbackItem] = useState<WorkItem | null>(null)
     const [confirmBusy, setConfirmBusy] = useState(false)
     const [quickAddStatus, setQuickAddStatus] = useState<string | null>(null)
     const [quickAddOpen, setQuickAddOpen] = useState(false)
@@ -172,6 +176,25 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
 
     const openQuickAdd = (statusKey?: string) => { setQuickAddStatus(statusKey || null); setQuickAddOpen(true) }
 
+    // Delegação: qualquer elemento com data-item-id abre o menu de contexto.
+    const onContextMenu = (e: React.MouseEvent) => {
+        const el = (e.target as HTMLElement).closest("[data-item-id]")
+        if (!el) return
+        const id = el.getAttribute("data-item-id")
+        const it = items.find((i) => i.id === id)
+        if (!it) return
+        e.preventDefault()
+        setCtxMenu({ x: e.clientX, y: e.clientY, item: it })
+    }
+    useEffect(() => {
+        if (!ctxMenu) return
+        const close = () => setCtxMenu(null)
+        const onKey = (ev: KeyboardEvent) => { if (ev.key === "Escape") close() }
+        window.addEventListener("click", close)
+        window.addEventListener("keydown", onKey)
+        return () => { window.removeEventListener("click", close); window.removeEventListener("keydown", onKey) }
+    }, [ctxMenu])
+
     // recarrega o board (GetBoard traz columns[]) após mutação de coluna
     const reloadBoard = useCallback(() => {
         if (!board) return Promise.resolve()
@@ -265,8 +288,8 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
                     <button className={`mpm-seg__btn ${view === "board" ? "is-active" : ""}`} onClick={() => changeView("board")}><Icon name="columns" /> Board</button>
                     <button className={`mpm-seg__btn ${view === "list" ? "is-active" : ""}`} onClick={() => changeView("list")}><Icon name="list" /> Lista</button>
                 </div>
-                <button className="mpm-btn" title="Exportar projeto" onClick={exportProject}><Icon name="download" /> Exportar</button>
-                {view === "board" && board ? <button className="mpm-btn" title="Exportar board" onClick={exportBoard}><Icon name="table" /> Board</button> : null}
+                <button className="mpm-btn" title="Exportar o projeto inteiro (.json)" onClick={exportProject}><Icon name="download" /> Exportar projeto</button>
+                {view === "board" && board ? <button className="mpm-btn" title="Exportar o board atual (.json)" onClick={exportBoard}><Icon name="table" /> Exportar board</button> : null}
                 <button className="mpm-btn mpm-btn--primary" onClick={() => openQuickAdd()}><Icon name="plus" /> Item</button>
             </div>
         </div>
@@ -300,6 +323,7 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
 
         <ErrorBanner error={error} />
 
+        <div onContextMenu={onContextMenu}>
         {loading
             ? <Loading />
             : view === "board"
@@ -334,6 +358,41 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
                         onOpenItem={setSelected}
                         onSetStatus={setStatus}
                         onSetPriority={setPriority} />)}
+        </div>
+
+        {/* Menu de contexto (botão direito) do item */}
+        {ctxMenu
+            ? <div className="mpm-ctxmenu" style={{ left: ctxMenu.x, top: ctxMenu.y }}
+                onClick={(e) => e.stopPropagation()}>
+                <div className="mpm-ctxmenu__title mpm-mono">{ctxMenu.item.key}</div>
+                <button className="mpm-ctxmenu__item" onClick={() => { setSelected(ctxMenu.item.id); setCtxMenu(null) }}>
+                    <Icon name="expand" /> Abrir item
+                </button>
+                <button className="mpm-ctxmenu__item" onClick={() => { setFeedbackItem(ctxMenu.item); setCtxMenu(null) }}>
+                    <Icon name="comment alternate" /> Feedback para agente…
+                </button>
+                <div className="mpm-ctxmenu__sep" />
+                <button className="mpm-ctxmenu__item mpm-ctxmenu__item--danger"
+                    onClick={() => {
+                        const it = ctxMenu.item; setCtxMenu(null)
+                        setConfirm({
+                            title: "Excluir item", danger: true,
+                            message: <>Excluir <strong>{it.key}</strong> — {it.title}?</>,
+                            consequences: [<>Soft delete: o item some das listagens (reversível).</>],
+                            confirmLabel: "Excluir item",
+                            run: async () => { await api.items.remove(it.id); await loadItems() }
+                        })
+                    }}>
+                    <Icon name="trash" /> Excluir item…
+                </button>
+            </div>
+            : null}
+
+        {feedbackItem
+            ? <AgentFeedbackModal item={feedbackItem}
+                onClose={() => setFeedbackItem(null)}
+                onSent={() => loadItems()} />
+            : null}
 
         {quickAddOpen && projectId
             ? <NewItemModal

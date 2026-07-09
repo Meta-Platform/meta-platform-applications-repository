@@ -44,7 +44,7 @@ const CreateAgentsApi = (call: Caller) => ({
 
     // Pedidos de aprovação (criação/remoção por agentes, aguardando decisão
     // humana). status default do servidor = pending. A lista já vem com who/impact.
-    listCreationRequests: (query: { type?: string; actionName?: string; status?: string } = {}): Promise<CreationRequest[]> =>
+    listCreationRequests: (query: { type?: string; actionName?: string; status?: string; agent?: string; session?: string; limit?: string } = {}): Promise<CreationRequest[]> =>
         call("Agents", "ListCreationRequests", query),
 
     getCreationRequest: (requestId: string): Promise<CreationRequest> =>

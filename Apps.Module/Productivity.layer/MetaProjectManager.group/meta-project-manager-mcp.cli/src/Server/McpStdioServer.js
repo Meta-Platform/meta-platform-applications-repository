@@ -13,7 +13,7 @@
 const PROTOCOL_VERSION = "2024-11-05"
 const SUPPORTED_PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"]
 
-const CreateMcpStdioServer = ({ name, version, tools, logger }) => {
+const CreateMcpStdioServer = ({ name, version, tools, logger, instructions }) => {
 
     const toolsByName = {}
     for(const t of tools) toolsByName[t.name] = t
@@ -31,10 +31,14 @@ const CreateMcpStdioServer = ({ name, version, tools, logger }) => {
     const HandleInitialize = (id, params) => {
         const requested = params && params.protocolVersion
         const protocolVersion = SUPPORTED_PROTOCOLS.indexOf(requested) >= 0 ? requested : PROTOCOL_VERSION
+        // `instructions` é parte do InitializeResult do MCP: o cliente injeta este
+        // texto no contexto do agente. É o que faz o agente já chegar sabendo as
+        // regras (gate, estilo de escrita, relações válidas) em vez de descobrir errando.
         Reply(id, {
             protocolVersion,
             capabilities: { tools: { listChanged: false } },
-            serverInfo: { name, version }
+            serverInfo: { name, version },
+            ...(instructions ? { instructions } : {})
         })
         const client = params && params.clientInfo && params.clientInfo.name
         logger.info(`initialize (protocol ${protocolVersion})${client ? ` por ${client}` : ""}`)

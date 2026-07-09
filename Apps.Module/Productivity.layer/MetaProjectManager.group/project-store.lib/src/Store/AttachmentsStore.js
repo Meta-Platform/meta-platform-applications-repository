@@ -2,7 +2,7 @@ const fs   = require("fs/promises")
 const path = require("path")
 const { NewId, Serialize, SerializeMany, SanitizeFileName, Sha256OfBuffer, ConvertPathToAbsolutPath } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
-const { ATTACHMENT_TYPES } = require("../Config")
+const { ATTACHMENT_TYPES, LINK_URL_SCHEMES } = require("../Config")
 
 // Deduz o tipo lógico do anexo a partir do mime/extensão.
 const InferType = (name, mimeType) => {
@@ -71,9 +71,14 @@ const AttachmentsStore = (ctx) => {
         return _store({ item, name, buffer: buf, mimeType, description, type, commentId, actor })
     }
 
+    // Aceita http(s) e file:// — este último referencia um arquivo LOCAL sem copiá-lo
+    // para o storage de anexos (use AddFileAttachment quando quiser guardar o conteúdo).
     const AddLinkAttachment = async ({ item, url, name, description, commentId, actor } = {}) => {
-        if(!url || !/^https?:\/\//i.test(url))
-            throw new DomainError("VALIDATION_ERROR", "URL externa inválida (use http/https).", { field: "url" })
+        const scheme = typeof url === "string" ? (url.match(/^([a-z][a-z0-9+.-]*):\/\//i) || [])[1] : undefined
+        if(!scheme || !LINK_URL_SCHEMES.includes(scheme.toLowerCase()))
+            throw new DomainError("VALIDATION_ERROR",
+                `URL externa inválida (esquemas aceitos: ${LINK_URL_SCHEMES.join(", ")}).`,
+                { field: "url", allowed: LINK_URL_SCHEMES, received: url })
         const workItem = await store.ResolveItem(item)
         const attachment = await Attachment.create({
             id: NewId(), projectId: workItem.projectId, workItemId: workItem.id, commentId,

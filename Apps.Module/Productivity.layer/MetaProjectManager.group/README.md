@@ -116,3 +116,22 @@ Migrations não são manuais — `sequelize.sync()` cria/atualiza o schema (idio
 ( cd project-store.lib && node --test )                       # domínio
 ( cd meta-project-manager.cli && npm i yargs --no-save && node --test )   # CLI (gate, delete, notas, auditoria)
 ```
+
+## Contratos que costumam pegar de surpresa
+
+- **`keyPrefix`**: informado explicitamente, é **validado** (letras/números, no máximo 5) e
+  devolve `VALIDATION_ERROR` com `details.suggestion` — nunca é truncado em silêncio. O prefixo
+  **derivado do nome** continua sendo cortado sem erro.
+- **Board padrão**: `Project.defaultBoardId` e `Board.isDefault` são mantidos coerentes; o
+  **primeiro** board de um projeto vira padrão automaticamente.
+- **Vínculos entre itens**: as relações aceitas são exatamente
+  `blocks`, `depends`, `relates`, `duplicates`, `implements`, `tests` (não `depends-on`/`relates-to`).
+- **Vincular item a milestone/sprint**: use `AssignItemPlanning` (CLI `mpm item set-milestone` /
+  `set-sprint`; MCP `assign_item_planning`). Criar o milestone **não** vincula itens sozinho.
+- **Anexos por link**: `AddLinkAttachment` aceita `http`, `https` e `file://` (referência a arquivo
+  local, sem copiar o conteúdo). Para guardar o arquivo, use `AddFileAttachment`.
+- **Auditoria**: o diff `before`/`after` existe para **mutações que alteram campos**
+  (update, set-status, assign, block, move, convert, assign-planning…). Eventos de `create`,
+  `request` e `approve` não têm diff — não havia valor anterior.
+- **Notas de atividade**: a autoria segue humano explícito → usuário-agente (quando há sessão de
+  agente) → `usuario-desktop` como fallback.

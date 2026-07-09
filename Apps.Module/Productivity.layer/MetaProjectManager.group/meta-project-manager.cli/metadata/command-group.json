@@ -563,13 +563,25 @@
                     "namespace": "ItemLink",
                     "path": "Commands/ItemLink.command",
                     "command": "link [item]",
-                    "description": "Vincular a outro item",
+                    "description": "Vincular a outro item (item --relação--> target)",
                     "parameters": [
                         {
                             "key": "item",
                             "paramType": "positional",
                             "valueType": "string",
                             "describe": "id|key"
+                        },
+                        {
+                            "key": "relation",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "blocks | depends | relates | duplicates | implements | tests"
+                        },
+                        {
+                            "key": "target",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "item alvo (id|key)"
                         }
                     ],
                     "parametersToLoad": [
@@ -587,6 +599,18 @@
                             "paramType": "positional",
                             "valueType": "string",
                             "describe": "id|key"
+                        },
+                        {
+                            "key": "relation",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "blocks | depends | relates | duplicates | implements | tests"
+                        },
+                        {
+                            "key": "target",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "item alvo (id|key)"
                         }
                     ],
                     "parametersToLoad": [

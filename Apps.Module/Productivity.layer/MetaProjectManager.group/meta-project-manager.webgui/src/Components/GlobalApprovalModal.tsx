@@ -37,6 +37,8 @@ const GlobalApprovalModal = () => {
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [rejecting, setRejecting] = useState(false)
+    const [showDesc, setShowDesc] = useState(false)
+    const [showSession, setShowSession] = useState(false)
     const [reason, setReason] = useState("")
 
     // Mantém o índice dentro dos limites quando a fila muda.
@@ -45,7 +47,7 @@ const GlobalApprovalModal = () => {
     }, [requests.length, index])
 
     // Reseta o estado de rejeição ao trocar de pedido.
-    useEffect(() => { setRejecting(false); setReason(""); setError(null) }, [index, requests.length])
+    useEffect(() => { setRejecting(false); setReason(""); setError(null); setShowDesc(false); setShowSession(false) }, [index, requests.length])
 
     if (requests.length === 0) return null
     const req: CreationRequest | undefined = requests[index]
@@ -95,16 +97,28 @@ const GlobalApprovalModal = () => {
                     : null}
             </div>
 
-            <div className="mpm-modal__body" style={{ maxHeight: "70vh", overflowY: "auto" }}>
-                {/* O QUE */}
+            <div className="mpm-modal__body mpm-approval__body">
+                {/* O QUE — linha assertiva: ação + alvo + risco */}
                 <div className="mpm-row" style={{ alignItems: "center" }}>
                     <span className={`mpm-badge ${isDelete ? "mpm-badge--type-bug" : "mpm-badge--type-epic"}`}>
                         {isDelete ? "Remover" : "Criar"} {targetKind}
                     </span>
-                    <strong style={{ fontSize: "var(--mp-text-lg)", flex: 1 }}>{targetName}</strong>
+                    <strong className="mpm-approval__target" title={targetName}>{targetName}</strong>
                     {req.risk === "destructive"
                         ? <span className="mpm-chip mpm-chip--danger"><Icon name="warning sign" /> destrutivo</span>
                         : <span className="mpm-chip mpm-chip--warning"><Icon name="clock" /> pendente</span>}
+                </div>
+
+                {/* Resumo em uma linha (quando o agente informou shortDescription) */}
+                {!isDelete && payload.shortDescription
+                    ? <p className="mpm-approval__lead">{payload.shortDescription}</p>
+                    : null}
+
+                {/* QUEM — compacto, sempre visível, sem dossiê */}
+                <div className="mpm-approval__facts">
+                    <span><b>Quem</b> {who.provider || s.provider || "agente"}{(who.model || s.modelName) ? ` · ${who.model || s.modelName}` : ""}</span>
+                    <span><b>Sessão</b> <code className="mpm-mono">{who.traceId || s.traceId || "—"}</code></span>
+                    <span><b>Quando</b> {formatDateTime(req.requestedAt)}</span>
                 </div>
 
                 {/* Impacto de deleção: o QUE será afetado */}
@@ -123,31 +137,33 @@ const GlobalApprovalModal = () => {
                     </div>
                     : null}
 
-                {/* Descrição da criação */}
+                {/* Descrição longa: RECOLHIDA por padrão (antes dominava o modal) */}
                 {!isDelete && payload.description
-                    ? <Markdown>{payload.description}</Markdown>
+                    ? <div className="mpm-approval__section">
+                        <button className="mpm-btn mpm-btn--ghost mpm-btn--sm" onClick={() => setShowDesc((v) => !v)}>
+                            <Icon name={showDesc ? "caret down" : "caret right"} /> Descrição completa
+                        </button>
+                        {showDesc ? <div className="mpm-approval__scroll"><Markdown>{payload.description}</Markdown></div> : null}
+                    </div>
                     : null}
 
-                {/* QUEM */}
-                <div className="mpm-panel" style={{ background: "var(--mp-surface-2)" }}>
-                    <div className="mpm-section-title"><Icon name="microchip" /> Quem solicitou</div>
-                    <div className="mpm-grid-cards" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}>
-                        {kv("Provider", who.provider || s.provider)}
-                        {kv("Modelo", who.model || s.modelName)}
-                        {kv("Objetivo", who.objective || s.objective)}
-                        {kv("Sessão / trace", who.traceId || s.traceId)}
-                        {kv("Host", who.host || s.host)}
-                        {kv("Usuário SO", who.osUser || s.osUser)}
-                        {kv("Diretório", s.workingDirectory)}
-                        {kv("Repositório", s.repositoryUrl)}
-                        {kv("Branch", s.branchName)}
-                        {kv("Commit", s.commitHash)}
-                    </div>
+                {/* Dossiê forense da sessão: recolhido */}
+                <div className="mpm-approval__section">
+                    <button className="mpm-btn mpm-btn--ghost mpm-btn--sm" onClick={() => setShowSession((v) => !v)}>
+                        <Icon name={showSession ? "caret down" : "caret right"} /> Detalhes da sessão
+                    </button>
+                    {showSession
+                        ? <div className="mpm-grid-cards" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))" }}>
+                            {kv("Objetivo", who.objective || s.objective)}
+                            {kv("Host", who.host || s.host)}
+                            {kv("Usuário SO", who.osUser || s.osUser)}
+                            {kv("Diretório", s.workingDirectory)}
+                            {kv("Repositório", s.repositoryUrl)}
+                            {kv("Branch", s.branchName)}
+                            {kv("Commit", s.commitHash)}
+                        </div>
+                        : null}
                 </div>
-
-                <span className="mpm-muted" style={{ fontSize: "12px" }}>
-                    <Icon name="calendar outline" /> solicitado {formatDateTime(req.requestedAt)}
-                </span>
 
                 {rejecting
                     ? <div className="mpm-field">

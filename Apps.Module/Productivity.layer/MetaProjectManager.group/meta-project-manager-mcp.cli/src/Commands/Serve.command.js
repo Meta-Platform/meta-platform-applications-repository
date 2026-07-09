@@ -2,6 +2,7 @@ const { InitStore } = require("../Utils/runtime")
 const { BuildAgentActor } = require("../Utils/actor")
 const { BuildTools } = require("../Server/Tools")
 const { CreateMcpStdioServer } = require("../Server/McpStdioServer")
+const { INSTRUCTIONS } = require("../Server/Instructions")
 const { CreateLogger } = require("../Utils/logger")
 
 const pkg = require("../../package.json")
@@ -41,7 +42,8 @@ const ServeCommand = async ({ args = {}, startupParams, params }) => {
             name: "meta-project-manager",
             version: pkg.version || "0.0.1",
             tools,
-            logger
+            logger,
+            instructions: INSTRUCTIONS
         })
         server.Start()
     } catch(e){

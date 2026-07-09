@@ -59,15 +59,16 @@ html, body, #gui { height: 100%; margin: 0; }
 }
 .mpm-topbar__active {
     display: flex; align-items: center; gap: var(--mp-space-2);
+    min-width: 0; max-width: 340px;
     padding: var(--mp-space-1) var(--mp-space-3);
     border: var(--mp-border-thin);
     border-radius: var(--mp-radius-sm);
     background: var(--mp-surface-2);
     color: var(--mp-ink-2);
     font-weight: 600;
-    max-width: 320px;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* o texto (não o flex container) é quem trunca com reticências */
+.mpm-topbar__active > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mpm-topbar__spacer { flex: 1; }
 .mpm-topbar__search {
     display: flex; align-items: center; gap: var(--mp-space-2);
@@ -97,11 +98,14 @@ html, body, #gui { height: 100%; margin: 0; }
 /* ============================================================ */
 /* Layout: sidebar + content + inspector                        */
 /* ============================================================ */
+/* Largura vem do AppShell (--mpm-sidebar-w), persistida no AppState.
+   `auto` na coluna do resizer para ele não roubar espaço do conteúdo. */
 .mpm-body {
     display: grid;
-    grid-template-columns: var(--mp-shell-sidebar-w) 1fr;
+    grid-template-columns: var(--mpm-sidebar-w, var(--mp-shell-sidebar-w)) auto 1fr;
     min-height: 0;
 }
+.mpm-body.is-sidebar-collapsed { grid-template-columns: var(--mpm-sidebar-w, 60px) 1fr; }
 
 .mpm-sidebar {
     background: var(--mp-surface);
@@ -228,15 +232,41 @@ html, body, #gui { height: 100%; margin: 0; }
     transition: transform 0.05s ease, box-shadow 0.05s ease;
     white-space: nowrap;
 }
-.mpm-btn:hover { background: var(--mp-surface-2); }
+/* ATENÇÃO: `.mpm-btn:hover` tem especificidade MAIOR que `.mpm-btn--primary`.
+   Sem o :not(), o hover pintava o fundo de creme enquanto a cor do texto seguia
+   creme -> o botão azul parecia VAZIO ao passar o mouse. Variantes têm hover próprio. */
+.mpm-btn:not(.mpm-btn--primary):not(.mpm-btn--danger):hover { background: var(--mp-surface-2); }
 .mpm-btn:active { transform: translate(2px, 2px); box-shadow: var(--mp-shadow-none); }
+
 .mpm-btn--primary { background: var(--mp-accent-blue); color: var(--mp-surface); border-color: var(--mp-line-strong); }
-.mpm-btn--primary:hover { filter: brightness(1.05); }
+.mpm-btn--primary:hover,
+.mpm-btn--primary:focus-visible {
+    background: var(--mp-accent-blue) !important;
+    color: var(--mp-surface) !important;
+    filter: brightness(1.12);
+}
+.mpm-btn--primary:active { background: var(--mp-accent-blue) !important; color: var(--mp-surface) !important; filter: brightness(0.92); }
+
 .mpm-btn--danger { background: var(--mp-danger); color: #fff; border-color: var(--mp-line-strong); }
+.mpm-btn--danger:hover,
+.mpm-btn--danger:focus-visible { background: var(--mp-danger) !important; color: #fff !important; filter: brightness(1.12); }
+.mpm-btn--danger:active { background: var(--mp-danger) !important; color: #fff !important; filter: brightness(0.92); }
+
 .mpm-btn--ghost { background: transparent; box-shadow: none; border-color: var(--mp-line-soft); }
 .mpm-btn--ghost:hover { background: var(--mp-surface-2); }
 .mpm-btn--sm { padding: var(--mp-space-1) var(--mp-space-2); font-size: var(--mp-text-xs); box-shadow: none; }
-.mpm-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+/* `opacity` apagava o rótulo dos botões primários (texto creme sobre azul claro).
+   O disabled agora troca as CORES, mantendo contraste legível. */
+.mpm-btn[disabled] { cursor: not-allowed; box-shadow: none; }
+.mpm-btn[disabled]:not(.mpm-btn--primary):not(.mpm-btn--danger) {
+    color: var(--mp-muted); background: var(--mp-surface-2); border-color: var(--mp-line-soft);
+}
+.mpm-btn--primary[disabled], .mpm-btn--danger[disabled] {
+    background: var(--mp-surface-2) !important;
+    color: var(--mp-muted) !important;
+    border-color: var(--mp-line-soft) !important;
+    filter: none !important;
+}
 .mpm-btn .icon { margin: 0 !important; }
 
 .mpm-iconbtn {
@@ -347,8 +377,10 @@ html, body, #gui { height: 100%; margin: 0; }
     background: var(--mp-surface-2);
     color: var(--mp-ink-2);
     white-space: nowrap;
-    text-transform: capitalize;
 }
+/* capitalize SÓ em chips de status/horizonte. Em `.mpm-chip` genérico ele
+   transformava datas ("21 de jul." -> "21 De Jul.") e contadores. */
+.mpm-chip--cap { text-transform: capitalize; }
 .mpm-chip--success { background: var(--mp-success-tint); color: var(--mp-success); border-color: var(--mp-success); }
 .mpm-chip--danger  { background: var(--mp-danger-tint);  color: var(--mp-danger);  border-color: var(--mp-danger); }
 .mpm-chip--warning { background: var(--mp-warning-tint); color: var(--mp-warning); border-color: var(--mp-warning); }
@@ -478,6 +510,7 @@ html, body, #gui { height: 100%; margin: 0; }
 /* ============================================================ */
 .mpm-table { width: 100%; border-collapse: collapse; background: var(--mp-surface); border: var(--mp-border); }
 .mpm-table th {
+    position: sticky; top: 0; z-index: 2;
     text-align: left; padding: var(--mp-space-2) var(--mp-space-3);
     font-size: var(--mp-text-xs); text-transform: uppercase; letter-spacing: 0.05em;
     color: var(--mp-muted); border-bottom: var(--mp-border); background: var(--mp-surface-2);
@@ -732,16 +765,48 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-md-editor .w-md-editor-input {
     background: var(--mp-surface) !important;
 }
+/* O editor sobrepõe um <textarea> transparente sobre um <pre> de highlight. As
+   DUAS camadas precisam ter MÉTRICAS DE TEXTO IDÊNTICAS (fonte, tamanho,
+   line-height, letter-spacing, peso, padding) — senão o texto aparece dobrado /
+   deslocado. Igualamos tudo explicitamente e neutralizamos o estilo global de
+   `code` (que aplicava border+background dentro da camada de highlight). */
 .mpm-md-editor .w-md-editor-text,
 .mpm-md-editor .w-md-editor-text-pre,
 .mpm-md-editor .w-md-editor-text-input,
-.mpm-md-editor .w-md-editor-text > .w-md-editor-text-pre > code {
-    color: var(--mp-ink) !important;
+.mpm-md-editor .w-md-editor-text-pre > code,
+.mpm-md-editor .w-md-editor-text-pre > code span {
     font-family: var(--mp-font-mono) !important;
     font-size: var(--mp-text-sm) !important;
+    line-height: 1.5 !important;
+    letter-spacing: 0 !important;
+    word-spacing: 0 !important;
+    font-weight: 400 !important;
+    font-variant-ligatures: none !important;
+    tab-size: 4 !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+}
+.mpm-md-editor .w-md-editor-text,
+.mpm-md-editor .w-md-editor-text-pre,
+.mpm-md-editor .w-md-editor-text-input {
+    color: var(--mp-ink) !important;
     -webkit-text-fill-color: var(--mp-ink) !important;
     caret-color: var(--mp-accent-blue);
     background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+}
+/* Anula o `code { background; border; radius }` global DENTRO da camada de
+   highlight — era ele que empurrava o <pre> 1px e dobrava o texto. */
+.mpm-md-editor .w-md-editor-text-pre > code,
+.mpm-md-editor .w-md-editor-text-pre > code span {
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
 }
 .mpm-md-editor .w-md-editor-text-input::placeholder { color: var(--mp-muted-2) !important; }
 /* preview (markdown renderizado) */
@@ -814,7 +879,11 @@ html, body, #gui { height: 100%; margin: 0; }
 
 /* ------------------------------------------------------------ */
 /* Layout estilo documentação: conteúdo + menu de tópicos à direita */
-.mpm-docs { display: grid; grid-template-columns: minmax(0, 1fr) 244px; gap: var(--mp-space-5); align-items: start; }
+/* Docs/manual: texto corrido tem medida de linha confortável, mas o resto da
+   tela continua fluido. */
+.mpm-docs { display: grid; grid-template-columns: minmax(0, 1fr) 244px; gap: var(--mp-space-5); align-items: start; max-width: 1500px; }
+.mpm-guide-section .mpm-md, .mpm-guide-section p, .mpm-docs-lead { max-width: 90ch; }
+.mpm-panel > .mpm-md { max-width: 100ch; }
 .mpm-docs-main { display: flex; flex-direction: column; gap: var(--mp-space-4); min-width: 0; }
 .mpm-docs-nav {
     position: sticky; top: var(--mp-space-4); align-self: start;
@@ -1016,3 +1085,208 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-btn .icon, .mpm-nav__item .icon, .mpm-chip .icon, .mpm-seg__btn .icon {
     margin: 0 !important; line-height: 1;
 }
+
+/* ── Correções de layout a partir da revisão visual ──────────────────────── */
+
+/* NÃO limitar a largura do conteúdo: board, tabelas e filtros precisam acompanhar
+   a janela. A medida de linha é resolvida só onde há TEXTO CORRIDO (docs/markdown). */
+.mpm-content { display: flex; flex-direction: column; align-items: stretch; }
+
+/* Chips de status alinhados à altura dos botões da mesma barra de ações. */
+.mpm-page-head__actions { display: flex; align-items: center; gap: var(--mp-space-2); flex-wrap: wrap; }
+.mpm-page-head__actions > .mpm-chip { align-self: center; height: 28px; }
+
+/* Board: a coluna real é `.mpm-kcol` (não `.mpm-kanban__col`). O container
+   `.mpm-kanban` já é flex + overflow-x:auto. */
+.mpm-kanban { scroll-snap-type: x proximity; }
+.mpm-kcol { scroll-snap-align: start; }
+
+/* Editor markdown: usa a altura disponível do modal em vez de sobrar branco. */
+.mpm-md-editor .w-md-editor { min-height: 320px; }
+
+/* Estado vazio compacto dentro de abas do modal (antes: 500px em branco). */
+.mpm-tabpanel-empty {
+    display: flex; flex-direction: column; align-items: center; gap: var(--mp-space-2);
+    padding: var(--mp-space-5) var(--mp-space-4);
+    color: var(--mp-muted); text-align: center;
+    border: 1px dashed var(--mp-line-soft); border-radius: var(--mp-radius-md);
+}
+
+/* Lista/Backlog: título do item ganha o espaço; selects param de esticar. */
+.mpm-table col.mpm-col--item { width: auto; }
+.mpm-table td .mpm-inline-select { max-width: 150px; width: 100%; }
+.mpm-table th.mpm-col--narrow, .mpm-table td.mpm-col--narrow { width: 1%; white-space: nowrap; }
+
+/* Auditoria: barra de filtros compacta (uma linha) em vez de painel alto. */
+.mpm-audit__bar {
+    display: flex; align-items: center; gap: var(--mp-space-2); flex-wrap: wrap;
+    padding: var(--mp-space-2) var(--mp-space-3);
+    background: var(--mp-surface);
+    border: var(--mp-border-thin);
+    border-radius: var(--mp-radius-md);
+}
+.mpm-audit__bar--adv { background: var(--mp-surface-2); margin-top: calc(-1 * var(--mp-space-3)); }
+.mpm-audit__bar .mpm-inline-select { height: 28px; }
+.mpm-audit__date {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: var(--mp-text-xs); color: var(--mp-muted);
+}
+/* Timeline mais densa: menos respiro por evento, linha conectora visível. */
+.mpm-audit__event { padding: 4px 0; }
+.mpm-audit__event .mpm-timeline__meta { gap: var(--mp-space-2); font-size: 11px; }
+
+/* Modal global de aprovação: assertivo — resumo visível, detalhes recolhidos. */
+.mpm-approval__body { max-height: 66vh; overflow-y: auto; }
+.mpm-approval__target {
+    font-size: var(--mp-text-lg); flex: 1; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mpm-approval__lead { margin: 0; color: var(--mp-ink-2); line-height: 1.5; }
+.mpm-approval__facts {
+    display: flex; flex-wrap: wrap; gap: var(--mp-space-3);
+    padding: var(--mp-space-2) var(--mp-space-3);
+    background: var(--mp-surface-2); border: 1px solid var(--mp-line-soft);
+    border-radius: var(--mp-radius-sm);
+    font-size: var(--mp-text-xs); color: var(--mp-ink-2);
+}
+.mpm-approval__facts b { color: var(--mp-muted); font-weight: 700; margin-right: 4px; }
+.mpm-approval__section { display: flex; flex-direction: column; gap: var(--mp-space-2); }
+/* A descrição longa nunca domina o modal: rola dentro da própria caixa. */
+.mpm-approval__scroll {
+    max-height: 240px; overflow-y: auto;
+    padding: var(--mp-space-3);
+    border: 1px solid var(--mp-line-soft); border-radius: var(--mp-radius-sm);
+    background: var(--mp-paper-2);
+}
+
+/* ── Sidebar redimensionável / colapsável (estado persistido) ────────────── */
+.mpm-sidebar__resizer {
+    width: 5px; cursor: col-resize;
+    background: transparent;
+    border-right: 1px solid transparent;
+    transition: background 0.1s ease;
+}
+.mpm-sidebar__resizer:hover,
+.mpm-sidebar__resizer:active { background: var(--mp-accent-blue); }
+
+/* Modo rail: só ícones, centralizados. */
+.mpm-sidebar.is-collapsed { padding: var(--mp-space-4) var(--mp-space-1); align-items: center; }
+.mpm-sidebar.is-collapsed .mpm-nav__item {
+    justify-content: center; padding: var(--mp-space-2); gap: 0;
+    position: relative;
+}
+.mpm-sidebar.is-collapsed .mpm-nav__item .mpm-chip {
+    position: absolute; top: 2px; right: 2px;
+    padding: 0 4px; font-size: 10px; line-height: 14px;
+}
+.mpm-sidebar.is-collapsed .mpm-nav { width: 100%; }
+
+/* ── Menu de contexto (botão direito) sobre itens ────────────────────────── */
+.mpm-ctxmenu {
+    position: fixed; z-index: calc(var(--mp-z-modal) + 30);
+    min-width: 210px;
+    display: flex; flex-direction: column;
+    background: var(--mp-surface);
+    border: var(--mp-border-strong);
+    box-shadow: var(--mp-shadow-3);
+    border-radius: var(--mp-radius-sm);
+    padding: 4px;
+}
+.mpm-ctxmenu__title {
+    padding: 4px 8px; font-size: var(--mp-text-xs);
+    color: var(--mp-muted); border-bottom: 1px solid var(--mp-line-faint); margin-bottom: 4px;
+}
+.mpm-ctxmenu__item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; background: transparent; border: 0; cursor: pointer;
+    font-size: var(--mp-text-sm); font-weight: 600; color: var(--mp-ink); text-align: left;
+    border-radius: var(--mp-radius-sm);
+}
+.mpm-ctxmenu__item:hover { background: var(--mp-surface-2); }
+.mpm-ctxmenu__item--danger { color: var(--mp-danger); }
+.mpm-ctxmenu__item--danger:hover { background: var(--mp-danger-tint); }
+.mpm-ctxmenu__sep { height: 1px; background: var(--mp-line-faint); margin: 4px 0; }
+
+/* Menu "Mais" (ações de risco fora da barra principal). */
+.mpm-more { position: relative; display: inline-flex; }
+.mpm-more__menu {
+    position: absolute; right: 0; top: calc(100% + 4px); z-index: var(--mp-z-drawer);
+    min-width: 200px; display: flex; flex-direction: column; padding: 4px;
+    background: var(--mp-surface); border: var(--mp-border-strong);
+    box-shadow: var(--mp-shadow-3); border-radius: var(--mp-radius-sm);
+}
+/* Tabs da Visão geral usam o mesmo componente do modal de item. */
+.mpm-content > .mpm-tabs { padding: 0; border-bottom: var(--mp-border); }
+
+/* ── Célula de item em Lista/Backlog ─────────────────────────────────────── */
+/* `table-layout: fixed` faz o <colgroup> valer: selects com nomes longos
+   deixam de esticar e roubar a largura do título. */
+.mpm-table--fixed { table-layout: fixed; }
+.mpm-table--fixed td { overflow: hidden; }
+
+.mpm-itemcell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mpm-itemcell__meta { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; overflow: hidden; }
+.mpm-itemcell__title {
+    font-weight: 600; color: var(--mp-ink);
+    display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
+    overflow-wrap: anywhere;
+}
+/* Selects da tabela: largura previsível, texto truncado. */
+.mpm-table--fixed .mpm-inline-select {
+    width: 100%; max-width: 100%; min-width: 0;
+    text-overflow: ellipsis;
+}
+
+/* ── Aba Descrição: leitura ocupa o modal; edição idem ───────────────────── */
+.mpm-desc { display: flex; flex-direction: column; gap: var(--mp-space-2); flex: 1; min-height: 0; }
+.mpm-desc__bar { display: flex; align-items: center; gap: var(--mp-space-2); }
+.mpm-desc__read {
+    flex: 1; min-height: 0; overflow-y: auto;
+    padding: var(--mp-space-4);
+    background: var(--mp-surface);
+    border: var(--mp-border-thin);
+    border-radius: var(--mp-radius-md);
+}
+/* O editor preenche toda a altura restante (antes: 340px + muito branco). */
+.mpm-desc--editing .mpm-md-editor { flex: 1; min-height: 0; display: flex; }
+.mpm-desc--editing .mpm-md-editor .w-md-editor { flex: 1; min-height: 0; height: 100% !important; }
+
+/* O corpo do inspector precisa ESTICAR (flex:1) para a aba Descrição ocupar o
+   modal inteiro. Já era flex-column com overflow-y:auto (ver regra acima). */
+.mpm-inspector__body { flex: 1; min-height: 0; }
+
+/* ── Atividade em linguagem natural (tooltip traz o detalhe técnico) ─────── */
+.mpm-activity { cursor: help; align-items: flex-start; }
+.mpm-activity__text {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    color: var(--mp-ink); font-weight: 600; line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+.mpm-activity__meta {
+    display: flex; gap: var(--mp-space-2); flex-wrap: wrap;
+    font-size: 11px; color: var(--mp-muted); margin-top: 2px;
+}
+
+/* ── Atividade em linguagem natural (tooltip traz o detalhe técnico) ─────── */
+.mpm-activity { cursor: help; align-items: flex-start; }
+.mpm-activity__text {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    color: var(--mp-ink); font-weight: 600; line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+.mpm-activity__meta {
+    display: flex; gap: var(--mp-space-2); flex-wrap: wrap;
+    font-size: 11px; color: var(--mp-muted); margin-top: 2px;
+}
+
+/* Visão geral: cards acompanham a janela, com teto para não virarem faixas. */
+.mpm-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 720px));
+    gap: var(--mp-space-4);
+    align-items: start;
+}
+
+/* Board ocupa toda a largura disponível e rola só na horizontal quando precisa. */
+.mpm-kanban { width: 100%; }

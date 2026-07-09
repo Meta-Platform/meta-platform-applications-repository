@@ -1,7 +1,25 @@
 const { Op } = require("sequelize")
 const { NewId, Slugify, DeriveKeyPrefix, Serialize, SerializeMany } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
-const { PROJECT_STATUSES, SHORT_DESCRIPTION_MAX } = require("../Config")
+const { PROJECT_STATUSES, SHORT_DESCRIPTION_MAX, KEY_PREFIX_MAX } = require("../Config")
+
+// keyPrefix informado EXPLICITAMENTE é validado, nunca truncado em silêncio:
+// caracteres inválidos ou tamanho acima do limite viram VALIDATION_ERROR com a
+// sugestão já sanitizada. (O prefixo DERIVADO do nome continua sendo cortado.)
+const _assertKeyPrefix = (raw) => {
+    const clean = String(raw).toUpperCase().replace(/[^A-Z0-9]/g, "")
+    if(!clean)
+        throw new DomainError("VALIDATION_ERROR", "keyPrefix deve conter ao menos uma letra ou número.", { field: "keyPrefix" })
+    if(clean !== String(raw).toUpperCase())
+        throw new DomainError("VALIDATION_ERROR",
+            "keyPrefix aceita apenas letras e números.",
+            { field: "keyPrefix", received: raw, suggestion: clean.slice(0, KEY_PREFIX_MAX) })
+    if(clean.length > KEY_PREFIX_MAX)
+        throw new DomainError("VALIDATION_ERROR",
+            `keyPrefix aceita no máximo ${KEY_PREFIX_MAX} caracteres (recebeu ${clean.length}).`,
+            { field: "keyPrefix", max: KEY_PREFIX_MAX, received: raw, suggestion: clean.slice(0, KEY_PREFIX_MAX) })
+    return clean
+}
 
 // shortDescription: aceita vazio; nunca grava fallback derivado da description
 // (o fallback é só visual, na GUI). Rejeita acima do limite.
@@ -42,6 +60,7 @@ const ProjectsStore = (ctx) => {
         if(!PROJECT_STATUSES.includes(status))
             throw new DomainError("VALIDATION_ERROR", `Status inválido: ${status}.`, { field: "status", allowed: PROJECT_STATUSES })
         _assertShortDescription(shortDescription)
+        if(keyPrefix) _assertKeyPrefix(keyPrefix)
 
         // Gate: criação de projeto por agente exige aprovação humana (vira pedido pendente).
         if(store.IsAgentCreation(actor)){
@@ -60,7 +79,7 @@ const ProjectsStore = (ctx) => {
             name,
             slug: finalSlug,
             shortDescription, description, icon, color, status,
-            keyPrefix: (keyPrefix ? String(keyPrefix).toUpperCase().replace(/[^A-Z0-9]/g, "") : DeriveKeyPrefix(name)).slice(0, 5) || "MPM",
+            keyPrefix: keyPrefix ? _assertKeyPrefix(keyPrefix) : DeriveKeyPrefix(name),
             keySeq: 0,
             repositoryUrl, localPath, ownerUserId
         })

@@ -1,10 +1,11 @@
 import * as React from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
-import { ActivityEntry } from "../api/types"
-import { formatDateTime, humanizeAction } from "../Utils/format"
+import { ActivityEntry, User } from "../api/types"
+import { formatDateTime } from "../Utils/format"
+import { activityTitle, activityDetail, activityIcon } from "../Utils/activity"
 import { ErrorBanner } from "./Primitives"
 
 interface AuditTimelineProps {
@@ -13,11 +14,13 @@ interface AuditTimelineProps {
     limit?: number
 }
 
-// AuditTimeline (spec §11.1): histórico de auditoria via ListActivity,
-// opcionalmente filtrado por entidade (work item).
+// AuditTimeline: histórico em LINGUAGEM NATURAL ("Claude mudou o status de
+// CFGEC-7 para done"). O detalhe técnico (fonte, modelo, sessão e o diff
+// antes→depois) fica no tooltip, ao passar o mouse.
 const AuditTimeline = ({ projectId, entityId, limit = 50 }: AuditTimelineProps) => {
     const api = useApi()
     const [entries, setEntries] = useState<ActivityEntry[]>([])
+    const [users, setUsers] = useState<User[]>([])
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
@@ -28,21 +31,38 @@ const AuditTimeline = ({ projectId, entityId, limit = 50 }: AuditTimelineProps) 
         return () => { alive = false }
     }, [projectId, limit])
 
+    // Nomes reais dos atores (em vez de ids) nas frases.
+    useEffect(() => {
+        let alive = true
+        api.users.list({}).then((l) => { if (alive) setUsers(l || []) }).catch(() => {})
+        return () => { alive = false }
+    }, [api])
+
+    const usersById = useMemo(() => {
+        const m: Record<string, User> = {}
+        users.forEach((u) => { m[u.id] = u })
+        return m
+    }, [users])
+
     const shown = entityId ? entries.filter((e) => e.entityId === entityId) : entries
 
     return <div className="mpm-col">
         <div className="mpm-section-title"><Icon name="history" /> Atividade</div>
         <ErrorBanner error={error} />
         {shown.length === 0
-            ? <div className="mpm-muted" style={{ fontSize: "12px" }}>sem atividade registrada</div>
+            ? <div className="mpm-tabpanel-empty">
+                <Icon name="history" size="large" />
+                <div>Sem atividade registrada.</div>
+            </div>
             : <div className="mpm-timeline">
                 {shown.map((e) =>
-                    <div key={e.id} className="mpm-timeline__item">
-                        <span className="mpm-avatar"><Icon name="dot circle" size="small" style={{ margin: 0 }} /></span>
-                        <div className="mpm-timeline__body">
-                            <div className="mpm-timeline__meta">
-                                <strong>{humanizeAction(e.action)}</strong>
-                                <span className="mpm-mono">{e.entityType}</span>
+                    <div key={e.id} className="mpm-timeline__item mpm-activity" title={activityDetail(e)}>
+                        <span className="mpm-avatar"><Icon name={activityIcon(e.action)} size="small" style={{ margin: 0 }} /></span>
+                        <div className="mpm-timeline__body" style={{ minWidth: 0 }}>
+                            <div className="mpm-activity__text">{activityTitle(e, usersById)}</div>
+                            <div className="mpm-activity__meta mpm-mono">
+                                {e.actorType === "agent" && e.model ? <span>{e.model}</span> : null}
+                                <span>{e.source}</span>
                                 <span>{formatDateTime(e.createdAt)}</span>
                             </div>
                         </div>

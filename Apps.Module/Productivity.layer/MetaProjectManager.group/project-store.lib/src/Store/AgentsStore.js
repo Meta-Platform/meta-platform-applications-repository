@@ -353,11 +353,21 @@ const AgentsStore = (ctx) => {
         return { ...Serialize(req), payload, session: session ? Serialize(session) : undefined, who: _describeWho(session, req), impact }
     }
 
-    const ListCreationRequests = async ({ type, actionName, status = "pending", limit = 200, offset = 0 } = {}) => {
+    // status "all" (ou vazio) => histórico completo. `agent` filtra pelo usuário-agente
+    // (via suas sessões) e `session` por uma sessão específica.
+    const ListCreationRequests = async ({ type, actionName, status = "pending", agent, session, projectId, limit = 200, offset = 0 } = {}) => {
         const where = {}
         if(type) where.type = type
         if(actionName) where.actionName = actionName
-        if(status) where.status = status
+        if(status && status !== "all") where.status = status
+        if(projectId) where.projectId = projectId
+        if(session) where.agentSessionId = session
+        else if(agent){
+            const profile = await ResolveAgent(agent).catch(() => undefined)
+            const agentUserId = profile ? profile.userId : agent
+            const sessions = await AgentSession.findAll({ where: { agentUserId }, attributes: ["id"] })
+            where.agentSessionId = sessions.map((s) => s.id)
+        }
         const rows = await CreationRequest.findAll({ where, order: [["requestedAt", "DESC"]], limit: Number(limit), offset: Number(offset) })
         // Enriquecer com sessão, "quem" e (p/ delete) o impacto — a GUI mostra o QUE e QUEM.
         const out = []

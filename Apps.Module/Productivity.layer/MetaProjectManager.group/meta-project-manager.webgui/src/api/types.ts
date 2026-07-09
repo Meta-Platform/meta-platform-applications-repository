@@ -223,6 +223,9 @@ export interface AgentSession {
     ownerHumanUserId?: ID
     provider: string
     modelName: string
+    traceId?: string
+    host?: string
+    workingDirectory?: string
     sessionName?: string
     description?: string
     objective?: string

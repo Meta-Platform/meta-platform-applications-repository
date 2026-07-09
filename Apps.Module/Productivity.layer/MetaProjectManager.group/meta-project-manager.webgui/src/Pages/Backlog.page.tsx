@@ -109,30 +109,44 @@ const BacklogPage = () => {
             ? <Loading />
             : items.length === 0
                 ? <EmptyState icon="clipboard list" title="Backlog vazio" hint="Adicione itens acima ou ajuste os filtros." />
-                : <div className="mpm-scroll-x"><table className="mpm-table">
+                : <div className="mpm-scroll-x"><table className="mpm-table mpm-table--fixed">
+                    <colgroup>
+                        <col style={{ width: "42%" }} />
+                        <col style={{ width: 74 }} />
+                        <col style={{ width: 58 }} />
+                        <col style={{ width: 118 }} />
+                        <col style={{ width: 148 }} />
+                        <col style={{ width: 148 }} />
+                        <col style={{ width: 56 }} />
+                        <col style={{ width: 90 }} />
+                    </colgroup>
                     <thead><tr>
                         <th>Item</th>
-                        <th style={{ width: 80 }}>Valor</th>
-                        <th style={{ width: 60 }}>Esf.</th>
-                        <th style={{ width: 120 }}>Horizonte</th>
-                        <th style={{ width: 140 }}>Milestone</th>
-                        <th style={{ width: 140 }}>Sprint</th>
-                        <th style={{ width: 60 }}>Resp.</th>
-                        <th style={{ width: 100 }}>Info</th>
+                        <th title="Impacto/benefício">Valor</th>
+                        <th title="Tamanho estimado">Esf.</th>
+                        <th title="Quão perto de ser feito">Horizonte</th>
+                        <th title="Alvo de entrega com data">Milestone</th>
+                        <th title="Janela de tempo (iteração)">Sprint</th>
+                        <th title="Responsável">Resp.</th>
+                        <th title="Comentários / anexos / progresso">Info</th>
                     </tr></thead>
                     <tbody>
                         {items.map((it) => {
                             const assignee = it.assigneeUserId ? usersById[it.assigneeUserId] : undefined
                             return <tr key={it.id} className="mpm-table__row--clickable">
+                                {/* Célula do item em 2 linhas: metadados (ordem FIXA) + título.
+                                    Antes as chips vinham em ordens diferentes por linha. */}
                                 <td onClick={() => setSelected(it.id)}>
-                                    <span className="mpm-row mpm-wrap">
-                                        <TypeBadge type={it.type} />
-                                        <PriorityBadge priority={it.priority} />
-                                        <AreaBadge area={it.area} />
-                                        <span className="mpm-mono mpm-muted">{it.key}</span>
-                                        <span style={{ fontWeight: 600 }}>{it.title}</span>
-                                        <StatusChip status={it.statusKey} />
-                                    </span>
+                                    <div className="mpm-itemcell">
+                                        <div className="mpm-itemcell__meta">
+                                            <span className="mpm-mono mpm-muted">{it.key}</span>
+                                            <TypeBadge type={it.type} />
+                                            <PriorityBadge priority={it.priority} />
+                                            <StatusChip status={it.statusKey} />
+                                            <AreaBadge area={it.area} />
+                                        </div>
+                                        <div className="mpm-itemcell__title" title={it.title}>{it.title}</div>
+                                    </div>
                                 </td>
                                 <td><ValueBadge value={it.value} /></td>
                                 <td><EffortBadge effort={it.effort} /></td>

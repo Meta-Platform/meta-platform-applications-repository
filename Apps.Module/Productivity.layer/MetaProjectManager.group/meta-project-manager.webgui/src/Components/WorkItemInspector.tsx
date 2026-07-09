@@ -15,6 +15,7 @@ import AuditTimeline from "./AuditTimeline"
 import LinkPanel from "./LinkPanel"
 import SoftwareContextSection from "./SoftwareContextSection"
 import DescriptionEditor from "./DescriptionEditor"
+import Markdown from "./Markdown"
 import ConfirmActionModal from "./ConfirmActionModal"
 
 const PRIORITIES = ["none", "low", "medium", "high", "urgent"]
@@ -33,8 +34,8 @@ interface WorkItemInspectorProps {
 // Abas do modal de item (spec §8.1): evita uma rolagem única gigante.
 type TabKey = "resumo" | "descricao" | "criterios" | "checklist" | "vinculos" | "anexos" | "atividade" | "auditoria"
 const TABS: { key: TabKey; label: string; icon: any; hint: string }[] = [
+    { key: "descricao", label: "Descrição",  icon: "align left",           hint: "Descrição em markdown (negrito, itálico, sublinhado)" },
     { key: "resumo",    label: "Resumo",     icon: "info circle",          hint: "Campos principais: tipo, status, prioridade, responsável, planejamento" },
-    { key: "descricao", label: "Descrição",  icon: "align left",           hint: "Descrição longa em markdown" },
     { key: "criterios", label: "Critérios",  icon: "check circle outline", hint: "Critérios de aceite (Definition of Done)" },
     { key: "checklist", label: "Checklist",  icon: "tasks",                hint: "Sub-passos marcáveis do item" },
     { key: "vinculos",  label: "Vínculos",   icon: "linkify",              hint: "Dependências, bloqueios e relações com outros itens" },
@@ -95,7 +96,12 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
     const [critDraft, setCritDraft] = useState("")
     const [milestones, setMilestones] = useState<Milestone[]>([])
     const [sprints, setSprints] = useState<Sprint[]>([])
-    const [tab, setTab] = useState<TabKey>("resumo")
+    // Descrição primeiro: é o que o usuário quer ler/editar ao abrir um item.
+    const [tab, setTab] = useState<TabKey>("descricao")
+    // Resumo "clean": por padrão só campos PREENCHIDOS; o toggle revela os vazios.
+    const [showEmptyFields, setShowEmptyFields] = useState(false)
+    // A descrição abre em LEITURA (ocupando o modal). "Editar" liga o editor.
+    const [editingDesc, setEditingDesc] = useState(false)
     const [confirmDelete, setConfirmDelete] = useState(false)
     const [deleting, setDeleting] = useState(false)
 
@@ -106,7 +112,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
         .then((it) => setItem(it))
         .catch((e) => setError(e.message))
 
-    useEffect(() => { setItem(null); setError(null); setTab("resumo"); load() }, [itemId])
+    useEffect(() => { setItem(null); setError(null); setTab("descricao"); setShowEmptyFields(false); setEditingDesc(false); load() }, [itemId])
 
     useEffect(() => {
         if (!projectId) { setMilestones([]); setSprints([]); return }
@@ -147,7 +153,26 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
 
     const pid = projectId || item.projectId
 
+    // Resumo clean: campo opcional só aparece se PREENCHIDO (ou se o usuário pedir
+    // para ver os vazios). Tipo/Status/Prioridade são sempre exibidos.
+    const optional = (filled: boolean, node: React.ReactNode) =>
+        (filled || showEmptyFields) ? node : null
+    const hiddenCount = [
+        item.assigneeUserId, item.milestoneId, item.sprintId, item.horizon,
+        item.clarityState, item.effort, item.value, item.area, item.ideaOrigin
+    ].filter((v) => !v).length
+
     const summaryTab = <>
+        <div className="mpm-row" style={{ justifyContent: "flex-end" }}>
+            {hiddenCount > 0 || showEmptyFields
+                ? <button className="mpm-btn mpm-btn--ghost mpm-btn--sm"
+                    title="Mostra também os campos ainda não preenchidos"
+                    onClick={() => setShowEmptyFields((v) => !v)}>
+                    <Icon name={showEmptyFields ? "eye slash" : "eye"} />
+                    {showEmptyFields ? "Ocultar campos vazios" : `Mostrar campos vazios (${hiddenCount})`}
+                </button>
+                : null}
+        </div>
         <div className="mpm-inspector__grid">
             <div className="mpm-field">
                 <span className="mpm-field__label" title="Natureza do trabalho: epic, feature, história, tarefa, bug…">Tipo</span>
@@ -173,63 +198,63 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                     {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
             </div>
-            <div className="mpm-field">
+            {optional(!!item.assigneeUserId, <div className="mpm-field">
                 <span className="mpm-field__label" title="Quem é responsável (humano ou agente)">Responsável</span>
                 <select className="mpm-inline-select" value={item.assigneeUserId || ""}
                     onChange={(e) => patch(() => api.items.update(item.id, { assignee: e.target.value }))}>
                     <option value="">— não atribuído —</option>
                     {users.map((u) => <option key={u.id} value={u.id}>{u.displayName}</option>)}
                 </select>
-            </div>
-            <div className="mpm-field">
+            </div>)}
+            {optional(!!item.milestoneId, <div className="mpm-field">
                 <span className="mpm-field__label" title="Alvo de entrega com data (marco/release)">Milestone</span>
                 <select className="mpm-inline-select" value={item.milestoneId || ""}
                     onChange={(e) => patch(() => api.planning.assignItemPlanning(item.id, { milestone: e.target.value || "none" }))}>
                     <option value="">— nenhum —</option>
                     {milestones.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </select>
-            </div>
-            <div className="mpm-field">
+            </div>)}
+            {optional(!!item.sprintId, <div className="mpm-field">
                 <span className="mpm-field__label" title="Janela de tempo fixa (iteração)">Sprint</span>
                 <select className="mpm-inline-select" value={item.sprintId || ""}
                     onChange={(e) => patch(() => api.planning.assignItemPlanning(item.id, { sprint: e.target.value || "none" }))}>
                     <option value="">— nenhum —</option>
                     {sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
-            </div>
-            <div className="mpm-field">
+            </div>)}
+            {optional(!!item.horizon, <div className="mpm-field">
                 <span className="mpm-field__label" title="Quão perto de ser feito: now/next/later/maybe">Horizonte</span>
                 <select className="mpm-inline-select" value={item.horizon || ""}
                     onChange={(e) => patch(() => api.items.update(item.id, { horizon: e.target.value }))}>
                     <option value="">—</option>
                     {HORIZONS.map((h) => <option key={h} value={h}>{horizonLabel(h)}</option>)}
                 </select>
-            </div>
-            <div className="mpm-field">
+            </div>)}
+            {optional(!!item.clarityState, <div className="mpm-field">
                 <span className="mpm-field__label" title="Quão bem definido está: idea → refining → ready">Clareza</span>
                 <select className="mpm-inline-select" value={item.clarityState || ""}
                     onChange={(e) => patch(() => api.items.update(item.id, { clarityState: e.target.value }))}>
                     <option value="">—</option>
                     {CLARITY_STATES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
-            </div>
-            <div className="mpm-field">
+            </div>)}
+            {optional(!!item.effort, <div className="mpm-field">
                 <span className="mpm-field__label" title="Tamanho estimado do trabalho (xs–xl)">Esforço</span>
                 <select className="mpm-inline-select" value={item.effort || ""}
                     onChange={(e) => patch(() => api.items.update(item.id, { effort: e.target.value }))}>
                     <option value="">—</option>
                     {EFFORTS.map((ef) => <option key={ef} value={ef}>{ef.toUpperCase()}</option>)}
                 </select>
-            </div>
-            <div className="mpm-field">
+            </div>)}
+            {optional(!!item.value, <div className="mpm-field">
                 <span className="mpm-field__label" title="Impacto/benefício que o item entrega">Valor</span>
                 <select className="mpm-inline-select" value={item.value || ""}
                     onChange={(e) => patch(() => api.items.update(item.id, { value: e.target.value }))}>
                     <option value="">—</option>
                     {ITEM_VALUES.map((v) => <option key={v} value={v}>{v}</option>)}
                 </select>
-            </div>
-            <div className="mpm-field">
+            </div>)}
+            {optional(!!item.area, <div className="mpm-field">
                 <span className="mpm-field__label" title="Área técnica/funcional (ex.: GUI, Backend)">Área</span>
                 <input className="mpm-inline-select" list="mpm-area-list" defaultValue={item.area || ""}
                     key={`area-${item.id}-${item.updatedAt || ""}`}
@@ -237,13 +262,13 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 <datalist id="mpm-area-list">
                     {AREA_SUGGESTIONS.map((a) => <option key={a} value={a} />)}
                 </datalist>
-            </div>
-            <div className="mpm-field">
+            </div>)}
+            {optional(!!item.ideaOrigin, <div className="mpm-field">
                 <span className="mpm-field__label" title="De onde veio a ideia">Origem da ideia</span>
                 <input className="mpm-inline-select" defaultValue={item.ideaOrigin || ""}
                     key={`origin-${item.id}-${item.updatedAt || ""}`}
                     onBlur={(e) => { if (e.target.value !== (item.ideaOrigin || "")) patch(() => api.items.update(item.id, { ideaOrigin: e.target.value })) }} />
-            </div>
+            </div>)}
         </div>
 
         {item.blockedReason
@@ -267,6 +292,13 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
 
     const criteriaTab = <div className="mpm-col">
         <div className="mpm-section-title"><Icon name="check circle outline" /> Critérios de aceite</div>
+        {(item.acceptanceCriteria || []).length === 0
+            ? <div className="mpm-tabpanel-empty">
+                <Icon name="check circle outline" size="large" />
+                <div>Nenhum critério de aceite.</div>
+                <div style={{ fontSize: 12 }}>Defina o que precisa ser verdade para considerar este item pronto.</div>
+            </div>
+            : null}
         <div className="mpm-checklist">
             {(item.acceptanceCriteria || []).map((a) =>
                 <div key={a.id} className={`mpm-checklist__item ${a.met ? "is-done" : ""}`}>
@@ -289,6 +321,13 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
 
     const checklistTab = <div className="mpm-col">
         <div className="mpm-section-title"><Icon name="tasks" /> Checklist</div>
+        {(item.checklist || []).length === 0
+            ? <div className="mpm-tabpanel-empty">
+                <Icon name="tasks" size="large" />
+                <div>Checklist vazia.</div>
+                <div style={{ fontSize: 12 }}>Quebre o item em passos menores e marque conforme avança.</div>
+            </div>
+            : null}
         <div className="mpm-checklist">
             {(item.checklist || []).map((c) =>
                 <div key={c.id} className={`mpm-checklist__item ${c.done ? "is-done" : ""}`}>
@@ -311,8 +350,30 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
 
     const tabBody =
         tab === "resumo"    ? summaryTab
-      : tab === "descricao" ? <DescriptionEditor key={`desc-${item.id}`} value={item.description || ""}
-                                onSave={(md) => patch(() => api.items.update(item.id, { description: md }))} />
+      : tab === "descricao" ? (editingDesc
+            ? <DescriptionEditor key={`desc-${item.id}`} value={item.description || ""}
+                onSave={(md) => patch(() => api.items.update(item.id, { description: md }))}
+                onDone={() => setEditingDesc(false)} />
+            : <div className="mpm-desc">
+                <div className="mpm-desc__bar">
+                    <span className="mpm-field__label" style={{ flex: 1 }}>Descrição</span>
+                    <button className="mpm-btn mpm-btn--sm" title="Editar a descrição em markdown"
+                        onClick={() => setEditingDesc(true)}>
+                        <Icon name="pencil" /> Editar
+                    </button>
+                </div>
+                <div className="mpm-desc__read">
+                    {item.description
+                        ? <Markdown>{item.description}</Markdown>
+                        : <div className="mpm-tabpanel-empty">
+                            <Icon name="align left" size="large" />
+                            <div>Este item ainda não tem descrição.</div>
+                            <button className="mpm-btn mpm-btn--sm mpm-btn--primary" onClick={() => setEditingDesc(true)}>
+                                <Icon name="pencil" /> Escrever descrição
+                            </button>
+                        </div>}
+                </div>
+            </div>)
       : tab === "criterios" ? criteriaTab
       : tab === "checklist" ? checklistTab
       : tab === "vinculos"  ? <LinkPanel item={item} projectId={pid} onChanged={() => patch(async () => {})} />

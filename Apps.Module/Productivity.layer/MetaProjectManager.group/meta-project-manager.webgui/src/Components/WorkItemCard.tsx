@@ -22,6 +22,7 @@ const WorkItemCard = ({ item, usersById, onOpen, onDragStart, onDragEnd, draggin
     selected, onToggleSelect, onDropCard }: WorkItemCardProps) => {
     const assignee = item.assigneeUserId ? usersById[item.assigneeUserId] : undefined
     return <div
+        data-item-id={item.id}
         className={`mpm-witem ${dragging ? "is-dragging" : ""} ${selected ? "is-selected" : ""}`}
         draggable
         onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", item.id); onDragStart(item.id) }}

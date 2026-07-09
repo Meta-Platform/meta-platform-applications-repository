@@ -57,6 +57,14 @@ const PERMISSIONS = [
 // Limite recomendado/máximo da descrição curta (shortDescription).
 const SHORT_DESCRIPTION_MAX = 240
 
+// keyPrefix do projeto (ex.: MPM -> MPM-42). Informado explicitamente, é validado
+// (nunca truncado em silêncio); derivado do nome, é cortado sem erro.
+const KEY_PREFIX_MAX = 5
+
+// Esquemas aceitos por AddLinkAttachment. file:// permite referenciar um arquivo
+// local (log, artefato) sem copiá-lo para o storage de anexos.
+const LINK_URL_SCHEMES = ["http", "https", "file"]
+
 // Pedidos de aprovação (gate de agente). Um pedido carrega a AÇÃO que o agente
 // tentou executar; um humano aprova (executa de fato) ou rejeita.
 const APPROVAL_ACTIONS   = ["create", "delete", "archive"]
@@ -113,6 +121,8 @@ module.exports = {
     ACTIVITY_SCOPES,
     PERMISSIONS,
     SHORT_DESCRIPTION_MAX,
+    KEY_PREFIX_MAX,
+    LINK_URL_SCHEMES,
     APPROVAL_ACTIONS,
     APPROVAL_RISKS,
     APPROVAL_STATUSES,

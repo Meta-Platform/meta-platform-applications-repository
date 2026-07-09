@@ -44,14 +44,25 @@ const ActivityStore = (ctx) => {
 
         const scope = await _resolveScope({ project, board, sprint, milestone, item })
 
-        // Sem autor humano explícito, a nota é do usuario-desktop — e a auditoria
-        // precisa refletir isso (actorType "desktop", não "human").
+        // Autoria da nota, em ordem de precedência:
+        //  1) usuário humano explícito (actor.actorUserId);
+        //  2) AGENTE (actor traz identidade de sessão) -> usuário-agente da sessão;
+        //  3) fallback: usuario-desktop (anotação manual do ambiente desktop).
+        const isAgent = !!(actor.session || actor.source === "agent" || actor.source === "mcp")
         let authorUserId = actor.actorUserId
-        let authoredByDesktop = false
+        let authorSessionId = actor.actorSessionId
+        let authorType
+
+        if(!authorUserId && isAgent && actor.session){
+            const session = await store.ResolveOrCreateSessionByIdentity(actor.session, `add-activity-note`)
+            authorUserId = session.agentUserId
+            authorSessionId = authorSessionId || session.id
+            authorType = "agent"
+        }
         if(!authorUserId){
             const desktop = await store.EnsureDesktopUser()
             authorUserId = desktop.id
-            authoredByDesktop = true
+            authorType = "desktop"
         }
 
         const note = await ActivityNote.create({
@@ -61,13 +72,13 @@ const ActivityStore = (ctx) => {
             scopeId: scope.scopeId,
             body: content,
             authorUserId,
-            authorSessionId: actor.actorSessionId,
-            source: source || actor.source || "desktop"
+            authorSessionId,
+            source: source || actor.source || (authorType === "desktop" ? "desktop" : "api")
         })
         const data = Serialize(note)
         await writeAudit({
             projectId: scope.projectId, entityType: "activity-note", entityId: note.id, action: "create",
-            actor: { ...actor, actorUserId: authorUserId, ...(authoredByDesktop ? { actorType: "desktop" } : {}) },
+            actor: { ...actor, actorUserId: authorUserId, actorSessionId: authorSessionId, ...(authorType ? { actorType: authorType } : {}) },
             metadata: { scopeType: scope.scopeType, scopeId: scope.scopeId }
         })
         emit("activity.created", data)

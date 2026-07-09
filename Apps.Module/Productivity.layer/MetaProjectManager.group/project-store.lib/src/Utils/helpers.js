@@ -19,6 +19,13 @@ const Slugify = (text) =>
         .replace(/^-+|-+$/g, "") || "item"
 
 // Prefixo de key (ex.: "Meta Platform" -> "MP"); usa iniciais, min 2 chars.
+// Valor ANTERIOR dos campos que um patch vai alterar (para o diff da auditoria).
+const PatchDiff = (instance, patch) => {
+    const before = {}
+    for(const key of Object.keys(patch || {})) before[key] = instance[key]
+    return before
+}
+
 const DeriveKeyPrefix = (name) => {
     const words = String(name || "").trim().split(/\s+/).filter(Boolean)
     let prefix = words.map((w) => w[0]).join("").toUpperCase().replace(/[^A-Z0-9]/g, "")
@@ -56,6 +63,7 @@ module.exports = {
     NowISO,
     Slugify,
     DeriveKeyPrefix,
+    PatchDiff,
     SanitizeFileName,
     Sha256OfBuffer,
     Serialize,

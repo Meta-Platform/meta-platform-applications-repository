@@ -26,6 +26,10 @@ const Obj = (properties, required) => ({ type: "object", properties, ...(require
 const WORK_ITEM_TYPES = ["epic","feature","story","task","subtask","bug","improvement","refactor","documentation","research","automation","tech-debt","decision"]
 const PRIORITIES = ["none","low","medium","high","urgent"]
 const HORIZONS = ["inbox","now","next","later","maybe","archived"]
+// Espelha Config.LINK_RELATIONS do project-store.lib (valores REAIS aceitos).
+const LINK_RELATIONS = ["blocks","depends","relates","duplicates","implements","tests"]
+
+const { INSTRUCTIONS } = require("./Instructions")
 
 const BuildTools = ({ store, actor }) => {
 
@@ -74,8 +78,8 @@ const BuildTools = ({ store, actor }) => {
             inputSchema: Obj({
                 name: S.str("Nome do projeto"),
                 slug: S.str("Slug único (opcional; derivado do nome se ausente)"),
-                shortDescription: S.str("Descrição curta (<=240 chars) — usada em cards, listas e busca"),
-                description: S.str("Descrição (markdown)"),
+                shortDescription: S.str("OBRIGATÓRIO NA PRÁTICA: resumo de UMA linha (<=240 chars). É o que o humano lê no modal de aprovação e nos cards."),
+                description: S.str("Descrição em markdown. SEJA ASSERTIVO E CURTO: use seções curtas (## Objetivo, ## Escopo, ## Fora de escopo). Evite despejar logs, caminhos longos e tabelas enormes — o humano precisa decidir rápido."),
                 keyPrefix: S.str("Prefixo das keys dos itens (ex.: MPM)"),
                 status: S.enum(["planning","candidate","active","paused","completed","archived"], "Status inicial"),
                 repositoryUrl: S.str("URL do repositório"),
@@ -92,7 +96,7 @@ const BuildTools = ({ store, actor }) => {
                 shortDescription: S.str("Descrição curta (<=240 chars)"),
                 description: S.str("Descrição"),
                 type: S.str("Tipo do board (ex.: kanban)"),
-                setDefault: S.bool("Tornar board padrão do projeto")
+                setDefault: S.bool("Tornar board padrão do projeto (o 1º board vira padrão automaticamente)")
             }, ["project","name"]),
             handler: (i) => store.CreateBoard(A({ project: i.project, name: i.name, shortDescription: i.shortDescription, description: i.description, type: i.type, setDefault: i.setDefault }))
         },
@@ -146,7 +150,7 @@ const BuildTools = ({ store, actor }) => {
         // ───────────── Executar (itens — LIVRE, sem gate) ─────────────
         {
             name: "create_item",
-            description: "Cria um item de trabalho (epic/feature/story/task/subtask/bug/…). LIVRE (não exige aprovação). Use `parent` para hierarquia: epic → feature → story/task → subtask.",
+            description: "Cria um item de trabalho (epic/feature/story/task/subtask/bug/…). LIVRE (não exige aprovação). Use `parent` para hierarquia: epic → feature → story/task → subtask. ESCRITA: título curto e imperativo; descrição em markdown ORGANIZADA e RESUMIDA (seções como ## Reprodução, ## Esperado, ## Obtido). Suporta **negrito**, *itálico* e <u>sublinhado</u>.",
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"),
                 type: S.enum(WORK_ITEM_TYPES, "Tipo do item"),
@@ -158,9 +162,11 @@ const BuildTools = ({ store, actor }) => {
                 status: S.str("Status inicial (statusKey)"),
                 assignee: S.str("Responsável (id|handle)"),
                 area: S.str("Área (ex.: GUI, Backend)"),
-                horizon: S.enum(HORIZONS, "Horizonte de planejamento")
+                horizon: S.enum(HORIZONS, "Horizonte de planejamento"),
+                milestone: S.str("Milestone (id) a vincular"),
+                sprint: S.str("Sprint (id) a vincular")
             }, ["project","type","title"]),
-            handler: (i) => store.CreateItem(A({ project: i.project, type: i.type, title: i.title, description: i.description, parent: i.parent, board: i.board, priority: i.priority, statusKey: i.status, assignee: i.assignee, area: i.area, horizon: i.horizon }))
+            handler: (i) => store.CreateItem(A({ project: i.project, type: i.type, title: i.title, description: i.description, parent: i.parent, board: i.board, priority: i.priority, statusKey: i.status, assignee: i.assignee, area: i.area, horizon: i.horizon, milestoneId: i.milestone, sprintId: i.sprint }))
         },
         {
             name: "add_to_inbox",
@@ -203,7 +209,7 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "update_item",
-            description: "Atualiza campos de um item (título, descrição, prioridade, progresso, prazo; contexto de software: repo/branch/commit/PR; planejamento: horizon/area).",
+            description: "Atualiza campos de um item. Use ao receber FEEDBACK do humano (via `list_comments`, comentários que começam com \"Feedback para o agente\"): reescreva o TÍTULO e/ou a DESCRIÇÃO conforme pedido, de forma curta, assertiva e organizada, e depois comente o que mudou.",
             inputSchema: Obj({
                 item: S.str("Item (id|key)"),
                 title: S.str("Título"),
@@ -248,9 +254,31 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "link_item",
-            description: "Cria um vínculo entre itens (blocks/depends-on/relates-to/duplicates/…).",
-            inputSchema: Obj({ item: S.str("Item origem (id|key)"), relation: S.str("Relação (ex.: blocks, depends-on, relates-to)"), target: S.str("Item alvo (id|key)") }, ["item","relation","target"]),
+            description: "Cria um vínculo entre itens. Relações aceitas (exatas): blocks, depends, relates, duplicates, implements, tests. Direção: `item` --relação--> `target` (ex.: relation=blocks significa que `item` BLOQUEIA `target`).",
+            inputSchema: Obj({
+                item: S.str("Item origem (id|key)"),
+                relation: S.enum(LINK_RELATIONS, "Relação (valor exato)"),
+                target: S.str("Item alvo (id|key)")
+            }, ["item","relation","target"]),
             handler: (i) => store.LinkItem(A({ item: i.item, relation: i.relation, target: i.target }))
+        },
+        {
+            name: "assign_item_planning",
+            description: "Vincula um item a um MILESTONE e/ou SPRINT (e ajusta o horizonte). Use \"none\" para desvincular. Sem isso, milestones/sprints ficam com totalItems 0.",
+            inputSchema: Obj({
+                item: S.str("Item (id|key)"),
+                milestone: S.str("Milestone (id) ou \"none\" para remover"),
+                sprint: S.str("Sprint (id) ou \"none\" para remover"),
+                horizon: S.enum(HORIZONS, "Horizonte de planejamento (opcional)")
+            }, ["item"]),
+            handler: async (i) => {
+                let result
+                if(i.milestone !== undefined || i.sprint !== undefined)
+                    result = await store.AssignItemPlanning(A({ item: i.item, milestone: i.milestone, sprint: i.sprint }))
+                if(i.horizon !== undefined)
+                    result = await store.UpdateItem(A({ item: i.item, horizon: i.horizon }))
+                return result || store.GetItem({ item: i.item })
+            }
         },
 
         // ───────────── Interagir ─────────────
@@ -262,13 +290,13 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "list_comments",
-            description: "Lista os comentários de um item — leia o FEEDBACK do humano antes de agir.",
+            description: "Lista os comentários de um item — leia o FEEDBACK do humano ANTES de agir. Comentários iniciados por \"Feedback para o agente — reescrever…\" são instruções DIRETAS sobre o título/descrição: aplique-as com `update_item`.",
             inputSchema: Obj({ item: S.str("Item (id|key)") }, ["item"]),
             handler: (i) => store.ListComments({ item: i.item })
         },
         {
             name: "add_link_attachment",
-            description: "Anexa um link externo (PR, doc, dashboard) a um item.",
+            description: "Anexa um link a um item. Esquemas aceitos: http, https e file:// (referência a arquivo LOCAL, sem copiar o conteúdo — use add_file_attachment para guardar o arquivo).",
             inputSchema: Obj({ item: S.str("Item (id|key)"), url: S.str("URL"), name: S.str("Nome"), description: S.str("Descrição") }, ["item","url"]),
             handler: (i) => store.AddLinkAttachment(A({ item: i.item, url: i.url, name: i.name, description: i.description }))
         },
@@ -428,6 +456,33 @@ const BuildTools = ({ store, actor }) => {
                 item: S.str("Item (id|key)"), limit: S.num("Máx. por seção")
             }),
             handler: (i) => store.GetActivityContext({ project: i.project, board: i.board, sprint: i.sprint, milestone: i.milestone, item: i.item, limit: i.limit, actor })
+        },
+
+        // ───────────── Orientação (para clientes que ignoram `instructions`) ─────────────
+        {
+            name: "get_guidance",
+            description: "Regras de operação deste gerenciador: o que é livre, o que exige aprovação humana, como escrever título/descrição, relações de vínculo válidas, códigos de erro e o fluxo recomendado. Chame UMA VEZ no início da sessão se você não recebeu as instruções do servidor.",
+            inputSchema: Obj({}),
+            handler: async () => ({
+                instructions: INSTRUCTIONS,
+                constraints: {
+                    linkRelations: LINK_RELATIONS,
+                    keyPrefixMaxChars: 5,
+                    shortDescriptionMaxChars: 240,
+                    linkAttachmentSchemes: ["http", "https", "file"],
+                    gatedActions: {
+                        create: ["project", "board", "milestone", "sprint"],
+                        delete: ["project", "board", "item"]
+                    },
+                    humanOnly: ["aprovar pedido", "rejeitar pedido", "confirmar sessão"],
+                    globalActivityPermission: "activity:read:all_projects"
+                },
+                session: {
+                    provider: actor && actor.session && actor.session.provider,
+                    model: actor && actor.session && actor.session.model,
+                    traceId: actor && actor.session && actor.session.traceId
+                }
+            })
         }
     ]
 }

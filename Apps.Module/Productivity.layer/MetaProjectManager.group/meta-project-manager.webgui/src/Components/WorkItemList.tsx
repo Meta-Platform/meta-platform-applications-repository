@@ -4,7 +4,7 @@ import { Icon } from "semantic-ui-react"
 
 import { WorkItem, User, Milestone, Sprint } from "../api/types"
 import { GroupBy } from "../Hooks/useItemFilters"
-import { TypeBadge, ValueBadge, Avatar, ItemMeta } from "./Primitives"
+import { TypeBadge, ValueBadge, AreaBadge, Avatar, ItemMeta } from "./Primitives"
 import { horizonLabel } from "../Utils/format"
 
 const PRIORITIES = ["none", "low", "medium", "high", "urgent"]
@@ -66,22 +66,29 @@ const WorkItemList = ({ items, usersById, statusOptions, groupBy, milestones, sp
         const hasChildren = tree && node._children.length > 0
         const isCollapsed = collapsed[node.id]
         const rows: React.ReactNode[] = [
-            <tr key={node.id} className="mpm-table__row--clickable">
+            <tr key={node.id} data-item-id={node.id} className="mpm-table__row--clickable">
                 {selectable
                     ? <td onClick={(e) => e.stopPropagation()} style={{ width: 32 }}>
                         <input type="checkbox" checked={isSelected(node.id)} onChange={() => onToggleSelect!(node.id)} />
                     </td>
                     : null}
+                {/* 2 linhas: metadados em ordem fixa + título com clamp (antes o
+                    título comprimia em 3-4 linhas e as chips trocavam de ordem). */}
                 <td>
-                    <span className="mpm-tree-indent" style={{ width: depth * 18 }} />
-                    {hasChildren
-                        ? <span className="mpm-tree-toggle" onClick={() => setCollapsed((c) => ({ ...c, [node.id]: !c[node.id] }))}>
-                            <Icon name={isCollapsed ? "caret right" : "caret down"} />
-                        </span>
-                        : <span className="mpm-tree-toggle" />}
-                    <TypeBadge type={node.type} />
-                    <span className="mpm-mono mpm-muted" style={{ margin: "0 6px" }}>{node.key}</span>
-                    <span onClick={() => onOpenItem(node.id)} style={{ cursor: "pointer", fontWeight: 600 }}>{node.title}</span>
+                    <div className="mpm-itemcell" style={{ paddingLeft: depth * 18 }}>
+                        <div className="mpm-itemcell__meta">
+                            {hasChildren
+                                ? <span className="mpm-tree-toggle" onClick={(e) => { e.stopPropagation(); setCollapsed((c) => ({ ...c, [node.id]: !c[node.id] })) }}>
+                                    <Icon name={isCollapsed ? "caret right" : "caret down"} />
+                                </span>
+                                : <span className="mpm-tree-toggle" />}
+                            <span className="mpm-mono mpm-muted">{node.key}</span>
+                            <TypeBadge type={node.type} />
+                            <AreaBadge area={node.area} />
+                        </div>
+                        <div className="mpm-itemcell__title" title={node.title}
+                            onClick={() => onOpenItem(node.id)} style={{ cursor: "pointer" }}>{node.title}</div>
+                    </div>
                 </td>
                 <td onClick={(e) => e.stopPropagation()}>
                     <select className="mpm-inline-select" value={node.statusKey}
@@ -106,15 +113,25 @@ const WorkItemList = ({ items, usersById, statusOptions, groupBy, milestones, sp
         return rows
     }
 
+    const colgroup = <colgroup>
+        {selectable ? <col style={{ width: 32 }} /> : null}
+        <col style={{ width: "44%" }} />
+        <col style={{ width: 148 }} />
+        <col style={{ width: 108 }} />
+        <col style={{ width: 74 }} />
+        <col style={{ width: 56 }} />
+        <col style={{ width: 90 }} />
+    </colgroup>
+
     const header = <thead>
         <tr>
-            {selectable ? <th style={{ width: 32 }} /> : null}
+            {selectable ? <th /> : null}
             <th>Item</th>
-            <th style={{ width: 150 }}>Status</th>
-            <th style={{ width: 110 }}>Prioridade</th>
-            <th style={{ width: 80 }}>Valor</th>
-            <th style={{ width: 56 }}>Resp.</th>
-            <th style={{ width: 100 }}>Info</th>
+            <th title="Situação no fluxo (coluna do board)">Status</th>
+            <th title="Quão urgente é fazer">Prioridade</th>
+            <th title="Impacto/benefício">Valor</th>
+            <th title="Responsável">Resp.</th>
+            <th title="Comentários / anexos / progresso">Info</th>
         </tr>
     </thead>
 
@@ -134,7 +151,8 @@ const WorkItemList = ({ items, usersById, statusOptions, groupBy, milestones, sp
                 <div key={k} className="mpm-panel">
                     <div className="mpm-panel__title"><Icon name="folder" /> {buckets[k].label} <span className="mpm-chip mpm-chip--neutral">{buckets[k].items.length}</span></div>
                     <div className="mpm-scroll-x">
-                        <table className="mpm-table">
+                        <table className="mpm-table mpm-table--fixed">
+                            {colgroup}
                             {header}
                             <tbody>
                                 {buckets[k].items.map((it) => renderRow(byId[it.id], 0, false))}
@@ -146,7 +164,8 @@ const WorkItemList = ({ items, usersById, statusOptions, groupBy, milestones, sp
     }
 
     return <div className="mpm-scroll-x">
-        <table className="mpm-table">
+        <table className="mpm-table mpm-table--fixed">
+            {colgroup}
             {header}
             <tbody>
                 {roots.map((r) => renderRow(r, 0, true))}

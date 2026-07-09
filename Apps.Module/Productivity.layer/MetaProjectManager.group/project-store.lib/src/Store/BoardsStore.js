@@ -1,4 +1,4 @@
-const { NewId, Serialize, SerializeMany } = require("../Utils/helpers")
+const { NewId, Serialize, SerializeMany, PatchDiff } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
 const { DEFAULT_COLUMNS } = require("../Config")
 
@@ -12,6 +12,21 @@ const BoardsStore = (ctx) => {
         if(!board) throw new DomainError("NOT_FOUND", `Board "${ref}" não encontrado.`, { ref })
         return board
     }
+
+    // Define o board padrão do projeto: mantém `Board.isDefault` COERENTE com
+    // `Project.defaultBoardId` (antes só o projeto era atualizado, e a coluna
+    // isDefault ficava sempre false).
+    const _setDefaultBoard = async (projectInstance, boardId) => {
+        await Board.update({ isDefault: false }, { where: { projectId: projectInstance.id, isDefault: true } })
+        await Board.update({ isDefault: true }, { where: { id: boardId } })
+        await projectInstance.update({ defaultBoardId: boardId })
+    }
+
+    // Corrige na leitura boards antigos (gravados antes de isDefault ser mantido).
+    const _withDefaultFlag = (board, project) => ({
+        ...Serialize(board),
+        isDefault: !!project && project.defaultBoardId === board.id
+    })
 
     const _createDefaultColumns = async (boardId) => {
         let order = 0
@@ -35,7 +50,10 @@ const BoardsStore = (ctx) => {
         const board = await Board.create({ id: NewId(), projectId: projectInstance.id, name, shortDescription, description, type })
         if(withDefaultColumns) await _createDefaultColumns(board.id)
         const isFirst = (await Board.count({ where: { projectId: projectInstance.id, deletedAt: null } })) === 1
-        if(setDefault || isFirst) await projectInstance.update({ defaultBoardId: board.id })
+        if(setDefault || isFirst){
+            await _setDefaultBoard(projectInstance, board.id)
+            await board.reload()
+        }
         const data = Serialize(board)
         await writeAudit({ projectId: projectInstance.id, entityType: "board", entityId: board.id, action: "create", actor, metadata: { name } })
         emit("board.updated", data)
@@ -45,22 +63,24 @@ const BoardsStore = (ctx) => {
     const ListBoards = async ({ project } = {}) => {
         const projectInstance = await store.ResolveProject(project)
         const rows = await Board.findAll({ where: { projectId: projectInstance.id, deletedAt: null }, order: [["createdAt", "ASC"]] })
-        return SerializeMany(rows)
+        return rows.map((b) => _withDefaultFlag(b, projectInstance))
     }
 
     const GetBoard = async ({ board } = {}) => {
         const instance = await ResolveBoard(board)
+        const projectInstance = await store.ResolveProject(instance.projectId)
         const columns = await ListColumns({ board: instance.id })
-        return { ...Serialize(instance), columns }
+        return { ..._withDefaultFlag(instance, projectInstance), columns }
     }
 
     const UpdateBoard = async ({ board, actor, ...fields } = {}) => {
         const instance = await ResolveBoard(board)
         const patch = {}
         for(const key of ["name", "shortDescription", "description", "type"]) if(fields[key] !== undefined) patch[key] = fields[key]
+        const before = PatchDiff(instance, patch)
         await instance.update(patch)
         const data = Serialize(instance)
-        await writeAudit({ projectId: instance.projectId, entityType: "board", entityId: instance.id, action: "update", actor, metadata: patch })
+        await writeAudit({ projectId: instance.projectId, entityType: "board", entityId: instance.id, action: "update", actor, metadata: patch, before, after: patch })
         emit("board.updated", data)
         return data
     }
@@ -102,8 +122,10 @@ const BoardsStore = (ctx) => {
     const SetDefaultBoard = async ({ board, actor } = {}) => {
         const instance = await ResolveBoard(board)
         const projectInstance = await store.ResolveProject(instance.projectId)
-        await projectInstance.update({ defaultBoardId: instance.id })
-        await writeAudit({ projectId: instance.projectId, entityType: "board", entityId: instance.id, action: "set-default", actor })
+        const before = { defaultBoardId: projectInstance.defaultBoardId }
+        await _setDefaultBoard(projectInstance, instance.id)
+        await writeAudit({ projectId: instance.projectId, entityType: "board", entityId: instance.id, action: "set-default", actor, before, after: { defaultBoardId: instance.id } })
+        emit("board.updated", { id: instance.id, isDefault: true })
         return { id: instance.id, isDefault: true }
     }
 

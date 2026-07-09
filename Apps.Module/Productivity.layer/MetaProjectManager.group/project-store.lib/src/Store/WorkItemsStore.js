@@ -1,5 +1,5 @@
 const { Op, literal } = require("sequelize")
-const { NewId, Serialize, SerializeMany } = require("../Utils/helpers")
+const { NewId, Serialize, SerializeMany, PatchDiff } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
 const { WORK_ITEM_TYPES, WORK_ITEM_PRIORITIES, LINK_RELATIONS, WORK_ITEM_HORIZONS, WORK_ITEM_CLARITY, WORK_ITEM_EFFORTS, WORK_ITEM_VALUES } = require("../Config")
 
@@ -193,9 +193,10 @@ const WorkItemsStore = (ctx) => {
     const Assign = async ({ item, user, actor } = {}) => {
         const instance = await ResolveItem(item)
         const assigneeUserId = await _resolveUserId(user)
+        const before = { assigneeUserId: instance.assigneeUserId }
         await instance.update({ assigneeUserId })
         const data = Serialize(instance)
-        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "assign", actor, metadata: { assigneeUserId } })
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "assign", actor, metadata: { assigneeUserId }, before, after: { assigneeUserId } })
         emit("item.updated", data)
         return data
     }
@@ -210,9 +211,10 @@ const WorkItemsStore = (ctx) => {
             await _assertNoCycle(instance.id, parentInstance.id)
             parentId = parentInstance.id
         }
+        const before = { parentId: instance.parentId }
         await instance.update({ parentId })
         const data = Serialize(instance)
-        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "move", actor, metadata: { parentId } })
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "move", actor, metadata: { parentId }, before, after: { parentId } })
         emit("item.moved", data)
         return data
     }
@@ -222,9 +224,10 @@ const WorkItemsStore = (ctx) => {
         const boardInstance = await store.ResolveBoard(board)
         const patch = { boardId: boardInstance.id }
         if(status) patch.statusKey = status
+        const before = PatchDiff(instance, patch)
         await instance.update(patch)
         const data = Serialize(instance)
-        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "move-to-board", actor, metadata: patch })
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "move-to-board", actor, metadata: patch, before, after: patch })
         emit("item.moved", data)
         return data
     }
@@ -239,18 +242,21 @@ const WorkItemsStore = (ctx) => {
     const ConvertItem = async ({ item, type, actor } = {}) => {
         if(!WORK_ITEM_TYPES.includes(type)) throw new DomainError("VALIDATION_ERROR", `Tipo inválido: ${type}.`, { field: "type", allowed: WORK_ITEM_TYPES })
         const instance = await ResolveItem(item)
+        const before = { type: instance.type }
         await instance.update({ type })
         const data = Serialize(instance)
-        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "convert", actor, metadata: { type } })
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "convert", actor, metadata: { type }, before, after: { type } })
         emit("item.updated", data)
         return data
     }
 
     const SetBlocked = async ({ item, reason, actor } = {}) => {
         const instance = await ResolveItem(item)
-        await instance.update({ statusKey: "blocked", blockedReason: reason || "Bloqueado" })
+        const patch = { statusKey: "blocked", blockedReason: reason || "Bloqueado" }
+        const before = PatchDiff(instance, patch)
+        await instance.update(patch)
         const data = Serialize(instance)
-        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "block", actor, metadata: { reason } })
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "block", actor, metadata: { reason }, before, after: patch })
         emit("item.updated", data)
         return data
     }

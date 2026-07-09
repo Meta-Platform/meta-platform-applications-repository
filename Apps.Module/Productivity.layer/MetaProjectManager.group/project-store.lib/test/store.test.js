@@ -449,3 +449,108 @@ test("nota sem autor humano é auditada como actorType=desktop", async () => {
     const events = await store.ListActivity({ entityType: "activity-note", entityId: note.id, actor: { source: "gui" } })
     assert.equal(events[0].actorType, "desktop")
 })
+
+// ---- Regressões reportadas em uso real (7 bugs) ----
+test("#1 setDefault mantém board.isDefault coerente com project.defaultBoardId", async () => {
+    const p = await store.CreateProject({ name: "Default Board", keyPrefix: "DFB" })
+    const b1 = await store.CreateBoard({ project: p.id, name: "B1" })       // 1º board vira padrão
+    assert.equal(b1.isDefault, true)
+    const b2 = await store.CreateBoard({ project: p.id, name: "B2", setDefault: true })
+    assert.equal(b2.isDefault, true)
+    const boards = await store.ListBoards({ project: p.id })
+    assert.equal(boards.filter((b) => b.isDefault).length, 1)              // só um padrão
+    assert.equal(boards.find((b) => b.isDefault).id, b2.id)
+    assert.equal((await store.GetProject({ project: p.id })).defaultBoardId, b2.id)
+    // SetDefaultBoard volta para o B1
+    await store.SetDefaultBoard({ board: b1.id })
+    assert.equal((await store.GetBoard({ board: b1.id })).isDefault, true)
+    assert.equal((await store.GetBoard({ board: b2.id })).isDefault, false)
+})
+
+test("#2 auditoria grava diff em assign/block/move/convert/board-update", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Diff amplo" })
+    const u = await store.CreateUser({ type: "human", name: "Diffy", handle: "diffy" })
+    await store.Assign({ item: it.id, user: u.id })
+    await store.SetBlocked({ item: it.id, reason: "trava" })
+    await store.ConvertItem({ item: it.id, type: "bug" })
+    const evs = await store.ListActivity({ projectId: it.projectId, entityType: "work-item", entityId: it.id, actor: { source: "gui" } })
+    for(const action of ["assign", "block", "convert"]){
+        const e = evs.find((x) => x.action === action)
+        assert.ok(e, `faltou evento ${action}`)
+        assert.ok(e.before && e.after, `${action} sem diff`)
+    }
+    const assign = evs.find((x) => x.action === "assign")
+    assert.equal(assign.after.assigneeUserId, u.id)
+})
+
+test("#3 add link attachment aceita file:// e rejeita esquema desconhecido", async () => {
+    const att = await store.AddLinkAttachment({ item: "MP-1", url: "file:///tmp/build.log", name: "log" })
+    assert.equal(att.externalUrl, "file:///tmp/build.log")
+    await assert.rejects(
+        () => store.AddLinkAttachment({ item: "MP-1", url: "javascript:alert(1)" }),
+        (e) => e.code === "VALIDATION_ERROR" && e.details.allowed.includes("file")
+    )
+})
+
+test("#4 nota escrita por AGENTE é atribuída ao usuário-agente, não ao desktop", async () => {
+    const note = await store.AddActivityNote({ project: "MP", text: "feito pelo agente", actor: AGENT })
+    const author = await store.GetUser({ user: note.authorUserId })
+    assert.equal(author.type, "agent")
+    assert.ok(note.authorSessionId)
+    // e a auditoria marca actorType agent
+    const evs = await store.ListActivity({ entityType: "activity-note", entityId: note.id, actor: { source: "gui" } })
+    assert.equal(evs[0].actorType, "agent")
+    // sem ator continua caindo no usuario-desktop
+    const manual = await store.AddActivityNote({ project: "MP", text: "manual" })
+    const d = await store.GetUser({ user: manual.authorUserId })
+    assert.equal(d.handle, "usuario-desktop")
+})
+
+test("#5 AssignItemPlanning vincula item a milestone e sprint (totalItems reflete)", async () => {
+    const p = await store.CreateProject({ name: "Planning", keyPrefix: "PLN" })
+    const m = await store.CreateMilestone({ project: p.id, name: "M" })
+    const s = await store.CreateSprint({ project: p.id, name: "S" })
+    const it = await store.CreateItem({ project: p.id, type: "task", title: "vinculado" })
+    await store.AssignItemPlanning({ item: it.id, milestone: m.id, sprint: s.id })
+    assert.equal((await store.ListMilestones({ project: p.id }))[0].totalItems, 1)
+    assert.equal((await store.ListSprints({ project: p.id }))[0].totalItems, 1)
+    // "none" desvincula
+    await store.AssignItemPlanning({ item: it.id, milestone: "none" })
+    assert.equal((await store.ListMilestones({ project: p.id }))[0].totalItems, 0)
+})
+
+test("#6 keyPrefix inválido erra com sugestão, em vez de truncar em silêncio", async () => {
+    await assert.rejects(
+        () => store.CreateProject({ name: "A", keyPrefix: "MUITOLONGO" }),
+        (e) => e.code === "VALIDATION_ERROR" && e.details.max === 5 && e.details.suggestion === "MUITO"
+    )
+    await assert.rejects(
+        () => store.CreateProject({ name: "B", keyPrefix: "MP-M" }),
+        (e) => e.code === "VALIDATION_ERROR" && e.details.suggestion === "MPM"
+    )
+    // prefixo válido passa; derivado do nome continua sendo cortado sem erro
+    assert.equal((await store.CreateProject({ name: "C", keyPrefix: "ABCDE" })).keyPrefix, "ABCDE")
+    assert.equal((await store.CreateProject({ name: "Um Dois Tres Quatro Cinco Seis" })).keyPrefix, "UDTQC")
+})
+
+test("#7 LinkItem só aceita as relações reais do domínio", async () => {
+    const a = await store.CreateItem({ project: "MP", type: "task", title: "A link" })
+    const b = await store.CreateItem({ project: "MP", type: "task", title: "B link" })
+    await store.LinkItem({ item: a.id, relation: "depends", target: b.id })
+    await assert.rejects(
+        () => store.LinkItem({ item: a.id, relation: "depends-on", target: b.id }),
+        (e) => e.code === "VALIDATION_ERROR" && e.details.allowed.includes("depends")
+    )
+})
+
+test("histórico de pedidos: status=all, filtro por agente e por sessão", async () => {
+    const all = await store.ListCreationRequests({ status: "all" })
+    assert.ok(all.length >= 3)
+    assert.ok(all.some((r) => r.status !== "pending"))   // inclui aprovados/rejeitados
+    const sessions = await store.ListSessions({})
+    const sid = sessions[0].id
+    const bySession = await store.ListCreationRequests({ status: "all", session: sid })
+    assert.ok(bySession.every((r) => r.agentSessionId === sid))
+    const byAgent = await store.ListCreationRequests({ status: "all", agent: sessions[0].agentUserId })
+    assert.ok(byAgent.length >= bySession.length)
+})
