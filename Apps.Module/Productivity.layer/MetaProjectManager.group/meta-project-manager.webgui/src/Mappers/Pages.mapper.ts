@@ -11,6 +11,7 @@ import ReportsPage from "../Pages/Reports.page"
 import AgentGuidePage from "../Pages/AgentGuide.page"
 import GlossaryPage from "../Pages/Glossary.page"
 import AuditPage from "../Pages/Audit.page"
+import FeedbackPage from "../Pages/Feedback.page"
 
 export default {
     HomePage,
@@ -25,5 +26,6 @@ export default {
     ReportsPage,
     AgentGuidePage,
     GlossaryPage,
-    AuditPage
+    AuditPage,
+    FeedbackPage
 }

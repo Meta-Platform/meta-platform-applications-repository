@@ -321,8 +321,16 @@ const WorkItemsStore = (ctx) => {
         await row.update(patch)
         return Serialize(row)
     }
-    const RemoveChecklistItem = async ({ checklistItem } = {}) => {
-        await WorkItemChecklistItem.destroy({ where: { id: checklistItem } })
+    const RemoveChecklistItem = async ({ checklistItem, actor } = {}) => {
+        const row = await WorkItemChecklistItem.findOne({ where: { id: checklistItem } })
+        if(!row) throw new DomainError("NOT_FOUND", "Item de checklist não encontrado.", { ref: checklistItem })
+        const owner = await ResolveItem(row.workItemId)
+        await store.GateAgentAction({
+            actionName: "delete", type: "checklist-item", targetId: row.id, projectId: owner.projectId,
+            risk: "destructive", reason: "Remover item de checklist por agente requer aprovação humana.", actor
+        })
+        await row.destroy()
+        emit("item.updated", { id: owner.id })
         return { id: checklistItem, deleted: true }
     }
 
@@ -342,8 +350,16 @@ const WorkItemsStore = (ctx) => {
         await row.update(patch)
         return Serialize(row)
     }
-    const RemoveAcceptanceCriteria = async ({ criteria } = {}) => {
-        await WorkItemAcceptanceCriteria.destroy({ where: { id: criteria } })
+    const RemoveAcceptanceCriteria = async ({ criteria, actor } = {}) => {
+        const row = await WorkItemAcceptanceCriteria.findOne({ where: { id: criteria } })
+        if(!row) throw new DomainError("NOT_FOUND", "Critério não encontrado.", { ref: criteria })
+        const owner = await ResolveItem(row.workItemId)
+        await store.GateAgentAction({
+            actionName: "delete", type: "acceptance-criteria", targetId: row.id, projectId: owner.projectId,
+            risk: "destructive", reason: "Remover critério de aceite por agente requer aprovação humana.", actor
+        })
+        await row.destroy()
+        emit("item.updated", { id: owner.id })
         return { id: criteria, deleted: true }
     }
 

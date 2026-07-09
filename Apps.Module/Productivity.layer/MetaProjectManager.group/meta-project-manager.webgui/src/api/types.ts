@@ -358,6 +358,10 @@ export interface ActivityFilters {
 export interface PlatformEvent {
     seq: number
     type: string
+    // O store emite { type, payload, createdAt }; `data`/`at` ficam por
+    // compatibilidade com consumidores antigos.
+    payload?: any
+    createdAt?: string
     data?: any
     at?: string
 }
@@ -414,4 +418,48 @@ export interface HorizonBoard {
     maybe: WorkItem[]
     archived: WorkItem[]
     unassigned: WorkItem[]
+}
+
+// ---- Feedback do humano para os agentes ----
+
+export type FeedbackStatus = "open" | "in-analysis" | "resolved" | "dismissed"
+
+export interface AgentFeedback {
+    id: ID
+    projectId: ID
+    entityType: string
+    entityId?: ID
+    workItemId?: ID
+    field?: string
+    fieldLabel?: string
+    screen?: string
+    excerpt?: string
+    body: string
+    status: FeedbackStatus
+    claimExpired?: boolean
+    createdByUserId?: ID
+    source?: string
+    claimedBySessionId?: ID
+    claimedByProvider?: string
+    claimedByModel?: string
+    claimedAt?: string
+    claimExpiresAt?: string
+    resolvedAt?: string
+    resolvedBySessionId?: ID
+    resolutionNote?: string
+    dismissedAt?: string
+    dismissReason?: string
+    createdAt?: string
+    updatedAt?: string
+}
+
+export interface ListFeedbackQuery {
+    project?: string
+    status?: FeedbackStatus | "all"
+    item?: string
+    entityId?: string
+    since?: string
+    until?: string
+    limit?: string
+    offset?: string
 }

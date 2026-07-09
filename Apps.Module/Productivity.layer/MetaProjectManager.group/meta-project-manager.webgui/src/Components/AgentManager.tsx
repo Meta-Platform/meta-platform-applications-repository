@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
+import useLiveReload from "../Hooks/useLiveReload"
 import { Agent, AgentSession } from "../api/types"
 import { StatusChip, Loading, EmptyState, ErrorBanner, Modal } from "./Primitives"
 import { formatDateTime } from "../Utils/format"
@@ -25,6 +26,7 @@ const AgentManager = () => {
         .catch((e) => setError(e.message))
 
     useEffect(() => { load() }, [api])
+    useLiveReload(load, { always: true })
 
     const createAgent = async () => {
         setError(null)
@@ -52,14 +54,9 @@ const AgentManager = () => {
     const pending = sessions.filter((s) => s.status === "pending_confirmation")
 
     return <div className="mpm-col mpm-gap-4">
-        <div className="mpm-page-head">
-            <div className="mpm-page-head__titles">
-                <h1 className="mpm-page-title">Agentes</h1>
-                <div className="mpm-page-subtitle">agentes e sessões de trabalho</div>
-            </div>
-            <div className="mpm-page-head__actions">
-                <button className="mpm-btn mpm-btn--primary" onClick={() => setCreating(true)}><Icon name="plus" /> Novo agente</button>
-            </div>
+        {/* O título da tela vive no header do AppShell; aqui só as ações. */}
+        <div className="mpm-toolbar mpm-toolbar--end">
+            <button className="mpm-btn mpm-btn--primary" onClick={() => setCreating(true)}><Icon name="plus" /> Novo agente</button>
         </div>
         <ErrorBanner error={error} />
 

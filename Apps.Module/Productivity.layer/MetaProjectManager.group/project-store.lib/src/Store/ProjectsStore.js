@@ -64,7 +64,7 @@ const ProjectsStore = (ctx) => {
 
         // Gate: criação de projeto por agente exige aprovação humana (vira pedido pendente).
         if(store.IsAgentCreation(actor)){
-            const { request } = await store.RequestCreation({ type: "project", payload: { name, slug, shortDescription, description, icon, color, status, keyPrefix, repositoryUrl, localPath, ownerUserId }, actor })
+            const { request } = await store.RequestCreation({ type: "project", payload: { name, slug, shortDescription, description, icon, color, status, keyPrefix, repositoryUrl, localPath, ownerUserId }, resumeToken: actor.resumeToken, actor })
             throw new DomainError("AGENT_SESSION_CONFIRMATION_REQUIRED",
                 "Criação de projeto por agente requer aprovação humana.",
                 { pendingCreationId: request.id, type: "project", nextCommands: [`mpm agent creation approve ${request.id}`, `mpm agent creation reject ${request.id}`] })
@@ -128,6 +128,19 @@ const ProjectsStore = (ctx) => {
         }
         if(patch.status && !PROJECT_STATUSES.includes(patch.status))
             throw new DomainError("VALIDATION_ERROR", `Status inválido: ${patch.status}.`, { field: "status", allowed: PROJECT_STATUSES })
+
+        // Gate: reescrever a identidade/texto do projeto ou mudar seu ciclo de vida
+        // é sensível — o humano lê o texto novo antes de valer. Ajustes operacionais
+        // (ícone, cor, repositório, board padrão, dono) passam direto.
+        const SENSITIVE_FIELDS = ["name", "slug", "shortDescription", "description", "status"]
+        const touched = SENSITIVE_FIELDS.filter((k) => patch[k] !== undefined)
+        if(touched.length > 0)
+            await store.GateAgentAction({
+                actionName: "update", type: "project", targetId: instance.id, projectId: instance.id,
+                payload: patch,
+                reason: `Alterar ${touched.join(", ")} do projeto por agente requer aprovação humana.`, actor
+            })
+
         // Diff: guarda o valor ANTERIOR só dos campos que mudaram.
         const before = {}
         for(const key of Object.keys(patch)) before[key] = instance[key]
@@ -140,6 +153,10 @@ const ProjectsStore = (ctx) => {
 
     const ArchiveProject = async ({ project, actor } = {}) => {
         const instance = await ResolveProject(project)
+        await store.GateAgentAction({
+            actionName: "archive", type: "project", targetId: instance.id, projectId: instance.id,
+            reason: "Arquivar projeto por agente requer aprovação humana.", actor
+        })
         await instance.update({ status: "archived", archivedAt: new Date() })
         const data = Serialize(instance)
         await writeAudit({ projectId: instance.id, entityType: "project", entityId: instance.id, action: "archive", actor })
@@ -149,6 +166,10 @@ const ProjectsStore = (ctx) => {
 
     const RestoreProject = async ({ project, actor } = {}) => {
         const instance = await ResolveProject(project)
+        await store.GateAgentAction({
+            actionName: "restore", type: "project", targetId: instance.id, projectId: instance.id,
+            reason: "Restaurar projeto por agente requer aprovação humana.", actor
+        })
         await instance.update({ status: "active", archivedAt: null })
         const data = Serialize(instance)
         await writeAudit({ projectId: instance.id, entityType: "project", entityId: instance.id, action: "restore", actor })

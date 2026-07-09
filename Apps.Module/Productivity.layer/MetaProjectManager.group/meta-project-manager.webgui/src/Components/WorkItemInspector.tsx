@@ -1,8 +1,11 @@
 import * as React from "react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
+import useEvents from "../Hooks/useEvents"
+import { auditEntriesOf } from "../Utils/agentEvents"
+import { actorName } from "../Utils/activity"
 import {
     WorkItem, User, Milestone, Sprint, ActivityNote,
     WORK_ITEM_TYPES, HORIZONS, CLARITY_STATES, EFFORTS, ITEM_VALUES, AREA_SUGGESTIONS
@@ -16,7 +19,9 @@ import LinkPanel from "./LinkPanel"
 import SoftwareContextSection from "./SoftwareContextSection"
 import DescriptionEditor from "./DescriptionEditor"
 import Markdown from "./Markdown"
+import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import ConfirmActionModal from "./ConfirmActionModal"
+import { feedbackTarget } from "../Utils/feedbackTarget"
 
 const PRIORITIES = ["none", "low", "medium", "high", "urgent"]
 
@@ -32,10 +37,11 @@ interface WorkItemInspectorProps {
 }
 
 // Abas do modal de item (spec §8.1): evita uma rolagem única gigante.
-type TabKey = "resumo" | "descricao" | "criterios" | "checklist" | "vinculos" | "anexos" | "atividade" | "auditoria"
+// "Detalhes" reúne os campos do item e a descrição — eram duas abas (Resumo e
+// Descrição), o que obrigava a alternar para ver contexto enquanto se escrevia.
+type TabKey = "detalhes" | "criterios" | "checklist" | "vinculos" | "anexos" | "atividade" | "auditoria"
 const TABS: { key: TabKey; label: string; icon: any; hint: string }[] = [
-    { key: "descricao", label: "Descrição",  icon: "align left",           hint: "Descrição em markdown (negrito, itálico, sublinhado)" },
-    { key: "resumo",    label: "Resumo",     icon: "info circle",          hint: "Campos principais: tipo, status, prioridade, responsável, planejamento" },
+    { key: "detalhes",  label: "Detalhes",   icon: "align left",           hint: "Campos do item (tipo, status, prioridade, planejamento) e descrição em markdown" },
     { key: "criterios", label: "Critérios",  icon: "check circle outline", hint: "Critérios de aceite (Definition of Done)" },
     { key: "checklist", label: "Checklist",  icon: "tasks",                hint: "Sub-passos marcáveis do item" },
     { key: "vinculos",  label: "Vínculos",   icon: "linkify",              hint: "Dependências, bloqueios e relações com outros itens" },
@@ -96,23 +102,54 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
     const [critDraft, setCritDraft] = useState("")
     const [milestones, setMilestones] = useState<Milestone[]>([])
     const [sprints, setSprints] = useState<Sprint[]>([])
-    // Descrição primeiro: é o que o usuário quer ler/editar ao abrir um item.
-    const [tab, setTab] = useState<TabKey>("descricao")
+    const [tab, setTab] = useState<TabKey>("detalhes")
     // Resumo "clean": por padrão só campos PREENCHIDOS; o toggle revela os vazios.
     const [showEmptyFields, setShowEmptyFields] = useState(false)
-    // A descrição abre em LEITURA (ocupando o modal). "Editar" liga o editor.
+    // A descrição abre em LEITURA. "Editar" liga o editor.
     const [editingDesc, setEditingDesc] = useState(false)
     const [confirmDelete, setConfirmDelete] = useState(false)
     const [deleting, setDeleting] = useState(false)
+    // Drill-down: pilha de referências abertas a partir do item da prop. Uma ref
+    // pode ser id ou key — GetItem resolve as duas — e é o que permite clicar numa
+    // subtarefa ou numa referência do texto (CFGEC-26) sem sair do modal.
+    const [drill, setDrill] = useState<string[]>([])
+
+    const currentId = drill.length > 0 ? drill[drill.length - 1] : itemId
 
     const usersById: { [id: string]: User } = {}
     users.forEach((u) => { usersById[u.id] = u })
 
-    const load = () => api.items.get(itemId)
+    const load = () => api.items.get(currentId)
         .then((it) => setItem(it))
         .catch((e) => setError(e.message))
 
-    useEffect(() => { setItem(null); setError(null); setTab("descricao"); setShowEmptyFields(false); setEditingDesc(false); load() }, [itemId])
+    // Trocar o item da prop zera o drill-down; navegar dentro dele só recarrega.
+    useEffect(() => { setDrill([]) }, [itemId])
+    useEffect(() => { setItem(null); setError(null); setTab("detalhes"); setShowEmptyFields(false); setEditingDesc(false); setChangedBy(null); load() }, [currentId])
+
+    // Abrir o item já aberto seria um no-op ruidoso na pilha. Estável (useCallback)
+    // porque vai para o ItemNavigatorProvider, cujo valor memoiza o markdown.
+    const openRef = useCallback((ref: string) => setDrill((d) => {
+        const top = d.length > 0 ? d[d.length - 1] : itemId
+        return ref === top ? d : [...d, ref]
+    }), [itemId])
+    const drillBack = () => setDrill((d) => d.slice(0, -1))
+
+    // Se alguém (agente ou pessoa) mexe no item ABERTO, não sobrescrevemos o que
+    // está na tela — o usuário pode estar lendo ou escrevendo. Avisamos e ele
+    // decide quando recarregar.
+    const [changedBy, setChangedBy] = useState<string | null>(null)
+    const onEvents = useCallback((events: any[]) => {
+        const mine = auditEntriesOf(events).filter((e) =>
+            e.entityId === (item && item.id) ||
+            (e.metadata && (e.metadata as any).workItemId === (item && item.id)))
+        // Ignora o eco das MINHAS próprias edições (o inspector já recarregou).
+        const byOthers = mine.filter((e) => e.actorType === "agent" || e.actorType === "system")
+        if (byOthers.length > 0) setChangedBy(actorName(byOthers[byOthers.length - 1], usersById))
+    }, [item, usersById])
+    useEvents(onEvents)
+
+    const reloadFromServer = () => { setChangedBy(null); load() }
 
     useEffect(() => {
         if (!projectId) { setMilestones([]); setSprints([]); return }
@@ -129,7 +166,14 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
     const doDelete = async () => {
         if (!item) return
         setDeleting(true); setError(null)
-        try { await api.items.remove(item.id); onChanged && onChanged(); onClose() }
+        try {
+            await api.items.remove(item.id)
+            onChanged && onChanged()
+            setConfirmDelete(false); setDeleting(false)
+            // Apagou uma subtarefa aberta em drill-down: volta ao pai, não fecha tudo.
+            if (drill.length > 0) drillBack()
+            else onClose()
+        }
         catch (e: any) { setError(e.message); setDeleting(false); setConfirmDelete(false) }
     }
 
@@ -162,7 +206,40 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
         item.clarityState, item.effort, item.value, item.area, item.ideaOrigin
     ].filter((v) => !v).length
 
-    const summaryTab = <>
+    // Descrição: leitura por padrão, editor sob demanda. Vive dentro de "Detalhes".
+    const descFeedback = feedbackTarget({
+        entityType: "work-item", entityId: item.id, item: item.key, project: pid,
+        field: "description", fieldLabel: "Descrição"
+    })
+
+    const descBlock = editingDesc
+        ? <div className="mpm-desc mpm-desc--editing mpm-desc--inline" {...descFeedback}>
+            <DescriptionEditor key={`desc-${item.id}`} value={item.description || ""}
+                onSave={(md) => patch(() => api.items.update(item.id, { description: md }))}
+                onDone={() => setEditingDesc(false)} />
+        </div>
+        : <div className="mpm-desc" {...descFeedback}>
+            <div className="mpm-desc__bar">
+                <span className="mpm-field__label" style={{ flex: 1 }}>Descrição</span>
+                <button className="mpm-btn mpm-btn--sm" title="Editar a descrição em markdown"
+                    onClick={() => setEditingDesc(true)}>
+                    <Icon name="pencil" /> Editar
+                </button>
+            </div>
+            <div className="mpm-desc__read">
+                {item.description
+                    ? <Markdown>{item.description}</Markdown>
+                    : <div className="mpm-tabpanel-empty">
+                        <Icon name="align left" size="large" />
+                        <div>Este item ainda não tem descrição.</div>
+                        <button className="mpm-btn mpm-btn--sm mpm-btn--primary" onClick={() => setEditingDesc(true)}>
+                            <Icon name="pencil" /> Escrever descrição
+                        </button>
+                    </div>}
+            </div>
+        </div>
+
+    const detailsTab = <>
         <div className="mpm-row" style={{ justifyContent: "flex-end" }}>
             {hiddenCount > 0 || showEmptyFields
                 ? <button className="mpm-btn mpm-btn--ghost mpm-btn--sm"
@@ -173,7 +250,8 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 </button>
                 : null}
         </div>
-        <div className="mpm-inspector__grid">
+        <div className="mpm-inspector__grid"
+            {...feedbackTarget({ entityType: "work-item", entityId: item.id, item: item.key, project: pid, fieldLabel: "Campos do item" })}>
             <div className="mpm-field">
                 <span className="mpm-field__label" title="Natureza do trabalho: epic, feature, história, tarefa, bug…">Tipo</span>
                 <select className="mpm-inline-select" value={item.type}
@@ -207,7 +285,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 </select>
             </div>)}
             {optional(!!item.milestoneId, <div className="mpm-field">
-                <span className="mpm-field__label" title="Alvo de entrega com data (marco/release)">Milestone</span>
+                <span className="mpm-field__label" title="Alvo de entrega com data — milestone, no jargão técnico">Entrega</span>
                 <select className="mpm-inline-select" value={item.milestoneId || ""}
                     onChange={(e) => patch(() => api.planning.assignItemPlanning(item.id, { milestone: e.target.value || "none" }))}>
                     <option value="">— nenhum —</option>
@@ -275,22 +353,28 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
             ? <div className="mpm-error-banner"><Icon name="ban" /> Bloqueado: {item.blockedReason}</div>
             : null}
 
+        {descBlock}
+
         {item.children && item.children.length > 0
             ? <div className="mpm-col">
                 <div className="mpm-section-title"><Icon name="sitemap" /> Subtarefas ({item.children.length})</div>
                 {item.children.map((c) =>
-                    <div key={c.id} className="mpm-row">
+                    <button key={c.id} className="mpm-subtask"
+                        title={`Abrir ${c.key} para editar`}
+                        onClick={() => openRef(c.id)}>
                         <span className="mpm-mono mpm-muted">{c.key}</span>
                         <StatusChip status={c.statusKey} />
-                        <span>{c.title}</span>
-                    </div>)}
+                        <span className="mpm-subtask__title">{c.title}</span>
+                        <Icon name="chevron right" className="mpm-muted" />
+                    </button>)}
             </div>
             : null}
 
         <SoftwareContextSection item={item} onSave={(input) => patch(() => api.items.update(item.id, input))} />
     </>
 
-    const criteriaTab = <div className="mpm-col">
+    const criteriaTab = <div className="mpm-col"
+        {...feedbackTarget({ entityType: "work-item", entityId: item.id, item: item.key, project: pid, field: "acceptanceCriteria", fieldLabel: "Critérios de aceite" })}>
         <div className="mpm-section-title"><Icon name="check circle outline" /> Critérios de aceite</div>
         {(item.acceptanceCriteria || []).length === 0
             ? <div className="mpm-tabpanel-empty">
@@ -349,31 +433,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
     </div>
 
     const tabBody =
-        tab === "resumo"    ? summaryTab
-      : tab === "descricao" ? (editingDesc
-            ? <DescriptionEditor key={`desc-${item.id}`} value={item.description || ""}
-                onSave={(md) => patch(() => api.items.update(item.id, { description: md }))}
-                onDone={() => setEditingDesc(false)} />
-            : <div className="mpm-desc">
-                <div className="mpm-desc__bar">
-                    <span className="mpm-field__label" style={{ flex: 1 }}>Descrição</span>
-                    <button className="mpm-btn mpm-btn--sm" title="Editar a descrição em markdown"
-                        onClick={() => setEditingDesc(true)}>
-                        <Icon name="pencil" /> Editar
-                    </button>
-                </div>
-                <div className="mpm-desc__read">
-                    {item.description
-                        ? <Markdown>{item.description}</Markdown>
-                        : <div className="mpm-tabpanel-empty">
-                            <Icon name="align left" size="large" />
-                            <div>Este item ainda não tem descrição.</div>
-                            <button className="mpm-btn mpm-btn--sm mpm-btn--primary" onClick={() => setEditingDesc(true)}>
-                                <Icon name="pencil" /> Escrever descrição
-                            </button>
-                        </div>}
-                </div>
-            </div>)
+        tab === "detalhes"  ? detailsTab
       : tab === "criterios" ? criteriaTab
       : tab === "checklist" ? checklistTab
       : tab === "vinculos"  ? <LinkPanel item={item} projectId={pid} onChanged={() => patch(async () => {})} />
@@ -384,9 +444,17 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                               </div>
       : <AuditTimeline projectId={pid} entityId={item.id} />
 
-    return <aside className="mpm-inspector">
+    // Referências clicadas DENTRO do modal (texto markdown, vínculos, subtarefas)
+    // navegam no próprio modal, empilhando no drill — não abrem outro inspector.
+    return <ItemNavigatorProvider onOpenItem={openRef}>
+        <aside className="mpm-inspector">
         {/* Header sticky: key, tipo, título editável e ações */}
         <div className="mpm-inspector__head">
+            {drill.length > 0
+                ? <span className="mpm-iconbtn" title="Voltar para o item anterior" onClick={drillBack}>
+                    <Icon name="arrow left" />
+                </span>
+                : null}
             <span className="mpm-mono mpm-muted">{item.key}</span>
             <TypeBadge type={item.type} />
             <StatusChip status={item.statusKey} />
@@ -395,7 +463,19 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
             <span className="mpm-iconbtn" title="Fechar" onClick={onClose}><Icon name="close" /></span>
         </div>
 
-        <div className="mpm-inspector__titlebar">
+        {changedBy
+            ? <div className="mpm-stale-banner">
+                <Icon name="refresh" />
+                <span style={{ flex: 1 }}><strong>{changedBy}</strong> alterou este item.</span>
+                <button className="mpm-btn mpm-btn--sm" onClick={reloadFromServer}>recarregar</button>
+                <span className="mpm-iconbtn" title="Dispensar" onClick={() => setChangedBy(null)}>
+                    <Icon name="close" />
+                </span>
+            </div>
+            : null}
+
+        <div className="mpm-inspector__titlebar"
+            {...feedbackTarget({ entityType: "work-item", entityId: item.id, item: item.key, project: pid, field: "title", fieldLabel: "Título" })}>
             <input
                 className="mpm-input"
                 style={{ fontSize: "var(--mp-text-lg)", fontWeight: 700 }}
@@ -439,7 +519,8 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 onConfirm={doDelete}
                 onCancel={() => setConfirmDelete(false)} />
             : null}
-    </aside>
+        </aside>
+    </ItemNavigatorProvider>
 }
 
 export default WorkItemInspector

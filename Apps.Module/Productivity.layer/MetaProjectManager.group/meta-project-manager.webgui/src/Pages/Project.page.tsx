@@ -1,19 +1,23 @@
 import * as React from "react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
+import useLiveReload from "../Hooks/useLiveReload"
+import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import { Project, ProjectMetrics, Board, ActivityEntry, User } from "../api/types"
 import AppShell from "../Components/AppShell"
 import NewBoardModal from "../Components/NewBoardModal"
 import ConfirmActionModal from "../Components/ConfirmActionModal"
 import AuditTimeline from "../Components/AuditTimeline"
+import WorkItemInspector from "../Components/WorkItemInspector"
 import Markdown from "../Components/Markdown"
 import { Metric, Progress, StatusChip, Loading, ErrorBanner } from "../Components/Primitives"
 import { formatDateTime } from "../Utils/format"
-import { activityTitle, activityDetail, activityIcon } from "../Utils/activity"
+import { activityTitle, activityDetail, activityIcon, activityItemId } from "../Utils/activity"
 import downloadJson from "../Utils/downloadJson"
+import { feedbackTarget } from "../Utils/feedbackTarget"
 
 type OverviewTab = "resumo" | "descricao" | "auditoria"
 const OVERVIEW_TABS: { key: OverviewTab; label: string; icon: any; hint: string }[] = [
@@ -53,13 +57,15 @@ const ProjectPage = () => {
     const [tab, setTab] = useState<OverviewTab>("resumo")
     const [moreOpen, setMoreOpen] = useState(false)
     const [users, setUsers] = useState<User[]>([])
+    // Item aberto a partir de uma referência (CFGEC-26) citada na descrição do projeto.
+    const [selected, setSelected] = useState<string | null>(null)
     const usersById = React.useMemo(() => {
         const m: Record<string, User> = {}
         users.forEach((u) => { m[u.id] = u })
         return m
     }, [users])
 
-    useEffect(() => {
+    const loadAll = useCallback(() => {
         if (!projectId) return
         setError(null)
         api.projects.get(projectId).then(setProject).catch((e) => setError(e.message))
@@ -68,6 +74,10 @@ const ProjectPage = () => {
         api.reports.activity({ project: projectId, limit: "20" }).then((l) => setActivity(l || [])).catch(() => {})
         api.users.list({}).then((l) => setUsers(l || [])).catch(() => {})
     }, [projectId, api])
+
+    useEffect(() => { loadAll() }, [loadAll])
+    // Um agente mexeu neste projeto: métricas, boards e atividade se atualizam sozinhos.
+    useLiveReload(loadAll, { projectId })
 
     const exportProject = async () => {
         if (!projectId) return
@@ -93,53 +103,65 @@ const ProjectPage = () => {
         catch (e: any) { setError(e.message); setDeleting(false); setConfirmDelete(false) }
     }
 
-    return <AppShell active="overview" activeProjectId={projectId} activeProjectName={project ? project.name : undefined}>
+    const inspector = selected
+        ? <WorkItemInspector itemId={selected} projectId={projectId} users={users}
+            onClose={() => setSelected(null)} />
+        : undefined
+
+    // Ações do projeto: vivem no header. As de risco ficam atrás do menu "Mais".
+    const headerActions = project
+        ? <>
+            <StatusChip status={project.status} />
+            <button className="mpm-btn" title="Abrir o board padrão do projeto" onClick={() => openBoard(project.defaultBoardId)}>
+                <Icon name="columns" /> Abrir board
+            </button>
+            <button className="mpm-btn" title="Exportar projeto (.json)" onClick={exportProject}>
+                <Icon name="download" /> Exportar
+            </button>
+            <div className="mpm-more">
+                <button className="mpm-btn" title="Mais ações" onClick={() => setMoreOpen((v) => !v)}>
+                    <Icon name="ellipsis horizontal" /> Mais
+                </button>
+                {moreOpen
+                    ? <div className="mpm-more__menu" onMouseLeave={() => setMoreOpen(false)}>
+                        {project.status === "archived"
+                            ? <button className="mpm-ctxmenu__item" onClick={() => { setMoreOpen(false); restore() }}>
+                                <Icon name="undo" /> Restaurar projeto
+                            </button>
+                            : <button className="mpm-ctxmenu__item" onClick={() => { setMoreOpen(false); archive() }}>
+                                <Icon name="archive" /> Arquivar projeto
+                            </button>}
+                        <div className="mpm-ctxmenu__sep" />
+                        <button className="mpm-ctxmenu__item mpm-ctxmenu__item--danger"
+                            onClick={() => { setMoreOpen(false); setConfirmDelete(true) }}>
+                            <Icon name="trash" /> Excluir projeto…
+                        </button>
+                    </div>
+                    : null}
+            </div>
+        </>
+        : undefined
+
+    // Referências a itens (CFGEC-26…) na descrição do projeto abrem o inspector.
+    return <ItemNavigatorProvider onOpenItem={setSelected}>
+        <AppShell active="overview" activeProjectId={projectId} activeProjectName={project ? project.name : undefined}
+            breadcrumb={[
+                { label: "Projetos", to: "/" },
+                { label: project ? project.name : "Projeto" }
+            ]}
+            title={project ? project.name : "Projeto"}
+            subtitle={project
+                ? <>
+                    {project.shortDescription ? <div>{project.shortDescription}</div> : null}
+                    <span className="mpm-mono">{project.keyPrefix} · {project.slug}</span>
+                </>
+                : undefined}
+            actions={headerActions}
+            inspector={inspector} onInspectorClose={() => setSelected(null)}>
         <ErrorBanner error={error} />
         {!project
             ? <Loading />
             : <>
-                <div className="mpm-page-head">
-                    <div className="mpm-page-head__titles">
-                        <h1 className="mpm-page-title">{project.name}</h1>
-                        {project.shortDescription
-                            ? <div className="mpm-page-subtitle">{project.shortDescription}</div>
-                            : null}
-                        <div className="mpm-page-subtitle mpm-mono">{project.keyPrefix} · {project.slug}</div>
-                    </div>
-                    {/* Header enxuto: a navegação do projeto já vive na sidebar.
-                        Ações de risco ficam atrás do menu "Mais". */}
-                    <div className="mpm-page-head__actions">
-                        <StatusChip status={project.status} />
-                        <button className="mpm-btn" title="Abrir o board padrão do projeto" onClick={() => openBoard(project.defaultBoardId)}>
-                            <Icon name="columns" /> Abrir board
-                        </button>
-                        <button className="mpm-btn" title="Exportar projeto (.json)" onClick={exportProject}>
-                            <Icon name="download" /> Exportar
-                        </button>
-                        <div className="mpm-more">
-                            <button className="mpm-btn" title="Mais ações" onClick={() => setMoreOpen((v) => !v)}>
-                                <Icon name="ellipsis horizontal" /> Mais
-                            </button>
-                            {moreOpen
-                                ? <div className="mpm-more__menu" onMouseLeave={() => setMoreOpen(false)}>
-                                    {project.status === "archived"
-                                        ? <button className="mpm-ctxmenu__item" onClick={() => { setMoreOpen(false); restore() }}>
-                                            <Icon name="undo" /> Restaurar projeto
-                                        </button>
-                                        : <button className="mpm-ctxmenu__item" onClick={() => { setMoreOpen(false); archive() }}>
-                                            <Icon name="archive" /> Arquivar projeto
-                                        </button>}
-                                    <div className="mpm-ctxmenu__sep" />
-                                    <button className="mpm-ctxmenu__item mpm-ctxmenu__item--danger"
-                                        onClick={() => { setMoreOpen(false); setConfirmDelete(true) }}>
-                                        <Icon name="trash" /> Excluir projeto…
-                                    </button>
-                                </div>
-                                : null}
-                        </div>
-                    </div>
-                </div>
-
                 {/* PROGRESSO NO TOPO: antes a descrição longa o empurrava para fora da tela. */}
                 {metrics
                     ? <div className="mpm-card">
@@ -208,9 +230,13 @@ const ProjectPage = () => {
                             {activity.length === 0
                                 ? <div className="mpm-tabpanel-empty"><Icon name="history" size="large" /><div>Sem atividade ainda.</div></div>
                                 : <div className="mpm-timeline">
-                                    {groupActivity(activity, usersById).slice(0, 10).map((g) =>
-                                        <div key={g.entry.id} className="mpm-timeline__item mpm-activity"
-                                            title={activityDetail(g.entry)}>
+                                    {groupActivity(activity, usersById).slice(0, 10).map((g) => {
+                                    // Clique abre o item completo (quando o evento é de um item).
+                                    const itemId = activityItemId(g.entry)
+                                    return <div key={g.entry.id}
+                                        className={`mpm-timeline__item mpm-activity ${itemId ? "is-openable" : ""}`}
+                                        title={itemId ? `Abrir o item — ${activityDetail(g.entry)}` : activityDetail(g.entry)}
+                                        onClick={itemId ? () => setSelected(itemId) : undefined}>
                                             <span className="mpm-avatar">
                                                 <Icon name={activityIcon(g.entry.action)} size="small" style={{ margin: 0 }} />
                                             </span>
@@ -225,7 +251,8 @@ const ProjectPage = () => {
                                                     <span>{formatDateTime(g.entry.createdAt)}</span>
                                                 </div>
                                             </div>
-                                        </div>)}
+                                        </div>
+                                    })}
                                 </div>}
                         </div>
                     </div>
@@ -234,7 +261,9 @@ const ProjectPage = () => {
                 {tab === "descricao"
                     ? <div className="mpm-panel">
                         {project.description
-                            ? <Markdown>{project.description}</Markdown>
+                            ? <div {...feedbackTarget({ entityType: "project", entityId: project.id, project: project.id, field: "description", fieldLabel: "Descrição do projeto" })}>
+                                <Markdown>{project.description}</Markdown>
+                            </div>
                             : <div className="mpm-tabpanel-empty">
                                 <Icon name="align left" size="large" />
                                 <div>Este projeto ainda não tem descrição.</div>
@@ -269,7 +298,8 @@ const ProjectPage = () => {
                 onConfirm={doRemoveProject}
                 onCancel={() => setConfirmDelete(false)} />
             : null}
-    </AppShell>
+        </AppShell>
+    </ItemNavigatorProvider>
 }
 
 export default ProjectPage

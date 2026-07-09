@@ -13,6 +13,7 @@ const UsersStore      = require("./Store/UsersStore")
 const AgentsStore     = require("./Store/AgentsStore")
 const ReportsStore    = require("./Store/ReportsStore")
 const PlanningStore   = require("./Store/PlanningStore")
+const FeedbackStore   = require("./Store/FeedbackStore")
 const ActivityStore   = require("./Store/ActivityStore")
 const ImportExport    = require("./Store/ImportExportStore")
 
@@ -143,6 +144,9 @@ const InitializeProjectStore = (options = {}) => {
     // ActivityStore depende de resolvers (item/board/sprint/milestone/projeto) e
     // de EnsureDesktopUser — por isso entra depois do Object.assign acima.
     Object.assign(store, ActivityStore(ctx))
+    // FeedbackStore usa ResolveItem/ResolveProject e AddComment (espelho do
+    // feedback no item) — precisa do store já povoado.
+    Object.assign(store, FeedbackStore(ctx))
     Object.assign(store, ImportExport(ctx))
 
     return store

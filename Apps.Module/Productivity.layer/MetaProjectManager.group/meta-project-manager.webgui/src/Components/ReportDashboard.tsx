@@ -80,16 +80,11 @@ const ReportDashboard = () => {
         </div>
 
     return <div className="mpm-col mpm-gap-4">
-        <div className="mpm-page-head">
-            <div className="mpm-page-head__titles">
-                <h1 className="mpm-page-title">Relatórios</h1>
-                <div className="mpm-page-subtitle">visão analítica do projeto</div>
-            </div>
-            <div className="mpm-page-head__actions">
-                <select className="mpm-select" style={{ width: 240 }} value={project} onChange={(e) => setProject(e.target.value)}>
-                    {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-            </div>
+        {/* O título da tela vive no header do AppShell; aqui só as ações. */}
+        <div className="mpm-toolbar mpm-toolbar--end">
+            <select className="mpm-select" style={{ width: 240 }} value={project} onChange={(e) => setProject(e.target.value)}>
+                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
         </div>
         <ErrorBanner error={error} />
 

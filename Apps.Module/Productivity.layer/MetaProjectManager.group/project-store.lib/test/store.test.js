@@ -221,14 +221,62 @@ test("cria sprint e filtra itens por milestone", async () => {
     assert.ok(items.some((i) => i.key === "MP-2"))
 })
 
-test("agente criar milestone é gated; aprovar cria", async () => {
+// Política de gate: planejar dentro do projeto é livre; remover e mexer na
+// estrutura/identidade do projeto exige um humano.
+test("agente cria milestone/sprint livremente (planejamento é reversível)", async () => {
+    const m = await store.CreateMilestone({ project: "MP", name: "M do Agente", actor: AGENT })
+    assert.equal(m.name, "M do Agente")
+    const sp = await store.CreateSprint({ project: "MP", name: "S do Agente", actor: AGENT })
+    assert.equal(sp.name, "S do Agente")
+})
+
+test("agente remover milestone é gated; aprovar remove", async () => {
+    const m = await store.CreateMilestone({ project: "MP", name: "M a remover", actor: { source: "cli" } })
     await assert.rejects(
-        () => store.CreateMilestone({ project: "MP", name: "M do Agente", actor: AGENT }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.type === "milestone"
+        () => store.DeleteMilestone({ milestone: m.id, actor: AGENT }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.type === "milestone" && e.details.actionName === "delete"
     )
-    const pend = (await store.ListCreationRequests({ status: "pending", type: "milestone" }))[0]
-    const { result } = await store.ApproveCreation({ request: pend.id, actor: { actorUserId: "h", source: "gui" } })
-    assert.equal(result.name, "M do Agente")
+    const pend = (await store.ListCreationRequests({ status: "pending", type: "milestone", actionName: "delete" }))[0]
+    const { result } = await store.ApproveRequest({ request: pend.id, actor: { actorUserId: "h", source: "gui" } })
+    assert.equal(result.deleted, true)
+    const left = await store.ListMilestones({ project: "MP" })
+    assert.ok(!left.some((x) => x.id === m.id))
+})
+
+test("agente reescrever descrição do projeto é gated; ajuste operacional passa", async () => {
+    // repositoryUrl não é campo sensível: passa direto.
+    const ok = await store.UpdateProject({ project: "MP", repositoryUrl: "https://x/y", actor: AGENT })
+    assert.equal(ok.repositoryUrl, "https://x/y")
+
+    await assert.rejects(
+        () => store.UpdateProject({ project: "MP", description: "reescrita pelo agente", actor: AGENT }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.actionName === "update"
+    )
+    const pend = (await store.ListCreationRequests({ status: "pending", type: "project", actionName: "update" }))[0]
+    const { result } = await store.ApproveRequest({ request: pend.id, actor: { actorUserId: "h", source: "gui" } })
+    assert.equal(result.description, "reescrita pelo agente")
+})
+
+test("agente mexer em coluna do board é gated (estrutura do fluxo)", async () => {
+    const boards = await store.ListBoards({ project: "MP" })
+    await assert.rejects(
+        () => store.AddColumn({ board: boards[0].id, name: "Coluna do Agente", actor: AGENT }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.type === "column"
+    )
+    const pend = (await store.ListCreationRequests({ status: "pending", type: "column" }))[0]
+    const { result } = await store.ApproveRequest({ request: pend.id, actor: { actorUserId: "h", source: "gui" } })
+    assert.equal(result.name, "Coluna do Agente")
+})
+
+test("agente arquivar projeto é gated", async () => {
+    const p = await store.CreateProject({ name: "Arquivavel", keyPrefix: "ARQ", actor: { source: "cli" } })
+    await assert.rejects(
+        () => store.ArchiveProject({ project: p.id, actor: AGENT }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.actionName === "archive"
+    )
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "archive" }))[0]
+    const { result } = await store.ApproveRequest({ request: pend.id, actor: { actorUserId: "h", source: "gui" } })
+    assert.equal(result.status, "archived")
 })
 
 // ---- Fase 1: modelo de planejamento ----
@@ -553,4 +601,115 @@ test("histórico de pedidos: status=all, filtro por agente e por sessão", async
     assert.ok(bySession.every((r) => r.agentSessionId === sid))
     const byAgent = await store.ListCreationRequests({ status: "all", agent: sessions[0].agentUserId })
     assert.ok(byAgent.length >= bySession.length)
+})
+
+// ---- Feedback do humano para os agentes (fila com claim exclusivo) ----
+
+// Dois agentes distintos disputando a mesma fila.
+const AGENT_A = { source: "agent", actorSessionId: "sess-A", session: { provider: "claude", model: "opus", traceId: "TA" } }
+const AGENT_B = { source: "agent", actorSessionId: "sess-B", session: { provider: "codex", model: "gpt", traceId: "TB" } }
+
+test("feedback nasce aberto, guarda ONDE foi dado e espelha um comentário no item", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Item com feedback" })
+    const fb = await store.CreateFeedback({
+        item: it.key, field: "description", fieldLabel: "Descrição",
+        screen: "/projects/x/board", excerpt: "texto antigo",
+        body: "Está longo demais, resuma.", actor: { source: "gui", actorUserId: "h" }
+    })
+    assert.equal(fb.status, "open")
+    assert.equal(fb.field, "description")
+    assert.equal(fb.workItemId, it.id)
+    assert.equal(fb.excerpt, "texto antigo")
+
+    const comments = await store.ListComments({ item: it.id })
+    assert.ok(comments.some((c) => c.body.indexOf("Feedback para o agente") >= 0))
+})
+
+test("claim é exclusivo: o segundo agente recebe CONFLICT", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Disputa" })
+    const fb = await store.CreateFeedback({ item: it.key, body: "corrija", actor: { source: "gui" } })
+
+    const claimed = await store.ClaimFeedback({ feedback: fb.id, actor: AGENT_A })
+    assert.equal(claimed.status, "in-analysis")
+    assert.equal(claimed.claimedByProvider, "claude")
+
+    await assert.rejects(
+        () => store.ClaimFeedback({ feedback: fb.id, actor: AGENT_B }),
+        (e) => e.code === "CONFLICT"
+    )
+    // e some da fila de "open" enquanto o claim está vivo
+    const open = await store.ListFeedback({ project: "MP", status: "open" })
+    assert.ok(!open.some((f) => f.id === fb.id))
+})
+
+test("claim vencido volta para a fila e outro agente assume", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Agente sumiu" })
+    const fb = await store.CreateFeedback({ item: it.key, body: "corrija", actor: { source: "gui" } })
+
+    // ttl negativo = já vencido (é o mesmo caminho de um agente que morreu)
+    await store.ClaimFeedback({ feedback: fb.id, ttlSeconds: -1, actor: AGENT_A })
+
+    const open = await store.ListFeedback({ project: "MP", status: "open" })
+    assert.ok(open.some((f) => f.id === fb.id), "feedback com claim vencido deve voltar para a fila")
+
+    const retaken = await store.ClaimFeedback({ feedback: fb.id, actor: AGENT_B })
+    assert.equal(retaken.claimedByProvider, "codex")
+})
+
+test("resolver exige claim vivo e do próprio agente", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Resolver" })
+    const fb = await store.CreateFeedback({ item: it.key, body: "corrija", actor: { source: "gui" } })
+
+    // sem claim, o agente não resolve
+    await assert.rejects(
+        () => store.ResolveFeedback({ feedback: fb.id, actor: AGENT_A }),
+        (e) => e.code === "CONFLICT"
+    )
+    await store.ClaimFeedback({ feedback: fb.id, actor: AGENT_A })
+    // outro agente também não
+    await assert.rejects(
+        () => store.ResolveFeedback({ feedback: fb.id, actor: AGENT_B }),
+        (e) => e.code === "CONFLICT"
+    )
+    const done = await store.ResolveFeedback({ feedback: fb.id, note: "reescrito", actor: AGENT_A })
+    assert.equal(done.status, "resolved")
+
+    // resolvido some da fila
+    const open = await store.ListFeedback({ project: "MP", status: "open" })
+    assert.ok(!open.some((f) => f.id === fb.id))
+})
+
+test("humano descarta e reabre; agente devolve com release", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Ciclo" })
+    const fb = await store.CreateFeedback({ item: it.key, body: "corrija", actor: { source: "gui" } })
+
+    await store.ClaimFeedback({ feedback: fb.id, actor: AGENT_A })
+    const released = await store.ReleaseFeedback({ feedback: fb.id, actor: AGENT_A })
+    assert.equal(released.status, "open")
+
+    const dismissed = await store.DismissFeedback({ feedback: fb.id, reason: "não quero mais", actor: { source: "gui" } })
+    assert.equal(dismissed.status, "dismissed")
+    await assert.rejects(() => store.ClaimFeedback({ feedback: fb.id, actor: AGENT_A }), (e) => e.code === "CONFLICT")
+
+    const reopened = await store.ReopenFeedback({ feedback: fb.id, actor: { source: "gui" } })
+    assert.equal(reopened.status, "open")
+    const again = await store.ClaimFeedback({ feedback: fb.id, actor: AGENT_B })
+    assert.equal(again.status, "in-analysis")
+})
+
+test("feedback filtra por item e por janela de tempo", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Janela" })
+    const fb = await store.CreateFeedback({ item: it.key, body: "no intervalo", actor: { source: "gui" } })
+
+    const byItem = await store.ListFeedback({ project: "MP", status: "all", item: it.key })
+    assert.equal(byItem.length, 1)
+    assert.equal(byItem[0].id, fb.id)
+
+    const future = new Date(Date.now() + 60_000).toISOString()
+    const none = await store.ListFeedback({ project: "MP", status: "all", since: future })
+    assert.equal(none.length, 0)
+
+    const past = new Date(Date.now() - 60_000).toISOString()
+    const some = await store.ListFeedback({ project: "MP", status: "all", since: past })
+    assert.ok(some.length >= 1)
 })

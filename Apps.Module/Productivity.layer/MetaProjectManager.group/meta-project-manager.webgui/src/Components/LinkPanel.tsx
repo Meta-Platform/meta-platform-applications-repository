@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
+import useItemNavigator from "../Hooks/useItemNavigator"
 import { WorkItem } from "../api/types"
 import { ErrorBanner } from "./Primitives"
 
@@ -18,6 +19,7 @@ interface LinkPanelProps {
 // ListItems?text= (autocomplete key+título); títulos dos vínculos existentes são
 // resolvidos por um mapa carregado do projeto.
 const LinkPanel = ({ item, projectId, onChanged }: LinkPanelProps) => {
+    const nav = useItemNavigator()
     const api = useApi()
     const [relation, setRelation] = useState("relates")
     const [query, setQuery] = useState("")
@@ -74,9 +76,13 @@ const LinkPanel = ({ item, projectId, onChanged }: LinkPanelProps) => {
 
         {links.map((l) => {
             const t = resolved[l.targetItemId]
+            const label = t ? t.key : l.targetItemId
             return <div key={l.id} className="mpm-row">
                 <span className="mpm-chip mpm-chip--neutral">{l.relation}</span>
-                <span className="mpm-mono mpm-muted">{t ? t.key : l.targetItemId}</span>
+                {nav
+                    ? <a className="mpm-item-ref mpm-mono" href="#" title={`Abrir ${label}`}
+                        onClick={(e) => { e.preventDefault(); nav.openItem(l.targetItemId) }}>{label}</a>
+                    : <span className="mpm-mono mpm-muted">{label}</span>}
                 <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t ? t.title : ""}</span>
                 <Icon name="trash" link className="mpm-muted" title="Remover vínculo"
                     onClick={() => remove(l.relation, l.targetItemId)} />

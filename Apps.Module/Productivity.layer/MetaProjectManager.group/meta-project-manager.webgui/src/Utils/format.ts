@@ -62,7 +62,7 @@ export const horizonClass = (horizon?: string): string => {
 }
 
 const HORIZON_LABELS: { [k: string]: string } = {
-    inbox: "Inbox", now: "Agora", next: "Próximo", later: "Depois",
+    inbox: "Ideia", now: "Agora", next: "Próximo", later: "Depois",
     maybe: "Talvez", archived: "Arquivado", unassigned: "Sem horizonte"
 }
 export const horizonLabel = (horizon?: string): string =>

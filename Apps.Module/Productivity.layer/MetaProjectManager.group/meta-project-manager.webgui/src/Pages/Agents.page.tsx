@@ -8,7 +8,10 @@ import AgentRequestHistory from "../Components/AgentRequestHistory"
 // AgentsPage (spec §11): pedidos pendentes (aprovação humana), agentes/sessões
 // e o HISTÓRICO do que cada agente pediu, filtrável por agente e por sessão.
 const AgentsPage = () =>
-    <AppShell active="agents">
+    <AppShell active="agents"
+        breadcrumb={[{ label: "Agentes" }]}
+        title="Agentes"
+        subtitle="sessões de agentes de IA e pedidos de aprovação">
         <CreationApprovalPanel />
         <AgentManager />
         <AgentRequestHistory />

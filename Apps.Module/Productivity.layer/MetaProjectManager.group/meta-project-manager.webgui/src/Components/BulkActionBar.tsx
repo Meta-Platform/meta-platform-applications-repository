@@ -55,7 +55,7 @@ const BulkActionBar = (p: BulkActionBarProps) => {
             {HORIZONS.map((h) => <option key={h} value={h}>{horizonLabel(h)}</option>)}
         </select>
         <select className="mpm-inline-select" value="" onChange={pick(p.onSetMilestone)}>
-            <option value="">Milestone…</option>
+            <option value="">Entrega…</option>
             <option value="none">— remover —</option>
             {p.milestones.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>

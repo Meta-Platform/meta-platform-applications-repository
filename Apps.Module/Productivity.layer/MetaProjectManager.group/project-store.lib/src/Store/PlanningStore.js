@@ -30,11 +30,7 @@ const PlanningStore = (ctx) => {
         if(!MILESTONE_STATUSES.includes(status)) throw new DomainError("VALIDATION_ERROR", `Status inválido: ${status}.`, { field: "status", allowed: MILESTONE_STATUSES })
         const projectInstance = await store.ResolveProject(project)
 
-        if(store.IsAgentCreation(actor)){
-            const { request } = await store.RequestCreation({ type: "milestone", projectId: projectInstance.id, payload: { project: projectInstance.id, name, shortDescription, description, targetDate, status }, actor })
-            throw new DomainError("AGENT_SESSION_CONFIRMATION_REQUIRED", "Criação de milestone por agente requer aprovação humana.",
-                { pendingCreationId: request.id, type: "milestone", nextCommands: [`mpm agent creation approve ${request.id}`, `mpm agent creation reject ${request.id}`] })
-        }
+        // Criar milestone é planejamento reversível: LIVRE para agentes (o gate está no delete).
 
         const order = await Milestone.count({ where: { projectId: projectInstance.id, deletedAt: null } })
         const m = await Milestone.create({ id: NewId(), projectId: projectInstance.id, name, shortDescription, description, targetDate, status, order })
@@ -72,6 +68,10 @@ const PlanningStore = (ctx) => {
 
     const DeleteMilestone = async ({ milestone, actor } = {}) => {
         const m = await ResolveMilestone(milestone)
+        await store.GateAgentAction({
+            actionName: "delete", type: "milestone", targetId: m.id, projectId: m.projectId,
+            risk: "destructive", reason: "Remoção de entrega (milestone) por agente requer aprovação humana.", actor
+        })
         await m.update({ deletedAt: new Date() })
         await WorkItem.update({ milestoneId: null }, { where: { milestoneId: m.id } })
         await writeAudit({ projectId: m.projectId, entityType: "milestone", entityId: m.id, action: "delete", actor })
@@ -108,11 +108,7 @@ const PlanningStore = (ctx) => {
         if(!SPRINT_STATUSES.includes(status)) throw new DomainError("VALIDATION_ERROR", `Status inválido: ${status}.`, { field: "status", allowed: SPRINT_STATUSES })
         const projectInstance = await store.ResolveProject(project)
 
-        if(store.IsAgentCreation(actor)){
-            const { request } = await store.RequestCreation({ type: "sprint", projectId: projectInstance.id, payload: { project: projectInstance.id, name, shortDescription, goal, startDate, endDate, status }, actor })
-            throw new DomainError("AGENT_SESSION_CONFIRMATION_REQUIRED", "Criação de sprint por agente requer aprovação humana.",
-                { pendingCreationId: request.id, type: "sprint", nextCommands: [`mpm agent creation approve ${request.id}`, `mpm agent creation reject ${request.id}`] })
-        }
+        // Criar sprint é planejamento reversível: LIVRE para agentes (o gate está no delete).
 
         const order = await Sprint.count({ where: { projectId: projectInstance.id, deletedAt: null } })
         const s = await Sprint.create({ id: NewId(), projectId: projectInstance.id, name, shortDescription, goal, startDate, endDate, status, order })
@@ -150,6 +146,10 @@ const PlanningStore = (ctx) => {
 
     const DeleteSprint = async ({ sprint, actor } = {}) => {
         const s = await ResolveSprint(sprint)
+        await store.GateAgentAction({
+            actionName: "delete", type: "sprint", targetId: s.id, projectId: s.projectId,
+            risk: "destructive", reason: "Remoção de sprint por agente requer aprovação humana.", actor
+        })
         await s.update({ deletedAt: new Date() })
         await WorkItem.update({ sprintId: null }, { where: { sprintId: s.id } })
         await writeAudit({ projectId: s.projectId, entityType: "sprint", entityId: s.id, action: "delete", actor })

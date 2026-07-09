@@ -7,9 +7,11 @@ import useApi from "../Hooks/useApi"
 import useEvents from "../Hooks/useEvents"
 import { ActivityEntry, ActivityFilters, ActivityNote, Project, User, PlatformEvent } from "../api/types"
 import AppShell from "../Components/AppShell"
+import WorkItemInspector from "../Components/WorkItemInspector"
+import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import { Loading, EmptyState, ErrorBanner } from "../Components/Primitives"
 import { formatDateTime } from "../Utils/format"
-import { activityTitle, activityDetail, activityIcon, actorName } from "../Utils/activity"
+import { activityTitle, activityDetail, activityIcon, actorName, activityItemId } from "../Utils/activity"
 
 type ViewMode = "timeline" | "table"
 
@@ -65,6 +67,8 @@ const AuditPage = () => {
     const [notes, setNotes] = useState<ActivityNote[]>([])
     const [projects, setProjects] = useState<Project[]>([])
     const [users, setUsers] = useState<User[]>([])
+    // Item aberto a partir de um evento de auditoria.
+    const [selected, setSelected] = useState<string | null>(null)
     const [expanded, setExpanded] = useState<Record<string, boolean>>({})
     const [view, setView] = useState<ViewMode>("timeline")
     const [error, setError] = useState<string | null>(null)
@@ -136,28 +140,33 @@ const AuditPage = () => {
 
     const groups = useMemo(() => groupByDay(events || []), [events])
 
-    return <AppShell active="audit">
-        <div className="mpm-page-head">
-            <div className="mpm-page-head__titles">
-                <h1 className="mpm-page-title">Auditoria & Atividades</h1>
-                <div className="mpm-page-subtitle">Quem fez o quê, quando, com qual modelo e a partir de qual fonte.</div>
-            </div>
-            <div className="mpm-page-head__actions">
-                <div className="mpm-seg">
-                    <button className={`mpm-seg__btn ${view === "timeline" ? "is-active" : ""}`}
-                        title="Linha do tempo agrupada por dia" onClick={() => setView("timeline")}>
-                        <Icon name="history" /> Timeline
-                    </button>
-                    <button className={`mpm-seg__btn ${view === "table" ? "is-active" : ""}`}
-                        title="Tabela técnica, para filtrar e exportar" onClick={() => setView("table")}>
-                        <Icon name="table" /> Tabela
-                    </button>
-                </div>
-                <button className="mpm-btn" title="Exportar os eventos filtrados (.json)" onClick={exportJson}>
-                    <Icon name="download" /> Exportar
+    const inspector = selected
+        ? <WorkItemInspector itemId={selected} users={users} onClose={() => setSelected(null)} />
+        : undefined
+
+    // Um evento de item abre o item completo, aqui mesmo.
+    return <ItemNavigatorProvider onOpenItem={setSelected}>
+        <AppShell active="audit"
+        inspector={inspector}
+        onInspectorClose={() => setSelected(null)}
+        breadcrumb={[{ label: "Auditoria" }]}
+        title="Auditoria & Atividades"
+        subtitle="Quem fez o quê, quando, com qual modelo e a partir de qual fonte."
+        actions={<>
+            <div className="mpm-seg">
+                <button className={`mpm-seg__btn ${view === "timeline" ? "is-active" : ""}`}
+                    title="Linha do tempo agrupada por dia" onClick={() => setView("timeline")}>
+                    <Icon name="history" /> Timeline
+                </button>
+                <button className={`mpm-seg__btn ${view === "table" ? "is-active" : ""}`}
+                    title="Tabela técnica, para filtrar e exportar" onClick={() => setView("table")}>
+                    <Icon name="table" /> Tabela
                 </button>
             </div>
-        </div>
+            <button className="mpm-btn" title="Exportar os eventos filtrados (.json)" onClick={exportJson}>
+                <Icon name="download" /> Exportar
+            </button>
+        </>}>
 
         {/* Filtros: barra compacta de UMA linha; os avançados ficam recolhidos.
             Antes ocupavam ~180px de altura fixa e dominavam a tela. */}
@@ -283,6 +292,10 @@ const AuditPage = () => {
                                                     <span>{e.entityType}</span>
                                                     {e.traceId ? <span title="trace/sessão">{e.traceId}</span> : null}
                                                     <span>{formatDateTime(e.createdAt)}</span>
+                                                    {activityItemId(e)
+                                                        ? <a onClick={() => setSelected(activityItemId(e)!)} style={{ cursor: "pointer" }}
+                                                            title="Abrir o item completo">abrir item</a>
+                                                        : null}
                                                     {e.projectId
                                                         ? <a onClick={() => navigate(`/projects/${e.projectId}`)} style={{ cursor: "pointer" }}>abrir projeto</a>
                                                         : null}
@@ -314,7 +327,12 @@ const AuditPage = () => {
                                         <td>{actorName(e, usersById)}</td>
                                         <td><span className="mpm-chip mpm-chip--neutral">{e.actorType || "—"}</span></td>
                                         <td className="mpm-mono">{e.action}</td>
-                                        <td className="mpm-mono">{e.entityType}</td>
+                                        <td className="mpm-mono">
+                                            {activityItemId(e)
+                                                ? <a className="mpm-item-ref" onClick={() => setSelected(activityItemId(e)!)}
+                                                    title="Abrir o item completo">{e.entityType}</a>
+                                                : e.entityType}
+                                        </td>
                                         <td className="mpm-mono">{e.source}</td>
                                         <td className="mpm-mono">{e.model || "—"}</td>
                                         <td className="mpm-mono">{e.traceId || "—"}</td>
@@ -322,7 +340,8 @@ const AuditPage = () => {
                             </tbody>
                         </table>
                     </div>}
-    </AppShell>
+        </AppShell>
+    </ItemNavigatorProvider>
 }
 
 export default AuditPage

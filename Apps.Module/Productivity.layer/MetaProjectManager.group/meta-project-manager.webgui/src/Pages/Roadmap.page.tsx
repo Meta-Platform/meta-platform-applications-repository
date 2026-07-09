@@ -4,6 +4,8 @@ import { useParams, useNavigate } from "react-router-dom"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
+import useLiveReload from "../Hooks/useLiveReload"
+import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import { Project, Milestone, Sprint, WorkItem, User, HorizonBoard as HorizonBoardData } from "../api/types"
 import AppShell from "../Components/AppShell"
 import MilestoneModal from "../Components/MilestoneModal"
@@ -68,6 +70,8 @@ const RoadmapPage = () => {
     }, [projectId, api])
 
     useEffect(() => { if (mode === "horizon") loadHorizon() }, [mode, projectId])
+    // Entregas/sprints/horizontes mexidos por agentes se atualizam sozinhos.
+    useLiveReload(() => { load(); if (mode === "horizon") loadHorizon() }, { projectId })
 
     const moveHorizon = async (itemId: string, horizon: string) => {
         setError(null)
@@ -99,23 +103,26 @@ const RoadmapPage = () => {
             onClose={() => setSelected(null)} onChanged={loadHorizon} />
         : undefined
 
-    return <AppShell active="roadmap" activeProjectId={projectId} activeProjectName={project ? project.name : undefined}
-        inspector={mode === "horizon" ? inspector : undefined}
-        onInspectorClose={() => setSelected(null)}>
-        <div className="mpm-page-head">
-            <div className="mpm-page-head__titles">
-                <h1 className="mpm-page-title">Roadmap</h1>
-                <div className="mpm-page-subtitle">{project ? project.name : ""} · milestones, sprints e horizontes</div>
-            </div>
-            <div className="mpm-page-head__actions">
+    // Referências a itens (CFGEC-26…) em qualquer texto desta tela abrem o inspector.
+    return <ItemNavigatorProvider onOpenItem={setSelected}>
+        <AppShell active="roadmap" activeProjectId={projectId} activeProjectName={project ? project.name : undefined}
+            inspector={inspector}
+            breadcrumb={[
+                { label: "Projetos", to: "/" },
+                { label: project ? project.name : "Projeto", to: projectId ? `/projects/${projectId}` : undefined },
+                { label: "Planejamento" }
+            ]}
+            title={project ? project.name : "Projeto"}
+            subtitle="Planejamento · entregas, sprints e horizontes"
+            actions={<>
                 <div className="mpm-seg">
-                    <button className={`mpm-seg__btn ${mode === "date" ? "is-active" : ""}`} title="Timeline de milestones ordenada por data-alvo" onClick={() => setMode("date")}><Icon name="calendar" /> Por data</button>
-                    <button className={`mpm-seg__btn ${mode === "horizon" ? "is-active" : ""}`} title="Itens agrupados por horizonte (now/next/later/maybe)" onClick={() => setMode("horizon")}><Icon name="align left" /> Por horizonte</button>
+                    <button className={`mpm-seg__btn ${mode === "date" ? "is-active" : ""}`} title="Linha do tempo das entregas, ordenada pela data-alvo" onClick={() => setMode("date")}><Icon name="calendar" /> Por data</button>
+                    <button className={`mpm-seg__btn ${mode === "horizon" ? "is-active" : ""}`} title="Itens agrupados por horizonte (agora/próximo/depois/talvez)" onClick={() => setMode("horizon")}><Icon name="align left" /> Por horizonte</button>
                 </div>
                 <button className="mpm-btn" title="Sprint: janela de tempo fixa (iteração) com um objetivo" onClick={() => setSpModal({ open: true })}><Icon name="rocket" /> Novo Sprint</button>
-                <button className="mpm-btn mpm-btn--primary" title="Milestone: alvo de entrega com data-alvo" onClick={() => setMsModal({ open: true })}><Icon name="flag" /> Novo Milestone</button>
-            </div>
-        </div>
+                <button className="mpm-btn mpm-btn--primary" title="Entrega: um alvo com data (milestone, no jargão técnico)" onClick={() => setMsModal({ open: true })}><Icon name="flag" /> Nova Entrega</button>
+            </>}
+            onInspectorClose={() => setSelected(null)}>
 
         <ErrorBanner error={error} />
 
@@ -125,9 +132,9 @@ const RoadmapPage = () => {
             ? <Loading />
             : <>
                 <div className="mpm-panel">
-                    <div className="mpm-panel__title"><Icon name="road" /> Milestones ({milestones.length})</div>
+                    <div className="mpm-panel__title"><Icon name="road" /> Entregas ({milestones.length})</div>
                     {milestones.length === 0
-                        ? <EmptyState icon="flag outline" title="Sem milestones" hint="Crie um milestone para montar o roadmap." />
+                        ? <EmptyState icon="flag outline" title="Sem entregas" hint="Crie uma entrega (um alvo com data) para montar o plano." />
                         : <div className="mpm-timeline">
                             {milestones.map((m) => {
                                 const total = m.totalItems || 0
@@ -155,11 +162,13 @@ const RoadmapPage = () => {
                                                 {(itemsByMilestone[m.id] || []).length === 0
                                                     ? <span className="mpm-muted" style={{ fontSize: "12px" }}>nenhum item</span>
                                                     : (itemsByMilestone[m.id] || []).map((it) =>
-                                                        <div key={it.id} className="mpm-row">
+                                                        <button key={it.id} className="mpm-subtask"
+                                                            title={`Abrir ${it.key}`} onClick={() => setSelected(it.id)}>
                                                             <span className="mpm-mono mpm-muted">{it.key}</span>
                                                             <StatusChip status={it.statusKey} />
-                                                            <span>{it.title}</span>
-                                                        </div>)}
+                                                            <span className="mpm-subtask__title">{it.title}</span>
+                                                            <Icon name="chevron right" className="mpm-muted" />
+                                                        </button>)}
                                             </div>
                                             : null}
                                     </div>
@@ -215,7 +224,8 @@ const RoadmapPage = () => {
                 onConfirm={doDelete}
                 onCancel={() => setPendingDelete(null)} />
             : null}
-    </AppShell>
+        </AppShell>
+    </ItemNavigatorProvider>
 }
 
 export default RoadmapPage

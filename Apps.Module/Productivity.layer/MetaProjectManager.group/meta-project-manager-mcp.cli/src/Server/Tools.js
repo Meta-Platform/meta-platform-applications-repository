@@ -39,42 +39,56 @@ const BuildTools = ({ store, actor }) => {
     // Erro de domínio para a camada MCP (formatado como { ok:false, code, ... }).
     const McpError = (code, message, details) => Object.assign(new Error(message), { code, details })
 
-    // Executa uma AÇÃO GATED (delete). O gate transforma a chamada num pedido pendente;
-    // se waitApproval (default true), BLOQUEIA (polling do SQLite via WaitForApproval) até
-    // a decisão humana e retorna o resultado da ação. Se rejeitado/expirado, erro estruturado.
-    // resumeToken (derivado do alvo) dá idempotência: retries não duplicam o pendente.
-    const GatedDelete = async ({ type, ref, run, waitApproval = true, approvalTimeoutSeconds }) => {
-        const resumeToken = `delete:${type}:${ref}`
+    // Executa uma AÇÃO GATED (criar projeto/board/milestone/sprint, ou deletar).
+    // O gate transforma a chamada num pedido pendente; por padrão (waitApproval)
+    // a tool BLOQUEIA (polling do SQLite via WaitForApproval) até a decisão humana
+    // e devolve o resultado da ação — o agente não segue adiante sem o veredicto.
+    // Se rejeitado/expirado, erro estruturado. resumeToken (derivado da ação + alvo)
+    // dá idempotência: retries reusam o pedido pendente em vez de duplicá-lo.
+    const ACTION_LABEL = { create: "criação", delete: "remoção" }
+    const GatedAction = async ({ actionName = "delete", type, ref, run, waitApproval = true, approvalTimeoutSeconds }) => {
+        const resumeToken = `${actionName}:${type}:${ref}`
         try {
             return await run({ ...actor, resumeToken }) // caminho não-gated (não esperado p/ agente)
         } catch(e){
             if(e.code !== "AGENT_SESSION_CONFIRMATION_REQUIRED") throw e
             const requestId = e.details && e.details.pendingCreationId
+            const label = ACTION_LABEL[actionName] || actionName
             if(waitApproval === false)
-                return { status: "pending_approval", approvalRequestId: requestId, actionName: "delete", type, message: "Aguardando aprovação humana. Consulte o humano ou reenvie com waitApproval para bloquear." }
+                return { status: "pending_approval", approvalRequestId: requestId, actionName, type, message: "Aguardando aprovação humana. Consulte o humano ou reenvie com waitApproval para bloquear." }
             const timeoutMs = Number(approvalTimeoutSeconds) > 0 ? Number(approvalTimeoutSeconds) * 1000 : 0
             const final = await store.WaitForApproval({ request: requestId, timeoutMs })
             if(final.timedOut) throw McpError("APPROVAL_TIMEOUT", "Tempo de espera pela aprovação esgotado.", { approvalRequestId: requestId })
-            if(final.status === "rejected") throw McpError("REJECTED_BY_HUMAN", final.rejectionReason || "Remoção rejeitada por um humano.", { approvalRequestId: requestId, reason: final.rejectionReason })
-            if(final.status === "failed") throw McpError("APPROVAL_EXECUTION_FAILED", (final.error && final.error.message) || "Falha ao executar a remoção aprovada.", { approvalRequestId: requestId })
+            if(final.status === "rejected") throw McpError("REJECTED_BY_HUMAN", final.rejectionReason || `${label[0].toUpperCase()}${label.slice(1)} rejeitada por um humano.`, { approvalRequestId: requestId, reason: final.rejectionReason })
+            if(final.status === "failed") throw McpError("APPROVAL_EXECUTION_FAILED", (final.error && final.error.message) || `Falha ao executar a ${label} aprovada.`, { approvalRequestId: requestId })
             return final.result
         }
+    }
+    const GatedDelete = (args) => GatedAction({ ...args, actionName: "delete" })
+    const GatedCreate = (args) => GatedAction({ ...args, actionName: "create" })
+
+    // Campos de controle da espera, comuns a toda tool sob gate.
+    const WAIT_FIELDS = {
+        waitApproval: S.bool("Aguardar a aprovação humana e retomar (padrão true). false retorna o approvalRequestId sem esperar."),
+        approvalTimeoutSeconds: S.num("Timeout da espera em segundos (0/omitido = sem timeout)")
     }
 
     // Schema comum das tools de delete: alvo + controle de espera.
     const DeleteSchema = (targetKey, targetDesc) => Obj({
         [targetKey]: S.str(targetDesc),
-        waitApproval: S.bool("Aguardar a aprovação humana e retomar (padrão true). false retorna o approvalRequestId sem esperar."),
-        approvalTimeoutSeconds: S.num("Timeout da espera em segundos (0/omitido = sem timeout)")
+        ...WAIT_FIELDS
     }, [targetKey])
+
+    // Sufixo padrão da descrição de toda tool de criação estrutural.
+    const GATED_CREATE_NOTE = " GATE: criação estrutural por agente exige aprovação humana — esta tool BLOQUEIA até o humano aprovar ou rejeitar no Meta Project Manager (ou via `mpm agent creation approve|reject <id>`). NÃO prossiga por outro caminho; rejeição vira erro REJECTED_BY_HUMAN. Use waitApproval:false só se precisar explicitamente não bloquear."
 
     const DeleteDesc = (alvo) => `Remove (SOFT delete) ${alvo}. AÇÃO DESTRUTIVA sob gate: cria um pedido e AGUARDA aprovação humana (a interface mostra O QUE será removido e QUEM pediu). Aprovado → executa e retorna o resultado; rejeitado → { ok:false, code:"REJECTED_BY_HUMAN" }. NÃO tente burlar o gate.`
 
     return [
-        // ───────────── Planejar (criação estrutural — GATE de aprovação humana) ─────────────
+        // ───────────── Estruturar o projeto (projeto/board: GATE de aprovação humana) ─────────────
         {
             name: "create_project",
-            description: "Cria um projeto. ATENÇÃO: criação estrutural por agente EXIGE aprovação humana — a tool retorna { ok:false, code:\"AGENT_SESSION_CONFIRMATION_REQUIRED\", details:{ pendingCreationId } }. Avise o humano e AGUARDE ele aprovar (na interface, ou `mpm agent creation approve <id>`). NÃO tente burlar.",
+            description: "Cria um projeto." + GATED_CREATE_NOTE,
             inputSchema: Obj({
                 name: S.str("Nome do projeto"),
                 slug: S.str("Slug único (opcional; derivado do nome se ausente)"),
@@ -83,26 +97,36 @@ const BuildTools = ({ store, actor }) => {
                 keyPrefix: S.str("Prefixo das keys dos itens (ex.: MPM)"),
                 status: S.enum(["planning","candidate","active","paused","completed","archived"], "Status inicial"),
                 repositoryUrl: S.str("URL do repositório"),
-                localPath: S.str("Caminho local do projeto")
+                localPath: S.str("Caminho local do projeto"),
+                ...WAIT_FIELDS
             }, ["name"]),
-            handler: (i) => store.CreateProject(A({ name: i.name, slug: i.slug, shortDescription: i.shortDescription, description: i.description, keyPrefix: i.keyPrefix, status: i.status, repositoryUrl: i.repositoryUrl, localPath: i.localPath }))
+            handler: (i) => GatedCreate({
+                type: "project", ref: i.slug || i.name,
+                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (actor) => store.CreateProject({ name: i.name, slug: i.slug, shortDescription: i.shortDescription, description: i.description, keyPrefix: i.keyPrefix, status: i.status, repositoryUrl: i.repositoryUrl, localPath: i.localPath, actor })
+            })
         },
         {
             name: "create_board",
-            description: "Cria um board (Kanban) no projeto. Criação estrutural — EXIGE aprovação humana (mesmo gate de create_project).",
+            description: "Cria um board (Kanban) no projeto." + GATED_CREATE_NOTE,
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"),
                 name: S.str("Nome do board"),
                 shortDescription: S.str("Descrição curta (<=240 chars)"),
                 description: S.str("Descrição"),
                 type: S.str("Tipo do board (ex.: kanban)"),
-                setDefault: S.bool("Tornar board padrão do projeto (o 1º board vira padrão automaticamente)")
+                setDefault: S.bool("Tornar board padrão do projeto (o 1º board vira padrão automaticamente)"),
+                ...WAIT_FIELDS
             }, ["project","name"]),
-            handler: (i) => store.CreateBoard(A({ project: i.project, name: i.name, shortDescription: i.shortDescription, description: i.description, type: i.type, setDefault: i.setDefault }))
+            handler: (i) => GatedCreate({
+                type: "board", ref: `${i.project}:${i.name}`,
+                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (actor) => store.CreateBoard({ project: i.project, name: i.name, shortDescription: i.shortDescription, description: i.description, type: i.type, setDefault: i.setDefault, actor })
+            })
         },
         {
             name: "create_milestone",
-            description: "Cria um milestone. Criação estrutural — EXIGE aprovação humana.",
+            description: "Cria um milestone — na interface chamado \"Entrega\": um alvo com data. LIVRE (planejamento é reversível). Criar a entrega NÃO vincula itens: use assign_item_planning.",
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"),
                 name: S.str("Nome do milestone"),
@@ -113,7 +137,7 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "create_sprint",
-            description: "Cria um sprint. Criação estrutural — EXIGE aprovação humana.",
+            description: "Cria um sprint (janela de tempo com um objetivo). LIVRE (planejamento é reversível).",
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"),
                 name: S.str("Nome do sprint"),
@@ -145,6 +169,260 @@ const BuildTools = ({ store, actor }) => {
             inputSchema: DeleteSchema("item", "Item (id|key, ex.: MPM-42)"),
             handler: (i) => GatedDelete({ type: "item", ref: i.item, waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
                 run: (a) => store.DeleteItem({ item: i.item, actor: a }) })
+        },
+
+        // ───────────── Revisar o projeto (metadados, boards, colunas, planejamento) ─────────────
+        //
+        // Tudo que um humano faz DENTRO de um projeto o agente também faz. O que muda
+        // o contrato do projeto (texto/identidade, ciclo de vida, estrutura do fluxo)
+        // ou remove algo passa pelo gate e BLOQUEIA até a decisão humana.
+        {
+            name: "update_project",
+            description: "Atualiza um projeto. Campos operacionais (icon, color, repositoryUrl, localPath) são LIVRES. GATE (bloqueia até aprovação): name, slug, shortDescription, description, status — reescrever o texto ou mudar o ciclo de vida do projeto o humano revisa antes.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                name: S.str("Novo nome"),
+                slug: S.str("Novo slug"),
+                shortDescription: S.str("Resumo de UMA linha (<=240 chars)"),
+                description: S.str("Descrição em markdown, organizada e curta"),
+                status: S.enum(["planning","candidate","active","paused","completed","archived"], "Status do projeto"),
+                icon: S.str("Ícone"),
+                color: S.str("Cor (hex)"),
+                repositoryUrl: S.str("URL do repositório"),
+                localPath: S.str("Caminho local"),
+                ...WAIT_FIELDS
+            }, ["project"]),
+            handler: (i) => GatedAction({
+                actionName: "update", type: "project", ref: i.project,
+                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (actor) => store.UpdateProject({
+                    project: i.project, name: i.name, slug: i.slug, shortDescription: i.shortDescription,
+                    description: i.description, status: i.status, icon: i.icon, color: i.color,
+                    repositoryUrl: i.repositoryUrl, localPath: i.localPath, actor
+                })
+            })
+        },
+        {
+            name: "archive_project",
+            description: "Arquiva um projeto (sai das listagens ativas). GATE: bloqueia até aprovação humana.",
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)"), ...WAIT_FIELDS }, ["project"]),
+            handler: (i) => GatedAction({
+                actionName: "archive", type: "project", ref: i.project,
+                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (actor) => store.ArchiveProject({ project: i.project, actor })
+            })
+        },
+        {
+            name: "restore_project",
+            description: "Restaura um projeto arquivado (volta a active). GATE: bloqueia até aprovação humana.",
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)"), ...WAIT_FIELDS }, ["project"]),
+            handler: (i) => GatedAction({
+                actionName: "restore", type: "project", ref: i.project,
+                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (actor) => store.RestoreProject({ project: i.project, actor })
+            })
+        },
+        {
+            name: "get_board",
+            description: "Detalhe de um board, incluindo as colunas (statusKey de cada uma).",
+            inputSchema: Obj({ board: S.str("Board (id)") }, ["board"]),
+            handler: (i) => store.GetBoard({ board: i.board })
+        },
+        {
+            name: "update_board",
+            description: "Renomeia/descreve um board. LIVRE — não muda o fluxo (para colunas, veja as tools de coluna).",
+            inputSchema: Obj({
+                board: S.str("Board (id)"),
+                name: S.str("Novo nome"),
+                shortDescription: S.str("Resumo de uma linha"),
+                description: S.str("Descrição")
+            }, ["board"]),
+            handler: (i) => store.UpdateBoard(A({ board: i.board, name: i.name, shortDescription: i.shortDescription, description: i.description }))
+        },
+        {
+            name: "set_default_board",
+            description: "Define o board padrão do projeto (onde novos itens caem). GATE: bloqueia até aprovação humana.",
+            inputSchema: Obj({ board: S.str("Board (id)"), ...WAIT_FIELDS }, ["board"]),
+            handler: (i) => GatedAction({
+                actionName: "set-default", type: "board", ref: i.board,
+                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (actor) => store.SetDefaultBoard({ board: i.board, actor })
+            })
+        },
+        {
+            name: "list_columns",
+            description: "Lista as colunas de um board, na ordem do fluxo.",
+            inputSchema: Obj({ board: S.str("Board (id)") }, ["board"]),
+            handler: (i) => store.ListColumns({ board: i.board })
+        },
+        {
+            name: "add_column",
+            description: "Cria uma coluna no board. GATE: a coluna é uma etapa do fluxo por onde todo o trabalho passa — bloqueia até aprovação humana.",
+            inputSchema: Obj({
+                board: S.str("Board (id)"),
+                name: S.str("Nome da coluna"),
+                statusKey: S.str("Chave de status (derivada do nome se ausente)"),
+                color: S.str("Cor (hex)"),
+                wipLimit: S.num("Limite de trabalho em progresso"),
+                isDoneColumn: S.bool("Marca itens desta coluna como concluídos"),
+                ...WAIT_FIELDS
+            }, ["board","name"]),
+            handler: (i) => GatedAction({
+                actionName: "create", type: "column", ref: `${i.board}:${i.name}`,
+                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (actor) => store.AddColumn({ board: i.board, name: i.name, statusKey: i.statusKey, color: i.color, wipLimit: i.wipLimit, isDoneColumn: i.isDoneColumn, actor })
+            })
+        },
+        {
+            name: "update_column",
+            description: "Altera uma coluna (nome, statusKey, cor, WIP). GATE: bloqueia até aprovação humana.",
+            inputSchema: Obj({
+                column: S.str("Coluna (id)"),
+                name: S.str("Novo nome"),
+                statusKey: S.str("Nova chave de status"),
+                color: S.str("Cor (hex)"),
+                wipLimit: S.num("Limite de WIP"),
+                isDoneColumn: S.bool("É coluna de concluído"),
+                ...WAIT_FIELDS
+            }, ["column"]),
+            handler: (i) => GatedAction({
+                actionName: "update", type: "column", ref: i.column,
+                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (actor) => store.UpdateColumn({ column: i.column, name: i.name, statusKey: i.statusKey, color: i.color, wipLimit: i.wipLimit, isDoneColumn: i.isDoneColumn, actor })
+            })
+        },
+        {
+            name: "move_column",
+            description: "Reposiciona uma coluna no fluxo (order = índice 0-based). GATE: bloqueia até aprovação humana.",
+            inputSchema: Obj({ column: S.str("Coluna (id)"), order: S.num("Nova posição (0 = primeira)"), ...WAIT_FIELDS }, ["column","order"]),
+            handler: (i) => GatedAction({
+                actionName: "move", type: "column", ref: i.column,
+                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (actor) => store.MoveColumn({ column: i.column, order: i.order, actor })
+            })
+        },
+        {
+            name: "delete_column",
+            description: "Remove uma coluna do board. GATE destrutivo: bloqueia até aprovação humana.",
+            inputSchema: Obj({ column: S.str("Coluna (id)"), ...WAIT_FIELDS }, ["column"]),
+            handler: (i) => GatedDelete({
+                type: "column", ref: i.column,
+                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (actor) => store.DeleteColumn({ column: i.column, actor })
+            })
+        },
+        {
+            name: "update_milestone",
+            description: "Atualiza uma entrega/milestone (nome, descrição, data-alvo, status). LIVRE.",
+            inputSchema: Obj({
+                milestone: S.str("Milestone (id)"),
+                name: S.str("Novo nome"),
+                description: S.str("Descrição"),
+                targetDate: S.str("Data alvo (ISO)"),
+                status: S.enum(["planning","active","released","archived"], "Status")
+            }, ["milestone"]),
+            handler: (i) => store.UpdateMilestone(A({ milestone: i.milestone, name: i.name, description: i.description, targetDate: i.targetDate, status: i.status }))
+        },
+        {
+            name: "delete_milestone",
+            description: "Remove uma entrega/milestone (os itens ficam sem entrega). GATE destrutivo: bloqueia até aprovação humana.",
+            inputSchema: Obj({ milestone: S.str("Milestone (id)"), ...WAIT_FIELDS }, ["milestone"]),
+            handler: (i) => GatedDelete({
+                type: "milestone", ref: i.milestone,
+                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (actor) => store.DeleteMilestone({ milestone: i.milestone, actor })
+            })
+        },
+        {
+            name: "update_sprint",
+            description: "Atualiza um sprint (nome, objetivo, datas, status). LIVRE.",
+            inputSchema: Obj({
+                sprint: S.str("Sprint (id)"),
+                name: S.str("Novo nome"),
+                goal: S.str("Objetivo"),
+                startDate: S.str("Início (ISO)"),
+                endDate: S.str("Fim (ISO)"),
+                status: S.enum(["planned","active","completed","archived"], "Status")
+            }, ["sprint"]),
+            handler: (i) => store.UpdateSprint(A({ sprint: i.sprint, name: i.name, goal: i.goal, startDate: i.startDate, endDate: i.endDate, status: i.status }))
+        },
+        {
+            name: "delete_sprint",
+            description: "Remove um sprint (os itens ficam sem sprint). GATE destrutivo: bloqueia até aprovação humana.",
+            inputSchema: Obj({ sprint: S.str("Sprint (id)"), ...WAIT_FIELDS }, ["sprint"]),
+            handler: (i) => GatedDelete({
+                type: "sprint", ref: i.sprint,
+                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (actor) => store.DeleteSprint({ sprint: i.sprint, actor })
+            })
+        },
+
+        // ───────────── Detalhe do item: checklist, critérios, vínculos, tipo ─────────────
+        {
+            name: "add_checklist_item",
+            description: "Adiciona um passo ao checklist do item. LIVRE.",
+            inputSchema: Obj({ item: S.str("Item (id|key)"), text: S.str("Texto do passo") }, ["item","text"]),
+            handler: (i) => store.AddChecklistItem(A({ item: i.item, text: i.text }))
+        },
+        {
+            name: "update_checklist_item",
+            description: "Edita/marca um passo do checklist. LIVRE.",
+            inputSchema: Obj({ checklistItem: S.str("Passo (id)"), text: S.str("Novo texto"), done: S.bool("Concluído") }, ["checklistItem"]),
+            handler: (i) => store.UpdateChecklistItem({ checklistItem: i.checklistItem, text: i.text, done: i.done })
+        },
+        {
+            name: "remove_checklist_item",
+            description: "Remove um passo do checklist. GATE destrutivo: bloqueia até aprovação humana.",
+            inputSchema: Obj({ checklistItem: S.str("Passo (id)"), ...WAIT_FIELDS }, ["checklistItem"]),
+            handler: (i) => GatedDelete({
+                type: "checklist-item", ref: i.checklistItem,
+                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (actor) => store.RemoveChecklistItem({ checklistItem: i.checklistItem, actor })
+            })
+        },
+        {
+            name: "add_acceptance_criteria",
+            description: "Adiciona um critério de aceite (Definition of Done) ao item. LIVRE.",
+            inputSchema: Obj({ item: S.str("Item (id|key)"), text: S.str("Texto do critério") }, ["item","text"]),
+            handler: (i) => store.AddAcceptanceCriteria({ item: i.item, text: i.text })
+        },
+        {
+            name: "update_acceptance_criteria",
+            description: "Edita/marca um critério de aceite. LIVRE.",
+            inputSchema: Obj({ criteria: S.str("Critério (id)"), text: S.str("Novo texto"), met: S.bool("Atendido") }, ["criteria"]),
+            handler: (i) => store.UpdateAcceptanceCriteria({ criteria: i.criteria, text: i.text, met: i.met })
+        },
+        {
+            name: "remove_acceptance_criteria",
+            description: "Remove um critério de aceite. GATE destrutivo: bloqueia até aprovação humana.",
+            inputSchema: Obj({ criteria: S.str("Critério (id)"), ...WAIT_FIELDS }, ["criteria"]),
+            handler: (i) => GatedDelete({
+                type: "acceptance-criteria", ref: i.criteria,
+                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (actor) => store.RemoveAcceptanceCriteria({ criteria: i.criteria, actor })
+            })
+        },
+        {
+            name: "unlink_item",
+            description: "Remove um vínculo entre itens. LIVRE. Relações: blocks, depends, relates, duplicates, implements, tests.",
+            inputSchema: Obj({
+                item: S.str("Item de origem (id|key)"),
+                relation: S.enum(LINK_RELATIONS, "Relação"),
+                target: S.str("Item alvo (id|key)")
+            }, ["item","relation","target"]),
+            handler: (i) => store.UnlinkItem(A({ item: i.item, relation: i.relation, target: i.target }))
+        },
+        {
+            name: "convert_item",
+            description: "Converte o tipo de um item (ex.: task → story, ideia → bug). LIVRE.",
+            inputSchema: Obj({ item: S.str("Item (id|key)"), type: S.enum(WORK_ITEM_TYPES, "Novo tipo") }, ["item","type"]),
+            handler: (i) => store.ConvertItem(A({ item: i.item, type: i.type }))
+        },
+        {
+            name: "reorder_item",
+            description: "Reordena o item dentro da coluna/lista (order = índice). LIVRE.",
+            inputSchema: Obj({ item: S.str("Item (id|key)"), order: S.num("Nova posição") }, ["item","order"]),
+            handler: (i) => store.ReorderItem(A({ item: i.item, order: i.order }))
         },
 
         // ───────────── Executar (itens — LIVRE, sem gate) ─────────────
@@ -377,6 +655,108 @@ const BuildTools = ({ store, actor }) => {
             description: "Lista os itens ATRASADOS (prazo vencido) do projeto — riscos que podem conflitar com um novo plano.",
             inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }, ["project"]),
             handler: (i) => store.Overdue({ project: i.project })
+        },
+
+        // ───────────── Feedback do humano (fila com claim exclusivo) ─────────────
+        //
+        // O humano clica com o botão direito num campo da interface e escreve o que
+        // quer diferente. O feedback guarda ONDE foi dado (entidade + campo + tela +
+        // trecho). Vários agentes leem a mesma fila: pegue com claim_feedback (é
+        // exclusivo e tem prazo) antes de trabalhar, e feche com resolve_feedback.
+        {
+            name: "list_feedback",
+            description: "Lista feedbacks do humano para os agentes. Por padrão só os ABERTOS (inclui os que estavam com outro agente e cujo claim expirou). Cada feedback diz o campo, a entidade e o trecho criticado. FLUXO: list_feedback → claim_feedback → (aplique a correção) → resolve_feedback.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                status: S.enum(["open","in-analysis","resolved","dismissed","all"], "Status (padrão: open)"),
+                item: S.str("Só os feedbacks deste item (id|key)"),
+                since: S.str("Criados a partir desta data/hora (ISO)"),
+                until: S.str("Criados até esta data/hora (ISO)"),
+                limit: S.num("Máx. de feedbacks"), offset: S.num("Deslocamento")
+            }),
+            handler: (i) => store.ListFeedback({
+                project: i.project, status: i.status, item: i.item,
+                since: i.since, until: i.until, limit: i.limit, offset: i.offset
+            })
+        },
+        {
+            name: "get_feedback",
+            description: "Detalhe de um feedback: texto, onde foi dado (entidade/campo/tela/trecho) e o estado do claim.",
+            inputSchema: Obj({ feedback: S.str("Feedback (id)") }, ["feedback"]),
+            handler: (i) => store.GetFeedback({ feedback: i.feedback })
+        },
+        {
+            name: "claim_feedback",
+            description: "PEGA um feedback para trabalhar nele. É EXCLUSIVO: se outro agente já o pegou (e o claim está vivo), retorna CONFLICT — pule para o próximo. O claim EXPIRA (padrão 30 min): se você demorar, o feedback volta para a fila e outro agente pode assumir. Renove chamando claim_feedback de novo. NÃO trabalhe num feedback sem claim.",
+            inputSchema: Obj({
+                feedback: S.str("Feedback (id)"),
+                ttlSeconds: S.num("Duração do claim em segundos (padrão 1800 = 30 min)")
+            }, ["feedback"]),
+            handler: (i) => store.ClaimFeedback(A({ feedback: i.feedback, ttlSeconds: i.ttlSeconds }))
+        },
+        {
+            name: "release_feedback",
+            description: "Devolve para a fila um feedback que você havia pegado mas não vai resolver agora.",
+            inputSchema: Obj({ feedback: S.str("Feedback (id)") }, ["feedback"]),
+            handler: (i) => store.ReleaseFeedback(A({ feedback: i.feedback }))
+        },
+        {
+            name: "resolve_feedback",
+            description: "Marca o feedback como RESOLVIDO (some da fila). Só quem detém o claim vivo pode resolver. Aplique a correção ANTES (update_item, update_project…) e descreva em `note` o que mudou.",
+            inputSchema: Obj({
+                feedback: S.str("Feedback (id)"),
+                note: S.str("O que você mudou para atender o feedback")
+            }, ["feedback"]),
+            handler: (i) => store.ResolveFeedback(A({ feedback: i.feedback, note: i.note }))
+        },
+
+        {
+            name: "project_changes",
+            description: "TUDO que mudou num projeto numa janela de tempo, de uma vez — para o agente se atualizar desde a última consulta. Passe `since` com o `latestAt` da consulta anterior. Devolve os eventos em ordem cronológica, um resumo por ação/entidade e o novo `latestAt`.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                since: S.str("Início da janela (ISO). Omitido = desde sempre"),
+                until: S.str("Fim da janela (ISO). Omitido = agora"),
+                limit: S.num("Teto de eventos (padrão 500)")
+            }, ["project"]),
+            handler: async (i) => {
+                const projectId = (await store.ResolveProject(i.project)).id
+                const limit = Number(i.limit) > 0 ? Number(i.limit) : 500
+
+                // Pagina até o teto: o agente pediu "de uma vez", não uma página.
+                const PAGE = 100
+                const events = []
+                for(let offset = 0; offset < limit; offset += PAGE){
+                    const page = await store.ListActivity({
+                        projectId, from: i.since, to: i.until,
+                        limit: Math.min(PAGE, limit - offset), offset, actor
+                    })
+                    events.push(...page)
+                    if(page.length < PAGE) break
+                }
+
+                // Ordem cronológica (a auditoria devolve do mais novo para o mais antigo).
+                events.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
+
+                const byAction = {}
+                const byEntity = {}
+                for(const e of events){
+                    byAction[e.action] = (byAction[e.action] || 0) + 1
+                    byEntity[e.entityType] = (byEntity[e.entityType] || 0) + 1
+                }
+
+                return {
+                    project: projectId,
+                    since: i.since || null,
+                    until: i.until || null,
+                    count: events.length,
+                    truncated: events.length >= limit,
+                    // Guarde e mande de volta como `since` na próxima consulta.
+                    latestAt: events.length > 0 ? events[events.length - 1].createdAt : (i.since || null),
+                    summary: { byAction, byEntity },
+                    events
+                }
+            }
         },
 
         {

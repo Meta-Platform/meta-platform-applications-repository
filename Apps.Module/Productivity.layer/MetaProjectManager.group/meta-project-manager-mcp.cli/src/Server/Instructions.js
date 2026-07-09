@@ -44,22 +44,71 @@ dizendo o que mudou. Não ignore, não discuta, não peça confirmação.
 LIVRE (faça direto): criar/atualizar itens, mudar status, atribuir, bloquear,
 vincular, comentar, anexar, anotar.
 
-SOB GATE (exige um humano aprovar):
-- CRIAR projeto, board, milestone, sprint;
-- REMOVER projeto, board, item (soft delete, reversível).
+LIVRE também: planejar dentro do projeto (criar/editar milestone e sprint),
+renomear board, checklist, critérios de aceite, vincular/desvincular, converter
+tipo, reordenar, e ajustes operacionais do projeto (ícone, cor, repositório).
 
-Ao bater no gate, a tool retorna \`AGENT_SESSION_CONFIRMATION_REQUIRED\` ou,
-nas tools de delete, BLOQUEIA aguardando a decisão (\`waitApproval\`, padrão).
-Isto **não é erro**: é o fluxo esperado. Avise o humano e aguarde.
+SOB GATE (exige um humano aprovar):
+- CRIAR projeto e board;
+- REMOVER qualquer coisa: projeto, board, item, milestone, sprint, coluna,
+  passo de checklist, critério de aceite;
+- ESTRUTURA DO FLUXO: criar/alterar/mover/remover coluna, trocar board padrão;
+- IDENTIDADE E CICLO DE VIDA DO PROJETO: alterar name, slug, shortDescription,
+  description ou status (\`update_project\`), arquivar e restaurar projeto.
+
+**A tool BLOQUEIA até o humano decidir.** Ao bater no gate, a chamada vira um
+pedido pendente e a tool fica esperando (polling) a decisão no Meta Project
+Manager — ela só retorna quando o humano aprovar (devolve o objeto criado/
+removido) ou rejeitar (erro \`REJECTED_BY_HUMAN\`, com o motivo). Isso vale
+tanto para criação quanto para remoção, e é o padrão (\`waitApproval: true\`).
+
+Consequências práticas:
+- Uma chamada gated pode demorar minutos. **Isso não é travamento**: é o
+  fluxo esperado. NÃO cancele, NÃO reenvie em paralelo, NÃO contorne criando
+  a coisa por outro caminho.
+- Se você reenviar a mesma criação (mesmo alvo), o pedido pendente é REUSADO
+  em vez de duplicado — mas continuará esperando o mesmo humano.
+- Avise o humano em linguagem clara do que você está esperando, e siga
+  aguardando o retorno da tool.
+- Precisa mesmo não bloquear? Passe \`waitApproval: false\`: você recebe
+  \`{ status: "pending_approval", approvalRequestId }\` e a responsabilidade de
+  não seguir adiante como se a ação tivesse acontecido.
+- \`approvalTimeoutSeconds\` limita a espera; ao estourar vem
+  \`APPROVAL_TIMEOUT\` e o pedido continua pendente para o humano.
+
 Você NÃO pode aprovar nada — aprovar/rejeitar são ações humanas e não existem
 como tools. Não tente burlar o gate por outro caminho.
 
-## 5. Registre o que fez
+## 5. Feedback do humano (fila com dono)
+O humano clica com o botão direito num campo da interface e escreve o que quer
+diferente. Isso vira um FEEDBACK com contexto: entidade, campo, tela e o trecho
+criticado. É a forma mais direta de saber o que ele quer.
+
+Fluxo obrigatório, nesta ordem:
+1. \`list_feedback\` (padrão: só os abertos deste projeto);
+2. \`claim_feedback\` — **PEGUE antes de trabalhar**. O claim é EXCLUSIVO: se
+   outro agente já pegou, você recebe \`CONFLICT\` — pule para o próximo, não
+   insista. O claim EXPIRA (30 min por padrão): se for demorar, chame
+   \`claim_feedback\` de novo para renovar, ou \`release_feedback\` para devolver;
+3. aplique a correção de fato (\`update_item\`, \`update_project\`, …);
+4. \`resolve_feedback\` com \`note\` descrevendo o que mudou. Só então ele some
+   da fila. Nunca resolva sem ter aplicado a correção.
+
+Nunca trabalhe num feedback sem claim: dois agentes reescrevendo o mesmo texto
+em paralelo é exatamente o que esse mecanismo existe para evitar.
+
+## 6. Acompanhar o que mudou desde a última vez
+\`project_changes\` devolve TUDO que mudou num projeto numa janela de tempo, em
+ordem cronológica, com um resumo e o cursor \`latestAt\`. Guarde o \`latestAt\` e
+mande-o como \`since\` na próxima consulta — assim você vê só o que é novo,
+inclusive o que outros agentes e o humano fizeram enquanto você trabalhava.
+
+## 7. Registre o que fez
 Ao concluir um passo: \`set_item_status\` + \`add_comment\` explicando o que
 mudou e por quê. Use \`add_activity_note\` para contexto de escopo (projeto,
 board, sprint) — é diferente de comentário, que é conversa sobre um item.
 
-## 6. Armadilhas que custam tempo
+## 8. Armadilhas que custam tempo
 - **Vínculos**: as relações são exatamente \`blocks\`, \`depends\`, \`relates\`,
   \`duplicates\`, \`implements\`, \`tests\`. Não existe \`depends-on\` nem
   \`relates-to\`. Direção: \`item\` --relação--> \`target\`.
@@ -74,7 +123,7 @@ board, sprint) — é diferente de comentário, que é conversa sobre um item.
   e exige a permissão \`activity:read:all_projects\`. Sem ela → \`FORBIDDEN\`.
   Informe um \`project\` ou peça a permissão a um humano.
 
-## 7. Códigos de erro que você vai encontrar
+## 9. Códigos de erro que você vai encontrar
 | Código | O que fazer |
 |---|---|
 | \`AGENT_SESSION_CONFIRMATION_REQUIRED\` | Avise o humano e aguarde a aprovação. |
@@ -82,10 +131,11 @@ board, sprint) — é diferente de comentário, que é conversa sobre um item.
 | \`APPROVAL_TIMEOUT\` | Ninguém decidiu a tempo. Pergunte ao humano. |
 | \`FORBIDDEN\` | Falta permissão. Reduza o escopo ou peça acesso. |
 | \`VALIDATION_ERROR\` | Corrija o campo; muitas vezes há \`details.suggestion\`. |
-| \`NOT_FOUND\` | A referência não existe. Busque antes de assumir. |
+| \`NOT_FOUND\` | A referência não existe. Busque antes de assumir.
+| \`CONFLICT\` | Um feedback já está com outro agente (ou o claim expirou). Pule para o próximo. |
 | \`CONFLICT\` | Já existe (ex.: slug). Reuse em vez de duplicar. |
 
-## 8. Fluxo recomendado
+## 10. Fluxo recomendado
 1. \`list_projects\` / \`get_project\` → onde estou.
 2. \`get_activity_context\` → o que aconteceu e o que o humano pediu.
 3. \`search_items\` → já existe?

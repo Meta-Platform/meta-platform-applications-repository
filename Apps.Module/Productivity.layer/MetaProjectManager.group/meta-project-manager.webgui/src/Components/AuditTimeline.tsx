@@ -3,9 +3,10 @@ import { useEffect, useMemo, useState } from "react"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
+import useItemNavigator from "../Hooks/useItemNavigator"
 import { ActivityEntry, User } from "../api/types"
 import { formatDateTime } from "../Utils/format"
-import { activityTitle, activityDetail, activityIcon } from "../Utils/activity"
+import { activityTitle, activityDetail, activityIcon, activityItemId } from "../Utils/activity"
 import { ErrorBanner } from "./Primitives"
 
 interface AuditTimelineProps {
@@ -19,6 +20,7 @@ interface AuditTimelineProps {
 // antes→depois) fica no tooltip, ao passar o mouse.
 const AuditTimeline = ({ projectId, entityId, limit = 50 }: AuditTimelineProps) => {
     const api = useApi()
+    const nav = useItemNavigator()
     const [entries, setEntries] = useState<ActivityEntry[]>([])
     const [users, setUsers] = useState<User[]>([])
     const [error, setError] = useState<string | null>(null)
@@ -55,8 +57,14 @@ const AuditTimeline = ({ projectId, entityId, limit = 50 }: AuditTimelineProps) 
                 <div>Sem atividade registrada.</div>
             </div>
             : <div className="mpm-timeline">
-                {shown.map((e) =>
-                    <div key={e.id} className="mpm-timeline__item mpm-activity" title={activityDetail(e)}>
+                {shown.map((e) => {
+                    // Eventos de item (ou de comentário/anexo de um item) abrem o item.
+                    const itemId = activityItemId(e)
+                    const openable = !!(nav && itemId)
+                    return <div key={e.id}
+                        className={`mpm-timeline__item mpm-activity ${openable ? "is-openable" : ""}`}
+                        title={openable ? `Abrir o item — ${activityDetail(e)}` : activityDetail(e)}
+                        onClick={openable ? () => nav!.openItem(itemId!) : undefined}>
                         <span className="mpm-avatar"><Icon name={activityIcon(e.action)} size="small" style={{ margin: 0 }} /></span>
                         <div className="mpm-timeline__body" style={{ minWidth: 0 }}>
                             <div className="mpm-activity__text">{activityTitle(e, usersById)}</div>
@@ -66,7 +74,8 @@ const AuditTimeline = ({ projectId, entityId, limit = 50 }: AuditTimelineProps) 
                                 <span>{formatDateTime(e.createdAt)}</span>
                             </div>
                         </div>
-                    </div>)}
+                    </div>
+                })}
             </div>}
     </div>
 }

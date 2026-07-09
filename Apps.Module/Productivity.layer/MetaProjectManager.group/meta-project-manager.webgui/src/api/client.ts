@@ -14,6 +14,7 @@ import CreateProjectsApi    from "./projects"
 import CreateBoardsApi      from "./boards"
 import CreateItemsApi       from "./items"
 import CreateCommentsApi    from "./comments"
+import CreateFeedbackApi    from "./feedback"
 import CreateAttachmentsApi from "./attachments"
 import CreateUsersApi       from "./users"
 import CreateAgentsApi      from "./agents"
@@ -65,6 +66,7 @@ export const createApiClient = (serverManagerInformation: any) => {
         boards:      CreateBoardsApi(call),
         items:       CreateItemsApi(call),
         comments:    CreateCommentsApi(call),
+        feedback:    CreateFeedbackApi(call),
         attachments: CreateAttachmentsApi(call),
         users:       CreateUsersApi(call),
         agents:      CreateAgentsApi(call),

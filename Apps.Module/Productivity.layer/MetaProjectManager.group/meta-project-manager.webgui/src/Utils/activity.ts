@@ -143,3 +143,12 @@ export const activityIcon = (action: string): any => {
     if (action.indexOf("move") >= 0) return "arrows alternate"
     return "pencil"
 }
+
+// Item de trabalho ao qual um evento se refere, quando existe: o próprio
+// entityId (work-item) ou o item dono do comentário/anexo (metadata.workItemId).
+// Devolve undefined para eventos de projeto/board/usuário, que não abrem item.
+export const activityItemId = (e: ActivityEntry): string | undefined => {
+    if (e.entityType === "work-item") return e.entityId
+    const meta: any = e.metadata || {}
+    return meta.workItemId || undefined
+}

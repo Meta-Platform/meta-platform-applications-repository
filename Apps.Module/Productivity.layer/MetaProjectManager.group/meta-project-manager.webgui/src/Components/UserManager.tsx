@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
+import useLiveReload from "../Hooks/useLiveReload"
 import { User } from "../api/types"
 import { Avatar, StatusChip, Loading, EmptyState, ErrorBanner, Modal } from "./Primitives"
 
@@ -21,6 +22,7 @@ const UserManager = () => {
         .catch((e) => setError(e.message))
 
     useEffect(() => { load() }, [api])
+    useLiveReload(load, { always: true })
 
     const openCreate = () => { setForm({ name: "", handle: "", email: "", type: "human", status: "active" }); setCreating(true) }
     const openEdit = (u: User) => { setForm({ name: u.displayName, handle: u.handle || "", email: u.email || "", type: u.type, status: u.status }); setEditing(u) }
@@ -70,14 +72,9 @@ const UserManager = () => {
         </div>
 
     return <div className="mpm-col mpm-gap-4">
-        <div className="mpm-page-head">
-            <div className="mpm-page-head__titles">
-                <h1 className="mpm-page-title">Usuários</h1>
-                <div className="mpm-page-subtitle">humanos e agentes registrados</div>
-            </div>
-            <div className="mpm-page-head__actions">
-                <button className="mpm-btn mpm-btn--primary" onClick={openCreate}><Icon name="plus" /> Novo usuário</button>
-            </div>
+        {/* O título da tela vive no header do AppShell; aqui só as ações. */}
+        <div className="mpm-toolbar mpm-toolbar--end">
+            <button className="mpm-btn mpm-btn--primary" onClick={openCreate}><Icon name="plus" /> Novo usuário</button>
         </div>
         <ErrorBanner error={error} />
         {users === null ? <Loading /> : (users.length === 0

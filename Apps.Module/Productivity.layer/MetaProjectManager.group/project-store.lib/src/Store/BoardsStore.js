@@ -41,7 +41,7 @@ const BoardsStore = (ctx) => {
 
         // Gate: criação de board por agente exige aprovação humana (vira pedido pendente).
         if(store.IsAgentCreation(actor)){
-            const { request } = await store.RequestCreation({ type: "board", projectId: projectInstance.id, payload: { project: projectInstance.id, name, shortDescription, description, type, withDefaultColumns, setDefault }, actor })
+            const { request } = await store.RequestCreation({ type: "board", projectId: projectInstance.id, payload: { project: projectInstance.id, name, shortDescription, description, type, withDefaultColumns, setDefault }, resumeToken: actor.resumeToken, actor })
             throw new DomainError("AGENT_SESSION_CONFIRMATION_REQUIRED",
                 "Criação de board por agente requer aprovação humana.",
                 { pendingCreationId: request.id, type: "board", nextCommands: [`mpm agent creation approve ${request.id}`, `mpm agent creation reject ${request.id}`] })
@@ -121,6 +121,10 @@ const BoardsStore = (ctx) => {
 
     const SetDefaultBoard = async ({ board, actor } = {}) => {
         const instance = await ResolveBoard(board)
+        await store.GateAgentAction({
+            actionName: "set-default", type: "board", targetId: instance.id, projectId: instance.projectId,
+            reason: "Trocar o board padrão do projeto por agente requer aprovação humana.", actor
+        })
         const projectInstance = await store.ResolveProject(instance.projectId)
         const before = { defaultBoardId: projectInstance.defaultBoardId }
         await _setDefaultBoard(projectInstance, instance.id)
@@ -130,6 +134,12 @@ const BoardsStore = (ctx) => {
     }
 
     // -------- Colunas --------
+    // O gate precisa do projeto da coluna (a coluna só conhece o board).
+    const _projectIdOfColumn = async (column) => {
+        const board = await ResolveBoard(column.boardId)
+        return board.projectId
+    }
+
     const ListColumns = async ({ board } = {}) => {
         const instance = await ResolveBoard(board)
         const rows = await BoardColumn.findAll({ where: { boardId: instance.id }, order: [["order", "ASC"]] })
@@ -139,6 +149,12 @@ const BoardsStore = (ctx) => {
     const AddColumn = async ({ board, name, statusKey, color, wipLimit, isDoneColumn = false, actor } = {}) => {
         const instance = await ResolveBoard(board)
         if(!name) throw new DomainError("VALIDATION_ERROR", "Nome da coluna é obrigatório.", { field: "name" })
+        // Coluna = etapa do fluxo por onde todo o trabalho passa: mudança estrutural.
+        await store.GateAgentAction({
+            actionName: "create", type: "column", projectId: instance.projectId,
+            payload: { board: instance.id, name, statusKey, color, wipLimit, isDoneColumn },
+            reason: "Criar coluna no board por agente requer aprovação humana.", actor
+        })
         const key = statusKey || require("../Utils/helpers").Slugify(name)
         const order = await BoardColumn.count({ where: { boardId: instance.id } })
         const column = await BoardColumn.create({ id: NewId(), boardId: instance.id, name, statusKey: key, color, wipLimit, isDoneColumn, order })
@@ -153,6 +169,10 @@ const BoardsStore = (ctx) => {
         if(!instance) throw new DomainError("NOT_FOUND", `Coluna "${column}" não encontrada.`, { ref: column })
         const patch = {}
         for(const key of ["name", "statusKey", "color", "wipLimit", "isDoneColumn"]) if(fields[key] !== undefined) patch[key] = fields[key]
+        await store.GateAgentAction({
+            actionName: "update", type: "column", targetId: instance.id, projectId: await _projectIdOfColumn(instance),
+            payload: patch, reason: "Alterar coluna do board por agente requer aprovação humana.", actor
+        })
         await instance.update(patch)
         emit("board.updated", { boardId: instance.boardId })
         return Serialize(instance)
@@ -161,6 +181,10 @@ const BoardsStore = (ctx) => {
     const MoveColumn = async ({ column, order, actor } = {}) => {
         const instance = await BoardColumn.findOne({ where: { id: column } })
         if(!instance) throw new DomainError("NOT_FOUND", `Coluna "${column}" não encontrada.`, { ref: column })
+        await store.GateAgentAction({
+            actionName: "move", type: "column", targetId: instance.id, projectId: await _projectIdOfColumn(instance),
+            payload: { order }, reason: "Mover coluna do board por agente requer aprovação humana.", actor
+        })
         // Remove a coluna da sequência e a reinsere na posição alvo, renumerando tudo.
         const columns = (await BoardColumn.findAll({ where: { boardId: instance.boardId }, order: [["order", "ASC"], ["createdAt", "ASC"]] }))
             .filter((col) => col.id !== instance.id)
@@ -174,6 +198,10 @@ const BoardsStore = (ctx) => {
     const DeleteColumn = async ({ column, actor } = {}) => {
         const instance = await BoardColumn.findOne({ where: { id: column } })
         if(!instance) throw new DomainError("NOT_FOUND", `Coluna "${column}" não encontrada.`, { ref: column })
+        await store.GateAgentAction({
+            actionName: "delete", type: "column", targetId: instance.id, projectId: await _projectIdOfColumn(instance),
+            risk: "destructive", reason: "Remover coluna do board por agente requer aprovação humana.", actor
+        })
         await instance.destroy()
         emit("board.updated", { boardId: instance.boardId })
         return { id: column, deleted: true }

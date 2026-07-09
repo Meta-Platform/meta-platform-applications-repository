@@ -5,7 +5,10 @@ import ReportDashboard from "../Components/ReportDashboard"
 
 // ReportsPage (spec §11): project-status, blocked, overdue, by-assignee, by-agent.
 const ReportsPage = () =>
-    <AppShell active="reports">
+    <AppShell active="reports"
+        breadcrumb={[{ label: "Relatórios" }]}
+        title="Relatórios"
+        subtitle="métricas e status: bloqueados, atrasados, por responsável">
         <ReportDashboard />
     </AppShell>
 

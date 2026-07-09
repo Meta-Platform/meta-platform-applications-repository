@@ -41,48 +41,35 @@ const ItemFilterBar = ({ filters, setFilter, group, setGroup, reset, activeCount
     const areaList = (areas && areas.length > 0) ? areas : AREA_SUGGESTIONS
     const sel = (name: keyof ListItemsQuery) => (filters as any)[name] || ""
 
-    return <div className="mpm-toolbar mpm-filterbar">
-        <span className="mpm-row"><Icon name="filter" className="mpm-muted" />
-            <input className="mpm-inline-select" style={{ minWidth: 140 }} placeholder="buscar texto..."
-                value={sel("text")} onChange={(e) => setFilter("text", e.target.value)} /></span>
-
-        <select className="mpm-inline-select" value={sel("type")} onChange={(e) => setFilter("type", e.target.value)}>
-            <option value="">Tipo: todos</option>
-            {WORK_ITEM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+    // Cada filtro é um select-pill; quando tem valor, ganha destaque (is-set).
+    const pill = (name: keyof ListItemsQuery, allLabel: string, options: { value: string; label: string }[]) =>
+        <select className={`mpm-inline-select ${sel(name) ? "is-set" : ""}`} title={allLabel}
+            value={sel(name)} onChange={(e) => setFilter(name, e.target.value)}>
+            <option value="">{allLabel}</option>
+            {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
 
-        <select className="mpm-inline-select" value={sel("priority")} onChange={(e) => setFilter("priority", e.target.value)}>
-            <option value="">Prioridade: todas</option>
-            {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
-        </select>
+    const plain = (values: string[]) => values.map((v) => ({ value: v, label: v }))
 
-        <select className="mpm-inline-select" value={sel("horizon")} onChange={(e) => setFilter("horizon", e.target.value)}>
-            <option value="">Horizonte: todos</option>
-            {HORIZONS.map((h) => <option key={h} value={h}>{horizonLabel(h)}</option>)}
-        </select>
+    return <div className="mpm-filterbar">
+        <span className="mpm-filterbar__search">
+            <Icon name="search" className="mpm-muted" />
+            <input className="mpm-inline-select" placeholder="buscar texto..."
+                value={sel("text")} onChange={(e) => setFilter("text", e.target.value)} />
+        </span>
 
-        <select className="mpm-inline-select" value={sel("area")} onChange={(e) => setFilter("area", e.target.value)}>
-            <option value="">Área: todas</option>
-            {areaList.map((a) => <option key={a} value={a}>{a}</option>)}
-        </select>
-
-        <select className="mpm-inline-select" value={sel("assignee")} onChange={(e) => setFilter("assignee", e.target.value)}>
-            <option value="">Responsável: todos</option>
-            {users.map((u) => <option key={u.id} value={u.id}>{u.displayName}</option>)}
-        </select>
-
-        <select className="mpm-inline-select" value={sel("milestone")} onChange={(e) => setFilter("milestone", e.target.value)}>
-            <option value="">Milestone: todos</option>
-            {milestones.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
-
-        <select className="mpm-inline-select" value={sel("sprint")} onChange={(e) => setFilter("sprint", e.target.value)}>
-            <option value="">Sprint: todos</option>
-            {sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+        {pill("type", "Tipo", plain(WORK_ITEM_TYPES as any))}
+        {pill("priority", "Prioridade", plain(PRIORITIES))}
+        {pill("horizon", "Horizonte", (HORIZONS as any as string[]).map((h) => ({ value: h, label: horizonLabel(h as any) })))}
+        {pill("area", "Área", plain(areaList))}
+        {pill("assignee", "Responsável", users.map((u) => ({ value: u.id, label: u.displayName })))}
+        {pill("milestone", "Entrega", milestones.map((m) => ({ value: m.id, label: m.name })))}
+        {pill("sprint", "Sprint", sprints.map((s) => ({ value: s.id, label: s.name })))}
 
         {showGroup && setGroup
-            ? <select className="mpm-inline-select" value={group || "none"} onChange={(e) => setGroup(e.target.value as GroupBy)}>
+            ? <select className={`mpm-inline-select ${group && group !== "none" ? "is-set" : ""}`}
+                title="Agrupamento da lista"
+                value={group || "none"} onChange={(e) => setGroup(e.target.value as GroupBy)}>
                 {GROUPS.map((g) => <option key={g.key} value={g.key}>{g.label}</option>)}
             </select>
             : null}

@@ -4,18 +4,42 @@ import { useNavigate } from "react-router-dom"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
-import usePendingCreations from "../Hooks/usePendingCreations"
+import useApprovalQueue from "../Hooks/useApprovalQueue"
 import { CreationRequest } from "../api/types"
 import Markdown from "./Markdown"
 import { ErrorBanner } from "./Primitives"
 import { formatDateTime } from "../Utils/format"
 
-// Rótulos legíveis por tipo de alvo.
+// Rótulos legíveis por tipo de alvo (nomes da interface, não do jargão técnico).
 const TYPE_LABEL: Record<string, string> = {
-    project: "projeto", board: "board", milestone: "milestone", sprint: "sprint", item: "item"
+    project: "projeto", board: "board", milestone: "entrega", sprint: "sprint", item: "item",
+    column: "coluna", "checklist-item": "passo de checklist", "acceptance-criteria": "critério de aceite",
+    "work-item": "item"
 }
 const COUNT_LABEL: Record<string, string> = {
     boards: "boards", items: "itens", attachments: "anexos", comments: "comentários", children: "subitens"
+}
+
+// Cada ação pendente tem verbo, ícone e nível de alarme próprios.
+interface ActionStyle { verb: string; title: string; icon: string; danger: boolean }
+const ACTION_STYLE: Record<string, ActionStyle> = {
+    create:        { verb: "Criar",     title: "Criação solicitada por agente",   icon: "shield",        danger: false },
+    delete:        { verb: "Remover",   title: "Remoção solicitada por agente",   icon: "trash",         danger: true },
+    update:        { verb: "Alterar",   title: "Alteração solicitada por agente", icon: "pencil",        danger: false },
+    archive:       { verb: "Arquivar",  title: "Arquivamento solicitado por agente", icon: "archive",    danger: true },
+    restore:       { verb: "Restaurar", title: "Restauração solicitada por agente",  icon: "undo",       danger: false },
+    move:          { verb: "Mover",     title: "Reordenação solicitada por agente",  icon: "arrows alternate horizontal", danger: false },
+    "set-default": { verb: "Tornar padrão", title: "Troca de board padrão solicitada por agente", icon: "star", danger: false }
+}
+const styleOf = (actionName: string): ActionStyle =>
+    ACTION_STYLE[actionName] || { verb: actionName, title: "Ação solicitada por agente", icon: "shield", danger: false }
+
+// Campos do payload que valem mostrar ao humano, na ordem em que ele lê.
+const FIELD_LABEL: Record<string, string> = {
+    name: "nome", slug: "slug", shortDescription: "resumo", description: "descrição",
+    status: "status", statusKey: "chave de status", order: "posição", color: "cor",
+    wipLimit: "limite de WIP", isDoneColumn: "coluna de concluído", targetDate: "data-alvo",
+    goal: "objetivo", repositoryUrl: "repositório", localPath: "caminho local", keyPrefix: "prefixo de key"
 }
 
 const kv = (label: string, value?: React.ReactNode) =>
@@ -32,7 +56,7 @@ const kv = (label: string, value?: React.ReactNode) =>
 const GlobalApprovalModal = () => {
     const api = useApi()
     const navigate = useNavigate()
-    const { requests, reload } = usePendingCreations()
+    const { active: requests, snooze, reload } = useApprovalQueue()
     const [index, setIndex] = useState(0)
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -53,14 +77,22 @@ const GlobalApprovalModal = () => {
     const req: CreationRequest | undefined = requests[index]
     if (!req) return null
 
-    const isDelete = (req.actionName || "create") === "delete"
+    const actionName = req.actionName || "create"
+    const isDelete = actionName === "delete"
+    const isCreate = actionName === "create"
+    const action = styleOf(actionName)
     const who = req.who || {}
     const s = req.session || {}
     const payload = req.payload || {}
     const targetKind = TYPE_LABEL[req.type] || req.type
-    const targetName = isDelete
-        ? (req.impact?.targetLabel || `${targetKind} ${req.targetId || ""}`)
-        : (payload.name || payload.title || "(sem nome)")
+    const targetName = isCreate
+        ? (payload.name || payload.title || "(sem nome)")
+        : (req.impact?.targetLabel || payload.name || `${targetKind} ${req.targetId || ""}`)
+
+    // "update" precisa mostrar O QUE muda — é o texto/estrutura que o humano revisa.
+    const changedFields = actionName === "update"
+        ? Object.keys(payload).filter((k) => payload[k] !== undefined && k !== "project")
+        : []
 
     const approve = async () => {
         setBusy(true); setError(null)
@@ -68,7 +100,7 @@ const GlobalApprovalModal = () => {
             const { result } = await api.agents.approveCreation(req.id)
             await reload()
             // Em criação, navega para o que foi criado; em delete, apenas atualiza.
-            if (!isDelete && result && result.id) {
+            if (isCreate && result && result.id) {
                 if (req.type === "board") {
                     const projectId = result.projectId || req.projectId
                     navigate(projectId ? `/projects/${projectId}/board/${result.id}` : `/projects/${result.id}`)
@@ -85,23 +117,27 @@ const GlobalApprovalModal = () => {
         catch (e: any) { setError(e.message) } finally { setBusy(false); setRejecting(false); setReason("") }
     }
 
-    return <div className="mpm-overlay mpm-overlay--top">
+    return <div className="mpm-overlay mpm-overlay--top mpm-overlay--approval">
         <div className="mpm-modal mpm-modal--approval" role="alertdialog" aria-modal="true">
             <div className="mpm-modal__head">
-                <Icon name={isDelete ? "trash" : "shield"}
-                    style={isDelete ? { color: "var(--mp-danger)" } : undefined} />
-                {isDelete ? "Remoção solicitada por agente" : "Criação solicitada por agente"}
+                <Icon name={action.icon as any}
+                    style={action.danger ? { color: "var(--mp-danger)" } : undefined} />
+                {action.title}
                 <span className="mpm-topbar__spacer" style={{ flex: 1 }} />
                 {requests.length > 1
                     ? <span className="mpm-chip">{index + 1} de {requests.length}</span>
                     : null}
             </div>
 
+            <div className="mpm-approval__waiting">
+                <Icon name="hourglass half" /> O agente está <strong>parado</strong> esperando sua decisão.
+            </div>
+
             <div className="mpm-modal__body mpm-approval__body">
                 {/* O QUE — linha assertiva: ação + alvo + risco */}
                 <div className="mpm-row" style={{ alignItems: "center" }}>
-                    <span className={`mpm-badge ${isDelete ? "mpm-badge--type-bug" : "mpm-badge--type-epic"}`}>
-                        {isDelete ? "Remover" : "Criar"} {targetKind}
+                    <span className={`mpm-badge ${action.danger ? "mpm-badge--type-bug" : "mpm-badge--type-epic"}`}>
+                        {action.verb} {targetKind}
                     </span>
                     <strong className="mpm-approval__target" title={targetName}>{targetName}</strong>
                     {req.risk === "destructive"
@@ -110,8 +146,24 @@ const GlobalApprovalModal = () => {
                 </div>
 
                 {/* Resumo em uma linha (quando o agente informou shortDescription) */}
-                {!isDelete && payload.shortDescription
+                {isCreate && payload.shortDescription
                     ? <p className="mpm-approval__lead">{payload.shortDescription}</p>
+                    : null}
+
+                {/* ALTERAÇÃO: o humano precisa ver exatamente o que vai mudar. */}
+                {changedFields.length > 0
+                    ? <div className="mpm-panel">
+                        <div className="mpm-section-title"><Icon name="pencil" /> O que muda</div>
+                        <div className="mpm-col mpm-gap-2">
+                            {changedFields.map((field) =>
+                                <div key={field} className="mpm-field">
+                                    <span className="mpm-field__label">{FIELD_LABEL[field] || field}</span>
+                                    {field === "description"
+                                        ? <div className="mpm-approval__scroll"><Markdown>{String(payload[field])}</Markdown></div>
+                                        : <div style={{ wordBreak: "break-word" }}>{String(payload[field])}</div>}
+                                </div>)}
+                        </div>
+                    </div>
                     : null}
 
                 {/* QUEM — compacto, sempre visível, sem dossiê */}
@@ -138,7 +190,7 @@ const GlobalApprovalModal = () => {
                     : null}
 
                 {/* Descrição longa: RECOLHIDA por padrão (antes dominava o modal) */}
-                {!isDelete && payload.description
+                {isCreate && payload.description
                     ? <div className="mpm-approval__section">
                         <button className="mpm-btn mpm-btn--ghost mpm-btn--sm" onClick={() => setShowDesc((v) => !v)}>
                             <Icon name={showDesc ? "caret down" : "caret right"} /> Descrição completa
@@ -196,12 +248,17 @@ const GlobalApprovalModal = () => {
                         </button>
                     </>
                     : <>
+                        <button className="mpm-btn mpm-btn--ghost" disabled={busy}
+                            title="Sai da frente, mas o pedido continua pendente — e o agente continua esperando"
+                            onClick={() => snooze(req.id)}>
+                            <Icon name="clock outline" /> Depois
+                        </button>
                         <button className="mpm-btn mpm-btn--danger" disabled={busy} onClick={() => setRejecting(true)}>
                             <Icon name="ban" /> Rejeitar
                         </button>
                         <button className="mpm-btn mpm-btn--primary" disabled={busy} onClick={approve}>
                             {busy ? <Icon name="spinner" loading /> : <Icon name="check" />}
-                            {isDelete ? " Aprovar remoção" : " Aprovar criação"}
+                            {` Aprovar (${action.verb.toLowerCase()} ${targetKind})`}
                         </button>
                     </>}
             </div>

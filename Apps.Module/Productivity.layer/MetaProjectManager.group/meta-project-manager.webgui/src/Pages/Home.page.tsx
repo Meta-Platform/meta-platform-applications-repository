@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
+import useLiveReload from "../Hooks/useLiveReload"
 import { Project } from "../api/types"
 import AppShell from "../Components/AppShell"
 import NewProjectModal from "../Components/NewProjectModal"
@@ -36,6 +37,8 @@ const HomePage = () => {
         .catch((e) => setError(e.message))
 
     useEffect(() => { load() }, [api])
+    // Projetos criados/arquivados por agentes aparecem sem refresh.
+    useLiveReload(load, { always: true })
 
     // Feature 6: importar projeto de um arquivo .json exportado.
     const onImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,21 +61,17 @@ const HomePage = () => {
 
     const shown = (projects || []).filter((p) => filter === "all" || p.status === filter)
 
-    return <AppShell active="home" onCreateProject={() => setCreating(true)}>
-        <div className="mpm-page-head">
-            <div className="mpm-page-head__titles">
-                <h1 className="mpm-page-title">Projetos</h1>
-                <div className="mpm-page-subtitle">gerencie iniciativas, boards e work items</div>
-            </div>
-            <div className="mpm-page-head__actions">
-                <label className="mpm-btn" style={{ cursor: "pointer" }} title="Importar projeto (.json)">
-                    <Icon name="upload" /> {importing ? "Importando..." : "Importar"}
-                    <input type="file" accept="application/json,.json" style={{ display: "none" }} onChange={onImportFile} disabled={importing} />
-                </label>
-                <button className="mpm-btn mpm-btn--primary" onClick={() => setCreating(true)}><Icon name="plus" /> Novo Projeto</button>
-            </div>
-        </div>
-
+    return <AppShell active="home" onCreateProject={() => setCreating(true)}
+        breadcrumb={[{ label: "Projetos" }]}
+        title="Projetos"
+        subtitle="gerencie iniciativas, boards e work items"
+        actions={<>
+            <label className="mpm-btn" style={{ cursor: "pointer" }} title="Importar projeto (.json)">
+                <Icon name="upload" /> {importing ? "Importando..." : "Importar"}
+                <input type="file" accept="application/json,.json" style={{ display: "none" }} onChange={onImportFile} disabled={importing} />
+            </label>
+            <button className="mpm-btn mpm-btn--primary" onClick={() => setCreating(true)}><Icon name="plus" /> Novo Projeto</button>
+        </>}>
         <div className="mpm-toolbar">
             {STATUS_FILTERS.map((s) =>
                 <button key={s}

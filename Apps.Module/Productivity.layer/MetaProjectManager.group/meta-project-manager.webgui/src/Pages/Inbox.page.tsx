@@ -4,6 +4,8 @@ import { useParams } from "react-router-dom"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
+import useLiveReload from "../Hooks/useLiveReload"
+import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import { Project, WorkItem, User, CLARITY_STATES } from "../api/types"
 import AppShell from "../Components/AppShell"
 import WorkItemInspector from "../Components/WorkItemInspector"
@@ -44,6 +46,9 @@ const InboxPage = () => {
             .catch((e) => setError(e.message))
     }
 
+    // Mudanças de agentes neste projeto entram na lista sem refresh.
+    useLiveReload(loadItems, { projectId })
+
     useEffect(() => {
         if (!projectId) return
         setLoading(true); setError(null)
@@ -82,15 +87,18 @@ const InboxPage = () => {
             onClose={() => setSelected(null)} onChanged={loadItems} />
         : undefined
 
-    return <AppShell active="inbox" activeProjectId={projectId}
-        activeProjectName={project ? project.name : undefined} inspector={inspector}
-        onInspectorClose={() => setSelected(null)}>
-        <div className="mpm-page-head">
-            <div className="mpm-page-head__titles">
-                <h1 className="mpm-page-title">Inbox</h1>
-                <div className="mpm-page-subtitle">{project ? project.name : ""} · captura rápida e triagem</div>
-            </div>
-        </div>
+    // Referências a itens (CFGEC-26…) em qualquer texto desta tela abrem o inspector.
+    return <ItemNavigatorProvider onOpenItem={setSelected}>
+        <AppShell active="inbox" activeProjectId={projectId}
+            activeProjectName={project ? project.name : undefined} inspector={inspector}
+            breadcrumb={[
+                { label: "Projetos", to: "/" },
+                { label: project ? project.name : "Projeto", to: projectId ? `/projects/${projectId}` : undefined },
+                { label: "Ideias" }
+            ]}
+            title={project ? project.name : "Projeto"}
+            subtitle="Ideias · captura rápida e triagem"
+            onInspectorClose={() => setSelected(null)}>
 
         <div className="mpm-card">
             <div className="mpm-row">
@@ -138,7 +146,8 @@ const InboxPage = () => {
                             </div>
                         </div>)}
                 </div>}
-    </AppShell>
+        </AppShell>
+    </ItemNavigatorProvider>
 }
 
 export default InboxPage

@@ -15,7 +15,7 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-app {
     height: 100vh;
     display: grid;
-    grid-template-rows: var(--mp-shell-topbar-h) 1fr;
+    grid-template-rows: auto 1fr;
     background:
         linear-gradient(var(--mp-grid-line) 1px, transparent 1px) 0 0 / 24px 24px,
         var(--mp-paper);
@@ -26,50 +26,59 @@ html, body, #gui { height: 100%; margin: 0; }
 }
 
 /* ============================================================ */
-/* Topbar                                                       */
+/* Header: linha 1 = trilha + ferramentas, linha 2 = título      */
 /* ============================================================ */
-.mpm-topbar {
-    display: flex;
-    align-items: center;
-    gap: var(--mp-space-4);
-    padding: 0 var(--mp-space-4);
+.mpm-header {
     background: var(--mp-surface);
     border-bottom: var(--mp-border);
+    min-width: 0;
 }
-.mpm-topbar__brand {
-    display: flex;
-    align-items: center;
-    gap: var(--mp-space-2);
-    font-family: var(--mp-font-display);
-    font-weight: 700;
-    font-size: var(--mp-text-lg);
-    letter-spacing: -0.02em;
-    color: var(--mp-ink);
-    white-space: nowrap;
-    cursor: pointer;
+.mpm-header__top {
+    display: flex; align-items: center; gap: var(--mp-space-3);
+    height: var(--mp-shell-topbar-h);
+    padding: 0 var(--mp-space-4);
 }
-.mpm-topbar__logo {
-    width: 26px; height: 26px;
+.mpm-header__logo {
+    width: 26px; height: 26px; flex: 0 0 auto;
     display: grid; place-items: center;
     background: var(--mp-accent-blue);
     color: var(--mp-surface);
     border: var(--mp-border-strong);
     box-shadow: var(--mp-shadow-1);
+    font-family: var(--mp-font-display);
     font-weight: 800;
+    cursor: pointer;
 }
-.mpm-topbar__active {
+.mpm-header__spacer { flex: 1; }
+
+/* Trilha: onde estou. O último item é a página atual (não é link). */
+.mpm-crumbs {
+    display: flex; align-items: center; gap: var(--mp-space-1);
+    min-width: 0; overflow: hidden;
+    font-size: var(--mp-text-sm);
+}
+.mpm-crumbs__part { display: flex; align-items: center; gap: var(--mp-space-1); min-width: 0; }
+.mpm-crumbs__sep { color: var(--mp-muted-2); }
+.mpm-crumbs__link { color: var(--mp-muted); cursor: pointer; white-space: nowrap; }
+.mpm-crumbs__link:hover { color: var(--mp-accent-blue); text-decoration: underline; }
+.mpm-crumbs__current {
+    color: var(--mp-ink-2); font-weight: 600; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; max-width: 380px;
+}
+
+/* Linha do título: o h1 da página mora aqui, não no corpo. */
+.mpm-header__title-row {
+    display: flex; align-items: flex-end; gap: var(--mp-space-4);
+    padding: 0 var(--mp-space-4) var(--mp-space-3);
+    border-top: 1px solid var(--mp-line-faint);
+    padding-top: var(--mp-space-3);
+}
+.mpm-header__titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.mpm-header__actions {
     display: flex; align-items: center; gap: var(--mp-space-2);
-    min-width: 0; max-width: 340px;
-    padding: var(--mp-space-1) var(--mp-space-3);
-    border: var(--mp-border-thin);
-    border-radius: var(--mp-radius-sm);
-    background: var(--mp-surface-2);
-    color: var(--mp-ink-2);
-    font-weight: 600;
+    flex-wrap: wrap; justify-content: flex-end;
 }
-/* o texto (não o flex container) é quem trunca com reticências */
-.mpm-topbar__active > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mpm-topbar__spacer { flex: 1; }
+
 .mpm-topbar__search {
     display: flex; align-items: center; gap: var(--mp-space-2);
     padding: var(--mp-space-1) var(--mp-space-3);
@@ -98,22 +107,133 @@ html, body, #gui { height: 100%; margin: 0; }
 /* ============================================================ */
 /* Layout: sidebar + content + inspector                        */
 /* ============================================================ */
-/* Largura vem do AppShell (--mpm-sidebar-w), persistida no AppState.
-   `auto` na coluna do resizer para ele não roubar espaço do conteúdo. */
+/* Sidebar duplo: rail global (fixo) + coluna do projeto (redimensionável).
+   Largura da coluna vem do AppShell (--mpm-sidebar-w), persistida no AppState. */
 .mpm-body {
     display: grid;
-    grid-template-columns: var(--mpm-sidebar-w, var(--mp-shell-sidebar-w)) auto 1fr;
+    grid-template-columns: 72px var(--mpm-sidebar-w, var(--mp-shell-sidebar-w)) auto 1fr;
     min-height: 0;
 }
-.mpm-body.is-sidebar-collapsed { grid-template-columns: var(--mpm-sidebar-w, 60px) 1fr; }
+.mpm-body.is-sidebar-collapsed { grid-template-columns: 72px 1fr; }
 
-.mpm-sidebar {
+/* ── Rail: navegação do sistema, só ícones ──────────────────────────────── */
+.mpm-rail {
+    background: var(--mp-surface-2);
+    border-right: var(--mp-border);
+    padding: var(--mp-space-3) 0;
+    display: flex; flex-direction: column; align-items: center; gap: var(--mp-space-1);
+    overflow-y: auto;
+}
+.mpm-rail__item {
+    position: relative;
+    width: 60px; height: 46px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    border: 2px solid transparent;
+    border-radius: var(--mp-radius-sm);
+    color: var(--mp-muted);
+    cursor: pointer;
+}
+.mpm-rail__item:hover { background: var(--mp-surface); color: var(--mp-ink); }
+.mpm-rail__item.is-active {
+    background: var(--mp-accent-blue-tint);
+    border-color: var(--mp-line);
+    color: var(--mp-ink);
+    box-shadow: var(--mp-shadow-1);
+}
+.mpm-rail__item .icon { margin: 0 !important; font-size: 15px; }
+.mpm-rail__item.is-active .icon { color: var(--mp-accent-blue); }
+.mpm-rail__label {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 0.01em; font-weight: 700;
+    max-width: 58px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mpm-rail__badge {
+    position: absolute; top: 2px; right: 4px;
+    min-width: 15px; height: 15px; padding: 0 3px;
+    display: grid; place-items: center;
+    background: var(--mp-warning); color: var(--mp-surface);
+    border-radius: 999px; font-size: 9px; font-weight: 800;
+}
+
+/* ── Coluna do projeto atual ────────────────────────────────────────────── */
+.mpm-projcol {
     background: var(--mp-surface);
     border-right: var(--mp-border);
-    padding: var(--mp-space-4) var(--mp-space-3);
+    padding: var(--mp-space-3);
     overflow-y: auto;
-    display: flex; flex-direction: column; gap: var(--mp-space-5);
+    display: flex; flex-direction: column; gap: var(--mp-space-3);
+    min-width: 0;
 }
+.mpm-projcol__empty {
+    display: flex; flex-direction: column; align-items: center; gap: var(--mp-space-2);
+    padding: var(--mp-space-5) var(--mp-space-3);
+    color: var(--mp-muted); text-align: center; font-size: var(--mp-text-sm);
+    border: 1px dashed var(--mp-line-soft); border-radius: var(--mp-radius-md);
+}
+
+/* ── Seletor de projeto (topo da coluna) ────────────────────────────────── */
+.mpm-projswitch { position: relative; }
+.mpm-projswitch__btn {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: "dot key caret" "name name name";
+    align-items: center; gap: var(--mp-space-1) var(--mp-space-2);
+    width: 100%; text-align: left;
+    padding: var(--mp-space-2) var(--mp-space-3);
+    background: var(--mp-surface-2);
+    border: var(--mp-border-strong);
+    border-radius: var(--mp-radius-sm);
+    box-shadow: var(--mp-shadow-1);
+    color: var(--mp-ink); font: inherit; cursor: pointer;
+}
+.mpm-projswitch__btn:hover, .mpm-projswitch__btn.is-open { background: var(--mp-accent-blue-tint); }
+.mpm-projswitch__btn .mpm-proj-dot { grid-area: dot; }
+.mpm-projswitch__btn .icon { grid-area: caret; margin: 0 !important; }
+.mpm-projswitch__key {
+    grid-area: key;
+    font-family: var(--mp-font-mono); font-size: var(--mp-text-sm);
+    font-weight: 800; letter-spacing: 0.04em;
+}
+.mpm-projswitch__name {
+    grid-area: name;
+    font-size: var(--mp-text-xs); color: var(--mp-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.mpm-projswitch__menu {
+    position: absolute; z-index: var(--mp-z-drawer);
+    top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--mp-surface);
+    border: var(--mp-border-strong);
+    border-radius: var(--mp-radius-sm);
+    box-shadow: var(--mp-shadow-2);
+    overflow: hidden;
+}
+.mpm-projswitch__search {
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    padding: var(--mp-space-2) var(--mp-space-3);
+    border-bottom: 1px solid var(--mp-line-faint);
+}
+.mpm-projswitch__search input {
+    border: none; outline: none; background: transparent; width: 100%;
+    color: var(--mp-ink); font-family: var(--mp-font-ui); font-size: var(--mp-text-sm);
+}
+.mpm-projswitch__list { max-height: 320px; overflow-y: auto; }
+.mpm-projswitch__item {
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    padding: var(--mp-space-2) var(--mp-space-3);
+    cursor: pointer; color: var(--mp-ink-2); min-width: 0;
+}
+.mpm-projswitch__item:hover { background: var(--mp-surface-2); }
+.mpm-projswitch__item.is-active { background: var(--mp-accent-blue-tint); color: var(--mp-ink); font-weight: 600; }
+.mpm-projswitch__itemname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mpm-projswitch__new {
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    width: 100%; padding: var(--mp-space-2) var(--mp-space-3);
+    background: var(--mp-surface-2); border: none; border-top: 1px solid var(--mp-line-faint);
+    color: var(--mp-ink-2); font: inherit; font-weight: 600; cursor: pointer;
+}
+.mpm-projswitch__new:hover { background: var(--mp-accent-blue-tint); color: var(--mp-ink); }
+
 .mpm-sidebar__section-title {
     font-size: var(--mp-text-xs);
     text-transform: uppercase;
@@ -144,23 +264,11 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-nav__item .icon { color: var(--mp-muted); margin: 0 !important; }
 .mpm-nav__item.is-active .icon { color: var(--mp-accent-blue); }
 
-.mpm-proj-list { display: flex; flex-direction: column; gap: 2px; }
-.mpm-proj-list__item {
-    display: flex; align-items: center; gap: var(--mp-space-2);
-    padding: var(--mp-space-2) var(--mp-space-3);
-    border-radius: var(--mp-radius-sm);
-    color: var(--mp-ink-2);
-    cursor: pointer;
-    overflow: hidden;
-}
-.mpm-proj-list__item:hover { background: var(--mp-surface-2); }
-.mpm-proj-list__item.is-active { background: var(--mp-surface-2); font-weight: 700; color: var(--mp-ink); }
 .mpm-proj-dot {
     width: 10px; height: 10px; flex: 0 0 auto;
     border: 1px solid var(--mp-line);
     background: var(--mp-accent-cyan);
 }
-.mpm-proj-list__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ============================================================ */
 /* Content area                                                 */
@@ -193,15 +301,39 @@ html, body, #gui { height: 100%; margin: 0; }
     flex-wrap: wrap;
 }
 .mpm-toolbar__spacer { flex: 1; }
+.mpm-toolbar--end { justify-content: flex-end; }
 
+/* Faixa fina, sem caixa: os filtros ficam sempre à vista sem roubar altura.
+   Não quebra linha — rola na horizontal quando não cabe. */
 .mpm-filterbar {
-    padding: var(--mp-space-2) var(--mp-space-3);
-    background: var(--mp-surface);
-    border: var(--mp-border-thin);
-    border-radius: var(--mp-radius-md);
-    gap: var(--mp-space-2);
+    display: flex; align-items: center; flex-wrap: nowrap;
+    gap: var(--mp-space-1);
+    padding: 0 0 var(--mp-space-2);
+    background: transparent;
+    border: none; border-bottom: 1px solid var(--mp-line-faint);
+    border-radius: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
 }
-.mpm-filterbar .mpm-inline-select { min-width: 0; }
+.mpm-filterbar > * { flex: 0 0 auto; }
+.mpm-filterbar .mpm-inline-select {
+    min-width: 0; height: 26px; padding: 0 var(--mp-space-2);
+    font-size: var(--mp-text-xs);
+    background: transparent;
+    border: 1px solid var(--mp-line-faint);
+    border-radius: 999px;
+    color: var(--mp-ink-3);
+}
+.mpm-filterbar .mpm-inline-select:hover { border-color: var(--mp-line-soft); color: var(--mp-ink); }
+.mpm-filterbar .mpm-inline-select:focus { border-color: var(--mp-accent-blue); color: var(--mp-ink); }
+/* Filtro ativo (algo diferente de "todos") ganha peso visual. */
+.mpm-filterbar .mpm-inline-select.is-set {
+    border-color: var(--mp-accent-blue);
+    background: var(--mp-accent-blue-tint);
+    color: var(--mp-ink); font-weight: 600;
+}
+.mpm-filterbar__search { display: flex; align-items: center; gap: var(--mp-space-1); }
+.mpm-filterbar__search input { min-width: 150px; }
 
 .mpm-bulkbar {
     display: flex; align-items: center; flex-wrap: wrap; gap: var(--mp-space-2);
@@ -550,8 +682,6 @@ html, body, #gui { height: 100%; margin: 0; }
     border-bottom: 1px solid var(--mp-line-faint); padding-bottom: var(--mp-space-1);
     display: flex; align-items: center; gap: var(--mp-space-2);
 }
-.mpm-markdown { white-space: pre-wrap; color: var(--mp-ink-2); font-size: var(--mp-text-sm); line-height: var(--mp-line-md); }
-
 .mpm-checklist { display: flex; flex-direction: column; gap: var(--mp-space-1); }
 .mpm-checklist__item { display: flex; align-items: center; gap: var(--mp-space-2); color: var(--mp-ink-2); }
 .mpm-checklist__item.is-done { color: var(--mp-muted); text-decoration: line-through; }
@@ -672,44 +802,97 @@ html, body, #gui { height: 100%; margin: 0; }
 /* ============================================================ */
 /* Markdown renderizado (frente D)                              */
 /* ============================================================ */
-.mpm-md { color: var(--mp-ink-2); font-size: var(--mp-text-sm); line-height: var(--mp-line-md); }
-.mpm-md > *:first-child { margin-top: 0; }
-.mpm-md > *:last-child { margin-bottom: 0; }
-.mpm-md h1, .mpm-md h2, .mpm-md h3, .mpm-md h4 {
+/* Métrica de leitura no espírito de GitHub/GitLab/Notion: corpo 14px, entrelinha
+   1.6, margem entre blocos de 1em e títulos com escala relativa (em), para que a
+   hierarquia sobreviva em qualquer contexto (modal, card, preview de anexo).
+   NÃO usar white-space: pre-wrap aqui — o HTML já vem quebrado do `marked`, e o
+   pre-wrap transformaria cada newline do fonte em espaço em branco visível. */
+.mpm-md {
+    color: var(--mp-ink-2);
+    font-size: var(--mp-text-md);
+    line-height: 1.6;
+    word-wrap: break-word;
+}
+.mpm-md > *:first-child { margin-top: 0 !important; }
+.mpm-md > *:last-child { margin-bottom: 0 !important; }
+
+/* ── Títulos ─────────────────────────────────────────────────────────────── */
+.mpm-md h1, .mpm-md h2, .mpm-md h3, .mpm-md h4, .mpm-md h5, .mpm-md h6 {
     font-family: var(--mp-font-display);
     color: var(--mp-ink);
-    line-height: var(--mp-line-lg);
-    margin: var(--mp-space-4) 0 var(--mp-space-2);
+    line-height: 1.25;
+    margin: 1.5em 0 0.65em;
     font-weight: 700;
 }
-.mpm-md h1 { font-size: var(--mp-text-xl); }
-.mpm-md h2 { font-size: var(--mp-text-lg); }
-.mpm-md h3 { font-size: var(--mp-text-md); }
-.mpm-md p { margin: 0 0 var(--mp-space-2); }
-.mpm-md ul, .mpm-md ol { margin: 0 0 var(--mp-space-2); padding-left: var(--mp-space-5); }
-.mpm-md li { margin: 2px 0; }
-.mpm-md a { color: var(--mp-accent-blue); text-decoration: underline; }
+/* h1 e h2 fecham a seção com um filete, como no GitHub. */
+.mpm-md h1 { font-size: 1.7em; padding-bottom: 0.3em; border-bottom: 1px solid var(--mp-line-faint); }
+.mpm-md h2 { font-size: 1.35em; padding-bottom: 0.3em; border-bottom: 1px solid var(--mp-line-faint); }
+.mpm-md h3 { font-size: 1.15em; }
+.mpm-md h4 { font-size: 1em; }
+.mpm-md h5 { font-size: 0.9em; }
+.mpm-md h6 { font-size: 0.85em; color: var(--mp-muted); }
+
+/* ── Blocos ──────────────────────────────────────────────────────────────── */
+.mpm-md p { margin: 0 0 1em; }
+.mpm-md ul, .mpm-md ol { margin: 0 0 1em; padding-left: 2em; }
+.mpm-md li { margin: 0.25em 0; }
+.mpm-md li > p { margin: 0 0 0.5em; }
+/* Listas aninhadas colam no item pai, sem o vão de um bloco novo. */
+.mpm-md li > ul, .mpm-md li > ol { margin: 0.25em 0 0.25em; }
+.mpm-md li::marker { color: var(--mp-muted); }
+/* Task list (- [ ] item): sem bullet, checkbox alinhado ao texto. O `marked`
+   põe o input direto no <li> em listas "tight" e dentro de um <p> nas "loose". */
+.mpm-md li:has(> input[type="checkbox"]),
+.mpm-md li:has(> p > input[type="checkbox"]) { list-style: none; margin-left: -1.4em; }
+.mpm-md input[type="checkbox"] { margin: 0 0.4em 0 0; vertical-align: middle; }
+
+.mpm-md a { color: var(--mp-accent-blue); text-decoration: none; }
+.mpm-md a:hover { text-decoration: underline; }
+
+/* Referência a um item (CFGEC-26): reconhecível como link e como key. */
+.mpm-item-ref {
+    font-family: var(--mp-font-mono); font-size: 0.87em; font-weight: 600;
+    color: var(--mp-accent-blue);
+    background: var(--mp-accent-blue-tint);
+    padding: 0.1em 0.4em; border-radius: var(--mp-radius-sm);
+    text-decoration: none; cursor: pointer; white-space: nowrap;
+}
+.mpm-item-ref:hover { color: var(--mp-accent-blue); text-decoration: underline; }
+/* Dentro de <code> a pílula já existe: não empilhar duas. */
+.mpm-md code .mpm-item-ref { background: transparent; padding: 0; }
+.mpm-md strong { color: var(--mp-ink); font-weight: 700; }
+
+/* ── Código ──────────────────────────────────────────────────────────────── */
+/* Inline: pílula discreta, sem borda — a borda engordava o texto corrido. */
 .mpm-md code {
-    font-family: var(--mp-font-mono); font-size: 0.92em;
+    font-family: var(--mp-font-mono); font-size: 0.87em;
     background: var(--mp-surface-2); color: var(--mp-ink);
-    padding: 1px 5px; border-radius: var(--mp-radius-sm); border: 1px solid var(--mp-line-faint);
+    padding: 0.15em 0.4em; border-radius: var(--mp-radius-sm); border: none;
+    white-space: break-spaces;
 }
 .mpm-md pre {
     background: var(--mp-terminal-bg); color: var(--mp-terminal-fg);
-    font-family: var(--mp-font-mono); font-size: var(--mp-text-sm);
-    padding: var(--mp-space-3); border-radius: var(--mp-radius-sm);
-    border: var(--mp-border-thin); overflow-x: auto; margin: 0 0 var(--mp-space-2);
+    font-family: var(--mp-font-mono); font-size: 0.85em; line-height: 1.45;
+    padding: var(--mp-space-4); border-radius: var(--mp-radius-md);
+    border: var(--mp-border-thin); overflow-x: auto; margin: 0 0 1em;
 }
-.mpm-md pre code { background: transparent; border: none; padding: 0; color: inherit; }
+.mpm-md pre code { background: transparent; border: none; padding: 0; color: inherit; font-size: inherit; white-space: pre; }
+
+/* ── Citação, régua, imagem ──────────────────────────────────────────────── */
 .mpm-md blockquote {
-    margin: 0 0 var(--mp-space-2); padding: var(--mp-space-1) var(--mp-space-3);
-    border-left: 3px solid var(--mp-accent-blue); color: var(--mp-muted);
-    background: var(--mp-surface-2);
+    margin: 0 0 1em; padding: 0 1em;
+    border-left: 4px solid var(--mp-line-soft); color: var(--mp-muted);
+    background: transparent;
 }
-.mpm-md table { border-collapse: collapse; margin: 0 0 var(--mp-space-2); }
-.mpm-md th, .mpm-md td { border: 1px solid var(--mp-line-soft); padding: 2px 8px; }
-.mpm-md img { max-width: 100%; }
-.mpm-md hr { border: none; border-top: 1px solid var(--mp-line-faint); margin: var(--mp-space-3) 0; }
+.mpm-md blockquote > :last-child { margin-bottom: 0; }
+.mpm-md img { max-width: 100%; border-radius: var(--mp-radius-sm); }
+.mpm-md hr { height: 1px; border: none; background: var(--mp-line-faint); margin: 1.75em 0; }
+
+/* ── Tabelas ─────────────────────────────────────────────────────────────── */
+.mpm-md table { border-collapse: collapse; margin: 0 0 1em; display: block; width: max-content; max-width: 100%; overflow-x: auto; }
+.mpm-md th, .mpm-md td { border: 1px solid var(--mp-line-faint); padding: 6px 13px; }
+.mpm-md th { background: var(--mp-surface-2); color: var(--mp-ink); font-weight: 700; text-align: left; }
+.mpm-md tbody tr:nth-child(2n) { background: var(--mp-surface-2); }
 
 /* ============================================================ */
 /* Preview de anexos (frente C)                                 */
@@ -814,16 +997,32 @@ html, body, #gui { height: 100%; margin: 0; }
     background: var(--mp-paper-2) !important;
     box-shadow: inset 1px 0 0 0 var(--mp-line-soft) !important;
 }
+/* O preview do editor usa a MESMA métrica do markdown renderizado (.mpm-md),
+   senão escrever e ler a mesma descrição dão resultados visuais diferentes. */
 .mpm-md-editor .wmde-markdown {
     background: transparent !important;
     color: var(--mp-ink-2) !important;
     font-family: var(--mp-font-ui) !important;
-    font-size: var(--mp-text-sm) !important;
+    font-size: var(--mp-text-md) !important;
+    line-height: 1.6 !important;
+}
+.mpm-md-editor .wmde-markdown h1,
+.mpm-md-editor .wmde-markdown h2,
+.mpm-md-editor .wmde-markdown h3,
+.mpm-md-editor .wmde-markdown h4 {
+    font-family: var(--mp-font-display) !important;
+    color: var(--mp-ink) !important;
+    border-bottom-color: var(--mp-line-faint) !important;
 }
 .mpm-md-editor .wmde-markdown code {
     background: var(--mp-surface-2) !important;
     color: var(--mp-ink) !important;
+    border: none !important;
 }
+.mpm-md-editor .wmde-markdown th { background: var(--mp-surface-2) !important; }
+.mpm-md-editor .wmde-markdown th,
+.mpm-md-editor .wmde-markdown td { border-color: var(--mp-line-faint) !important; }
+.mpm-md-editor .wmde-markdown hr { background: var(--mp-line-faint) !important; }
 .mpm-md-editor .wmde-markdown pre,
 .mpm-md-editor .wmde-markdown pre code {
     background: var(--mp-terminal-bg) !important;
@@ -1169,18 +1368,6 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-sidebar__resizer:hover,
 .mpm-sidebar__resizer:active { background: var(--mp-accent-blue); }
 
-/* Modo rail: só ícones, centralizados. */
-.mpm-sidebar.is-collapsed { padding: var(--mp-space-4) var(--mp-space-1); align-items: center; }
-.mpm-sidebar.is-collapsed .mpm-nav__item {
-    justify-content: center; padding: var(--mp-space-2); gap: 0;
-    position: relative;
-}
-.mpm-sidebar.is-collapsed .mpm-nav__item .mpm-chip {
-    position: absolute; top: 2px; right: 2px;
-    padding: 0 4px; font-size: 10px; line-height: 14px;
-}
-.mpm-sidebar.is-collapsed .mpm-nav { width: 100%; }
-
 /* ── Menu de contexto (botão direito) sobre itens ────────────────────────── */
 .mpm-ctxmenu {
     position: fixed; z-index: calc(var(--mp-z-modal) + 30);
@@ -1239,25 +1426,49 @@ html, body, #gui { height: 100%; margin: 0; }
 }
 
 /* ── Aba Descrição: leitura ocupa o modal; edição idem ───────────────────── */
-.mpm-desc { display: flex; flex-direction: column; gap: var(--mp-space-2); flex: 1; min-height: 0; }
+/* A descrição vive dentro da aba "Detalhes", junto dos campos: não captura a
+   rolagem para si (quem rola é o corpo do inspector).
+   `flex: 0 0 auto` é obrigatório: o corpo do inspector é flex-column, e sem isso
+   o bloco encolhe abaixo do próprio conteúdo, que vaza por cima das subtarefas. */
+.mpm-desc { display: flex; flex-direction: column; gap: var(--mp-space-2); flex: 0 0 auto; }
 .mpm-desc__bar { display: flex; align-items: center; gap: var(--mp-space-2); }
 .mpm-desc__read {
-    flex: 1; min-height: 0; overflow-y: auto;
     padding: var(--mp-space-4);
     background: var(--mp-surface);
     border: var(--mp-border-thin);
     border-radius: var(--mp-radius-md);
 }
-/* O editor preenche toda a altura restante (antes: 340px + muito branco). */
-.mpm-desc--editing .mpm-md-editor { flex: 1; min-height: 0; display: flex; }
-.mpm-desc--editing .mpm-md-editor .w-md-editor { flex: 1; min-height: 0; height: 100% !important; }
 
-/* O corpo do inspector precisa ESTICAR (flex:1) para a aba Descrição ocupar o
-   modal inteiro. Já era flex-column com overflow-y:auto (ver regra acima). */
+/* Editor inline: altura própria, já que não ocupa mais o modal inteiro. */
+.mpm-desc--inline .mpm-md-editor { height: 460px; }
+
+/* Subtarefa: linha clicável que abre o item filho no próprio inspector. */
+.mpm-subtask {
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    width: 100%; text-align: left;
+    padding: var(--mp-space-2);
+    background: transparent; border: none;
+    border-bottom: 1px solid var(--mp-line-faint);
+    color: var(--mp-ink-2); font: inherit; cursor: pointer;
+}
+.mpm-subtask:last-child { border-bottom: none; }
+.mpm-subtask:hover { background: var(--mp-surface-2); }
+.mpm-subtask__title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Editor inline: altura própria (não ocupa mais o modal inteiro). */
+.mpm-desc--editing .mpm-md-editor { display: flex; }
+.mpm-desc--editing .mpm-md-editor .w-md-editor { flex: 1; height: 100% !important; }
+
+/* O corpo do inspector estica dentro do modal e rola sozinho. Seus filhos NUNCA
+   encolhem: são blocos empilhados (campos, descrição, subtarefas, contexto), e
+   um flex-shrink herdado faria um vazar sobre o outro. */
 .mpm-inspector__body { flex: 1; min-height: 0; }
+.mpm-inspector__body > * { flex: 0 0 auto; }
 
 /* ── Atividade em linguagem natural (tooltip traz o detalhe técnico) ─────── */
 .mpm-activity { cursor: help; align-items: flex-start; }
+/* Evento que se refere a um item: a linha inteira abre o item. */
+.mpm-activity.is-openable { cursor: pointer; border-radius: var(--mp-radius-sm); }
+.mpm-activity.is-openable:hover { background: var(--mp-surface-2); }
 .mpm-activity__text {
     display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
     color: var(--mp-ink); font-weight: 600; line-height: 1.4;
@@ -1290,3 +1501,134 @@ html, body, #gui { height: 100%; margin: 0; }
 
 /* Board ocupa toda a largura disponível e rola só na horizontal quando precisa. */
 .mpm-kanban { width: 100%; }
+
+/* ============================================================ */
+/* Reatividade: toasts de agente, aviso de aprovação, item stale */
+/* ============================================================ */
+
+/* A aprovação prende um agente do outro lado: fica ACIMA de qualquer camada,
+   inclusive da paleta de comandos e dos modais de confirmação. */
+.mpm-overlay--approval { z-index: calc(var(--mp-z-palette) + 10); }
+
+.mpm-approval__waiting {
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    padding: var(--mp-space-2) var(--mp-space-4);
+    background: var(--mp-warning-tint);
+    border-bottom: 1px solid var(--mp-line-faint);
+    color: var(--mp-ink-2); font-size: var(--mp-text-sm);
+}
+
+/* Aviso do header quando o usuário adiou: pisca até ele decidir. */
+.mpm-approval-nag {
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    padding: var(--mp-space-1) var(--mp-space-3);
+    background: var(--mp-warning-tint);
+    border: 2px solid var(--mp-warning);
+    border-radius: var(--mp-radius-sm);
+    color: var(--mp-ink); font: inherit; font-size: var(--mp-text-sm); font-weight: 700;
+    cursor: pointer;
+    animation: mpm-nag-pulse 1.6s ease-in-out infinite;
+}
+.mpm-approval-nag__cta { text-decoration: underline; color: var(--mp-muted); font-weight: 600; }
+@keyframes mpm-nag-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(232, 163, 0, 0.55); }
+    50%      { box-shadow: 0 0 0 6px rgba(232, 163, 0, 0); }
+}
+
+/* Toasts: canto inferior direito, entram "pulando". */
+.mpm-toasts {
+    position: fixed; right: var(--mp-space-4); bottom: var(--mp-space-4);
+    z-index: var(--mp-z-toast);
+    display: flex; flex-direction: column; gap: var(--mp-space-2);
+    max-width: min(420px, 92vw);
+}
+.mpm-toast {
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    padding: var(--mp-space-2) var(--mp-space-3);
+    background: var(--mp-surface);
+    border: var(--mp-border-strong);
+    border-radius: var(--mp-radius-md);
+    box-shadow: var(--mp-shadow-2);
+    animation: mpm-toast-bounce 0.42s cubic-bezier(0.2, 1.4, 0.35, 1) both;
+}
+.mpm-toast__icon {
+    width: 28px; height: 28px; flex: 0 0 auto;
+    display: grid; place-items: center;
+    background: var(--mp-accent-blue-tint);
+    border: 1px solid var(--mp-line-soft);
+    border-radius: var(--mp-radius-sm);
+    color: var(--mp-accent-blue);
+}
+.mpm-toast__icon .icon { margin: 0 !important; }
+.mpm-toast__body { flex: 1; min-width: 0; }
+.mpm-toast__title {
+    font-size: var(--mp-text-xs); font-weight: 700; color: var(--mp-muted);
+    text-transform: uppercase; letter-spacing: 0.03em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mpm-toast__msg { color: var(--mp-ink); font-size: var(--mp-text-sm); overflow-wrap: anywhere; }
+
+@keyframes mpm-toast-bounce {
+    0%   { transform: translateY(28px) scale(0.94); opacity: 0; }
+    60%  { transform: translateY(-6px) scale(1.02); opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mpm-toast { animation: none; }
+    .mpm-approval-nag { animation: none; }
+}
+
+/* O item aberto mudou por baixo do usuário: avisa, não sobrescreve. */
+.mpm-stale-banner {
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    padding: var(--mp-space-2) var(--mp-space-4);
+    background: var(--mp-accent-blue-tint);
+    border-bottom: 1px solid var(--mp-line-faint);
+    color: var(--mp-ink-2); font-size: var(--mp-text-sm);
+}
+
+/* ============================================================ */
+/* Feedback do humano para os agentes                           */
+/* ============================================================ */
+
+/* Balão que abre onde o usuário clicou com o botão direito. */
+.mpm-fb-popover {
+    position: fixed; z-index: calc(var(--mp-z-modal) + 40);
+    display: flex; flex-direction: column; gap: var(--mp-space-2);
+    padding: var(--mp-space-3);
+    background: var(--mp-surface);
+    border: var(--mp-border-strong);
+    border-radius: var(--mp-radius-md);
+    box-shadow: var(--mp-shadow-2);
+}
+.mpm-fb-popover__head { display: flex; align-items: center; gap: var(--mp-space-2); }
+.mpm-fb-popover__where { display: flex; align-items: center; gap: var(--mp-space-2); flex-wrap: wrap; }
+.mpm-fb-popover__excerpt {
+    padding: var(--mp-space-2);
+    background: var(--mp-surface-2);
+    border-left: 3px solid var(--mp-line-soft);
+    border-radius: var(--mp-radius-sm);
+    color: var(--mp-muted); font-size: var(--mp-text-xs);
+    max-height: 64px; overflow: hidden;
+}
+/* O textarea não pode estourar a largura do balão. */
+.mpm-fb-popover .mpm-textarea { width: 100%; box-sizing: border-box; resize: vertical; }
+.mpm-fb-popover__suggestions { display: flex; flex-wrap: wrap; gap: var(--mp-space-1); }
+.mpm-fb-popover__suggestions .mpm-chip { cursor: pointer; border: 1px solid var(--mp-line-faint); }
+.mpm-fb-popover__suggestions .mpm-chip:hover { background: var(--mp-accent-blue-tint); color: var(--mp-ink); }
+.mpm-fb-popover__foot { display: flex; align-items: center; gap: var(--mp-space-2); }
+
+/* Campo anotado: uma dica sutil de que ali cabe feedback. */
+[data-feedback] { position: relative; }
+
+/* Cards da tela de feedback. */
+.mpm-fb-card { display: flex; flex-direction: column; gap: var(--mp-space-2); }
+.mpm-fb-card__body { color: var(--mp-ink); }
+.mpm-fb-card__excerpt {
+    padding: var(--mp-space-2) var(--mp-space-3);
+    background: var(--mp-surface-2);
+    border-left: 3px solid var(--mp-line-soft);
+    border-radius: var(--mp-radius-sm);
+    color: var(--mp-muted); font-size: var(--mp-text-sm);
+}
+.mpm-fb-card__meta { flex-wrap: wrap; gap: var(--mp-space-2); }

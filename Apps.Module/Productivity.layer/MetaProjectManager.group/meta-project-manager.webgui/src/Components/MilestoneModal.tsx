@@ -37,7 +37,7 @@ const MilestoneModal = ({ projectId, milestone, onClose, onSaved }: MilestoneMod
         } catch (e: any) { setError(e.message); setBusy(false) }
     }
 
-    return <Modal title={milestone ? "Editar milestone" : "Novo milestone"} icon="flag" onClose={onClose}
+    return <Modal title={milestone ? "Editar entrega" : "Nova entrega"} icon="flag" onClose={onClose}
         footer={<>
             <button className="mpm-btn mpm-btn--ghost" onClick={onClose}>Cancelar</button>
             <button className="mpm-btn mpm-btn--primary" onClick={submit} disabled={busy || !name.trim()}>Salvar</button>

@@ -1,0 +1,223 @@
+{
+    "name": "Feedback",
+    "endpoints": [
+        {
+            "summary": "ListFeedback",
+            "method": "GET",
+            "path": "/feedback",
+            "parameters": [
+                {
+                    "name": "project",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "status",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "item",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "entityId",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "since",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "until",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "limit",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "offset",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "GetFeedback",
+            "method": "GET",
+            "path": "/feedback/:feedbackId",
+            "parameters": [
+                {
+                    "name": "feedbackId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "CreateFeedback",
+            "method": "POST",
+            "path": "/feedback",
+            "parameters": [
+                {
+                    "name": "project",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "item",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "entityType",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "entityId",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "field",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "fieldLabel",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "screen",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "excerpt",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "body",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "actorUserId",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "ClaimFeedback",
+            "method": "POST",
+            "path": "/feedback/:feedbackId/claim",
+            "parameters": [
+                {
+                    "name": "feedbackId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "ttlSeconds",
+                    "in": "body",
+                    "type": "number",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "ReleaseFeedback",
+            "method": "POST",
+            "path": "/feedback/:feedbackId/release",
+            "parameters": [
+                {
+                    "name": "feedbackId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "ResolveFeedback",
+            "method": "POST",
+            "path": "/feedback/:feedbackId/resolve",
+            "parameters": [
+                {
+                    "name": "feedbackId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "note",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "DismissFeedback",
+            "method": "POST",
+            "path": "/feedback/:feedbackId/dismiss",
+            "parameters": [
+                {
+                    "name": "feedbackId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "reason",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "ReopenFeedback",
+            "method": "POST",
+            "path": "/feedback/:feedbackId/reopen",
+            "parameters": [
+                {
+                    "name": "feedbackId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        }
+    ]
+}

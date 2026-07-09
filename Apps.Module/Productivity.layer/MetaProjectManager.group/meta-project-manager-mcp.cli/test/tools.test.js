@@ -10,6 +10,18 @@ fs.mkdirSync(TMP, { recursive: true })
 
 let store, tools
 const byName = (n) => tools.find((t) => t.name === n)
+
+// A tool gated cria o pedido e só então bloqueia; o "humano" do teste precisa
+// esperar o pedido existir antes de decidir.
+const waitForPendingRequest = async ({ type, name, actionName }) => {
+    for(let i = 0; i < 100; i++){
+        const list = await store.ListCreationRequests({ status: "pending", type, actionName })
+        const found = name ? list.find((r) => r.payload && r.payload.name === name) : list[0]
+        if(found) return found
+        await new Promise((r) => setTimeout(r, 20))
+    }
+    throw new Error(`pedido pendente não apareceu: ${actionName || ""} ${type} ${name || ""}`)
+}
 const actor = { source: "agent", session: { provider: "claude", model: "claude-opus-4", traceId: "MCP-T", host: "h", osUser: "u", pid: 1 } }
 
 before(async () => {
@@ -94,12 +106,84 @@ test("add_activity_note + list_activity_notes + get_activity_context", async () 
     assert.ok(Array.isArray(ctx.audit))
 })
 
-test("create_project aceita shortDescription no payload do pedido", async () => {
-    const out = await byName("create_project").handler({ name: "Via MCP", shortDescription: "curta" })
-        .then((r) => ({ ok: r }), (e) => ({ err: e }))
-    assert.equal(out.err.code, "AGENT_SESSION_CONFIRMATION_REQUIRED")
+test("create_project waitApproval:false não espera e guarda shortDescription no pedido", async () => {
+    const out = await byName("create_project").handler({ name: "Via MCP", shortDescription: "curta", waitApproval: false })
+    assert.equal(out.status, "pending_approval")
+    assert.equal(out.actionName, "create")
+    assert.ok(out.approvalRequestId)
     const pend = (await store.ListCreationRequests({ status: "pending", type: "project" })).find((r) => r.payload.name === "Via MCP")
     assert.equal(pend.payload.shortDescription, "curta")
+})
+
+test("create_project BLOQUEIA até a aprovação humana e devolve o projeto criado", async () => {
+    // A tool fica pendurada; um humano aprova em paralelo e ela retorna o resultado.
+    const pending = byName("create_project").handler({ name: "Espera Aprovacao", keyPrefix: "ESPA" })
+
+    const req = await waitForPendingRequest({ type: "project", name: "Espera Aprovacao" })
+    await store.ApproveRequest({ request: req.id, actor: { source: "cli", actorUserId: undefined } })
+
+    const project = await pending
+    assert.equal(project.name, "Espera Aprovacao")
+    assert.ok(project.id)
+})
+
+test("create_project rejeitado vira REJECTED_BY_HUMAN com o motivo", async () => {
+    const pending = byName("create_project").handler({ name: "Sera Rejeitado", keyPrefix: "REJ" })
+
+    const req = await waitForPendingRequest({ type: "project", name: "Sera Rejeitado" })
+    await store.RejectRequest({ request: req.id, reason: "não faz sentido agora", actor: { source: "cli" } })
+
+    const out = await pending.then((r) => ({ ok: r }), (e) => ({ err: e }))
+    assert.equal(out.err.code, "REJECTED_BY_HUMAN")
+    assert.equal(out.err.details.reason, "não faz sentido agora")
+})
+
+test("create_milestone e create_sprint são LIVRES (planejamento dentro do projeto)", async () => {
+    const m = await byName("create_milestone").handler({ project: "MCP", name: "M livre" })
+    assert.equal(m.name, "M livre")
+    const sp = await byName("create_sprint").handler({ project: "MCP", name: "S livre" })
+    assert.equal(sp.name, "S livre")
+})
+
+test("delete_milestone é gated e idempotente no retry", async () => {
+    const m = await byName("create_milestone").handler({ project: "MCP", name: "M a remover" })
+    const a = await byName("delete_milestone").handler({ milestone: m.id, waitApproval: false })
+    const b = await byName("delete_milestone").handler({ milestone: m.id, waitApproval: false })
+    assert.equal(a.status, "pending_approval")
+    assert.equal(a.approvalRequestId, b.approvalRequestId)
+})
+
+test("update_project com campo sensível bloqueia até aprovação; campo operacional passa", async () => {
+    // operacional: livre
+    const ok = await byName("update_project").handler({ project: "MCP", repositoryUrl: "https://r/x" })
+    assert.equal(ok.repositoryUrl, "https://r/x")
+
+    // sensível: vira pedido e a tool espera
+    const pending = byName("update_project").handler({ project: "MCP", description: "texto novo" })
+    const req = await waitForPendingRequest({ type: "project", actionName: "update" })
+    await store.ApproveRequest({ request: req.id, actor: { source: "cli" } })
+    const project = await pending
+    assert.equal(project.description, "texto novo")
+})
+
+test("add_column bloqueia até aprovação (estrutura do fluxo)", async () => {
+    const board = await store.CreateBoard({ project: "MCP", name: "Board p/ colunas", actor: { source: "cli" } })
+    const pending = byName("add_column").handler({ board: board.id, name: "Coluna MCP" })
+    const req = await waitForPendingRequest({ type: "column", name: "Coluna MCP" })
+    await store.ApproveRequest({ request: req.id, actor: { source: "cli" } })
+    const column = await pending
+    assert.equal(column.name, "Coluna MCP")
+})
+
+test("tools de revisão do projeto estão no catálogo", () => {
+    const names = tools.map((t) => t.name)
+    for (const n of ["update_project","archive_project","restore_project","get_board","update_board","set_default_board",
+                     "list_columns","add_column","update_column","move_column","delete_column",
+                     "update_milestone","delete_milestone","update_sprint","delete_sprint",
+                     "add_checklist_item","update_checklist_item","remove_checklist_item",
+                     "add_acceptance_criteria","update_acceptance_criteria","remove_acceptance_criteria",
+                     "unlink_item","convert_item","reorder_item"])
+        assert.ok(names.indexOf(n) >= 0, `faltou ${n}`)
 })
 
 test("delete tools + activity tools estão no catálogo", () => {
@@ -153,4 +237,74 @@ test("as instruções listam as relações reais e AVISAM sobre as inexistentes"
     // as inválidas só aparecem dentro do aviso "Não existe ..."
     assert.ok(/Não existe `depends-on` nem\s+`relates-to`/.test(instructions),
         "depends-on/relates-to só podem aparecer na forma negativa")
+})
+
+// ---- Feedback: fila com claim exclusivo (multi-agente) ----
+test("fluxo do feedback via MCP: listar → pegar → resolver", async () => {
+    const it = await store.CreateItem({ project: "MCP", type: "task", title: "Item com feedback" })
+    const fb = await store.CreateFeedback({
+        item: it.key, field: "description", fieldLabel: "Descrição",
+        body: "Resuma, está longo.", actor: { source: "gui" }
+    })
+
+    const open = await byName("list_feedback").handler({ project: "MCP" })
+    assert.ok(open.some((f) => f.id === fb.id))
+    assert.equal(open.find((f) => f.id === fb.id).field, "description")
+
+    const claimed = await byName("claim_feedback").handler({ feedback: fb.id })
+    assert.equal(claimed.status, "in-analysis")
+
+    // pego: sai da fila de abertos
+    const afterClaim = await byName("list_feedback").handler({ project: "MCP" })
+    assert.ok(!afterClaim.some((f) => f.id === fb.id))
+
+    const resolved = await byName("resolve_feedback").handler({ feedback: fb.id, note: "reescrito" })
+    assert.equal(resolved.status, "resolved")
+    assert.equal(resolved.resolutionNote, "reescrito")
+})
+
+test("claim de um feedback já pego por OUTRO agente devolve CONFLICT", async () => {
+    const it = await store.CreateItem({ project: "MCP", type: "task", title: "Disputa MCP" })
+    const fb = await store.CreateFeedback({ item: it.key, body: "corrija", actor: { source: "gui" } })
+
+    // outro agente (identidade diferente ⇒ outra sessão) pega primeiro
+    const other = BuildTools({ store, actor: { source: "agent", session: { provider: "codex", model: "gpt", traceId: "OUTRO", host: "h2", osUser: "u2", pid: 2 } } })
+    await other.find((t) => t.name === "claim_feedback").handler({ feedback: fb.id })
+
+    const out = await byName("claim_feedback").handler({ feedback: fb.id }).then((r) => ({ ok: r }), (e) => ({ err: e }))
+    assert.equal(out.err.code, "CONFLICT")
+})
+
+test("resolver um feedback pego por outro agente é CONFLICT (identidade MCP resolve a sessão)", async () => {
+    const it = await store.CreateItem({ project: "MCP", type: "task", title: "Resolver alheio" })
+    const fb = await store.CreateFeedback({ item: it.key, body: "corrija", actor: { source: "gui" } })
+
+    const other = BuildTools({ store, actor: { source: "agent", session: { provider: "codex", model: "gpt", traceId: "OUTRO2", host: "h2", osUser: "u2", pid: 3 } } })
+    await other.find((t) => t.name === "claim_feedback").handler({ feedback: fb.id })
+
+    const out = await byName("resolve_feedback").handler({ feedback: fb.id, note: "roubei" })
+        .then((r) => ({ ok: r }), (e) => ({ err: e }))
+    assert.equal(out.err.code, "CONFLICT")
+
+    // o dono do claim resolve normalmente
+    const done = await other.find((t) => t.name === "resolve_feedback").handler({ feedback: fb.id, note: "meu" })
+    assert.equal(done.status, "resolved")
+})
+
+test("project_changes devolve a janela inteira, resumo e o cursor latestAt", async () => {
+    const before = new Date(Date.now() - 60_000).toISOString()
+    await store.CreateItem({ project: "MCP", type: "task", title: "Mudança 1" })
+    await store.CreateItem({ project: "MCP", type: "task", title: "Mudança 2" })
+
+    const out = await byName("project_changes").handler({ project: "MCP", since: before })
+    assert.ok(out.count >= 2)
+    assert.ok(out.summary.byAction.create >= 2)
+    assert.ok(out.latestAt)
+    // cronológico
+    const times = out.events.map((e) => String(e.createdAt))
+    assert.deepEqual(times, [...times].sort())
+
+    // desde o cursor, nada novo
+    const after = await byName("project_changes").handler({ project: "MCP", since: new Date(Date.now() + 60_000).toISOString() })
+    assert.equal(after.count, 0)
 })

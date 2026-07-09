@@ -108,6 +108,25 @@
             "url": "/",
             "type": "controller",
             "params": {
+                "api-template": "APIs/Feedback.api.json",
+                "controller": "Controllers/Feedback.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
                 "api-template": "APIs/Attachments.api.json",
                 "controller": "Controllers/Attachments.controller",
                 "controller-params": {

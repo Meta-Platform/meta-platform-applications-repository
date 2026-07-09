@@ -322,6 +322,46 @@ const DefineModels = (sequelize) => {
         { fields: ["projectId"] }, { fields: ["scopeType", "scopeId"] }, { fields: ["createdAt"] }
     ] })
 
+    // Feedback do humano para os agentes: "corrija ISTO, AQUI". Nasce de um clique
+    // com o botão direito num campo da interface, então guarda ONDE foi dado
+    // (entidade + campo + tela) — sem isso o agente não sabe o que reescrever.
+    //
+    // Ciclo: open → (claim) in-analysis → resolved | dismissed.
+    // O claim tem prazo: um agente que morre no meio não prende o feedback.
+    const AgentFeedback = sequelize.define("AgentFeedback", {
+        id:              idField,
+        projectId:       { type: DataTypes.STRING, allowNull: false },
+        // Onde: entidade alvo (work-item | project | board | milestone | sprint) + campo.
+        entityType:      { type: DataTypes.STRING, allowNull: false, defaultValue: "work-item" },
+        entityId:        { type: DataTypes.STRING },
+        workItemId:      { type: DataTypes.STRING },
+        field:           { type: DataTypes.STRING },   // description | title | shortDescription | goal | …
+        fieldLabel:      { type: DataTypes.STRING },   // rótulo que o humano viu na tela
+        screen:          { type: DataTypes.STRING },   // rota da GUI onde foi dado
+        excerpt:         { type: DataTypes.TEXT },     // trecho do conteúdo criticado
+
+        body:            { type: DataTypes.TEXT, allowNull: false },  // o que corrigir
+        status:          { type: DataTypes.STRING, allowNull: false, defaultValue: "open" },
+
+        createdByUserId: { type: DataTypes.STRING },
+        source:          { type: DataTypes.STRING, allowNull: false, defaultValue: "gui" },
+
+        claimedBySessionId: { type: DataTypes.STRING },
+        claimedByProvider:  { type: DataTypes.STRING },
+        claimedByModel:     { type: DataTypes.STRING },
+        claimedAt:          { type: DataTypes.DATE },
+        claimExpiresAt:     { type: DataTypes.DATE },
+
+        resolvedAt:         { type: DataTypes.DATE },
+        resolvedBySessionId:{ type: DataTypes.STRING },
+        resolutionNote:     { type: DataTypes.TEXT },
+        dismissedAt:        { type: DataTypes.DATE },
+        dismissReason:      { type: DataTypes.TEXT }
+    }, { tableName: "agent_feedback", indexes: [
+        { fields: ["projectId"] }, { fields: ["status"] }, { fields: ["workItemId"] },
+        { fields: ["claimExpiresAt"] }, { fields: ["createdAt"] }
+    ] })
+
     const AppState = sequelize.define("AppState", {
         key:   { type: DataTypes.STRING, primaryKey: true, allowNull: false, unique: true },
         value: { type: DataTypes.JSON, allowNull: true }
@@ -331,7 +371,7 @@ const DefineModels = (sequelize) => {
         Project, Board, BoardColumn, WorkItem, WorkItemLink,
         WorkItemChecklistItem, WorkItemAcceptanceCriteria,
         Attachment, Comment, User, AgentProfile, AgentSession,
-        CreationRequest, Milestone, Sprint, AuditEvent, ActivityNote, AppState
+        CreationRequest, Milestone, Sprint, AuditEvent, ActivityNote, AgentFeedback, AppState
     }
 }
 

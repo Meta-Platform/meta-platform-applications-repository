@@ -1,13 +1,15 @@
 import * as React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import { useParams, useNavigate, useLocation } from "react-router-dom"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
+import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import useEvents from "../Hooks/useEvents"
+import { auditEntriesOf } from "../Utils/agentEvents"
 import useItemFilters from "../Hooks/useItemFilters"
-import useAppState, { useAppStateWriter } from "../Hooks/useAppState"
-import { Project, Board, WorkItem, User, Milestone, Sprint } from "../api/types"
+import { useAppStateWriter } from "../Hooks/useAppState"
+import { Project, Board, WorkItem, User, Milestone, Sprint, PlatformEvent } from "../api/types"
 import AppShell from "./AppShell"
 import KanbanBoard from "./KanbanBoard"
 import WorkItemList from "./WorkItemList"
@@ -32,16 +34,18 @@ interface PendingConfirm {
 
 type ViewMode = "board" | "list"
 
-interface ProjectWorkspaceProps {
-    initialView: ViewMode
-}
-
 // Área principal de trabalho de um projeto: Kanban (drag-and-drop) ou List View,
-// com Inspector lateral. Compartilhado por Board.page e List.page.
-const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
+// com Inspector lateral. Board.page e List.page exportam ESTE mesmo componente,
+// para que alternar entre /board e /list não remonte a árvore (nem refaça os
+// fetches): só o pathname muda.
+const ProjectWorkspace = () => {
     const api = useApi()
     const navigate = useNavigate()
+    const { pathname } = useLocation()
     const { projectId, boardId } = useParams<{ projectId: string; boardId?: string }>()
+
+    // A URL é a fonte da verdade da view: /projects/:id/list => lista, resto => board.
+    const view: ViewMode = pathname.endsWith("/list") ? "list" : "board"
     const { filters, setFilter, group, setGroup, reset, activeCount } = useItemFilters("workspace", projectId)
     const filtersKey = JSON.stringify(filters)
     const filtersRef = useRef(filters)
@@ -53,7 +57,6 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
     const [users, setUsers] = useState<User[]>([])
     const [milestones, setMilestones] = useState<Milestone[]>([])
     const [sprints, setSprints] = useState<Sprint[]>([])
-    const [view, setView] = useState<ViewMode>(initialView)
     const [selected, setSelected] = useState<string | null>(null)
     const [selectedIds, setSelectedIds] = useState<string[]>([])
     const [confirm, setConfirm] = useState<PendingConfirm | null>(null)
@@ -66,16 +69,19 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
 
-    // Persistência de preferências no servidor (feature 7): view por projeto +
-    // último projeto aberto. Restaura a view salva ao carregar.
-    const [savedView, saveView, viewLoaded] = useAppState<string>(`view:${projectId || "_"}`, initialView)
+    // Persistência de preferências no servidor (feature 7): último projeto aberto
+    // e última view usada nele. A view salva NÃO é reaplicada aqui — quem manda é
+    // a rota; ela serve para o "Abrir board" do overview reabrir onde se parou.
     const writeState = useAppStateWriter()
-    useEffect(() => {
-        if (viewLoaded && (savedView === "board" || savedView === "list")) setView(savedView as ViewMode)
-    }, [viewLoaded, savedView])
     useEffect(() => { if (projectId) writeState("lastProject", projectId) }, [projectId])
+    useEffect(() => { if (projectId) writeState(`view:${projectId}`, view) }, [projectId, view])
 
-    const changeView = (v: ViewMode) => { setView(v); saveView(v) }
+    const changeView = (v: ViewMode) => {
+        if (v === view || !projectId) return
+        navigate(v === "board" && boardId
+            ? `/projects/${projectId}/board/${boardId}`
+            : `/projects/${projectId}/${v}`)
+    }
 
     const usersById = useMemo(() => {
         const m: { [id: string]: User } = {}
@@ -142,21 +148,22 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
         return () => { alive = false }
     }, [projectId, boardId, api, loadItems])
 
-    // Reatividade do board (frente B): enquanto esta tela está montada, o polling
-    // roda mais rápido (~1.2s) e recarrega os itens quando o batch contém eventos
-    // que afetam o quadro (criação/edição/movimento/exclusão de item) ou os badges
-    // (comentário/anexo). Assim, mexer numa aba reflete na outra sem refresh manual.
-    const BOARD_EVENT_TYPES = [
-        "item.created", "item.updated", "item.moved", "item.deleted", "item.status",
-        "comment.created", "attachment.created", "item.planning"
-    ]
-    const onBoardEvents = useCallback((events: any[]) => {
-        const relevant = events.some((e) =>
-            typeof e.type === "string" &&
-            (BOARD_EVENT_TYPES.indexOf(e.type) >= 0 || e.type.indexOf("item") >= 0))
-        if (relevant) loadItems()
-    }, [loadItems])
-    useEvents(onBoardEvents, 1200)
+    // Reatividade: qualquer mudança neste projeto (por agente ou por outra pessoa)
+    // recarrega os itens. Se a mudança foi no BOARD (colunas, board padrão), o
+    // quadro em si é recarregado — senão o item apareceria numa coluna que sumiu.
+    const onEvents = useCallback((events: PlatformEvent[]) => {
+        if (!projectId) return
+        const audits = auditEntriesOf(events)
+        const mine = audits.filter((e) => e.projectId === projectId)
+        const domain = events.some((e) => typeof e.type === "string" && e.type.indexOf("item") >= 0)
+        if (mine.length === 0 && !domain) return
+
+        loadItems()
+
+        const structural = mine.some((e) => e.entityType === "board" || e.entityType === "board-column")
+        if (structural && board) api.boards.get(board.id).then(setBoard).catch(() => {})
+    }, [projectId, loadItems, board, api])
+    useEvents(onEvents)
 
     const moveItem = async (itemId: string, statusKey: string) => {
         // otimista: reflete a mudança de coluna imediatamente
@@ -271,19 +278,20 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
             onChanged={loadItems} />
         : undefined
 
-    return <AppShell
-        active={view === "list" ? "list" : "board"}
-        activeProjectId={projectId}
-        activeProjectName={project ? project.name : undefined}
-        inspector={inspector}
-        onInspectorClose={() => setSelected(null)}>
-
-        <div className="mpm-page-head">
-            <div className="mpm-page-head__titles">
-                <h1 className="mpm-page-title">{project ? project.name : "Projeto"}</h1>
-                <div className="mpm-page-subtitle">{board ? board.name : "sem board"}</div>
-            </div>
-            <div className="mpm-page-head__actions">
+    // Referências a itens (CFGEC-26…) em qualquer texto desta tela abrem o inspector.
+    return <ItemNavigatorProvider onOpenItem={setSelected}>
+        <AppShell
+            active={view === "list" ? "list" : "board"}
+            activeProjectId={projectId}
+            activeProjectName={project ? project.name : undefined}
+            breadcrumb={[
+                { label: "Projetos", to: "/" },
+                { label: project ? project.name : "Projeto", to: projectId ? `/projects/${projectId}` : undefined },
+                { label: view === "list" ? "Lista" : "Board" }
+            ]}
+            title={project ? project.name : "Projeto"}
+            subtitle={board ? board.name : "sem board"}
+            actions={<>
                 <div className="mpm-seg">
                     <button className={`mpm-seg__btn ${view === "board" ? "is-active" : ""}`} onClick={() => changeView("board")}><Icon name="columns" /> Board</button>
                     <button className={`mpm-seg__btn ${view === "list" ? "is-active" : ""}`} onClick={() => changeView("list")}><Icon name="list" /> Lista</button>
@@ -291,8 +299,9 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
                 <button className="mpm-btn" title="Exportar o projeto inteiro (.json)" onClick={exportProject}><Icon name="download" /> Exportar projeto</button>
                 {view === "board" && board ? <button className="mpm-btn" title="Exportar o board atual (.json)" onClick={exportBoard}><Icon name="table" /> Exportar board</button> : null}
                 <button className="mpm-btn mpm-btn--primary" onClick={() => openQuickAdd()}><Icon name="plus" /> Item</button>
-            </div>
-        </div>
+            </>}
+            inspector={inspector}
+            onInspectorClose={() => setSelected(null)}>
 
         <ItemFilterBar filters={filters} setFilter={setFilter} group={group} setGroup={setGroup}
             reset={reset} activeCount={activeCount} users={users} milestones={milestones} sprints={sprints}
@@ -415,7 +424,8 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
                 onConfirm={runConfirm}
                 onCancel={() => setConfirm(null)} />
             : null}
-    </AppShell>
+        </AppShell>
+    </ItemNavigatorProvider>
 }
 
 export default ProjectWorkspace

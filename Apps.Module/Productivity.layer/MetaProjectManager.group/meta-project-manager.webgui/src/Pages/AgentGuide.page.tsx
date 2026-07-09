@@ -350,14 +350,10 @@ const AgentGuidePage = () => {
     const topic = topics[idx]
     const go = (key: string) => { setActive(key); try { window.scrollTo({ top: 0 }) } catch (_) { /* noop */ } }
 
-    return <AppShell active="guide">
-        <div className="mpm-page-head">
-            <div className="mpm-page-head__titles">
-                <h1 className="mpm-page-title">Guia de IA — agentes no gerenciador</h1>
-                <div className="mpm-page-subtitle">Como Claude Code, Codex, OpenCode e outros operam o Meta Project Manager pela CLI <M>mpm</M> ou pelo servidor <M>MCP</M>.</div>
-            </div>
-        </div>
-
+    return <AppShell active="guide"
+        breadcrumb={[{ label: "Guia de IA" }]}
+        title="Guia de IA — agentes no gerenciador"
+        subtitle={<>Como Claude Code, Codex, OpenCode e outros operam o Meta Project Manager pela CLI <M>mpm</M> ou pelo servidor <M>MCP</M>.</>}>
         <div className="mpm-docs">
             <main className="mpm-docs-main">
                 <div className="mpm-docs-topichead">

@@ -4,6 +4,8 @@ import { useParams } from "react-router-dom"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
+import useLiveReload from "../Hooks/useLiveReload"
+import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import useItemFilters from "../Hooks/useItemFilters"
 import { Project, WorkItem, User, Milestone, Sprint, HORIZONS } from "../api/types"
 import AppShell from "../Components/AppShell"
@@ -47,6 +49,9 @@ const BacklogPage = () => {
             .catch((e) => setError(e.message))
     }
 
+    // Mudanças de agentes neste projeto entram na lista sem refresh.
+    useLiveReload(loadItems, { projectId })
+
     useEffect(() => {
         if (!projectId) return
         Promise.all([api.projects.get(projectId), api.users.list({}), api.planning.listMilestones(projectId), api.planning.listSprints(projectId)])
@@ -78,15 +83,18 @@ const BacklogPage = () => {
             onClose={() => setSelected(null)} onChanged={loadItems} />
         : undefined
 
-    return <AppShell active="backlog" activeProjectId={projectId}
-        activeProjectName={project ? project.name : undefined} inspector={inspector}
-        onInspectorClose={() => setSelected(null)}>
-        <div className="mpm-page-head">
-            <div className="mpm-page-head__titles">
-                <h1 className="mpm-page-title">Backlog</h1>
-                <div className="mpm-page-subtitle">{project ? project.name : ""} · priorizado por valor</div>
-            </div>
-        </div>
+    // Referências a itens (CFGEC-26…) em qualquer texto desta tela abrem o inspector.
+    return <ItemNavigatorProvider onOpenItem={setSelected}>
+        <AppShell active="backlog" activeProjectId={projectId}
+            activeProjectName={project ? project.name : undefined} inspector={inspector}
+            breadcrumb={[
+                { label: "Projetos", to: "/" },
+                { label: project ? project.name : "Projeto", to: projectId ? `/projects/${projectId}` : undefined },
+                { label: "Backlog" }
+            ]}
+            title={project ? project.name : "Projeto"}
+            subtitle="Backlog · priorizado por valor"
+            onInspectorClose={() => setSelected(null)}>
 
         <div className="mpm-card">
             <div className="mpm-row">
@@ -125,7 +133,7 @@ const BacklogPage = () => {
                         <th title="Impacto/benefício">Valor</th>
                         <th title="Tamanho estimado">Esf.</th>
                         <th title="Quão perto de ser feito">Horizonte</th>
-                        <th title="Alvo de entrega com data">Milestone</th>
+                        <th title="Alvo de entrega com data (milestone, no jargão técnico)">Entrega</th>
                         <th title="Janela de tempo (iteração)">Sprint</th>
                         <th title="Responsável">Resp.</th>
                         <th title="Comentários / anexos / progresso">Info</th>
@@ -176,7 +184,8 @@ const BacklogPage = () => {
                             </tr>
                         })}
                     </tbody></table></div>}
-    </AppShell>
+        </AppShell>
+    </ItemNavigatorProvider>
 }
 
 export default BacklogPage

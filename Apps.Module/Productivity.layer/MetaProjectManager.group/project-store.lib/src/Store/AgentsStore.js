@@ -214,9 +214,29 @@ const AgentsStore = (ctx) => {
         return { request, session }
     }
 
+    // Gate único de aprovação: se o ator é um AGENTE, a ação sensível não roda —
+    // vira um pedido pendente e a chamada lança AGENT_SESSION_CONFIRMATION_REQUIRED
+    // (a camada MCP bloqueia nesse ponto até a decisão humana). Humanos e a CLI
+    // passam direto. Chame no início do método do store que precisa de gate.
+    const GateAgentAction = async ({ actionName, type, targetId, projectId, payload = {}, risk = "normal", reason, actor } = {}) => {
+        if(!IsAgentActor(actor)) return
+        const { request } = await RequestApproval({
+            actionName, type, targetId, projectId, payload, risk,
+            resumeToken: actor.resumeToken, actor
+        })
+        throw new DomainError("AGENT_SESSION_CONFIRMATION_REQUIRED",
+            reason || `Esta ação (${actionName} ${type}) por agente requer aprovação humana.`,
+            {
+                pendingCreationId: request.id, actionName, type,
+                nextCommands: [`mpm agent creation approve ${request.id}`, `mpm agent creation reject ${request.id}`]
+            })
+    }
+
     // Retrocompat: criação estrutural = pedido com actionName "create".
-    const RequestCreation = async ({ type, payload = {}, projectId, actor } = {}) =>
-        RequestApproval({ actionName: "create", type, payload, projectId, risk: "normal", actor })
+    // resumeToken precisa atravessar: é ele que faz um retry do agente reusar o
+    // pedido pendente em vez de criar outro.
+    const RequestCreation = async ({ type, payload = {}, projectId, resumeToken, actor } = {}) =>
+        RequestApproval({ actionName: "create", type, payload, projectId, risk: "normal", resumeToken, actor })
 
     const ResolveCreationRequest = async (ref) => {
         const req = await CreationRequest.findOne({ where: { id: ref } })
@@ -266,6 +286,36 @@ const AgentsStore = (ctx) => {
 
     // Aprova um pedido pendente e EXECUTA a ação de fato (create OU delete). A execução
     // usa um actor sem `.session` para não re-disparar o gate. Falha => status "failed".
+    // Toda ação que pode ficar pendente de aprovação sabe se reexecutar aqui.
+    // Chave: `${actionName}:${type}` — o mesmo par usado ao criar o pedido.
+    const APPROVAL_EXECUTORS = {
+        "create:project":   ({ payload, actor }) => store.CreateProject({ ...payload, actor }),
+        "create:board":     ({ payload, actor }) => store.CreateBoard({ ...payload, actor }),
+        "create:milestone": ({ payload, actor }) => store.CreateMilestone({ ...payload, actor }),
+        "create:sprint":    ({ payload, actor }) => store.CreateSprint({ ...payload, actor }),
+
+        "delete:project":   ({ targetId, actor }) => store.DeleteProject({ project: targetId, actor }),
+        "delete:board":     ({ targetId, actor }) => store.DeleteBoard({ board: targetId, actor }),
+        "delete:item":      ({ targetId, actor }) => store.DeleteItem({ item: targetId, actor }),
+        "delete:work-item": ({ targetId, actor }) => store.DeleteItem({ item: targetId, actor }),
+        "delete:milestone": ({ targetId, actor }) => store.DeleteMilestone({ milestone: targetId, actor }),
+        "delete:sprint":    ({ targetId, actor }) => store.DeleteSprint({ sprint: targetId, actor }),
+        "delete:column":    ({ targetId, actor }) => store.DeleteColumn({ column: targetId, actor }),
+        "delete:checklist-item":      ({ targetId, actor }) => store.RemoveChecklistItem({ checklistItem: targetId, actor }),
+        "delete:acceptance-criteria": ({ targetId, actor }) => store.RemoveAcceptanceCriteria({ criteria: targetId, actor }),
+
+        // Reescrita de texto do projeto e mudança de ciclo de vida.
+        "update:project":   ({ payload, targetId, actor }) => store.UpdateProject({ ...payload, project: targetId, actor }),
+        "archive:project":  ({ targetId, actor }) => store.ArchiveProject({ project: targetId, actor }),
+        "restore:project":  ({ targetId, actor }) => store.RestoreProject({ project: targetId, actor }),
+
+        // Estrutura do board: colunas e board padrão.
+        "create:column":    ({ payload, actor }) => store.AddColumn({ ...payload, actor }),
+        "update:column":    ({ payload, targetId, actor }) => store.UpdateColumn({ ...payload, column: targetId, actor }),
+        "move:column":      ({ payload, targetId, actor }) => store.MoveColumn({ column: targetId, order: payload.order, actor }),
+        "set-default:board": ({ targetId, actor }) => store.SetDefaultBoard({ board: targetId, actor })
+    }
+
     const ApproveRequest = async ({ request, actor } = {}) => {
         const req = await ResolveCreationRequest(request)
         if(req.status !== "pending")
@@ -274,22 +324,15 @@ const AgentsStore = (ctx) => {
         const actionName = req.actionName || "create"
         const execActor = { source: "agent", actorSessionId: req.agentSessionId, actorUserId: actor && actor.actorUserId }
 
+        // Executor por (ação:tipo). O ator de execução NÃO tem `session`, então
+        // os gates não disparam de novo — é a decisão humana que está sendo aplicada.
+        const executor = APPROVAL_EXECUTORS[`${actionName}:${req.type}`]
+        if(!executor)
+            throw new DomainError("VALIDATION_ERROR", `Pedido não executável: ${actionName} ${req.type}.`, { actionName, type: req.type })
+
         let result
         try {
-            if(actionName === "create"){
-                if(req.type === "project") result = await store.CreateProject({ ...payload, actor: execActor })
-                else if(req.type === "board") result = await store.CreateBoard({ ...payload, actor: execActor })
-                else if(req.type === "milestone") result = await store.CreateMilestone({ ...payload, actor: execActor })
-                else if(req.type === "sprint") result = await store.CreateSprint({ ...payload, actor: execActor })
-                else throw new DomainError("VALIDATION_ERROR", `Tipo de pedido inválido: ${req.type}.`, { type: req.type })
-            } else if(actionName === "delete"){
-                if(req.type === "project") result = await store.DeleteProject({ project: req.targetId, actor: execActor })
-                else if(req.type === "board") result = await store.DeleteBoard({ board: req.targetId, actor: execActor })
-                else if(req.type === "item" || req.type === "work-item") result = await store.DeleteItem({ item: req.targetId, actor: execActor })
-                else throw new DomainError("VALIDATION_ERROR", `Alvo de delete inválido: ${req.type}.`, { type: req.type })
-            } else {
-                throw new DomainError("VALIDATION_ERROR", `Ação de pedido inválida: ${actionName}.`, { actionName })
-            }
+            result = await executor({ payload, targetId: req.targetId, actor: execActor })
         } catch(err){
             const snapshot = err && typeof err.toResponse === "function" ? err.toResponse() : { message: err && err.message }
             await req.update({ status: "failed", decidedAt: new Date(), decidedByUserId: actor && actor.actorUserId, errorSnapshot: JSON.stringify(snapshot) })
@@ -386,7 +429,7 @@ const AgentsStore = (ctx) => {
         RegisterSession, ResolveSession, ListSessions, GetSession,
         ConfirmSession, RejectSession, CloseSession,
         ResolveOrCreateSessionByIdentity, IsAgentActor, IsAgentCreation,
-        RequestApproval, RequestCreation,
+        RequestApproval, RequestCreation, GateAgentAction,
         ApproveRequest, ApproveCreation, RejectRequest, RejectCreation,
         WaitForApproval, DescribeCreationRequest, DescribeDeletionImpact,
         ListCreationRequests
