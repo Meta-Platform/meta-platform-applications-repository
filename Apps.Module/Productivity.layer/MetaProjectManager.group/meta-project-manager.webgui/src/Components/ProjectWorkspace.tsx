@@ -15,8 +15,19 @@ import WorkItemInspector from "./WorkItemInspector"
 import NewItemModal from "./NewItemModal"
 import ItemFilterBar from "./ItemFilterBar"
 import BulkActionBar from "./BulkActionBar"
+import ConfirmActionModal from "./ConfirmActionModal"
 import downloadJson from "../Utils/downloadJson"
 import { Loading, EmptyState, ErrorBanner } from "./Primitives"
+
+// Config de uma confirmação pendente (um único ConfirmActionModal por workspace).
+interface PendingConfirm {
+    title: string
+    message?: React.ReactNode
+    consequences?: React.ReactNode[]
+    confirmLabel?: string
+    danger?: boolean
+    run: () => Promise<any>
+}
 
 type ViewMode = "board" | "list"
 
@@ -44,6 +55,8 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
     const [view, setView] = useState<ViewMode>(initialView)
     const [selected, setSelected] = useState<string | null>(null)
     const [selectedIds, setSelectedIds] = useState<string[]>([])
+    const [confirm, setConfirm] = useState<PendingConfirm | null>(null)
+    const [confirmBusy, setConfirmBusy] = useState(false)
     const [quickAddStatus, setQuickAddStatus] = useState<string | null>(null)
     const [quickAddOpen, setQuickAddOpen] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -175,11 +188,25 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
         try { await api.boards.updateColumn(board.id, columnId, { name }); await reloadBoard() }
         catch (e: any) { setError(e.message) }
     }
-    const deleteColumn = async (columnId: string) => {
+    const deleteColumn = (columnId: string) => {
         if (!board) return
-        if (typeof window !== "undefined" && !window.confirm("Excluir esta coluna?")) return
-        try { await api.boards.deleteColumn(board.id, columnId); await reloadBoard() }
+        const col = (board.columns || []).find((c) => c.id === columnId)
+        setConfirm({
+            title: "Excluir coluna", danger: true,
+            message: <>Excluir a coluna <strong>{col ? col.name : ""}</strong> deste board?</>,
+            consequences: [<>Os itens nesta coluna não são removidos; apenas deixam de ter uma coluna correspondente.</>],
+            confirmLabel: "Excluir coluna",
+            run: async () => { await api.boards.deleteColumn(board.id, columnId); await reloadBoard() }
+        })
+    }
+
+    // Executa a ação confirmada (fecha o modal em sucesso; mantém aberto no erro).
+    const runConfirm = async () => {
+        if (!confirm) return
+        setConfirmBusy(true); setError(null)
+        try { await confirm.run(); setConfirm(null) }
         catch (e: any) { setError(e.message) }
+        finally { setConfirmBusy(false) }
     }
 
     // Feature 5: reordenar dentro da coluna (ReorderItem com o novo índice).
@@ -261,7 +288,13 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
                 onSetHorizon={(h) => bulk((id) => api.items.update(id, { horizon: h }))}
                 onSetMilestone={(m) => bulk((id) => api.planning.assignItemPlanning(id, { milestone: m }))}
                 onSetSprint={(s) => bulk((id) => api.planning.assignItemPlanning(id, { sprint: s }))}
-                onDelete={() => { if (typeof window === "undefined" || window.confirm(`Excluir ${selectedIds.length} item(ns)?`)) bulk((id) => api.items.remove(id)) }}
+                onDelete={() => setConfirm({
+                    title: "Excluir itens", danger: true,
+                    message: <>Excluir <strong>{selectedIds.length}</strong> item(ns) selecionado(s)?</>,
+                    consequences: [<>Soft delete: os itens somem das listagens (reversível por um administrador).</>],
+                    confirmLabel: `Excluir ${selectedIds.length} item(ns)`,
+                    run: () => bulk((id) => api.items.remove(id))
+                })}
                 onClear={clearSelection} />
             : null}
 
@@ -309,6 +342,19 @@ const ProjectWorkspace = ({ initialView }: ProjectWorkspaceProps) => {
                 defaultStatus={quickAddStatus || undefined}
                 onClose={() => setQuickAddOpen(false)}
                 onCreated={() => { setQuickAddOpen(false); loadItems() }} />
+            : null}
+
+        {confirm
+            ? <ConfirmActionModal
+                title={confirm.title}
+                message={confirm.message}
+                consequences={confirm.consequences}
+                confirmLabel={confirm.confirmLabel}
+                danger={confirm.danger}
+                busy={confirmBusy}
+                error={error}
+                onConfirm={runConfirm}
+                onCancel={() => setConfirm(null)} />
             : null}
     </AppShell>
 }

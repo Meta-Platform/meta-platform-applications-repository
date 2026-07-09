@@ -13,6 +13,7 @@ const UsersStore      = require("./Store/UsersStore")
 const AgentsStore     = require("./Store/AgentsStore")
 const ReportsStore    = require("./Store/ReportsStore")
 const PlanningStore   = require("./Store/PlanningStore")
+const ActivityStore   = require("./Store/ActivityStore")
 const ImportExport    = require("./Store/ImportExportStore")
 
 /**
@@ -46,9 +47,51 @@ const InitializeProjectStore = (options = {}) => {
         // CLI e webapp acessam o mesmo arquivo. WAL melhora leitura concorrente.
         await sequelize.query("PRAGMA busy_timeout = 8000")
         await sequelize.query("PRAGMA journal_mode = WAL")
+        // ORDEM IMPORTA: as colunas novas precisam existir ANTES do sync(), porque
+        // o sync() cria os ÍNDICES novos (ex.: creation_requests.actionName) e falha
+        // com "no such column" se a coluna ainda não foi adicionada. Em banco novo os
+        // ALTERs falham (tabela inexistente) e são ignorados — o sync() cria tudo.
+        await MigrateAddedColumns()
         // sync() cria tabelas/índices faltantes (rápido). alter:true recriava as
         // tabelas a cada startup (lento + lock), então só migramos sob demanda.
         await sequelize.sync()
+        // Usuário automático do desktop (idempotente).
+        await store.EnsureDesktopUser()
+    }
+
+    // sync() só CRIA tabelas faltantes — não adiciona colunas a tabelas existentes.
+    // Aqui aplicamos ALTER TABLE ADD COLUMN de forma idempotente (ignora "duplicate"
+    // e "no such table" em bancos novos).
+    const ADDED_COLUMNS = [
+        ["projects",          "shortDescription", "VARCHAR(255)"],
+        ["boards",            "shortDescription", "VARCHAR(255)"],
+        ["milestones",        "shortDescription", "VARCHAR(255)"],
+        ["sprints",           "shortDescription", "VARCHAR(255)"],
+        ["users",             "permissionsJson",  "TEXT"],
+        ["audit_events",      "actorType",        "VARCHAR(255)"],
+        ["audit_events",      "provider",         "VARCHAR(255)"],
+        ["audit_events",      "model",            "VARCHAR(255)"],
+        ["audit_events",      "traceId",          "VARCHAR(255)"],
+        ["audit_events",      "beforeJson",       "TEXT"],
+        ["audit_events",      "afterJson",        "TEXT"],
+        ["creation_requests", "actionName",       "VARCHAR(255) NOT NULL DEFAULT 'create'"],
+        ["creation_requests", "targetType",       "VARCHAR(255)"],
+        ["creation_requests", "targetId",         "VARCHAR(255)"],
+        ["creation_requests", "risk",             "VARCHAR(255) NOT NULL DEFAULT 'normal'"],
+        ["creation_requests", "provider",         "VARCHAR(255)"],
+        ["creation_requests", "model",            "VARCHAR(255)"],
+        ["creation_requests", "traceId",          "VARCHAR(255)"],
+        ["creation_requests", "resumeToken",      "VARCHAR(255)"],
+        ["creation_requests", "resultSnapshot",   "TEXT"],
+        ["creation_requests", "errorSnapshot",    "TEXT"],
+        ["creation_requests", "rejectionReason",  "VARCHAR(255)"],
+        ["creation_requests", "executedAt",       "DATETIME"]
+    ]
+    const MigrateAddedColumns = async () => {
+        for(const [table, column, type] of ADDED_COLUMNS){
+            try { await sequelize.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${type}`) }
+            catch(e){ /* coluna já existe (ou tabela recém-criada pelo sync) — ignora */ }
+        }
     }
 
     // Emissor de eventos realtime; noop se não houver onEvent.
@@ -68,12 +111,17 @@ const InitializeProjectStore = (options = {}) => {
         return { key, value }
     }
 
-    const { WriteAudit, ListActivity } = AuditStore({ models })
+    const { WriteAudit, MakeListActivity, GetAuditEvent } = AuditStore({ models })
     const writeAudit = async (entry) => {
         const event = await WriteAudit(entry)
         emit("audit.created", event)
         return event
     }
+    // ListActivity precisa do gate de permissão global, que vive no UsersStore —
+    // por isso é montado depois, referenciando `store` já povoado.
+    const ListActivity = MakeListActivity({
+        assertGlobalActivityAccess: (args) => store.AssertGlobalActivityAccess(args)
+    })
 
     // Store montado incrementalmente para permitir referências cruzadas
     // (ex.: WorkItems -> ResolveProject/ResolveUser/ResolveBoard).
@@ -90,8 +138,11 @@ const InitializeProjectStore = (options = {}) => {
         AgentsStore(ctx),
         ReportsStore(ctx),
         PlanningStore(ctx),
-        { ListActivity, GetAppState, SetAppState },
+        { ListActivity, GetAuditEvent, GetAppState, SetAppState },
     )
+    // ActivityStore depende de resolvers (item/board/sprint/milestone/projeto) e
+    // de EnsureDesktopUser — por isso entra depois do Object.assign acima.
+    Object.assign(store, ActivityStore(ctx))
     Object.assign(store, ImportExport(ctx))
 
     return store

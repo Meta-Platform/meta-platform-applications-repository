@@ -12,9 +12,9 @@ boards, tarefas, comentários e anexos **nativamente por tools MCP** — em vez 
 > `meta-project-manager-mcp`.
 
 É um **adaptador fino** sobre a mesma camada de domínio `@/project-store.lib`
-usada pela CLI e pela GUI: as validações, o **gate de aprovação humana** para
-criação estrutural e a **auditoria** vivem na lib. Este pacote só traduz tools
-MCP ↔ métodos da store.
+usada pela CLI e pela GUI: as validações, o **gate de aprovação humana** (criação
+estrutural **e** remoção), o **soft delete**, as **permissões** e a **auditoria com
+diff** vivem na lib. Este pacote só traduz tools MCP ↔ métodos da store.
 
 ## Por que hand-rolled (zero dependências)
 
@@ -73,7 +73,17 @@ Garanta o executável no `PATH` da sessão (ou use o caminho completo).
 **Planejar (gate — exige aprovação humana):** `create_project`, `create_board`,
 `create_milestone`, `create_sprint`. Retornam
 `{ ok:false, code:"AGENT_SESSION_CONFIRMATION_REQUIRED", details:{ pendingCreationId } }`
-— avise o humano e aguarde `mpm agent creation approve <id>`.
+— avise o humano e aguarde `mpm agent creation approve <id>`. `create_project`/`create_board`
+aceitam `shortDescription` (resumo `<=240` chars, usado em cards/listas/busca).
+
+**Remover (gate destrutivo — SOFT delete + espera):** `delete_project`, `delete_board`,
+`delete_item`. Cada tool cria um pedido destrutivo e, por padrão (`waitApproval:true`),
+**BLOQUEIA** aguardando a decisão humana; aprovado ⇒ executa um **SOFT delete** (`deletedAt`,
+reversível) e retorna o resultado; rejeitado/timeout ⇒
+`{ ok:false, code:"REJECTED_BY_HUMAN" | "APPROVAL_TIMEOUT" | "APPROVAL_EXECUTION_FAILED" }`.
+`waitApproval:false` retorna o `approvalRequestId` sem esperar; `approvalTimeoutSeconds` limita
+a espera. A interface humana mostra **O QUE** será removido (impacto em cascata) e **QUEM**
+pediu (provider/modelo/sessão). Não tente burlar o gate.
 
 **Executar (livre):** `create_item`, `add_to_inbox`, `list_items`, `get_item`,
 `update_item`, `set_item_status`, `assign_item`, `move_item_to_board`,
@@ -82,16 +92,26 @@ Garanta o executável no `PATH` da sessão (ou use o caminho completo).
 **Interagir:** `add_comment`, `list_comments`, `add_link_attachment`,
 `add_file_attachment`.
 
+**Anotar contexto:** `add_activity_note` (anotação num escopo
+`project|board|sprint|milestone|item`, distinta de `add_comment`), `list_activity_notes`
+(lê anotações do escopo — inclusive as do `usuario-desktop`), `get_activity_context`
+(notas humanas recentes + auditoria recente, para se situar antes de agir).
+
 **Acompanhar:** `list_projects`, `get_project`, `list_boards`, `project_status`,
-`roadmap`, `list_activity`.
+`roadmap`, `list_activity`, `list_audit_events`, `get_audit_event`.
+
+**Auditoria:** `list_activity` / `list_audit_events` filtram por ação, `actorType`, `source`,
+`provider`, `model` e período; `get_audit_event` traz o diff **antes→depois**. Consulta
+**GLOBAL** (sem `project`) exige a permissão `activity:read:all_projects` — sem ela retorna
+`FORBIDDEN`. Informe um `project` ou peça a permissão a um humano.
 
 **Descobrir / decidir:** `search_items` (busca em TODOS os projetos),
 `list_milestones`, `list_sprints`, `report_blocked`, `report_overdue` — para
 decidir entre criar novo e atualizar existente e ver conflitos.
 
-> Aprovar/rejeitar pedidos de criação e confirmar sessões **não** são tools MCP:
-> são ações **humanas** (na GUI ou pela CLI `mpm`). Deleção física também fica
-> fora do MCP.
+> Aprovar/rejeitar pedidos e confirmar sessões **não** são tools MCP: são ações
+> **humanas** (na GUI ou pela CLI `mpm`) — se o agente pudesse se autoaprovar, o gate
+> não teria sentido. A **deleção** é exposta, mas **sempre** sob gate e como soft delete.
 
 ## Instalar / atualizar (provisionamento local)
 

@@ -16,10 +16,13 @@ const AgentsController = (params) => {
     const RejectAgentSession = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "sessionId"); return store.RejectSession({ session: id, actor: { source: "api" } }) })
     const CloseAgentSession = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "sessionId"); return store.CloseSession({ session: id, actor: { source: "api" } }) })
 
-    // Pedidos de criação (projeto/board) feitos por agentes (gate de criação).
-    const ListCreationRequests = async (p = {}) => Guard(async () => { await ctx.ready; return store.ListCreationRequests({ type: p.type, status: p.status }) })
-    const ApproveCreation = async (p = {}) => Guard(async () => { await ctx.ready; return store.ApproveCreation({ request: p.requestId, actor: Actor(p) }) })
-    const RejectCreation = async (p = {}) => Guard(async () => { await ctx.ready; return store.RejectCreation({ request: p.requestId, actor: Actor(p) }) })
+    // Pedidos de aprovação (criação/remoção) feitos por agentes (gate de agente).
+    // A listagem já vem enriquecida com "who" (provider/modelo/sessão) e, para delete,
+    // "impact" (o QUE será afetado) — é o que o modal global de aprovação exibe.
+    const ListCreationRequests = async (p = {}) => Guard(async () => { await ctx.ready; return store.ListCreationRequests({ type: p.type, actionName: p.actionName, status: p.status }) })
+    const GetCreationRequest = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "requestId"); return store.DescribeCreationRequest({ request: id }) })
+    const ApproveCreation = async (p = {}) => Guard(async () => { await ctx.ready; return store.ApproveRequest({ request: p.requestId, actor: Actor(p) }) })
+    const RejectCreation = async (p = {}) => Guard(async () => { await ctx.ready; return store.RejectRequest({ request: p.requestId, reason: p.reason, actor: Actor(p) }) })
 
     return {
         controllerName: "AgentsController",
@@ -33,6 +36,7 @@ const AgentsController = (params) => {
         RejectAgentSession,
         CloseAgentSession,
         ListCreationRequests,
+        GetCreationRequest,
         ApproveCreation,
         RejectCreation
     }

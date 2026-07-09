@@ -9,6 +9,8 @@ import UsersPage   from "../Pages/Users.page"
 import AgentsPage  from "../Pages/Agents.page"
 import ReportsPage from "../Pages/Reports.page"
 import AgentGuidePage from "../Pages/AgentGuide.page"
+import GlossaryPage from "../Pages/Glossary.page"
+import AuditPage from "../Pages/Audit.page"
 
 export default {
     HomePage,
@@ -21,5 +23,7 @@ export default {
     UsersPage,
     AgentsPage,
     ReportsPage,
-    AgentGuidePage
+    AgentGuidePage,
+    GlossaryPage,
+    AuditPage
 }

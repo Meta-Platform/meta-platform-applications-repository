@@ -8,6 +8,7 @@ import { Project, Milestone, Sprint, WorkItem, User, HorizonBoard as HorizonBoar
 import AppShell from "../Components/AppShell"
 import MilestoneModal from "../Components/MilestoneModal"
 import SprintModal from "../Components/SprintModal"
+import ConfirmActionModal from "../Components/ConfirmActionModal"
 import HorizonBoard from "../Components/HorizonBoard"
 import WorkItemInspector from "../Components/WorkItemInspector"
 import { Progress, StatusChip, Loading, EmptyState, ErrorBanner } from "../Components/Primitives"
@@ -38,6 +39,8 @@ const RoadmapPage = () => {
 
     const [msModal, setMsModal] = useState<{ open: boolean; milestone?: Milestone }>({ open: false })
     const [spModal, setSpModal] = useState<{ open: boolean; sprint?: Sprint }>({ open: false })
+    const [pendingDelete, setPendingDelete] = useState<{ kind: "milestone" | "sprint"; id: string; name: string } | null>(null)
+    const [deleting, setDeleting] = useState(false)
 
     const usersById: { [id: string]: User } = {}
     users.forEach((u) => { usersById[u.id] = u })
@@ -81,13 +84,14 @@ const RoadmapPage = () => {
                 .catch(() => {})
     }
 
-    const removeMilestone = async (m: Milestone) => {
-        if (typeof window !== "undefined" && !window.confirm(`Excluir o milestone "${m.name}"?`)) return
-        try { await api.planning.deleteMilestone(m.id); await load() } catch (e: any) { setError(e.message) }
-    }
-    const removeSprint = async (s: Sprint) => {
-        if (typeof window !== "undefined" && !window.confirm(`Excluir o sprint "${s.name}"?`)) return
-        try { await api.planning.deleteSprint(s.id); await load() } catch (e: any) { setError(e.message) }
+    const doDelete = async () => {
+        if (!pendingDelete) return
+        setDeleting(true); setError(null)
+        try {
+            if (pendingDelete.kind === "milestone") await api.planning.deleteMilestone(pendingDelete.id)
+            else await api.planning.deleteSprint(pendingDelete.id)
+            await load(); setPendingDelete(null)
+        } catch (e: any) { setError(e.message) } finally { setDeleting(false) }
     }
 
     const inspector = selected
@@ -105,11 +109,11 @@ const RoadmapPage = () => {
             </div>
             <div className="mpm-page-head__actions">
                 <div className="mpm-seg">
-                    <button className={`mpm-seg__btn ${mode === "date" ? "is-active" : ""}`} onClick={() => setMode("date")}><Icon name="calendar" /> Por data</button>
-                    <button className={`mpm-seg__btn ${mode === "horizon" ? "is-active" : ""}`} onClick={() => setMode("horizon")}><Icon name="align left" /> Por horizonte</button>
+                    <button className={`mpm-seg__btn ${mode === "date" ? "is-active" : ""}`} title="Timeline de milestones ordenada por data-alvo" onClick={() => setMode("date")}><Icon name="calendar" /> Por data</button>
+                    <button className={`mpm-seg__btn ${mode === "horizon" ? "is-active" : ""}`} title="Itens agrupados por horizonte (now/next/later/maybe)" onClick={() => setMode("horizon")}><Icon name="align left" /> Por horizonte</button>
                 </div>
-                <button className="mpm-btn" onClick={() => setSpModal({ open: true })}><Icon name="rocket" /> Novo Sprint</button>
-                <button className="mpm-btn mpm-btn--primary" onClick={() => setMsModal({ open: true })}><Icon name="flag" /> Novo Milestone</button>
+                <button className="mpm-btn" title="Sprint: janela de tempo fixa (iteração) com um objetivo" onClick={() => setSpModal({ open: true })}><Icon name="rocket" /> Novo Sprint</button>
+                <button className="mpm-btn mpm-btn--primary" title="Milestone: alvo de entrega com data-alvo" onClick={() => setMsModal({ open: true })}><Icon name="flag" /> Novo Milestone</button>
             </div>
         </div>
 
@@ -136,7 +140,7 @@ const RoadmapPage = () => {
                                         <StatusChip status={m.status} />
                                         {m.targetDate ? <span className="mpm-chip mpm-chip--info"><Icon name="calendar" /> {formatDate(m.targetDate)}</span> : null}
                                         <Icon name="pencil" link className="mpm-muted" onClick={() => setMsModal({ open: true, milestone: m })} />
-                                        <Icon name="trash" link className="mpm-muted" onClick={() => removeMilestone(m)} />
+                                        <Icon name="trash" link className="mpm-muted" onClick={() => setPendingDelete({ kind: "milestone", id: m.id, name: m.name })} />
                                     </div>
                                     <div className="mpm-row">
                                         <div style={{ flex: 1 }}><Progress value={progress} /></div>
@@ -180,7 +184,7 @@ const RoadmapPage = () => {
                                         <td style={{ minWidth: 120 }}><Progress value={progress} /><span className="mpm-mono mpm-muted">{progress}%</span></td>
                                         <td><span className="mpm-row">
                                             <Icon name="pencil" link className="mpm-muted" onClick={() => setSpModal({ open: true, sprint: s })} />
-                                            <Icon name="trash" link className="mpm-muted" onClick={() => removeSprint(s)} />
+                                            <Icon name="trash" link className="mpm-muted" onClick={() => setPendingDelete({ kind: "sprint", id: s.id, name: s.name })} />
                                         </span></td>
                                     </tr>
                                 })}
@@ -197,6 +201,19 @@ const RoadmapPage = () => {
             ? <SprintModal projectId={projectId} sprint={spModal.sprint}
                 onClose={() => setSpModal({ open: false })}
                 onSaved={() => { setSpModal({ open: false }); load() }} />
+            : null}
+
+        {pendingDelete
+            ? <ConfirmActionModal
+                title={pendingDelete.kind === "milestone" ? "Excluir milestone" : "Excluir sprint"}
+                danger
+                message={<>Excluir {pendingDelete.kind === "milestone" ? "o milestone" : "o sprint"} <strong>{pendingDelete.name}</strong>?</>}
+                consequences={[<>Os itens vinculados são preservados, apenas perdem este vínculo de planejamento.</>]}
+                confirmLabel="Excluir"
+                busy={deleting}
+                error={error}
+                onConfirm={doDelete}
+                onCancel={() => setPendingDelete(null)} />
             : null}
     </AppShell>
 }

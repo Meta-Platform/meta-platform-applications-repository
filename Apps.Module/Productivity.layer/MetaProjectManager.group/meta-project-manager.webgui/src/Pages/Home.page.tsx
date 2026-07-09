@@ -12,6 +12,15 @@ import { initials, plainText } from "../Utils/format"
 
 const STATUS_FILTERS = ["all", "planning", "candidate", "active", "paused", "completed", "archived"]
 
+// Resumo do card: usa shortDescription; se ausente, gera um fallback VISUAL truncado
+// a partir da description (o fallback nunca é gravado como dado do usuário).
+const cardSummary = (p: Project): string => {
+    if (p.shortDescription) return p.shortDescription
+    if (!p.description) return "sem descrição"
+    const text = plainText(p.description)
+    return text.length > 180 ? `${text.slice(0, 180).trimEnd()}…` : text
+}
+
 // HomePage (spec §11): grade de projetos com filtro por status.
 const HomePage = () => {
     const api = useApi()
@@ -22,7 +31,7 @@ const HomePage = () => {
     const [creating, setCreating] = useState(false)
     const [importing, setImporting] = useState(false)
 
-    const load = () => api.projects.list({})
+    const load = () => api.projects.list({ includeCounts: "1" })
         .then((l) => setProjects(l || []))
         .catch((e) => setError(e.message))
 
@@ -81,18 +90,30 @@ const HomePage = () => {
                     action={<button className="mpm-btn mpm-btn--primary" onClick={() => setCreating(true)}><Icon name="plus" /> Novo Projeto</button>} />
                 : <div className="mpm-grid-cards">
                     {shown.map((p) =>
-                        <div key={p.id} className="mpm-card mpm-project-card" onClick={() => navigate(`/projects/${p.id}`)}>
+                        <div key={p.id} className="mpm-card mpm-project-card"
+                            title={p.shortDescription || p.name}
+                            onClick={() => navigate(`/projects/${p.id}`)}>
                             <div className="mpm-project-card__head">
                                 <span className="mpm-project-card__icon" style={p.color ? { background: p.color } : undefined}>
                                     {p.icon || initials(p.name)}
                                 </span>
                                 <div style={{ minWidth: 0 }}>
-                                    <div className="mpm-project-card__name">{p.name}</div>
-                                    <div className="mpm-project-card__key">{p.keyPrefix}</div>
+                                    <div className="mpm-project-card__name" title={p.name}>{p.name}</div>
+                                    <div className="mpm-project-card__key">{p.keyPrefix} · {p.slug}</div>
                                 </div>
                             </div>
-                            <div className="mpm-project-card__desc">{p.description ? plainText(p.description) : "sem descrição"}</div>
-                            <div className="mpm-row"><StatusChip status={p.status} /></div>
+                            <div className="mpm-project-card__desc">{cardSummary(p)}</div>
+                            <div className="mpm-project-card__foot">
+                                <StatusChip status={p.status} />
+                                {p.counts
+                                    ? <span className="mpm-project-card__counts" title="boards · itens · concluídos · bloqueados">
+                                        <span><b>{p.counts.boards}</b> bd</span>
+                                        <span><b>{p.counts.items}</b> it</span>
+                                        <span><b>{p.counts.done}</b> ok</span>
+                                        {p.counts.blocked > 0 ? <span style={{ color: "var(--mp-danger)" }}><b>{p.counts.blocked}</b> blk</span> : null}
+                                    </span>
+                                    : null}
+                            </div>
                         </div>)}
                 </div>}
 

@@ -10,5 +10,7 @@
     { "path": "/users",                            "page": "UsersPage" },
     { "path": "/agents",                           "page": "AgentsPage" },
     { "path": "/reports",                          "page": "ReportsPage" },
-    { "path": "/guide",                            "page": "AgentGuidePage" }
+    { "path": "/guide",                            "page": "AgentGuidePage" },
+    { "path": "/glossary",                         "page": "GlossaryPage" },
+    { "path": "/audit",                            "page": "AuditPage" }
 ]

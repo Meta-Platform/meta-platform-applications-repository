@@ -71,9 +71,38 @@ const RequireConfirm = (args) => {
     }
 }
 
+// Erro simples com código estável (formatado por Fail).
+const CliError = (code, message, details) => Object.assign(new Error(message), { code, details })
+
+// O agente espera a decisão humana por padrão (--wait). --no-wait retoma o comportamento
+// antigo (retorna pendingCreationId e sai). Aplicável só quando o actor é agente.
+const ShouldWaitApproval = (args) => args.wait !== false && !args.noWait
+
+// Timeout de espera em ms a partir de --approval-timeout <segundos>; 0 = sem timeout.
+const ResolveApprovalTimeoutMs = (args) => {
+    const s = Number(args.approvalTimeout)
+    return Number.isFinite(s) && s > 0 ? s * 1000 : 0
+}
+
+// Quando o gate de agente dispara, aguarda (polling do SQLite) a decisão humana e
+// retoma: sucesso -> resultado da ação; rejeição/timeout/falha -> erro estruturado.
+const WaitAndResume = async ({ store, args, gateError, human }) => {
+    const requestId = gateError.details && gateError.details.pendingCreationId
+    const final = await store.WaitForApproval({ request: requestId, timeoutMs: ResolveApprovalTimeoutMs(args) })
+    if(final.timedOut)
+        return Fail(args, CliError("APPROVAL_TIMEOUT", "Tempo de espera pela aprovação esgotado.", { approvalRequestId: requestId, status: "pending" }))
+    if(final.status === "rejected")
+        return Fail(args, CliError("REJECTED_BY_HUMAN", final.rejectionReason || "Pedido rejeitado por um humano.", { approvalRequestId: requestId, reason: final.rejectionReason }))
+    if(final.status === "failed")
+        return Fail(args, CliError("APPROVAL_EXECUTION_FAILED", (final.error && final.error.message) || "Falha ao executar a ação aprovada.", { approvalRequestId: requestId, error: final.error }))
+    return Ok(args, final.result, human)
+}
+
 // Envelope padrão: inicializa store, monta actor, executa e formata saída/erro.
 // businessFn recebe { store, actor, args } e retorna os dados (ou lança DomainError).
 // opts.destructive => exige --confirm e respeita --dry-run.
+// Se businessFn dispara o gate de agente (AGENT_SESSION_CONFIRMATION_REQUIRED) e o
+// actor é agente com --wait (default), o comando BLOQUEIA até a decisão humana e retoma.
 const Command = (businessFn, opts = {}) => async ({ args, startupParams, params }) => {
     try {
         const store = await InitStore({ startupParams, params })
@@ -82,8 +111,14 @@ const Command = (businessFn, opts = {}) => async ({ args, startupParams, params 
             if(args.dryRun) return Ok(args, { dryRun: true, message: "Nenhuma alteração aplicada (--dry-run)." })
             RequireConfirm(args)
         }
-        const data = await businessFn({ store, actor, args })
-        return Ok(args, data, opts.human)
+        try {
+            const data = await businessFn({ store, actor, args })
+            return Ok(args, data, opts.human)
+        } catch(e){
+            if(e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && actor.source === "agent" && ShouldWaitApproval(args))
+                return await WaitAndResume({ store, args, gateError: e, human: opts.human })
+            throw e
+        }
     } catch(e){
         return Fail(args, e)
     }

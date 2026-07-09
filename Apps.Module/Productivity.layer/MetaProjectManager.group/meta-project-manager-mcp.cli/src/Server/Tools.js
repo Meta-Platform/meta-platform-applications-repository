@@ -6,9 +6,13 @@
 // estrutural (project/board/milestone/sprint).
 //
 // Deliberadamente NÃO expostas ao agente:
-//  - aprovar/rejeitar pedido de criação e confirmar sessão → são ações HUMANAS
-//    (se o agente pudesse se autoaprovar, o gate não teria sentido);
-//  - deleção física (project/board/item delete) → fica na GUI/CLI humana.
+//  - aprovar/rejeitar pedido e confirmar sessão → são ações HUMANAS (se o agente
+//    pudesse se autoaprovar, o gate não teria sentido).
+//
+// Deleção (project/board/item): EXPOSTA, porém SEMPRE via gate — a tool cria um
+// pedido destrutivo e, por padrão (waitApproval), BLOQUEIA aguardando a decisão
+// humana; ao aprovar, o store executa um SOFT delete (deletedAt, reversível). A
+// espera não polui o stdout (respostas JSON-RPC só saem no fim; logs vão p/ stderr).
 
 // Helpers de JSON Schema (enxutos, só o que as tools usam).
 const S = {
@@ -28,6 +32,40 @@ const BuildTools = ({ store, actor }) => {
     // Anexa o ator do agente ao payload de uma mutação.
     const A = (payload) => ({ ...payload, actor })
 
+    // Erro de domínio para a camada MCP (formatado como { ok:false, code, ... }).
+    const McpError = (code, message, details) => Object.assign(new Error(message), { code, details })
+
+    // Executa uma AÇÃO GATED (delete). O gate transforma a chamada num pedido pendente;
+    // se waitApproval (default true), BLOQUEIA (polling do SQLite via WaitForApproval) até
+    // a decisão humana e retorna o resultado da ação. Se rejeitado/expirado, erro estruturado.
+    // resumeToken (derivado do alvo) dá idempotência: retries não duplicam o pendente.
+    const GatedDelete = async ({ type, ref, run, waitApproval = true, approvalTimeoutSeconds }) => {
+        const resumeToken = `delete:${type}:${ref}`
+        try {
+            return await run({ ...actor, resumeToken }) // caminho não-gated (não esperado p/ agente)
+        } catch(e){
+            if(e.code !== "AGENT_SESSION_CONFIRMATION_REQUIRED") throw e
+            const requestId = e.details && e.details.pendingCreationId
+            if(waitApproval === false)
+                return { status: "pending_approval", approvalRequestId: requestId, actionName: "delete", type, message: "Aguardando aprovação humana. Consulte o humano ou reenvie com waitApproval para bloquear." }
+            const timeoutMs = Number(approvalTimeoutSeconds) > 0 ? Number(approvalTimeoutSeconds) * 1000 : 0
+            const final = await store.WaitForApproval({ request: requestId, timeoutMs })
+            if(final.timedOut) throw McpError("APPROVAL_TIMEOUT", "Tempo de espera pela aprovação esgotado.", { approvalRequestId: requestId })
+            if(final.status === "rejected") throw McpError("REJECTED_BY_HUMAN", final.rejectionReason || "Remoção rejeitada por um humano.", { approvalRequestId: requestId, reason: final.rejectionReason })
+            if(final.status === "failed") throw McpError("APPROVAL_EXECUTION_FAILED", (final.error && final.error.message) || "Falha ao executar a remoção aprovada.", { approvalRequestId: requestId })
+            return final.result
+        }
+    }
+
+    // Schema comum das tools de delete: alvo + controle de espera.
+    const DeleteSchema = (targetKey, targetDesc) => Obj({
+        [targetKey]: S.str(targetDesc),
+        waitApproval: S.bool("Aguardar a aprovação humana e retomar (padrão true). false retorna o approvalRequestId sem esperar."),
+        approvalTimeoutSeconds: S.num("Timeout da espera em segundos (0/omitido = sem timeout)")
+    }, [targetKey])
+
+    const DeleteDesc = (alvo) => `Remove (SOFT delete) ${alvo}. AÇÃO DESTRUTIVA sob gate: cria um pedido e AGUARDA aprovação humana (a interface mostra O QUE será removido e QUEM pediu). Aprovado → executa e retorna o resultado; rejeitado → { ok:false, code:"REJECTED_BY_HUMAN" }. NÃO tente burlar o gate.`
+
     return [
         // ───────────── Planejar (criação estrutural — GATE de aprovação humana) ─────────────
         {
@@ -36,13 +74,14 @@ const BuildTools = ({ store, actor }) => {
             inputSchema: Obj({
                 name: S.str("Nome do projeto"),
                 slug: S.str("Slug único (opcional; derivado do nome se ausente)"),
+                shortDescription: S.str("Descrição curta (<=240 chars) — usada em cards, listas e busca"),
                 description: S.str("Descrição (markdown)"),
                 keyPrefix: S.str("Prefixo das keys dos itens (ex.: MPM)"),
                 status: S.enum(["planning","candidate","active","paused","completed","archived"], "Status inicial"),
                 repositoryUrl: S.str("URL do repositório"),
                 localPath: S.str("Caminho local do projeto")
             }, ["name"]),
-            handler: (i) => store.CreateProject(A({ name: i.name, slug: i.slug, description: i.description, keyPrefix: i.keyPrefix, status: i.status, repositoryUrl: i.repositoryUrl, localPath: i.localPath }))
+            handler: (i) => store.CreateProject(A({ name: i.name, slug: i.slug, shortDescription: i.shortDescription, description: i.description, keyPrefix: i.keyPrefix, status: i.status, repositoryUrl: i.repositoryUrl, localPath: i.localPath }))
         },
         {
             name: "create_board",
@@ -50,11 +89,12 @@ const BuildTools = ({ store, actor }) => {
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"),
                 name: S.str("Nome do board"),
+                shortDescription: S.str("Descrição curta (<=240 chars)"),
                 description: S.str("Descrição"),
                 type: S.str("Tipo do board (ex.: kanban)"),
                 setDefault: S.bool("Tornar board padrão do projeto")
             }, ["project","name"]),
-            handler: (i) => store.CreateBoard(A({ project: i.project, name: i.name, description: i.description, type: i.type, setDefault: i.setDefault }))
+            handler: (i) => store.CreateBoard(A({ project: i.project, name: i.name, shortDescription: i.shortDescription, description: i.description, type: i.type, setDefault: i.setDefault }))
         },
         {
             name: "create_milestone",
@@ -78,6 +118,29 @@ const BuildTools = ({ store, actor }) => {
                 endDate: S.str("Fim (ISO)")
             }, ["project","name"]),
             handler: (i) => store.CreateSprint(A({ project: i.project, name: i.name, goal: i.goal, startDate: i.startDate, endDate: i.endDate }))
+        },
+
+        // ───────────── Remover (SOFT delete — GATE destrutivo + espera) ─────────────
+        {
+            name: "delete_project",
+            description: DeleteDesc("um projeto"),
+            inputSchema: DeleteSchema("project", "Projeto (id|slug|key)"),
+            handler: (i) => GatedDelete({ type: "project", ref: i.project, waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (a) => store.DeleteProject({ project: i.project, actor: a }) })
+        },
+        {
+            name: "delete_board",
+            description: DeleteDesc("um board"),
+            inputSchema: DeleteSchema("board", "Board (id)"),
+            handler: (i) => GatedDelete({ type: "board", ref: i.board, waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (a) => store.DeleteBoard({ board: i.board, actor: a }) })
+        },
+        {
+            name: "delete_item",
+            description: DeleteDesc("um item de trabalho"),
+            inputSchema: DeleteSchema("item", "Item (id|key, ex.: MPM-42)"),
+            handler: (i) => GatedDelete({ type: "item", ref: i.item, waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (a) => store.DeleteItem({ item: i.item, actor: a }) })
         },
 
         // ───────────── Executar (itens — LIVRE, sem gate) ─────────────
@@ -290,12 +353,81 @@ const BuildTools = ({ store, actor }) => {
 
         {
             name: "list_activity",
-            description: "Auditoria recente do projeto: quem/qual sessão fez o quê. Útil para o agente se situar antes de agir.",
-            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)"), limit: S.num("Máx. de eventos"), offset: S.num("Deslocamento") }, ["project"]),
+            description: "Auditoria: quem/qual sessão fez o quê, com filtros (ação, ator, provider, modelo, fonte, período). Útil para o agente se situar antes de agir. Consulta GLOBAL (sem `project`) exige a permissão activity:read:all_projects — sem ela retorna FORBIDDEN.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key). Omita para consulta global (exige permissão)"),
+                entityType: S.str("Tipo de entidade (project|board|work-item|…)"),
+                entityId: S.str("Id da entidade"),
+                action: S.str("Ação (create|update|set-status|approve|…)"),
+                actorType: S.enum(["human","agent","system","desktop"], "Tipo do ator"),
+                source: S.enum(["gui","cli","api","agent","mcp","desktop"], "Fonte da ação"),
+                provider: S.str("Provider do agente (claude|codex|…)"),
+                model: S.str("Modelo usado"),
+                from: S.str("Início do intervalo (ISO)"),
+                to: S.str("Fim do intervalo (ISO)"),
+                limit: S.num("Máx. de eventos"), offset: S.num("Deslocamento")
+            }),
             handler: async (i) => {
                 const projectId = i.project ? (await store.ResolveProject(i.project)).id : undefined
-                return store.ListActivity({ projectId, limit: i.limit, offset: i.offset })
+                return store.ListActivity({
+                    projectId, entityType: i.entityType, entityId: i.entityId, action: i.action,
+                    actorType: i.actorType, source: i.source, provider: i.provider, model: i.model,
+                    from: i.from, to: i.to, limit: i.limit, offset: i.offset, actor
+                })
             }
+        },
+        {
+            name: "list_audit_events",
+            description: "Eventos de auditoria (imutáveis) com diff antes→depois. Mesmos filtros de list_activity. Consulta global exige permissão.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"), action: S.str("Ação"),
+                actorType: S.enum(["human","agent","system","desktop"], "Tipo do ator"),
+                provider: S.str("Provider"), model: S.str("Modelo"),
+                from: S.str("Início (ISO)"), to: S.str("Fim (ISO)"),
+                limit: S.num("Máx."), offset: S.num("Deslocamento")
+            }),
+            handler: async (i) => {
+                const projectId = i.project ? (await store.ResolveProject(i.project)).id : undefined
+                return store.ListActivity({ projectId, action: i.action, actorType: i.actorType, provider: i.provider, model: i.model, from: i.from, to: i.to, limit: i.limit, offset: i.offset, actor })
+            }
+        },
+        {
+            name: "get_audit_event",
+            description: "Detalha um evento de auditoria: ator, sessão, provider/modelo, ação e o diff (antes → depois).",
+            inputSchema: Obj({ event: S.str("Id do evento de auditoria") }, ["event"]),
+            handler: (i) => store.GetAuditEvent({ event: i.event })
+        },
+        {
+            name: "add_activity_note",
+            description: "Registra uma ANOTAÇÃO de atividade num escopo (projeto/board/sprint/milestone/item). Use para deixar contexto legível para humanos e outros agentes. Distinta de add_comment (que é conversa sobre um item específico).",
+            inputSchema: Obj({
+                text: S.str("Texto da anotação"),
+                project: S.str("Projeto (id|slug|key)"), board: S.str("Board (id)"),
+                sprint: S.str("Sprint (id)"), milestone: S.str("Milestone (id)"),
+                item: S.str("Item (id|key)")
+            }, ["text"]),
+            handler: (i) => store.AddActivityNote(A({ text: i.text, project: i.project, board: i.board, sprint: i.sprint, milestone: i.milestone, item: i.item, source: "mcp" }))
+        },
+        {
+            name: "list_activity_notes",
+            description: "Lê as ANOTAÇÕES de atividade de um escopo — inclusive as escritas manualmente pelo `usuario-desktop`. Leia antes de agir para captar contexto humano recente. Sem escopo, exige permissão global.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"), board: S.str("Board (id)"),
+                sprint: S.str("Sprint (id)"), milestone: S.str("Milestone (id)"),
+                item: S.str("Item (id|key)"),
+                from: S.str("Início (ISO)"), to: S.str("Fim (ISO)"), limit: S.num("Máx.")
+            }),
+            handler: (i) => store.ListActivityNotes({ project: i.project, board: i.board, sprint: i.sprint, milestone: i.milestone, item: i.item, from: i.from, to: i.to, limit: i.limit, actor })
+        },
+        {
+            name: "get_activity_context",
+            description: "Contexto consolidado de um escopo: anotações humanas recentes + auditoria recente. Chame ANTES de agir para entender o que aconteceu e reagir às notas do humano.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"), board: S.str("Board (id)"),
+                sprint: S.str("Sprint (id)"), milestone: S.str("Milestone (id)"),
+                item: S.str("Item (id|key)"), limit: S.num("Máx. por seção")
+            }),
+            handler: (i) => store.GetActivityContext({ project: i.project, board: i.board, sprint: i.sprint, milestone: i.milestone, item: i.item, limit: i.limit, actor })
         }
     ]
 }

@@ -25,19 +25,19 @@ const PlanningStore = (ctx) => {
         return m
     }
 
-    const CreateMilestone = async ({ project, name, description, targetDate, status = "planning", actor } = {}) => {
+    const CreateMilestone = async ({ project, name, shortDescription, description, targetDate, status = "planning", actor } = {}) => {
         if(!name) throw new DomainError("VALIDATION_ERROR", "Nome do milestone é obrigatório.", { field: "name" })
         if(!MILESTONE_STATUSES.includes(status)) throw new DomainError("VALIDATION_ERROR", `Status inválido: ${status}.`, { field: "status", allowed: MILESTONE_STATUSES })
         const projectInstance = await store.ResolveProject(project)
 
         if(store.IsAgentCreation(actor)){
-            const { request } = await store.RequestCreation({ type: "milestone", projectId: projectInstance.id, payload: { project: projectInstance.id, name, description, targetDate, status }, actor })
+            const { request } = await store.RequestCreation({ type: "milestone", projectId: projectInstance.id, payload: { project: projectInstance.id, name, shortDescription, description, targetDate, status }, actor })
             throw new DomainError("AGENT_SESSION_CONFIRMATION_REQUIRED", "Criação de milestone por agente requer aprovação humana.",
                 { pendingCreationId: request.id, type: "milestone", nextCommands: [`mpm agent creation approve ${request.id}`, `mpm agent creation reject ${request.id}`] })
         }
 
         const order = await Milestone.count({ where: { projectId: projectInstance.id, deletedAt: null } })
-        const m = await Milestone.create({ id: NewId(), projectId: projectInstance.id, name, description, targetDate, status, order })
+        const m = await Milestone.create({ id: NewId(), projectId: projectInstance.id, name, shortDescription, description, targetDate, status, order })
         const data = Serialize(m)
         await writeAudit({ projectId: projectInstance.id, entityType: "milestone", entityId: m.id, action: "create", actor, metadata: { name } })
         emit("milestone.updated", data)
@@ -60,7 +60,7 @@ const PlanningStore = (ctx) => {
     const UpdateMilestone = async ({ milestone, actor, ...fields } = {}) => {
         const m = await ResolveMilestone(milestone)
         const patch = {}
-        for(const k of ["name", "description", "targetDate", "status", "order"]) if(fields[k] !== undefined) patch[k] = fields[k]
+        for(const k of ["name", "shortDescription", "description", "targetDate", "status", "order"]) if(fields[k] !== undefined) patch[k] = fields[k]
         if(patch.status && !MILESTONE_STATUSES.includes(patch.status)) throw new DomainError("VALIDATION_ERROR", `Status inválido: ${patch.status}.`, { field: "status", allowed: MILESTONE_STATUSES })
         await m.update(patch)
         const data = Serialize(m)
@@ -102,19 +102,19 @@ const PlanningStore = (ctx) => {
         return s
     }
 
-    const CreateSprint = async ({ project, name, goal, startDate, endDate, status = "planned", actor } = {}) => {
+    const CreateSprint = async ({ project, name, shortDescription, goal, startDate, endDate, status = "planned", actor } = {}) => {
         if(!name) throw new DomainError("VALIDATION_ERROR", "Nome do sprint é obrigatório.", { field: "name" })
         if(!SPRINT_STATUSES.includes(status)) throw new DomainError("VALIDATION_ERROR", `Status inválido: ${status}.`, { field: "status", allowed: SPRINT_STATUSES })
         const projectInstance = await store.ResolveProject(project)
 
         if(store.IsAgentCreation(actor)){
-            const { request } = await store.RequestCreation({ type: "sprint", projectId: projectInstance.id, payload: { project: projectInstance.id, name, goal, startDate, endDate, status }, actor })
+            const { request } = await store.RequestCreation({ type: "sprint", projectId: projectInstance.id, payload: { project: projectInstance.id, name, shortDescription, goal, startDate, endDate, status }, actor })
             throw new DomainError("AGENT_SESSION_CONFIRMATION_REQUIRED", "Criação de sprint por agente requer aprovação humana.",
                 { pendingCreationId: request.id, type: "sprint", nextCommands: [`mpm agent creation approve ${request.id}`, `mpm agent creation reject ${request.id}`] })
         }
 
         const order = await Sprint.count({ where: { projectId: projectInstance.id, deletedAt: null } })
-        const s = await Sprint.create({ id: NewId(), projectId: projectInstance.id, name, goal, startDate, endDate, status, order })
+        const s = await Sprint.create({ id: NewId(), projectId: projectInstance.id, name, shortDescription, goal, startDate, endDate, status, order })
         const data = Serialize(s)
         await writeAudit({ projectId: projectInstance.id, entityType: "sprint", entityId: s.id, action: "create", actor, metadata: { name } })
         emit("sprint.updated", data)
@@ -137,7 +137,7 @@ const PlanningStore = (ctx) => {
     const UpdateSprint = async ({ sprint, actor, ...fields } = {}) => {
         const s = await ResolveSprint(sprint)
         const patch = {}
-        for(const k of ["name", "goal", "startDate", "endDate", "status", "order"]) if(fields[k] !== undefined) patch[k] = fields[k]
+        for(const k of ["name", "shortDescription", "goal", "startDate", "endDate", "status", "order"]) if(fields[k] !== undefined) patch[k] = fields[k]
         if(patch.status && !SPRINT_STATUSES.includes(patch.status)) throw new DomainError("VALIDATION_ERROR", `Status inválido: ${patch.status}.`, { field: "status", allowed: SPRINT_STATUSES })
         await s.update(patch)
         const data = Serialize(s)

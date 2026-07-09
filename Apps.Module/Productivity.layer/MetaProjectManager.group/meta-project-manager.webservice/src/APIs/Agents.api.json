@@ -164,10 +164,29 @@
                     "required": false
                 },
                 {
+                    "name": "actionName",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
                     "name": "status",
                     "in": "query",
                     "type": "string",
                     "required": false
+                }
+            ]
+        },
+        {
+            "summary": "GetCreationRequest",
+            "method": "GET",
+            "path": "/creation-requests/:requestId",
+            "parameters": [
+                {
+                    "name": "requestId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
                 }
             ]
         },
@@ -203,6 +222,12 @@
                 },
                 {
                     "name": "actorUserId",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "reason",
                     "in": "body",
                     "type": "string",
                     "required": false

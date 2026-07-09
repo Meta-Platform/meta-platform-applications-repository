@@ -6,7 +6,7 @@ const ProjectsController = (params) => {
     const ctx = GetContext(params)
     const { store } = ctx
 
-    const ListProjects = async (p = {}) => Guard(async () => { await ctx.ready; return store.ListProjects({ status: p.status, sort: p.sort, limit: p.limit, offset: p.offset, includeArchived: p.all }) })
+    const ListProjects = async (p = {}) => Guard(async () => { await ctx.ready; return store.ListProjects({ status: p.status, sort: p.sort, limit: p.limit, offset: p.offset, includeArchived: p.all, includeCounts: !!p.includeCounts }) })
     const CreateProject = async (p = {}) => Guard(async () => { await ctx.ready; return store.CreateProject({ ...p, ownerUserId: p.owner, actor: Actor(p) }) })
     const GetProject = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "projectId"); return store.GetProject({ project: id }) })
     const UpdateProject = async (p = {}) => Guard(async () => { await ctx.ready; return store.UpdateProject({ project: p.projectId, ...p, ownerUserId: p.owner, actor: Actor(p) }) })

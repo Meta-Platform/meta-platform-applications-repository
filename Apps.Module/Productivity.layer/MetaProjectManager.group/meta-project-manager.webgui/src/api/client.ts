@@ -18,6 +18,7 @@ import CreateAttachmentsApi from "./attachments"
 import CreateUsersApi       from "./users"
 import CreateAgentsApi      from "./agents"
 import CreateReportsApi     from "./reports"
+import CreateActivityApi    from "./activity"
 import CreateEventsApi      from "./events"
 import CreatePlanningApi    from "./planning"
 import CreateSystemApi      from "./system"
@@ -68,6 +69,7 @@ export const createApiClient = (serverManagerInformation: any) => {
         users:       CreateUsersApi(call),
         agents:      CreateAgentsApi(call),
         reports:     CreateReportsApi(call),
+        activity:    CreateActivityApi(call),
         events:      CreateEventsApi(call),
         planning:    CreatePlanningApi(call),
         system:      CreateSystemApi(call)

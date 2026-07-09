@@ -11,6 +11,8 @@ export interface Project {
     id: ID
     name: string
     slug: string
+    // Descrição curta (<=240) — usada em cards, sidebar e command palette.
+    shortDescription?: string
     description?: string
     icon?: string
     color?: string
@@ -22,6 +24,8 @@ export interface Project {
     defaultBoardId?: ID
     ownerUserId?: ID
     archivedAt?: string | null
+    // presente quando ListProjects é chamado com includeCounts
+    counts?: { boards: number; items: number; done: number; blocked: number }
     createdAt?: string
     updatedAt?: string
 }
@@ -232,6 +236,7 @@ export interface AgentSession {
 export interface CreationRequestSession {
     provider?: string
     modelName?: string
+    objective?: string
     host?: string
     osUser?: string
     pid?: number | string
@@ -248,23 +253,53 @@ export interface CreationRequestSession {
     externalSessionId?: string
 }
 
-export type CreationRequestType = "project" | "board" | string
-export type CreationRequestStatus = "pending" | "approved" | "rejected" | string
+export type CreationRequestType = "project" | "board" | "milestone" | "sprint" | "item" | string
+export type CreationRequestStatus = "pending" | "approved" | "rejected" | "failed" | "expired" | "cancelled" | string
+export type ApprovalAction = "create" | "delete" | "archive" | string
+export type ApprovalRisk = "normal" | "sensitive" | "destructive" | string
+
+// "Quem" pediu a ação: identidade do agente (para o modal de aprovação mostrar).
+export interface ApprovalWho {
+    agentUserId?: ID
+    provider?: string
+    model?: string
+    sessionId?: ID
+    traceId?: string
+    objective?: string
+    host?: string
+    osUser?: string
+}
+
+// "O quê" será afetado por uma deleção (impacto em cascata) — soft delete.
+export interface ApprovalImpact {
+    targetType: string
+    targetLabel: string
+    counts: Record<string, number>
+}
 
 export interface CreationRequest {
     id: ID
     type: CreationRequestType
+    actionName?: ApprovalAction      // "create" (default) | "delete"
+    risk?: ApprovalRisk              // "normal" | "sensitive" | "destructive"
+    targetType?: string
+    targetId?: ID
     status: CreationRequestStatus
+    rejectionReason?: string | null
     requestedAt?: string
-    payload?: any            // params da criação (ex.: {name, description, type})
-    projectId?: ID           // projeto-pai quando type === "board"
+    payload?: any            // params da ação (ex.: {name, description})
+    projectId?: ID           // projeto de escopo (pai/alvo)
     session?: CreationRequestSession
+    who?: ApprovalWho        // identidade do agente que pediu
+    impact?: ApprovalImpact  // presente em pedidos de delete
 }
 
 export interface ApproveCreationResult {
     request: CreationRequest
     result: any              // projeto/board efetivamente criado
 }
+
+export type ActorType = "human" | "agent" | "system" | "desktop" | string
 
 export interface ActivityEntry {
     id: ID
@@ -274,9 +309,47 @@ export interface ActivityEntry {
     action: string
     actorUserId?: ID
     actorSessionId?: ID
+    actorType?: ActorType
     source: string
+    provider?: string
+    model?: string
+    traceId?: string
+    // Diff estruturado dos campos alterados.
+    before?: Record<string, any>
+    after?: Record<string, any>
+    metadata?: Record<string, any>
     metadataJson?: string
     createdAt?: string
+}
+
+// Anotação de atividade (humana / usuario-desktop), distinta de Comment e AuditEvent.
+export interface ActivityNote {
+    id: ID
+    projectId?: ID
+    scopeType: "project" | "board" | "sprint" | "milestone" | "item" | "global" | string
+    scopeId?: ID
+    body: string
+    authorUserId?: ID
+    authorSessionId?: ID
+    source: string
+    createdAt?: string
+}
+
+// Filtros da tela de Auditoria/Atividades.
+export interface ActivityFilters {
+    project?: string
+    entityType?: string
+    entityId?: string
+    action?: string
+    actorType?: string
+    source?: string
+    provider?: string
+    model?: string
+    session?: string
+    from?: string
+    to?: string
+    limit?: string
+    offset?: string
 }
 
 export interface PlatformEvent {

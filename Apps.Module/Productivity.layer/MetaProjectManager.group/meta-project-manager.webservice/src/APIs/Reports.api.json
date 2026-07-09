@@ -17,6 +17,72 @@
                     "in": "query",
                     "type": "string",
                     "required": false
+                },
+                {
+                    "name": "entityType",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "entityId",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "action",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "actorType",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "source",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "provider",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "model",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "session",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "from",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "to",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "allProjects",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
                 }
             ]
         },
@@ -112,6 +178,215 @@
                     "in": "query",
                     "type": "string",
                     "required": false
+                }
+            ]
+        },
+        {
+            "summary": "ListAuditEvents",
+            "method": "GET",
+            "path": "/audit",
+            "parameters": [
+                {
+                    "name": "project",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "action",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "actorType",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "source",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "provider",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "model",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "session",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "from",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "to",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "limit",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "offset",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "GetAuditEvent",
+            "method": "GET",
+            "path": "/audit/:eventId",
+            "parameters": [
+                {
+                    "name": "eventId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "ListActivityNotes",
+            "method": "GET",
+            "path": "/activity-notes",
+            "parameters": [
+                {
+                    "name": "project",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "board",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "sprint",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "milestone",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "item",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "from",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "to",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "limit",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "offset",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "AddActivityNote",
+            "method": "POST",
+            "path": "/activity-notes",
+            "parameters": [
+                {
+                    "name": "project",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "board",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "sprint",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "milestone",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "item",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "text",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "actorUserId",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "DeleteActivityNote",
+            "method": "DELETE",
+            "path": "/activity-notes/:noteId",
+            "parameters": [
+                {
+                    "name": "noteId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
                 }
             ]
         }

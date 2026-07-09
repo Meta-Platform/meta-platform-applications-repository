@@ -122,7 +122,7 @@ const AgentsStore = (ctx) => {
     // mudança de status NÃO passam pelo gate. A criação vira um pedido PENDENTE;
     // ao ser aprovada, é executada de fato.
 
-    const { CreationRequest } = models
+    const { CreationRequest, Project, Board, WorkItem, Attachment, Comment } = models
 
     // Resolve (ou cria) o usuário-agente para uma identidade inline.
     const _resolveAgentUserForIdentity = async ({ provider = "other", agent, owner }) => {
@@ -181,70 +181,192 @@ const AgentsStore = (ctx) => {
     }
 
     // Um actor é "agente inline" (sujeito ao gate) quando traz identidade de sessão.
-    const IsAgentCreation = (actor) => !!(actor && actor.session)
+    const IsAgentActor = (actor) => !!(actor && actor.session)
+    const IsAgentCreation = IsAgentActor // alias retrocompatível (gate de criação)
 
-    // Cria um pedido de criação PENDENTE (não cria a entidade ainda). Usado por
-    // CreateProject/CreateBoard ao detectar actor agente. Retorna { request, session }.
-    const RequestCreation = async ({ type, payload = {}, projectId, actor } = {}) => {
-        const session = await ResolveOrCreateSessionByIdentity(actor.session || {}, `create-${type}`)
+    // Cria um pedido de APROVAÇÃO pendente (não executa a ação ainda). Usado pelos
+    // gates de create (project/board/milestone/sprint) e de delete (project/board/item).
+    // Idempotência opcional via resumeToken. Retorna { request, session }.
+    const RequestApproval = async ({
+        actionName = "create", type, targetId, payload = {}, projectId,
+        risk = "normal", resumeToken, actor
+    } = {}) => {
+        const session = await ResolveOrCreateSessionByIdentity(actor.session || {}, `${actionName}-${type}`)
         await session.update({ actionCount: session.actionCount + 1, lastActivityAt: new Date() })
+
+        // Idempotência: reusa o pedido PENDENTE de mesmo token (evita duplicar por retry).
+        if(resumeToken){
+            const existing = await CreationRequest.findOne({ where: { resumeToken, status: "pending" } })
+            if(existing) return { request: existing, session, reused: true }
+        }
+
         const request = await CreationRequest.create({
-            id: NewId(), type, agentSessionId: session.id, projectId,
+            id: NewId(), type, actionName, targetType: type, targetId, risk,
+            agentSessionId: session.id, projectId,
+            provider: session.provider, model: session.modelName, traceId: session.traceId,
+            resumeToken,
             status: "pending", payloadJson: JSON.stringify(payload), requestedAt: new Date()
         })
-        await writeAudit({ projectId, entityType: "creation-request", entityId: request.id, action: "request", actor: { source: "agent", actorSessionId: session.id }, metadata: { type, payload } })
-        emit("agent.session.pending", { type, request: Serialize(request), session: Serialize(session), payload })
+        await writeAudit({ projectId, entityType: "creation-request", entityId: request.id, action: "request", actor: { source: "agent", actorSessionId: session.id }, metadata: { actionName, type, targetId, risk, payload } })
+        const wire = { type, actionName, request: Serialize(request), session: Serialize(session), payload }
+        emit("agent.session.pending", wire) // retrocompat (GUI recarrega em 'pending')
+        emit("approval.requested", wire)
         return { request, session }
     }
 
+    // Retrocompat: criação estrutural = pedido com actionName "create".
+    const RequestCreation = async ({ type, payload = {}, projectId, actor } = {}) =>
+        RequestApproval({ actionName: "create", type, payload, projectId, risk: "normal", actor })
+
     const ResolveCreationRequest = async (ref) => {
         const req = await CreationRequest.findOne({ where: { id: ref } })
-        if(!req) throw new DomainError("NOT_FOUND", `Pedido de criação "${ref}" não encontrado.`, { ref })
+        if(!req) throw new DomainError("NOT_FOUND", `Pedido de aprovação "${ref}" não encontrado.`, { ref })
         return req
     }
 
-    // Aprova um pedido pendente e EXECUTA a criação de fato (projeto ou board).
-    // A execução usa um actor sem `.session` para não re-disparar o gate.
-    const ApproveCreation = async ({ request, actor } = {}) => {
+    // Impacto de uma deleção (soft delete): "o QUE será afetado". Usado pela GUI/CLI
+    // para o humano entender a consequência antes de aprovar. Não deleta nada.
+    const DescribeDeletionImpact = async ({ type, targetId } = {}) => {
+        if(type === "project"){
+            const project = await Project.findOne({ where: { id: targetId } })
+            if(!project) return undefined
+            const [boards, items, attachments, comments] = await Promise.all([
+                Board.count({ where: { projectId: targetId, deletedAt: null } }),
+                WorkItem.count({ where: { projectId: targetId, deletedAt: null } }),
+                Attachment.count({ where: { projectId: targetId, deletedAt: null } }),
+                Comment.count({ where: { projectId: targetId, deletedAt: null } })
+            ])
+            return { targetType: "project", targetLabel: `${project.keyPrefix} · ${project.name}`, counts: { boards, items, attachments, comments } }
+        }
+        if(type === "board"){
+            const board = await Board.findOne({ where: { id: targetId } })
+            if(!board) return undefined
+            const items = await WorkItem.count({ where: { boardId: targetId, deletedAt: null } })
+            return { targetType: "board", targetLabel: board.name, counts: { items } }
+        }
+        if(type === "item" || type === "work-item"){
+            const item = await WorkItem.findOne({ where: { id: targetId } })
+            if(!item) return undefined
+            const [children, comments, attachments] = await Promise.all([
+                WorkItem.count({ where: { parentId: targetId, deletedAt: null } }),
+                Comment.count({ where: { workItemId: targetId, deletedAt: null } }),
+                Attachment.count({ where: { workItemId: targetId, deletedAt: null } })
+            ])
+            return { targetType: "item", targetLabel: `${item.key} · ${item.title}`, counts: { children, comments, attachments } }
+        }
+        return undefined
+    }
+
+    // "Quem" fez o pedido: identidade do agente (provider/modelo/sessão/objetivo).
+    const _describeWho = (session, req) => session ? {
+        agentUserId: session.agentUserId, provider: session.provider, model: session.modelName,
+        sessionId: session.id, traceId: session.traceId, objective: session.objective,
+        host: session.host, osUser: session.osUser
+    } : { provider: req.provider, model: req.model, traceId: req.traceId }
+
+    // Aprova um pedido pendente e EXECUTA a ação de fato (create OU delete). A execução
+    // usa um actor sem `.session` para não re-disparar o gate. Falha => status "failed".
+    const ApproveRequest = async ({ request, actor } = {}) => {
         const req = await ResolveCreationRequest(request)
         if(req.status !== "pending")
             throw new DomainError("VALIDATION_ERROR", `Pedido já ${req.status}.`, { status: req.status })
         const payload = req.payloadJson ? JSON.parse(req.payloadJson) : {}
+        const actionName = req.actionName || "create"
         const execActor = { source: "agent", actorSessionId: req.agentSessionId, actorUserId: actor && actor.actorUserId }
 
         let result
-        if(req.type === "project") result = await store.CreateProject({ ...payload, actor: execActor })
-        else if(req.type === "board") result = await store.CreateBoard({ ...payload, actor: execActor })
-        else if(req.type === "milestone") result = await store.CreateMilestone({ ...payload, actor: execActor })
-        else if(req.type === "sprint") result = await store.CreateSprint({ ...payload, actor: execActor })
-        else throw new DomainError("VALIDATION_ERROR", `Tipo de pedido inválido: ${req.type}.`, { type: req.type })
+        try {
+            if(actionName === "create"){
+                if(req.type === "project") result = await store.CreateProject({ ...payload, actor: execActor })
+                else if(req.type === "board") result = await store.CreateBoard({ ...payload, actor: execActor })
+                else if(req.type === "milestone") result = await store.CreateMilestone({ ...payload, actor: execActor })
+                else if(req.type === "sprint") result = await store.CreateSprint({ ...payload, actor: execActor })
+                else throw new DomainError("VALIDATION_ERROR", `Tipo de pedido inválido: ${req.type}.`, { type: req.type })
+            } else if(actionName === "delete"){
+                if(req.type === "project") result = await store.DeleteProject({ project: req.targetId, actor: execActor })
+                else if(req.type === "board") result = await store.DeleteBoard({ board: req.targetId, actor: execActor })
+                else if(req.type === "item" || req.type === "work-item") result = await store.DeleteItem({ item: req.targetId, actor: execActor })
+                else throw new DomainError("VALIDATION_ERROR", `Alvo de delete inválido: ${req.type}.`, { type: req.type })
+            } else {
+                throw new DomainError("VALIDATION_ERROR", `Ação de pedido inválida: ${actionName}.`, { actionName })
+            }
+        } catch(err){
+            const snapshot = err && typeof err.toResponse === "function" ? err.toResponse() : { message: err && err.message }
+            await req.update({ status: "failed", decidedAt: new Date(), decidedByUserId: actor && actor.actorUserId, errorSnapshot: JSON.stringify(snapshot) })
+            await writeAudit({ projectId: req.projectId, entityType: "creation-request", entityId: req.id, action: "execute-failed", actor, metadata: { actionName, type: req.type, error: snapshot.message } })
+            emit("approval.failed", { request: Serialize(await req.reload()), error: snapshot })
+            throw err
+        }
 
-        await req.update({ status: "approved", resultId: result.id, decidedAt: new Date(), decidedByUserId: actor && actor.actorUserId })
-        await writeAudit({ projectId: req.projectId, entityType: "creation-request", entityId: req.id, action: "approve", actor, metadata: { type: req.type, resultId: result.id } })
+        await req.update({
+            status: "approved", resultId: result && result.id, resultSnapshot: JSON.stringify(result),
+            decidedAt: new Date(), executedAt: new Date(), decidedByUserId: actor && actor.actorUserId
+        })
+        await writeAudit({ projectId: req.projectId, entityType: "creation-request", entityId: req.id, action: "approve", actor, metadata: { actionName, type: req.type, resultId: result && result.id } })
         const data = Serialize(await req.reload())
-        emit("agent.session.confirmed", { request: data, result })
+        emit("agent.session.confirmed", { request: data, result }) // retrocompat
+        emit("approval.approved", { request: data, result })
+        emit("approval.executed", { request: data, result })
         return { request: data, result }
     }
+    const ApproveCreation = ApproveRequest // alias retrocompatível
 
-    const RejectCreation = async ({ request, actor } = {}) => {
+    const RejectRequest = async ({ request, reason, actor } = {}) => {
         const req = await ResolveCreationRequest(request)
         if(req.status !== "pending")
             throw new DomainError("VALIDATION_ERROR", `Pedido já ${req.status}.`, { status: req.status })
-        await req.update({ status: "rejected", decidedAt: new Date(), decidedByUserId: actor && actor.actorUserId })
-        await writeAudit({ projectId: req.projectId, entityType: "creation-request", entityId: req.id, action: "reject", actor })
-        return Serialize(await req.reload())
+        await req.update({ status: "rejected", decidedAt: new Date(), decidedByUserId: actor && actor.actorUserId, rejectionReason: reason })
+        await writeAudit({ projectId: req.projectId, entityType: "creation-request", entityId: req.id, action: "reject", actor, metadata: { reason } })
+        const data = Serialize(await req.reload())
+        emit("approval.rejected", { request: data })
+        return data
+    }
+    const RejectCreation = RejectRequest // alias retrocompatível
+
+    // Aguarda (polling do SQLite; processos separados via WAL) até o pedido sair de
+    // "pending". Retorna o pedido final + result/error. timeoutMs=0 => sem timeout.
+    const WaitForApproval = async ({ request, timeoutMs = 0, pollMs = 1000 } = {}) => {
+        const started = Date.now()
+        for(;;){
+            const req = await CreationRequest.findOne({ where: { id: request } })
+            if(!req) throw new DomainError("NOT_FOUND", `Pedido de aprovação "${request}" não encontrado.`, { ref: request })
+            if(req.status !== "pending"){
+                const out = Serialize(req)
+                out.result = req.resultSnapshot ? JSON.parse(req.resultSnapshot) : (req.resultId ? { id: req.resultId } : undefined)
+                out.error = req.errorSnapshot ? JSON.parse(req.errorSnapshot) : undefined
+                return out
+            }
+            if(timeoutMs > 0 && Date.now() - started >= timeoutMs)
+                return { ...Serialize(req), timedOut: true }
+            await new Promise((resolve) => setTimeout(resolve, pollMs))
+        }
     }
 
-    const ListCreationRequests = async ({ type, status = "pending", limit = 200, offset = 0 } = {}) => {
+    // Detalhe completo de um pedido: payload + sessão + "quem" + impacto (se delete).
+    const DescribeCreationRequest = async ({ request } = {}) => {
+        const req = await ResolveCreationRequest(request)
+        const session = req.agentSessionId ? await AgentSession.findOne({ where: { id: req.agentSessionId } }) : undefined
+        const payload = req.payloadJson ? JSON.parse(req.payloadJson) : {}
+        let impact
+        if((req.actionName || "create") === "delete")
+            impact = await DescribeDeletionImpact({ type: req.type, targetId: req.targetId }).catch(() => undefined)
+        return { ...Serialize(req), payload, session: session ? Serialize(session) : undefined, who: _describeWho(session, req), impact }
+    }
+
+    const ListCreationRequests = async ({ type, actionName, status = "pending", limit = 200, offset = 0 } = {}) => {
         const where = {}
         if(type) where.type = type
+        if(actionName) where.actionName = actionName
         if(status) where.status = status
         const rows = await CreationRequest.findAll({ where, order: [["requestedAt", "DESC"]], limit: Number(limit), offset: Number(offset) })
-        // Enriquecer com todos os detalhes da sessão (para a GUI decidir).
+        // Enriquecer com sessão, "quem" e (p/ delete) o impacto — a GUI mostra o QUE e QUEM.
         const out = []
         for(const r of rows){
             const s = r.agentSessionId ? await AgentSession.findOne({ where: { id: r.agentSessionId } }) : undefined
-            out.push({ ...Serialize(r), payload: r.payloadJson ? JSON.parse(r.payloadJson) : {}, session: s ? Serialize(s) : undefined })
+            let impact
+            if((r.actionName || "create") === "delete")
+                impact = await DescribeDeletionImpact({ type: r.type, targetId: r.targetId }).catch(() => undefined)
+            out.push({ ...Serialize(r), payload: r.payloadJson ? JSON.parse(r.payloadJson) : {}, session: s ? Serialize(s) : undefined, who: _describeWho(s, r), impact })
         }
         return out
     }
@@ -253,8 +375,11 @@ const AgentsStore = (ctx) => {
         CreateAgent, ResolveAgent, ListAgents, GetAgent,
         RegisterSession, ResolveSession, ListSessions, GetSession,
         ConfirmSession, RejectSession, CloseSession,
-        ResolveOrCreateSessionByIdentity, IsAgentCreation,
-        RequestCreation, ApproveCreation, RejectCreation, ListCreationRequests
+        ResolveOrCreateSessionByIdentity, IsAgentActor, IsAgentCreation,
+        RequestApproval, RequestCreation,
+        ApproveRequest, ApproveCreation, RejectRequest, RejectCreation,
+        WaitForApproval, DescribeCreationRequest, DescribeDeletionImpact,
+        ListCreationRequests
     }
 }
 

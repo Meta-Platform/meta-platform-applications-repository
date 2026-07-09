@@ -10,6 +10,9 @@ const DefineModels = (sequelize) => {
         id:            idField,
         name:          { type: DataTypes.STRING, allowNull: false },
         slug:          { type: DataTypes.STRING, allowNull: false, unique: true },
+        // Descrição curta (<=240 chars) usada em cards, sidebar, header e command palette.
+        // A `description` longa fica só no detalhe do projeto.
+        shortDescription: { type: DataTypes.STRING },
         description:   { type: DataTypes.TEXT },
         icon:          { type: DataTypes.STRING },
         color:         { type: DataTypes.STRING },
@@ -28,6 +31,7 @@ const DefineModels = (sequelize) => {
         id:          idField,
         projectId:   { type: DataTypes.STRING, allowNull: false },
         name:        { type: DataTypes.STRING, allowNull: false },
+        shortDescription: { type: DataTypes.STRING },
         description: { type: DataTypes.TEXT },
         type:        { type: DataTypes.STRING, allowNull: false, defaultValue: "kanban" },
         isDefault:   { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
@@ -150,12 +154,16 @@ const DefineModels = (sequelize) => {
 
     const User = sequelize.define("User", {
         id:          idField,
+        // human | agent | desktop (usuario-desktop) | system
         type:        { type: DataTypes.STRING, allowNull: false, defaultValue: "human" },
         displayName: { type: DataTypes.STRING, allowNull: false },
         handle:      { type: DataTypes.STRING, unique: true },
         email:       { type: DataTypes.STRING },
         avatarUrl:   { type: DataTypes.STRING },
         status:      { type: DataTypes.STRING, allowNull: false, defaultValue: "active" },
+        // Lista de permissões (JSON array). Consulta global de atividade/auditoria
+        // exige activity:read:all_projects / audit:read:all_projects.
+        permissionsJson: { type: DataTypes.TEXT },
         deletedAt:   { type: DataTypes.DATE }
     }, { tableName: "users", indexes: [{ fields: ["type"] }, { fields: ["handle"] }] })
 
@@ -204,23 +212,43 @@ const DefineModels = (sequelize) => {
         closedAt:          { type: DataTypes.DATE }
     }, { tableName: "agent_sessions", indexes: [{ fields: ["agentUserId"] }, { fields: ["status"] }, { fields: ["identityKey"] }] })
 
-    // Pedido de CRIAÇÃO estrutural (projeto ou board) feito por um agente.
-    // Toda criação de projeto/board por agente vira um pedido PENDENTE; ao ser
-    // aprovado por um humano a criação é executada. Itens não passam por aqui.
-    // type: "project" | "board". status: pending | approved | rejected.
+    // Pedido de APROVAÇÃO feito por um agente. Generaliza o antigo "creation request":
+    // toda AÇÃO sensível de agente (criar projeto/board/milestone/sprint, ou DELETAR
+    // projeto/board/item) vira um pedido PENDENTE; um humano aprova (a ação é executada
+    // de fato) ou rejeita. Itens/status comuns não passam por aqui.
+    //   actionName: "create" | "delete" | "archive"  (default "create" p/ compat)
+    //   type:       entidade-alvo ("project"|"board"|"milestone"|"sprint"|"item")
+    //   targetId:   id do alvo (usado por delete/archive; nulo em create)
+    //   risk:       "normal" | "sensitive" | "destructive"
+    //   status:     pending | approved | rejected | failed | expired | cancelled
     const CreationRequest = sequelize.define("CreationRequest", {
         id:              idField,
         type:            { type: DataTypes.STRING, allowNull: false },
+        actionName:      { type: DataTypes.STRING, allowNull: false, defaultValue: "create" },
+        targetType:      { type: DataTypes.STRING }, // = type; explícito para clareza/consulta
+        targetId:        { type: DataTypes.STRING }, // alvo de delete/archive
+        risk:            { type: DataTypes.STRING, allowNull: false, defaultValue: "normal" },
         agentSessionId:  { type: DataTypes.STRING },
-        projectId:       { type: DataTypes.STRING }, // projeto-pai (quando type=board)
+        projectId:       { type: DataTypes.STRING }, // projeto de escopo (pai/alvo)
+        // Snapshot da identidade do agente no momento do pedido (a sessão pode mudar).
+        provider:        { type: DataTypes.STRING },
+        model:           { type: DataTypes.STRING },
+        traceId:         { type: DataTypes.STRING },
+        // Idempotência: pedidos repetidos com o mesmo token reusam o pendente existente.
+        resumeToken:     { type: DataTypes.STRING },
         status:          { type: DataTypes.STRING, allowNull: false, defaultValue: "pending" },
-        payloadJson:     { type: DataTypes.TEXT },   // params da criação solicitada
-        resultId:        { type: DataTypes.STRING }, // id da entidade criada após aprovação
+        payloadJson:     { type: DataTypes.TEXT },   // params da ação solicitada
+        resultId:        { type: DataTypes.STRING }, // id da entidade afetada após execução
+        resultSnapshot:  { type: DataTypes.TEXT },   // resultado serializado da execução
+        errorSnapshot:   { type: DataTypes.TEXT },   // erro serializado se a execução falhar
+        rejectionReason: { type: DataTypes.STRING },
         requestedAt:     { type: DataTypes.DATE },
         decidedAt:       { type: DataTypes.DATE },
+        executedAt:      { type: DataTypes.DATE },
         decidedByUserId: { type: DataTypes.STRING }
     }, { tableName: "creation_requests", indexes: [
-        { fields: ["agentSessionId"] }, { fields: ["type"] }, { fields: ["status"] }
+        { fields: ["agentSessionId"] }, { fields: ["type"] }, { fields: ["status"] },
+        { fields: ["actionName"] }, { fields: ["resumeToken"] }, { fields: ["targetId"] }
     ] })
 
     // Milestone/Release: alvo de entrega por projeto (data-alvo + progresso derivado).
@@ -228,6 +256,7 @@ const DefineModels = (sequelize) => {
         id:          idField,
         projectId:   { type: DataTypes.STRING, allowNull: false },
         name:        { type: DataTypes.STRING, allowNull: false },
+        shortDescription: { type: DataTypes.STRING },
         description: { type: DataTypes.TEXT },
         targetDate:  { type: DataTypes.DATE },
         status:      { type: DataTypes.STRING, allowNull: false, defaultValue: "planning" },
@@ -240,6 +269,7 @@ const DefineModels = (sequelize) => {
         id:        idField,
         projectId: { type: DataTypes.STRING, allowNull: false },
         name:      { type: DataTypes.STRING, allowNull: false },
+        shortDescription: { type: DataTypes.STRING },
         goal:      { type: DataTypes.TEXT },
         startDate: { type: DataTypes.DATE },
         endDate:   { type: DataTypes.DATE },
@@ -248,6 +278,8 @@ const DefineModels = (sequelize) => {
         deletedAt: { type: DataTypes.DATE }
     }, { tableName: "sprints", indexes: [{ fields: ["projectId"] }, { fields: ["status"] }] })
 
+    // Evento de auditoria: registro imutável de CADA mutação. Responde
+    // quem/quando/onde/o quê/valor anterior→novo/qual fonte originou a ação.
     const AuditEvent = sequelize.define("AuditEvent", {
         id:              idField,
         projectId:       { type: DataTypes.STRING },
@@ -256,10 +288,38 @@ const DefineModels = (sequelize) => {
         action:          { type: DataTypes.STRING, allowNull: false },
         actorUserId:     { type: DataTypes.STRING },
         actorSessionId:  { type: DataTypes.STRING },
+        // human | agent | system | desktop — permite filtrar "o que a IA fez".
+        actorType:       { type: DataTypes.STRING },
         source:          { type: DataTypes.STRING, allowNull: false, defaultValue: "api" },
+        // Snapshot da identidade do agente (a sessão pode ser fechada depois).
+        provider:        { type: DataTypes.STRING },
+        model:           { type: DataTypes.STRING },
+        traceId:         { type: DataTypes.STRING },
+        // Diff estruturado: valores anterior e novo dos campos alterados.
+        beforeJson:      { type: DataTypes.TEXT },
+        afterJson:       { type: DataTypes.TEXT },
         metadataJson:    { type: DataTypes.TEXT }
     }, { tableName: "audit_events", updatedAt: false, indexes: [
-        { fields: ["projectId"] }, { fields: ["entityType", "entityId"] }, { fields: ["createdAt"] }
+        { fields: ["projectId"] }, { fields: ["entityType", "entityId"] }, { fields: ["createdAt"] },
+        { fields: ["actorUserId"] }, { fields: ["actorType"] }, { fields: ["action"] }, { fields: ["source"] }
+    ] })
+
+    // Nota de atividade: anotação HUMANA (ou do usuario-desktop) num escopo.
+    // Distinta de Comment (que é sempre de um item) e de AuditEvent (imutável,
+    // gerado pelo sistema). Agentes podem LER para reagir ao contexto.
+    const ActivityNote = sequelize.define("ActivityNote", {
+        id:              idField,
+        projectId:       { type: DataTypes.STRING },
+        // project | board | sprint | milestone | item | global
+        scopeType:       { type: DataTypes.STRING, allowNull: false, defaultValue: "project" },
+        scopeId:         { type: DataTypes.STRING },
+        body:            { type: DataTypes.TEXT, allowNull: false },
+        authorUserId:    { type: DataTypes.STRING },
+        authorSessionId: { type: DataTypes.STRING },
+        source:          { type: DataTypes.STRING, allowNull: false, defaultValue: "desktop" },
+        deletedAt:       { type: DataTypes.DATE }
+    }, { tableName: "activity_notes", indexes: [
+        { fields: ["projectId"] }, { fields: ["scopeType", "scopeId"] }, { fields: ["createdAt"] }
     ] })
 
     const AppState = sequelize.define("AppState", {
@@ -271,7 +331,7 @@ const DefineModels = (sequelize) => {
         Project, Board, BoardColumn, WorkItem, WorkItemLink,
         WorkItemChecklistItem, WorkItemAcceptanceCriteria,
         Attachment, Comment, User, AgentProfile, AgentSession,
-        CreationRequest, Milestone, Sprint, AuditEvent, AppState
+        CreationRequest, Milestone, Sprint, AuditEvent, ActivityNote, AppState
     }
 }
 

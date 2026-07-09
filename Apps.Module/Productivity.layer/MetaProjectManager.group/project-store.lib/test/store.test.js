@@ -274,3 +274,178 @@ test("anexo associado a comentário (commentId)", async () => {
     const att = await store.AddBufferAttachment({ item: "MP-1", name: "n.txt", base64: Buffer.from("x").toString("base64"), commentId: c.id })
     assert.equal(att.commentId, c.id)
 })
+
+// ---- Gate de DELETE por agente (aprovação genérica + wait + impacto) ----
+test("agente deletar ITEM bloqueia e vira pedido destrutivo pendente", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "A remover pelo agente" })
+    await assert.rejects(
+        () => store.DeleteItem({ item: it.key, actor: AGENT }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.actionName === "delete" && e.details.type === "item"
+    )
+    // item NÃO foi deletado
+    const still = await store.GetItem({ item: it.key })
+    assert.equal(still.id, it.id)
+    // pedido pendente carrega actionName/risk/targetId + "quem" + impacto (o QUE)
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+    assert.ok(pend)
+    assert.equal(pend.risk, "destructive")
+    assert.equal(pend.who.provider, "claude")
+    assert.equal(pend.who.model, "claude-sonnet-4")
+    assert.equal(pend.impact.targetType, "item")
+    assert.ok(pend.impact.targetLabel.includes(it.key))
+})
+
+test("aprovar pedido de delete EXECUTA o soft delete", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Delete aprovado" })
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+    const { request, result } = await store.ApproveRequest({ request: pend.id, actor: { actorUserId: "human-1", source: "gui" } })
+    assert.equal(request.status, "approved")
+    assert.equal(result.deleted, true)
+    // item some das consultas (soft delete)
+    await assert.rejects(() => store.GetItem({ item: it.id }), (e) => e.code === "NOT_FOUND")
+})
+
+test("rejeitar delete com motivo preserva o item e grava rejectionReason", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Delete rejeitado" })
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+    const rej = await store.RejectRequest({ request: pend.id, reason: "não é para remover", actor: { actorUserId: "human-1", source: "gui" } })
+    assert.equal(rej.status, "rejected")
+    assert.equal(rej.rejectionReason, "não é para remover")
+    const still = await store.GetItem({ item: it.id })
+    assert.equal(still.id, it.id)
+})
+
+test("idempotência: mesmo resumeToken reusa o pedido pendente", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Idempotente" })
+    const AG = { ...AGENT, resumeToken: "tok-del-1" }
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AG }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AG }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).filter((r) => r.resumeToken === "tok-del-1")
+    assert.equal(pend.length, 1) // não duplicou
+})
+
+test("WaitForApproval retorna assim que o pedido é aprovado", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Espera" })
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+    // aprova em paralelo enquanto WaitForApproval faz polling
+    const waiting = store.WaitForApproval({ request: pend.id, pollMs: 20 })
+    await store.ApproveRequest({ request: pend.id, actor: { actorUserId: "human-1", source: "gui" } })
+    const final = await waiting
+    assert.equal(final.status, "approved")
+    assert.equal(final.result.deleted, true)
+})
+
+test("WaitForApproval respeita timeout quando ninguém decide", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Timeout" })
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+    const final = await store.WaitForApproval({ request: pend.id, timeoutMs: 50, pollMs: 20 })
+    assert.equal(final.timedOut, true)
+    assert.equal(final.status, "pending")
+})
+
+// ---- Fase 2: shortDescription, usuario-desktop, activity notes, permissões, audit ----
+test("shortDescription é persistido e validado (<=240)", async () => {
+    const p = await store.CreateProject({ name: "Curto", shortDescription: "Uma linha curta.", actor: { source: "cli" } })
+    assert.equal(p.shortDescription, "Uma linha curta.")
+    await assert.rejects(
+        () => store.CreateProject({ name: "Longo", shortDescription: "x".repeat(241) }),
+        (e) => e.code === "VALIDATION_ERROR" && e.details.field === "shortDescription"
+    )
+    // nunca grava fallback derivado da description
+    const p2 = await store.CreateProject({ name: "Sem curta", description: "descrição longa" })
+    assert.ok(!p2.shortDescription)
+})
+
+test("usuario-desktop é semeado e é idempotente", async () => {
+    const d1 = await store.EnsureDesktopUser()
+    const d2 = await store.EnsureDesktopUser()
+    assert.equal(d1.id, d2.id)
+    assert.equal(d1.handle, "usuario-desktop")
+    assert.equal(d1.type, "desktop")
+})
+
+test("nota de atividade sem autor é atribuída ao usuario-desktop", async () => {
+    const note = await store.AddActivityNote({ item: "MP-1", text: "Revisei isso à mão." })
+    const desktop = await store.EnsureDesktopUser()
+    assert.equal(note.authorUserId, desktop.id)
+    assert.equal(note.scopeType, "item")
+    const notes = await store.ListActivityNotes({ item: "MP-1" })
+    assert.ok(notes.some((n) => n.body === "Revisei isso à mão."))
+})
+
+test("nota de projeto aparece na listagem do projeto", async () => {
+    await store.AddActivityNote({ project: "MP", text: "Nota de projeto" })
+    const notes = await store.ListActivityNotes({ project: "MP" })
+    assert.ok(notes.some((n) => n.body === "Nota de projeto"))
+})
+
+test("GetActivityContext devolve notas + auditoria do escopo", async () => {
+    const ctx = await store.GetActivityContext({ item: "MP-1" })
+    assert.equal(ctx.scope.scopeType, "item")
+    assert.ok(Array.isArray(ctx.notes) && Array.isArray(ctx.audit))
+})
+
+test("consulta global de atividade por AGENTE sem permissão => FORBIDDEN", async () => {
+    await assert.rejects(
+        () => store.ListActivity({ actor: AGENT }),
+        (e) => e.code === "FORBIDDEN" && e.details.permission === "activity:read:all_projects"
+    )
+    // humano (sem session) passa livre
+    const all = await store.ListActivity({ actor: { source: "gui" } })
+    assert.ok(Array.isArray(all))
+})
+
+test("agente COM permissão global consegue consultar tudo", async () => {
+    // descobre o usuário-agente criado pela identidade inline e concede a permissão
+    const sessions = await store.ListSessions({})
+    const agentUserId = sessions[0].agentUserId
+    await store.SetUserPermissions({ user: agentUserId, permissions: ["activity:read:all_projects"], actor: { source: "gui" } })
+    const rows = await store.ListActivity({ actor: { source: "agent", actorUserId: agentUserId } })
+    assert.ok(Array.isArray(rows))
+})
+
+test("permissão inválida é rejeitada", async () => {
+    const d = await store.EnsureDesktopUser()
+    await assert.rejects(
+        () => store.SetUserPermissions({ user: d.id, permissions: ["nao:existe"] }),
+        (e) => e.code === "VALIDATION_ERROR"
+    )
+})
+
+test("auditoria grava diff antes→depois e identidade do ator", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Diff" })
+    await store.SetStatus({ item: it.key, status: "in-progress", actor: AGENT })
+    const events = await store.ListActivity({ projectId: (await store.GetProject({ project: "MP" })).id, entityType: "work-item", entityId: it.id })
+    const ev = events.find((e) => e.action === "set-status")
+    assert.ok(ev)
+    assert.equal(ev.before.statusKey, "backlog")
+    assert.equal(ev.after.statusKey, "in-progress")
+    assert.equal(ev.actorType, "agent")
+    assert.equal(ev.provider, "claude")
+    assert.equal(ev.model, "claude-sonnet-4")
+})
+
+test("filtros de auditoria: por ação, actorType e provider", async () => {
+    const byAction = await store.ListActivity({ action: "set-status", actor: { source: "gui" } })
+    assert.ok(byAction.every((e) => e.action === "set-status"))
+    const byAgent = await store.ListActivity({ actorType: "agent", actor: { source: "gui" } })
+    assert.ok(byAgent.every((e) => e.actorType === "agent"))
+    const byProvider = await store.ListActivity({ provider: "claude", actor: { source: "gui" } })
+    assert.ok(byProvider.every((e) => e.provider === "claude"))
+})
+
+test("GetAuditEvent devolve o evento hidratado", async () => {
+    const [first] = await store.ListActivity({ limit: 1, actor: { source: "gui" } })
+    const ev = await store.GetAuditEvent({ event: first.id })
+    assert.equal(ev.id, first.id)
+})
+
+test("nota sem autor humano é auditada como actorType=desktop", async () => {
+    const note = await store.AddActivityNote({ project: "MP", text: "nota desktop" })
+    const events = await store.ListActivity({ entityType: "activity-note", entityId: note.id, actor: { source: "gui" } })
+    assert.equal(events[0].actorType, "desktop")
+})

@@ -13,6 +13,7 @@ interface NewProjectModalProps {
 const NewProjectModal = ({ onClose, onCreated }: NewProjectModalProps) => {
     const api = useApi()
     const [name, setName] = useState("")
+    const [shortDescription, setShortDescription] = useState("")
     const [description, setDescription] = useState("")
     const [keyPrefix, setKeyPrefix] = useState("")
     const [busy, setBusy] = useState(false)
@@ -24,6 +25,7 @@ const NewProjectModal = ({ onClose, onCreated }: NewProjectModalProps) => {
         try {
             const p = await api.projects.create({
                 name: name.trim(),
+                shortDescription: shortDescription.trim() || undefined,
                 description: description.trim() || undefined,
                 keyPrefix: keyPrefix.trim() || undefined
             })
@@ -41,8 +43,18 @@ const NewProjectModal = ({ onClose, onCreated }: NewProjectModalProps) => {
             <input className="mpm-input" autoFocus value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div className="mpm-field"><span className="mpm-field__label">Prefixo de chave (ex.: MPM)</span>
             <input className="mpm-input" value={keyPrefix} onChange={(e) => setKeyPrefix(e.target.value.toUpperCase())} /></div>
-        <div className="mpm-field"><span className="mpm-field__label">Descrição</span>
-            <textarea className="mpm-textarea" value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+        <div className="mpm-field">
+            <span className="mpm-field__label" title="Aparece nos cards, na busca e no topo do projeto (máx. 240 caracteres)">
+                Descrição curta <span className="mpm-muted">({shortDescription.length}/240)</span>
+            </span>
+            <input className="mpm-input" maxLength={240} value={shortDescription}
+                placeholder="Uma linha que resume o projeto"
+                onChange={(e) => setShortDescription(e.target.value)} />
+        </div>
+        <div className="mpm-field">
+            <span className="mpm-field__label" title="Texto longo — aparece só no detalhe do projeto">Descrição completa</span>
+            <textarea className="mpm-textarea" value={description} onChange={(e) => setDescription(e.target.value)} />
+        </div>
     </Modal>
 }
 

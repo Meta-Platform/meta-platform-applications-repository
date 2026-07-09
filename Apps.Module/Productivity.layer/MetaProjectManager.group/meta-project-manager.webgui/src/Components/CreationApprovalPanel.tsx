@@ -7,6 +7,7 @@ import useApi from "../Hooks/useApi"
 import usePendingCreations from "../Hooks/usePendingCreations"
 import { CreationRequest } from "../api/types"
 import CreationRequestCard from "./CreationRequestCard"
+import ConfirmActionModal from "./ConfirmActionModal"
 import { Loading, ErrorBanner } from "./Primitives"
 
 // CreationApprovalPanel: seção "Pedidos de criação" — humano aprova/rejeita os
@@ -17,6 +18,7 @@ const CreationApprovalPanel = () => {
     const { requests, loading, reload } = usePendingCreations()
     const [busyId, setBusyId] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
+    const [rejectTarget, setRejectTarget] = useState<CreationRequest | null>(null)
 
     const approve = async (req: CreationRequest) => {
         setBusyId(req.id); setError(null)
@@ -35,10 +37,11 @@ const CreationApprovalPanel = () => {
         } catch (e: any) { setError(e.message) } finally { setBusyId(null) }
     }
 
-    const reject = async (req: CreationRequest) => {
-        if (typeof window !== "undefined" && !window.confirm("Rejeitar este pedido? Nada será criado.")) return
+    const doReject = async () => {
+        if (!rejectTarget) return
+        const req = rejectTarget
         setBusyId(req.id); setError(null)
-        try { await api.agents.rejectCreation(req.id); await reload() }
+        try { await api.agents.rejectCreation(req.id); await reload(); setRejectTarget(null) }
         catch (e: any) { setError(e.message) } finally { setBusyId(null) }
     }
 
@@ -60,8 +63,20 @@ const CreationApprovalPanel = () => {
                     request={req}
                     busy={busyId === req.id}
                     onApprove={() => approve(req)}
-                    onReject={() => reject(req)} />)}
+                    onReject={() => setRejectTarget(req)} />)}
         </div>
+
+        {rejectTarget
+            ? <ConfirmActionModal
+                title="Rejeitar pedido"
+                danger
+                message={<>Rejeitar este pedido do agente? Nada será criado/removido.</>}
+                confirmLabel="Rejeitar"
+                busy={busyId === rejectTarget.id}
+                error={error}
+                onConfirm={doReject}
+                onCancel={() => setRejectTarget(null)} />
+            : null}
     </div>
 }
 

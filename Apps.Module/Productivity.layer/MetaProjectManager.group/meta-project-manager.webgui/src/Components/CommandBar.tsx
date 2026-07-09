@@ -10,6 +10,10 @@ interface Command {
     id: string
     label: string
     icon: any
+    // Legenda secundária (ex.: shortDescription do projeto) — também entra na busca.
+    hint?: string
+    // Termos extras para casar na busca (key, slug…).
+    keywords?: string
     run: () => void
 }
 
@@ -38,21 +42,32 @@ const CommandBar = ({ onClose, activeProjectId, onCreateProject }: CommandBarPro
             { id: "go-projects", label: "Ir para Projetos", icon: "th large", run: () => { onClose(); navigate("/") } },
             { id: "go-users", label: "Ir para Usuários", icon: "users", run: () => { onClose(); navigate("/users") } },
             { id: "go-agents", label: "Ir para Agentes", icon: "microchip", run: () => { onClose(); navigate("/agents") } },
-            { id: "go-reports", label: "Ir para Relatórios", icon: "chart bar", run: () => { onClose(); navigate("/reports") } }
+            { id: "go-reports", label: "Ir para Relatórios", icon: "chart bar", run: () => { onClose(); navigate("/reports") } },
+            { id: "go-audit", label: "Ir para Auditoria", icon: "history", run: () => { onClose(); navigate("/audit") } },
+            { id: "go-guide", label: "Ir para Guia de IA", icon: "book", run: () => { onClose(); navigate("/guide") } },
+            { id: "go-glossary", label: "Ir para Manual & Glossário", icon: "help circle", run: () => { onClose(); navigate("/glossary") } }
         ]
         if (activeProjectId)
             list.push({ id: "new-item", label: "Nova tarefa no projeto atual", icon: "tasks",
                 run: () => { onClose(); navigate(`/projects/${activeProjectId}/backlog`) } })
         projects.forEach((p) =>
-            list.push({ id: `proj-${p.id}`, label: `Projeto: ${p.name}`, icon: "folder open",
-                run: () => { onClose(); navigate(`/projects/${p.id}`) } }))
+            list.push({
+                id: `proj-${p.id}`, label: `Projeto: ${p.name}`, icon: "folder open",
+                hint: p.shortDescription,
+                keywords: `${p.keyPrefix} ${p.slug} ${p.shortDescription || ""}`,
+                run: () => { onClose(); navigate(`/projects/${p.id}`) }
+            }))
+        list.push({ id: "audit-project", label: "Ver auditoria deste projeto", icon: "history",
+            run: () => { onClose(); navigate(activeProjectId ? `/audit?project=${activeProjectId}` : "/audit") } })
         return list
     }, [projects, activeProjectId, navigate, onClose, onCreateProject])
 
+    // Busca por rótulo, descrição curta, key e slug.
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase()
         if (!q) return commands
-        return commands.filter((c) => c.label.toLowerCase().indexOf(q) >= 0)
+        return commands.filter((c) =>
+            `${c.label} ${c.hint || ""} ${c.keywords || ""}`.toLowerCase().indexOf(q) >= 0)
     }, [commands, query])
 
     useEffect(() => { setCursor(0) }, [query])
@@ -69,7 +84,7 @@ const CommandBar = ({ onClose, activeProjectId, onCreateProject }: CommandBarPro
             <input
                 autoFocus
                 className="mpm-cmd__input"
-                placeholder="Digite um comando ou projeto..."
+                placeholder="Buscar comandos, projetos, itens ou agentes..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={onKeyDown} />
@@ -81,7 +96,11 @@ const CommandBar = ({ onClose, activeProjectId, onCreateProject }: CommandBarPro
                             className={`mpm-cmd__item ${i === cursor ? "is-active" : ""}`}
                             onMouseEnter={() => setCursor(i)}
                             onClick={c.run}>
-                            <Icon name={c.icon} /> {c.label}
+                            <Icon name={c.icon} />
+                            <span className="mpm-cmd__label">
+                                {c.label}
+                                {c.hint ? <span className="mpm-cmd__hint">{c.hint}</span> : null}
+                            </span>
                         </div>)}
             </div>
         </div>

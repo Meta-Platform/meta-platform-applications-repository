@@ -7,6 +7,7 @@ import useApi from "../Hooks/useApi"
 import { Project, ProjectMetrics, Board, ActivityEntry } from "../api/types"
 import AppShell from "../Components/AppShell"
 import NewBoardModal from "../Components/NewBoardModal"
+import ConfirmActionModal from "../Components/ConfirmActionModal"
 import Markdown from "../Components/Markdown"
 import { Metric, Progress, StatusChip, Loading, ErrorBanner } from "../Components/Primitives"
 import { formatDateTime, humanizeAction } from "../Utils/format"
@@ -25,6 +26,8 @@ const ProjectPage = () => {
     const [activity, setActivity] = useState<ActivityEntry[]>([])
     const [error, setError] = useState<string | null>(null)
     const [creatingBoard, setCreatingBoard] = useState(false)
+    const [confirmDelete, setConfirmDelete] = useState(false)
+    const [deleting, setDeleting] = useState(false)
 
     useEffect(() => {
         if (!projectId) return
@@ -53,9 +56,10 @@ const ProjectPage = () => {
     const restore = async () => {
         try { await api.projects.restore(projectId); await reloadProject() } catch (e: any) { setError(e.message) }
     }
-    const removeProject = async () => {
-        if (!window.confirm(`Excluir o projeto "${project ? project.name : ""}"? (soft delete — some da lista)`)) return
-        try { await api.projects.remove(projectId); navigate("/") } catch (e: any) { setError(e.message) }
+    const doRemoveProject = async () => {
+        setDeleting(true); setError(null)
+        try { await api.projects.remove(projectId); navigate("/") }
+        catch (e: any) { setError(e.message); setDeleting(false); setConfirmDelete(false) }
     }
 
     return <AppShell active="overview" activeProjectId={projectId} activeProjectName={project ? project.name : undefined}>
@@ -66,20 +70,23 @@ const ProjectPage = () => {
                 <div className="mpm-page-head">
                     <div className="mpm-page-head__titles">
                         <h1 className="mpm-page-title">{project.name}</h1>
+                        {project.shortDescription
+                            ? <div className="mpm-page-subtitle">{project.shortDescription}</div>
+                            : null}
                         <div className="mpm-page-subtitle mpm-mono">{project.keyPrefix} · {project.slug}</div>
                     </div>
                     <div className="mpm-page-head__actions">
                         <StatusChip status={project.status} />
-                        <button className="mpm-btn" onClick={() => openBoard(project.defaultBoardId)}><Icon name="columns" /> Board</button>
-                        <button className="mpm-btn" onClick={() => navigate(`/projects/${projectId}/list`)}><Icon name="list" /> Lista</button>
-                        <button className="mpm-btn" onClick={() => navigate(`/projects/${projectId}/backlog`)}><Icon name="clipboard list" /> Backlog</button>
-                        <button className="mpm-btn" onClick={() => navigate(`/projects/${projectId}/inbox`)}><Icon name="inbox" /> Inbox</button>
-                        <button className="mpm-btn" onClick={() => navigate(`/projects/${projectId}/roadmap`)}><Icon name="road" /> Roadmap</button>
+                        <button className="mpm-btn" title="Quadro Kanban: colunas de status por onde o trabalho flui" onClick={() => openBoard(project.defaultBoardId)}><Icon name="columns" /> Board</button>
+                        <button className="mpm-btn" title="Lista hierárquica dos itens, com filtros e agrupamento" onClick={() => navigate(`/projects/${projectId}/list`)}><Icon name="list" /> Lista</button>
+                        <button className="mpm-btn" title="Trabalho priorizado ainda não em execução" onClick={() => navigate(`/projects/${projectId}/backlog`)}><Icon name="clipboard list" /> Backlog</button>
+                        <button className="mpm-btn" title="Caixa de ideias cruas para triagem" onClick={() => navigate(`/projects/${projectId}/inbox`)}><Icon name="inbox" /> Inbox</button>
+                        <button className="mpm-btn" title="Plano no tempo: milestones e horizontes" onClick={() => navigate(`/projects/${projectId}/roadmap`)}><Icon name="road" /> Roadmap</button>
                         <button className="mpm-btn" title="Exportar projeto (.json)" onClick={exportProject}><Icon name="download" /> Exportar</button>
                         {project.status === "archived"
                             ? <button className="mpm-btn" title="Restaurar projeto" onClick={restore}><Icon name="undo" /> Restaurar</button>
                             : <button className="mpm-btn" title="Arquivar projeto" onClick={archive}><Icon name="archive" /> Arquivar</button>}
-                        <button className="mpm-btn mpm-btn--danger" title="Excluir projeto" onClick={removeProject}><Icon name="trash" /> Excluir</button>
+                        <button className="mpm-btn mpm-btn--danger" title="Excluir projeto" onClick={() => setConfirmDelete(true)}><Icon name="trash" /> Excluir</button>
                     </div>
                 </div>
 
@@ -150,6 +157,23 @@ const ProjectPage = () => {
             ? <NewBoardModal projectId={projectId}
                 onClose={() => setCreatingBoard(false)}
                 onCreated={(b) => { setCreatingBoard(false); openBoard(b.id) }} />
+            : null}
+
+        {confirmDelete && project
+            ? <ConfirmActionModal
+                title="Excluir projeto"
+                danger
+                message={<>Isto remove o projeto <strong>{project.name}</strong> da lista (soft delete — reversível por um administrador).</>}
+                consequences={[
+                    <>O projeto some das listagens e da navegação.</>,
+                    metrics ? <>{metrics.total} item(ns) e {boards.length} board(s) deixam de aparecer.</> : <>Boards e itens deixam de aparecer.</>
+                ]}
+                requireText={project.name}
+                confirmLabel="Excluir projeto"
+                busy={deleting}
+                error={error}
+                onConfirm={doRemoveProject}
+                onCancel={() => setConfirmDelete(false)} />
             : null}
     </AppShell>
 }

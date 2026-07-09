@@ -1,11 +1,11 @@
 const { Op } = require("sequelize")
 const { NewId, Serialize, SerializeMany } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
-const { USER_TYPES } = require("../Config")
+const { USER_TYPES, PERMISSIONS, DESKTOP_USER_HANDLE, DESKTOP_USER_DISPLAYNAME } = require("../Config")
 
 const UsersStore = (ctx) => {
     const { models, writeAudit } = ctx
-    const { User, WorkItem } = models
+    const { User, WorkItem, AgentSession } = models
 
     const ResolveUser = async (ref) => {
         if(!ref) throw new DomainError("VALIDATION_ERROR", "Referência de usuário é obrigatória.", { field: "user" })
@@ -62,7 +62,86 @@ const UsersStore = (ctx) => {
         return { id: instance.id, archived: true }
     }
 
-    return { ResolveUser, CreateUser, ListUsers, GetUser, UpdateUser, ArchiveUser }
+    // ---------- Permissões (modelo simples: lista em User.permissionsJson) ----------
+
+    const _parsePermissions = (user) => {
+        if(!user || !user.permissionsJson) return []
+        try { const p = JSON.parse(user.permissionsJson); return Array.isArray(p) ? p : [] }
+        catch(e){ return [] }
+    }
+
+    const GetUserPermissions = async ({ user } = {}) => _parsePermissions(await ResolveUser(user))
+
+    const SetUserPermissions = async ({ user, permissions = [], actor } = {}) => {
+        const instance = await ResolveUser(user)
+        const invalid = permissions.filter((p) => !PERMISSIONS.includes(p))
+        if(invalid.length)
+            throw new DomainError("VALIDATION_ERROR", `Permissão inválida: ${invalid.join(", ")}.`, { invalid, allowed: PERMISSIONS })
+        await instance.update({ permissionsJson: JSON.stringify(permissions) })
+        await writeAudit({ entityType: "user", entityId: instance.id, action: "set-permissions", actor, metadata: { permissions } })
+        return { id: instance.id, permissions }
+    }
+
+    const HasPermission = async ({ user, permission } = {}) => {
+        const instance = await ResolveUser(user).catch(() => undefined)
+        return !!instance && _parsePermissions(instance).indexOf(permission) >= 0
+    }
+
+    // Resolve o usuário por trás de um actor de AGENTE (sem criar nada).
+    const _resolveAgentUserId = async (actor = {}) => {
+        if(actor.actorUserId) return actor.actorUserId
+        const sessionId = actor.actorSessionId
+        if(sessionId){
+            const s = await AgentSession.findOne({ where: { id: sessionId } }).catch(() => undefined)
+            if(s) return s.agentUserId
+        }
+        if(actor.session){
+            const id = actor.session
+            const identityKey = `${id.provider || "other"}:${id.externalSessionId || id.traceId || `${id.host || "?"}:${id.pid || "?"}`}`
+            const s = await AgentSession.findOne({ where: { identityKey } }).catch(() => undefined)
+            if(s) return s.agentUserId
+        }
+        return undefined
+    }
+
+    const _isAgentActor = (actor = {}) =>
+        !!(actor.session || actor.source === "agent" || actor.source === "mcp" || actor.actorType === "agent")
+
+    // Consulta de atividade/auditoria de TODOS os projetos (sem projectId) exige
+    // permissão explícita — mas só barra AGENTES. Humanos na GUI/CLI seguem livres.
+    const AssertGlobalActivityAccess = async ({ actor, permission = "activity:read:all_projects" } = {}) => {
+        if(!actor || !_isAgentActor(actor)) return true
+        const agentUserId = await _resolveAgentUserId(actor)
+        if(agentUserId && await HasPermission({ user: agentUserId, permission })) return true
+        throw new DomainError("FORBIDDEN",
+            `Consulta global exige a permissão "${permission}". Informe um projeto ou peça a permissão a um humano.`,
+            { permission, required: true })
+    }
+
+    // ---------- Usuário automático do desktop ----------
+    // Representa ações/anotações manuais do ambiente desktop, sem atribuí-las a
+    // um humano formal nem a um agente. Semeado no boot (idempotente).
+    const EnsureDesktopUser = async () => {
+        const existing = await User.findOne({ where: { handle: DESKTOP_USER_HANDLE } })
+        if(existing){
+            if(existing.deletedAt) await existing.update({ deletedAt: null, status: "active" })
+            return Serialize(existing)
+        }
+        const user = await User.create({
+            id: NewId(), type: "desktop", displayName: DESKTOP_USER_DISPLAYNAME,
+            handle: DESKTOP_USER_HANDLE, status: "active",
+            permissionsJson: JSON.stringify(["activity:write:note", "activity:read:project"])
+        })
+        return Serialize(user)
+    }
+
+    const GetDesktopUser = async () => EnsureDesktopUser()
+
+    return {
+        ResolveUser, CreateUser, ListUsers, GetUser, UpdateUser, ArchiveUser,
+        GetUserPermissions, SetUserPermissions, HasPermission,
+        AssertGlobalActivityAccess, EnsureDesktopUser, GetDesktopUser
+    }
 }
 
 module.exports = UsersStore

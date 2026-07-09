@@ -19,6 +19,12 @@
                             "paramType": "positional",
                             "valueType": "string",
                             "describe": "Nome do projeto"
+                        },
+                        {
+                            "key": "short-description",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "descrição curta (<=240 chars), usada em cards e listas"
                         }
                     ],
                     "parametersToLoad": [
@@ -62,6 +68,12 @@
                             "paramType": "positional",
                             "valueType": "string",
                             "describe": "id|slug|key"
+                        },
+                        {
+                            "key": "short-description",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "descrição curta (<=240 chars), usada em cards e listas"
                         }
                     ],
                     "parametersToLoad": [
@@ -1217,7 +1229,7 @@
                 {
                     "namespace": "AgentCreation",
                     "command": "creation",
-                    "description": "Pedidos de criação (projeto/board) por agentes",
+                    "description": "Pedidos de aprovação (criação/remoção) por agentes",
                     "children": [
                         {
                             "namespace": "AgentCreationList",
@@ -1232,7 +1244,7 @@
                             "namespace": "AgentCreationApprove",
                             "path": "Commands/AgentCreationApprove.command",
                             "command": "approve [request]",
-                            "description": "Aprovar e executar a criação",
+                            "description": "Aprovar e executar a ação (criação ou remoção)",
                             "parameters": [
                                 {
                                     "key": "request",
@@ -1249,13 +1261,19 @@
                             "namespace": "AgentCreationReject",
                             "path": "Commands/AgentCreationReject.command",
                             "command": "reject [request]",
-                            "description": "Rejeitar o pedido de criação",
+                            "description": "Rejeitar o pedido (nada é criado/removido)",
                             "parameters": [
                                 {
                                     "key": "request",
                                     "paramType": "positional",
                                     "valueType": "string",
                                     "describe": "id do pedido"
+                                },
+                                {
+                                    "key": "reason",
+                                    "paramType": "option",
+                                    "valueType": "string",
+                                    "describe": "motivo da rejeição (auditado)"
                                 }
                             ],
                             "parametersToLoad": [
@@ -1327,9 +1345,208 @@
                     "namespace": "ActivityList",
                     "path": "Commands/ActivityList.command",
                     "command": "list",
-                    "description": "Listar atividade recente",
+                    "description": "Auditoria: quem/qual sessão fez o quê (filtros ricos)",
                     "parametersToLoad": [
                         "projectStoreLib"
+                    ],
+                    "parameters": [
+                        {
+                            "key": "project",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "projeto (id|slug|key); omita para consulta global"
+                        },
+                        {
+                            "key": "all-projects",
+                            "paramType": "option",
+                            "valueType": "boolean",
+                            "describe": "forçar consulta global (agente exige permissão)"
+                        },
+                        {
+                            "key": "entity-type",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "tipo de entidade (project|board|work-item|…)"
+                        },
+                        {
+                            "key": "entity-id",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "id da entidade"
+                        },
+                        {
+                            "key": "action",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "ação (create|update|set-status|approve|…)"
+                        },
+                        {
+                            "key": "actor",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "id do usuário ator"
+                        },
+                        {
+                            "key": "actor-type",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "human|agent|system|desktop"
+                        },
+                        {
+                            "key": "source",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "gui|cli|api|agent|mcp|desktop"
+                        },
+                        {
+                            "key": "provider",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "claude|codex|chatgpt|other"
+                        },
+                        {
+                            "key": "model",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "modelo usado"
+                        },
+                        {
+                            "key": "session",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "id da sessão do agente"
+                        },
+                        {
+                            "key": "from",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "início do intervalo (ISO)"
+                        },
+                        {
+                            "key": "to",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "fim do intervalo (ISO)"
+                        },
+                        {
+                            "key": "limit",
+                            "paramType": "option",
+                            "valueType": "number",
+                            "describe": "máx. de eventos"
+                        },
+                        {
+                            "key": "offset",
+                            "paramType": "option",
+                            "valueType": "number",
+                            "describe": "deslocamento"
+                        }
+                    ]
+                },
+                {
+                    "namespace": "ActivityNote",
+                    "command": "note",
+                    "description": "Anotações de atividade (usuario-desktop por padrão)",
+                    "children": [
+                        {
+                            "namespace": "ActivityNoteAdd",
+                            "path": "Commands/ActivityNoteAdd.command",
+                            "command": "add",
+                            "description": "Adicionar anotação num escopo",
+                            "parameters": [
+                                {
+                                    "key": "project",
+                                    "paramType": "option",
+                                    "valueType": "string",
+                                    "describe": "projeto (id|slug|key)"
+                                },
+                                {
+                                    "key": "board",
+                                    "paramType": "option",
+                                    "valueType": "string",
+                                    "describe": "board (id)"
+                                },
+                                {
+                                    "key": "sprint",
+                                    "paramType": "option",
+                                    "valueType": "string",
+                                    "describe": "sprint (id)"
+                                },
+                                {
+                                    "key": "milestone",
+                                    "paramType": "option",
+                                    "valueType": "string",
+                                    "describe": "milestone (id)"
+                                },
+                                {
+                                    "key": "item",
+                                    "paramType": "option",
+                                    "valueType": "string",
+                                    "describe": "item (id|key)"
+                                },
+                                {
+                                    "key": "text",
+                                    "paramType": "option",
+                                    "valueType": "string",
+                                    "describe": "texto da anotação"
+                                }
+                            ],
+                            "parametersToLoad": [
+                                "projectStoreLib"
+                            ]
+                        },
+                        {
+                            "namespace": "ActivityNoteList",
+                            "path": "Commands/ActivityNoteList.command",
+                            "command": "list",
+                            "description": "Listar anotações de um escopo",
+                            "parameters": [
+                                {
+                                    "key": "project",
+                                    "paramType": "option",
+                                    "valueType": "string",
+                                    "describe": "projeto (id|slug|key)"
+                                },
+                                {
+                                    "key": "board",
+                                    "paramType": "option",
+                                    "valueType": "string",
+                                    "describe": "board (id)"
+                                },
+                                {
+                                    "key": "sprint",
+                                    "paramType": "option",
+                                    "valueType": "string",
+                                    "describe": "sprint (id)"
+                                },
+                                {
+                                    "key": "milestone",
+                                    "paramType": "option",
+                                    "valueType": "string",
+                                    "describe": "milestone (id)"
+                                },
+                                {
+                                    "key": "item",
+                                    "paramType": "option",
+                                    "valueType": "string",
+                                    "describe": "item (id|key)"
+                                },
+                                {
+                                    "key": "limit",
+                                    "paramType": "option",
+                                    "valueType": "number",
+                                    "describe": "máx."
+                                },
+                                {
+                                    "key": "offset",
+                                    "paramType": "option",
+                                    "valueType": "number",
+                                    "describe": "deslocamento"
+                                }
+                            ],
+                            "parametersToLoad": [
+                                "projectStoreLib"
+                            ]
+                        }
                     ]
                 }
             ]
@@ -1635,6 +1852,113 @@
                     "path": "Commands/BacklogList.command",
                     "command": "list",
                     "description": "Listar backlog (--horizon --area --sort value)",
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Audit",
+            "command": "audit",
+            "description": "Auditoria (eventos imutáveis)",
+            "children": [
+                {
+                    "namespace": "AuditList",
+                    "path": "Commands/AuditList.command",
+                    "command": "list",
+                    "description": "Listar eventos de auditoria",
+                    "parameters": [
+                        {
+                            "key": "project",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "projeto (id|slug|key)"
+                        },
+                        {
+                            "key": "all-projects",
+                            "paramType": "option",
+                            "valueType": "boolean",
+                            "describe": "consulta global"
+                        },
+                        {
+                            "key": "action",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "ação"
+                        },
+                        {
+                            "key": "actor-type",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "human|agent|system|desktop"
+                        },
+                        {
+                            "key": "source",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "gui|cli|api|agent|mcp|desktop"
+                        },
+                        {
+                            "key": "provider",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "provider"
+                        },
+                        {
+                            "key": "model",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "modelo"
+                        },
+                        {
+                            "key": "session",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "sessão"
+                        },
+                        {
+                            "key": "from",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "início (ISO)"
+                        },
+                        {
+                            "key": "to",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "fim (ISO)"
+                        },
+                        {
+                            "key": "limit",
+                            "paramType": "option",
+                            "valueType": "number",
+                            "describe": "máx."
+                        },
+                        {
+                            "key": "offset",
+                            "paramType": "option",
+                            "valueType": "number",
+                            "describe": "deslocamento"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "AuditShow",
+                    "path": "Commands/AuditShow.command",
+                    "command": "show [event]",
+                    "description": "Detalhar um evento",
+                    "parameters": [
+                        {
+                            "key": "event",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "id do evento"
+                        }
+                    ],
                     "parametersToLoad": [
                         "projectStoreLib"
                     ]

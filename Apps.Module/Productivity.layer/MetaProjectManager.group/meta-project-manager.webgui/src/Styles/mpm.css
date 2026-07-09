@@ -292,9 +292,15 @@ html, body, #gui { height: 100%; margin: 0; }
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: var(--mp-space-4);
 }
-.mpm-project-card { cursor: pointer; display: flex; flex-direction: column; gap: var(--mp-space-3); }
+/* P0.1: card de altura previsível — descrição longa NÃO estica o card.
+   A descrição longa vive só no detalhe do projeto; aqui usamos shortDescription
+   (ou um fallback truncado) limitado a 3 linhas. */
+.mpm-project-card {
+    cursor: pointer; display: flex; flex-direction: column; gap: var(--mp-space-3);
+    min-height: 180px; max-height: 260px; overflow: hidden;
+}
 .mpm-project-card:hover { box-shadow: var(--mp-shadow-3); }
-.mpm-project-card__head { display: flex; align-items: center; gap: var(--mp-space-3); }
+.mpm-project-card__head { display: flex; align-items: center; gap: var(--mp-space-3); min-width: 0; }
 .mpm-project-card__icon {
     width: 40px; height: 40px; flex: 0 0 auto;
     display: grid; place-items: center;
@@ -305,9 +311,28 @@ html, body, #gui { height: 100%; margin: 0; }
     font-weight: 800;
     box-shadow: var(--mp-shadow-1);
 }
-.mpm-project-card__name { font-weight: 700; font-size: var(--mp-text-lg); color: var(--mp-ink); }
+.mpm-project-card__name {
+    font-weight: 700; font-size: var(--mp-text-lg); color: var(--mp-ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .mpm-project-card__key { font-family: var(--mp-font-mono); font-size: var(--mp-text-xs); color: var(--mp-muted); }
-.mpm-project-card__desc { color: var(--mp-muted); font-size: var(--mp-text-sm); min-height: 34px; }
+.mpm-project-card__desc {
+    color: var(--mp-muted); font-size: var(--mp-text-sm);
+    min-height: 34px; flex: 1 1 auto;
+    display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3;
+    -webkit-box-orient: vertical; overflow: hidden;
+    overflow-wrap: anywhere;
+}
+/* Rodapé do card: status + contadores + última atividade. */
+.mpm-project-card__foot {
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    flex-wrap: wrap; margin-top: auto;
+}
+.mpm-project-card__counts {
+    display: flex; gap: var(--mp-space-2); margin-left: auto;
+    font-family: var(--mp-font-mono); font-size: var(--mp-text-xs); color: var(--mp-muted);
+}
+.mpm-project-card__counts b { color: var(--mp-ink); }
 
 /* ============================================================ */
 /* Badges / chips                                               */
@@ -886,3 +911,108 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-guide-ref { display: flex; flex-direction: column; gap: var(--mp-space-2); }
 .mpm-guide-ref__row { display: flex; gap: var(--mp-space-3); align-items: baseline; flex-wrap: wrap; }
 .mpm-guide-ref__row .mpm-chip { flex: 0 0 132px; text-align: center; }
+
+/* ── Aprovação global de agente + confirmação de ação (Fase 1) ───────────── */
+/* Fica ACIMA do overlay do inspector (aprovação pode surgir em qualquer tela). */
+.mpm-overlay--top { z-index: calc(var(--mp-z-modal) + 20); }
+
+/* Modal global de aprovação: mais largo para caber "o quê" + "quem". */
+.mpm-modal--approval { width: 620px; max-width: 94vw; }
+.mpm-approval__impact { border-color: var(--mp-danger); }
+
+/* Modal de confirmação de ação sensível. */
+.mpm-modal--confirm { width: 460px; max-width: 92vw; }
+.mpm-confirm__msg { line-height: 1.5; }
+.mpm-confirm__list {
+    margin: 0; padding-left: var(--mp-space-4);
+    display: flex; flex-direction: column; gap: var(--mp-space-1);
+    color: var(--mp-text); font-size: var(--mp-text-sm);
+}
+.mpm-confirm__list li { list-style: square; }
+
+/* Command palette: rótulo + legenda (shortDescription) sem quebrar layout. */
+.mpm-cmd__label { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.mpm-cmd__hint {
+    font-size: var(--mp-text-xs); color: var(--mp-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ── Tela de Auditoria & Atividades ─────────────────────────────────────── */
+.mpm-audit__filters { display: flex; flex-direction: column; gap: var(--mp-space-3); }
+.mpm-audit__filter-row { display: flex; gap: var(--mp-space-3); flex-wrap: wrap; }
+.mpm-audit__filter-row .mpm-field { min-width: 160px; flex: 1 1 160px; }
+
+.mpm-audit__event { align-items: flex-start; }
+.mpm-audit__title { display: flex; align-items: center; gap: var(--mp-space-2); flex-wrap: wrap; }
+
+.mpm-audit__note {
+    display: flex; gap: var(--mp-space-2); align-items: flex-start;
+    padding: var(--mp-space-2);
+    border: 1px solid var(--mp-line-soft);
+    background: var(--mp-surface-2);
+}
+
+.mpm-audit__diff {
+    width: 100%; margin-top: var(--mp-space-2);
+    border-collapse: collapse; font-size: var(--mp-text-xs);
+}
+.mpm-audit__diff th, .mpm-audit__diff td {
+    border: 1px solid var(--mp-line-soft);
+    padding: 4px 6px; text-align: left; vertical-align: top;
+    overflow-wrap: anywhere;
+}
+.mpm-audit__before { color: var(--mp-danger); }
+.mpm-audit__after  { color: var(--mp-success); }
+.mpm-audit__json {
+    margin-top: var(--mp-space-2); padding: var(--mp-space-2);
+    background: var(--mp-surface-2); border: 1px solid var(--mp-line-soft);
+    font-size: 11px; overflow-x: auto; max-height: 200px;
+}
+
+/* ── Inspector com ABAS (spec §8.1) ─────────────────────────────────────── */
+/* Header + titlebar + tabs ficam fixos; só o corpo da aba rola. */
+.mpm-inspector__titlebar {
+    padding: var(--mp-space-3) var(--mp-space-4) 0;
+    flex: 0 0 auto;
+}
+.mpm-tabs {
+    display: flex; gap: 2px; flex: 0 0 auto;
+    padding: var(--mp-space-3) var(--mp-space-4) 0;
+    border-bottom: var(--mp-border);
+    overflow-x: auto;
+}
+.mpm-tab {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 32px; padding: 0 var(--mp-space-3);
+    background: transparent; color: var(--mp-muted);
+    border: 1px solid transparent; border-bottom: none;
+    font-size: var(--mp-text-sm); font-weight: 600;
+    cursor: pointer; white-space: nowrap;
+}
+.mpm-tab:hover { background: var(--mp-surface-2); color: var(--mp-ink); }
+.mpm-tab.is-active {
+    background: var(--mp-surface); color: var(--mp-ink);
+    border-color: var(--mp-line); border-bottom: 2px solid var(--mp-accent-blue);
+}
+.mpm-tab .icon { margin: 0 !important; }
+
+/* Grid compacto de campos do Resumo (2–3 colunas, não 1 campo por linha). */
+.mpm-inspector__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--mp-space-3);
+}
+
+/* ── Alinhamento de ícones (spec P1.1) ──────────────────────────────────── */
+.mpm-icon {
+    width: 16px; height: 16px; min-width: 16px;
+    display: inline-flex; align-items: center; justify-content: center;
+    line-height: 1;
+}
+.mpm-btn, .mpm-nav__item, .mpm-tab, .mpm-chip, .mpm-seg__btn {
+    display: inline-flex; align-items: center; gap: 8px;
+}
+/* Ícones dentro de botões/nav não deslocam a linha de base. */
+.mpm-btn .icon, .mpm-nav__item .icon, .mpm-chip .icon, .mpm-seg__btn .icon {
+    margin: 0 !important; line-height: 1;
+}

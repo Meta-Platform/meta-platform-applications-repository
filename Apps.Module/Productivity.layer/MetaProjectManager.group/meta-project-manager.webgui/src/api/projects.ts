@@ -3,6 +3,7 @@ import { Project, ProjectMetrics } from "./types"
 
 export interface CreateProjectInput {
     name: string
+    shortDescription?: string
     description?: string
     slug?: string
     status?: string
@@ -16,6 +17,7 @@ export interface CreateProjectInput {
 
 export interface UpdateProjectInput {
     name?: string
+    shortDescription?: string
     description?: string
     status?: string
     slug?: string
@@ -24,7 +26,7 @@ export interface UpdateProjectInput {
 }
 
 const CreateProjectsApi = (call: Caller) => ({
-    list: (query: { status?: string; sort?: string } = {}): Promise<Project[]> =>
+    list: (query: { status?: string; sort?: string; includeCounts?: string } = {}): Promise<Project[]> =>
         call("Projects", "ListProjects", query),
 
     create: (input: CreateProjectInput): Promise<Project> =>

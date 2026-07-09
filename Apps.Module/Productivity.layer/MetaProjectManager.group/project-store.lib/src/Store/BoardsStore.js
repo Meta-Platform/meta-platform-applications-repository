@@ -20,19 +20,19 @@ const BoardsStore = (ctx) => {
         }
     }
 
-    const CreateBoard = async ({ project, name, description, type = "kanban", withDefaultColumns = true, setDefault, actor } = {}) => {
+    const CreateBoard = async ({ project, name, shortDescription, description, type = "kanban", withDefaultColumns = true, setDefault, actor } = {}) => {
         if(!name) throw new DomainError("VALIDATION_ERROR", "Nome do board é obrigatório.", { field: "name" })
         const projectInstance = await store.ResolveProject(project)
 
         // Gate: criação de board por agente exige aprovação humana (vira pedido pendente).
         if(store.IsAgentCreation(actor)){
-            const { request } = await store.RequestCreation({ type: "board", projectId: projectInstance.id, payload: { project: projectInstance.id, name, description, type, withDefaultColumns, setDefault }, actor })
+            const { request } = await store.RequestCreation({ type: "board", projectId: projectInstance.id, payload: { project: projectInstance.id, name, shortDescription, description, type, withDefaultColumns, setDefault }, actor })
             throw new DomainError("AGENT_SESSION_CONFIRMATION_REQUIRED",
                 "Criação de board por agente requer aprovação humana.",
                 { pendingCreationId: request.id, type: "board", nextCommands: [`mpm agent creation approve ${request.id}`, `mpm agent creation reject ${request.id}`] })
         }
 
-        const board = await Board.create({ id: NewId(), projectId: projectInstance.id, name, description, type })
+        const board = await Board.create({ id: NewId(), projectId: projectInstance.id, name, shortDescription, description, type })
         if(withDefaultColumns) await _createDefaultColumns(board.id)
         const isFirst = (await Board.count({ where: { projectId: projectInstance.id, deletedAt: null } })) === 1
         if(setDefault || isFirst) await projectInstance.update({ defaultBoardId: board.id })
@@ -57,7 +57,7 @@ const BoardsStore = (ctx) => {
     const UpdateBoard = async ({ board, actor, ...fields } = {}) => {
         const instance = await ResolveBoard(board)
         const patch = {}
-        for(const key of ["name", "description", "type"]) if(fields[key] !== undefined) patch[key] = fields[key]
+        for(const key of ["name", "shortDescription", "description", "type"]) if(fields[key] !== undefined) patch[key] = fields[key]
         await instance.update(patch)
         const data = Serialize(instance)
         await writeAudit({ projectId: instance.projectId, entityType: "board", entityId: instance.id, action: "update", actor, metadata: patch })
@@ -80,6 +80,19 @@ const BoardsStore = (ctx) => {
 
     const DeleteBoard = async ({ board, actor } = {}) => {
         const instance = await ResolveBoard(board)
+
+        // Gate: remoção por agente exige aprovação humana (pedido destrutivo pendente).
+        if(store.IsAgentActor(actor)){
+            const { request } = await store.RequestApproval({
+                actionName: "delete", type: "board", targetId: instance.id,
+                projectId: instance.projectId, risk: "destructive",
+                payload: { board: instance.id }, resumeToken: actor.resumeToken, actor
+            })
+            throw new DomainError("AGENT_SESSION_CONFIRMATION_REQUIRED",
+                "Remoção de board por agente requer aprovação humana.",
+                { pendingCreationId: request.id, actionName: "delete", type: "board", nextCommands: [`mpm agent creation approve ${request.id}`, `mpm agent creation reject ${request.id}`] })
+        }
+
         await instance.update({ deletedAt: new Date() })
         await writeAudit({ projectId: instance.projectId, entityType: "board", entityId: instance.id, action: "delete", actor })
         emit("board.updated", { id: instance.id, deleted: true })

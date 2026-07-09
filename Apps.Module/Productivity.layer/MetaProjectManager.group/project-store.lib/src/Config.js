@@ -23,13 +23,53 @@ const LINK_RELATIONS     = ["blocks", "depends", "relates", "duplicates", "imple
 
 const ATTACHMENT_TYPES   = ["file", "image", "video", "pdf", "markdown", "log", "link", "other"]
 
-const USER_TYPES         = ["human", "agent"]
+// "desktop" = usuário automático que representa ações/anotações manuais feitas no
+// ambiente desktop/local. "system" = automações internas do próprio gerenciador.
+const USER_TYPES         = ["human", "agent", "desktop", "system"]
+
+// Usuário automático semeado no boot para registrar notas/ações do desktop.
+const DESKTOP_USER_HANDLE      = "usuario-desktop"
+const DESKTOP_USER_DISPLAYNAME = "Usuário Desktop"
 
 const AGENT_PROVIDERS    = ["claude", "codex", "chatgpt", "other"]
 
 const AGENT_SESSION_STATUSES = ["pending_confirmation", "active", "closed", "rejected"]
 
-const AUDIT_SOURCES      = ["gui", "cli", "api", "agent"]
+const AUDIT_SOURCES      = ["gui", "cli", "api", "agent", "mcp", "desktop"]
+
+// Escopos aos quais uma nota de atividade pode ser associada.
+const ACTIVITY_SCOPES    = ["project", "board", "sprint", "milestone", "item", "global"]
+
+// Permissões (modelo simples, guardado em User.permissionsJson).
+// Consultar atividade/auditoria de TODOS os projetos exige permissão explícita.
+const PERMISSIONS = [
+    "activity:read:project",
+    "activity:read:all_projects",
+    "activity:write:note",
+    "audit:read:project",
+    "audit:read:all_projects",
+    "approval:approve",
+    "approval:reject",
+    "sensitive:archive",
+    "sensitive:delete"
+]
+
+// Limite recomendado/máximo da descrição curta (shortDescription).
+const SHORT_DESCRIPTION_MAX = 240
+
+// Pedidos de aprovação (gate de agente). Um pedido carrega a AÇÃO que o agente
+// tentou executar; um humano aprova (executa de fato) ou rejeita.
+const APPROVAL_ACTIONS   = ["create", "delete", "archive"]
+
+// Grau de risco da ação (dirige a UI de confirmação: destructive = trava reforçada).
+const APPROVAL_RISKS     = ["normal", "sensitive", "destructive"]
+
+// Ciclo de vida do pedido. pending -> approved (executado) | rejected | failed.
+// expired/cancelled reservados para timeout/cancelamento explícito.
+const APPROVAL_STATUSES  = ["pending", "approved", "rejected", "failed", "expired", "cancelled"]
+
+// Tipos de alvo que um pedido de delete por agente pode carregar (soft delete).
+const APPROVAL_DELETE_TARGETS = ["project", "board", "item"]
 
 const ENVIRONMENTS       = ["local", "dev", "staging", "homologation", "production"]
 
@@ -65,9 +105,18 @@ module.exports = {
     MILESTONE_STATUSES,
     SPRINT_STATUSES,
     USER_TYPES,
+    DESKTOP_USER_HANDLE,
+    DESKTOP_USER_DISPLAYNAME,
     AGENT_PROVIDERS,
     AGENT_SESSION_STATUSES,
     AUDIT_SOURCES,
+    ACTIVITY_SCOPES,
+    PERMISSIONS,
+    SHORT_DESCRIPTION_MAX,
+    APPROVAL_ACTIONS,
+    APPROVAL_RISKS,
+    APPROVAL_STATUSES,
+    APPROVAL_DELETE_TARGETS,
     ENVIRONMENTS,
     DEFAULT_COLUMNS,
     DEFAULT_MAX_ATTACHMENT_BYTES

@@ -17,6 +17,12 @@
                     "in": "query",
                     "type": "string",
                     "required": false
+                },
+                {
+                    "name": "includeCounts",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
                 }
             ]
         },
@@ -84,6 +90,12 @@
                     "in": "body",
                     "type": "string",
                     "required": false
+                },
+                {
+                    "name": "shortDescription",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
                 }
             ]
         },
@@ -143,6 +155,12 @@
                 },
                 {
                     "name": "color",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "shortDescription",
                     "in": "body",
                     "type": "string",
                     "required": false

@@ -6,6 +6,7 @@ import { Icon } from "semantic-ui-react"
 import ProjectSidebar from "./ProjectSidebar"
 import CommandBar from "./CommandBar"
 import ThemeMenu from "./ThemeMenu"
+import GlobalApprovalModal from "./GlobalApprovalModal"
 
 interface AppShellProps {
     active: string
@@ -82,6 +83,10 @@ const AppShell = ({ active, activeProjectId, activeProjectName, inspector, onIns
                 activeProjectId={activeProjectId}
                 onCreateProject={onCreateProject} />
             : null}
+
+        {/* Aprovação de agente é GLOBAL: surge sobre qualquer tela quando há
+            pedidos pendentes (criação/remoção), sem depender da tela de Agentes. */}
+        <GlobalApprovalModal />
     </div>
 }
 

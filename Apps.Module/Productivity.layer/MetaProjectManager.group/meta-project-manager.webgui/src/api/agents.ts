@@ -42,16 +42,19 @@ const CreateAgentsApi = (call: Caller) => ({
     closeSession: (sessionId: string): Promise<AgentSession> =>
         call("Agents", "CloseAgentSession", { sessionId }),
 
-    // Pedidos de criação (projeto/board bloqueados de agentes, aguardando
-    // aprovação humana). status default do servidor = pending.
-    listCreationRequests: (query: { type?: string; status?: string } = {}): Promise<CreationRequest[]> =>
+    // Pedidos de aprovação (criação/remoção por agentes, aguardando decisão
+    // humana). status default do servidor = pending. A lista já vem com who/impact.
+    listCreationRequests: (query: { type?: string; actionName?: string; status?: string } = {}): Promise<CreationRequest[]> =>
         call("Agents", "ListCreationRequests", query),
+
+    getCreationRequest: (requestId: string): Promise<CreationRequest> =>
+        call("Agents", "GetCreationRequest", { requestId }),
 
     approveCreation: (requestId: string, actorUserId?: string): Promise<ApproveCreationResult> =>
         call("Agents", "ApproveCreation", { requestId, actorUserId }),
 
-    rejectCreation: (requestId: string, actorUserId?: string): Promise<CreationRequest> =>
-        call("Agents", "RejectCreation", { requestId, actorUserId })
+    rejectCreation: (requestId: string, reason?: string, actorUserId?: string): Promise<CreationRequest> =>
+        call("Agents", "RejectCreation", { requestId, reason, actorUserId })
 })
 
 export default CreateAgentsApi

@@ -165,9 +165,12 @@ const WorkItemsStore = (ctx) => {
         _assertEnum(fields.value, WORK_ITEM_VALUES, "value")
         if(fields.assignee !== undefined) patch.assigneeUserId = await _resolveUserId(fields.assignee)
         if(fields.labels !== undefined) patch.labels = Array.isArray(fields.labels) ? fields.labels : String(fields.labels).split(",").map((s) => s.trim()).filter(Boolean)
+        // Diff: valor anterior dos campos alterados (auditoria mostra antes → depois).
+        const before = {}
+        for(const key of Object.keys(patch)) before[key] = instance[key]
         await instance.update(patch)
         const data = Serialize(instance)
-        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "update", actor, metadata: patch })
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "update", actor, metadata: patch, before, after: patch })
         emit("item.updated", data)
         return data
     }
@@ -179,9 +182,10 @@ const WorkItemsStore = (ctx) => {
         const patch = { statusKey: status }
         if(doneStatuses.has(status)){ patch.completedAt = new Date(); patch.progress = 100 }
         else if(instance.statusKey && doneStatuses.has(instance.statusKey)) patch.completedAt = null
+        const before = { statusKey: instance.statusKey }
         await instance.update(patch)
         const data = Serialize(instance)
-        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "set-status", actor, metadata: { status } })
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "set-status", actor, metadata: { status, key: instance.key }, before, after: { statusKey: status } })
         emit("item.updated", data)
         return data
     }
@@ -275,6 +279,19 @@ const WorkItemsStore = (ctx) => {
 
     const DeleteItem = async ({ item, actor } = {}) => {
         const instance = await ResolveItem(item)
+
+        // Gate: remoção por agente exige aprovação humana (pedido destrutivo pendente).
+        if(store.IsAgentActor(actor)){
+            const { request } = await store.RequestApproval({
+                actionName: "delete", type: "item", targetId: instance.id,
+                projectId: instance.projectId, risk: "destructive",
+                payload: { item: instance.id }, resumeToken: actor.resumeToken, actor
+            })
+            throw new DomainError("AGENT_SESSION_CONFIRMATION_REQUIRED",
+                "Remoção de item por agente requer aprovação humana.",
+                { pendingCreationId: request.id, actionName: "delete", type: "item", nextCommands: [`mpm agent creation approve ${request.id}`, `mpm agent creation reject ${request.id}`] })
+        }
+
         await instance.update({ deletedAt: new Date() })
         await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "delete", actor })
         emit("item.deleted", { id: instance.id })

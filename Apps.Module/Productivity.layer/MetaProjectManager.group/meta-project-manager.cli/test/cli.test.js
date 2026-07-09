@@ -98,3 +98,69 @@ test("erro estruturado em item inexistente", async () => {
     assert.equal(json.ok, false)
     assert.equal(json.code, "NOT_FOUND")
 })
+
+test("agente delete --no-wait vira pedido pendente; approve executa soft delete", async () => {
+    const it = await h.run(["task", "create", "--project", "MP", "--title", "Alvo do agente", "--json"])
+    const key = it.json.data.key
+    // agente pede delete: gate bloqueia (--no-wait retorna o pendingCreationId sem esperar)
+    const del = await h.run(["item", "delete", key, "--confirm", "--no-wait",
+        "--session-provider", "claude", "--session-model", "claude-sonnet-4", "--session-trace", "T-DEL", "--json"])
+    assert.equal(del.json.ok, false)
+    assert.equal(del.json.code, "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    assert.equal(del.json.details.actionName, "delete")
+    const reqId = del.json.details.pendingCreationId
+    assert.ok(reqId)
+    // item ainda existe
+    const before = await h.run(["item", "show", key, "--json"])
+    assert.equal(before.json.ok, true)
+    // humano aprova pela CLI -> executa soft delete
+    const appr = await h.run(["agent", "creation", "approve", reqId, "--json"])
+    assert.equal(appr.json.ok, true)
+    assert.equal(appr.json.data.result.deleted, true)
+    // item some
+    const after = await h.run(["item", "show", key, "--json"])
+    assert.equal(after.json.ok, false)
+    assert.equal(after.json.code, "NOT_FOUND")
+})
+
+test("rejeitar delete com --reason preserva o item", async () => {
+    const it = await h.run(["task", "create", "--project", "MP", "--title", "Preservar", "--json"])
+    const key = it.json.data.key
+    const del = await h.run(["item", "delete", key, "--confirm", "--no-wait",
+        "--session-provider", "claude", "--session-model", "claude-sonnet-4", "--session-trace", "T-DEL2", "--json"])
+    const reqId = del.json.details.pendingCreationId
+    const rej = await h.run(["agent", "creation", "reject", reqId, "--reason", "manter", "--json"])
+    assert.equal(rej.json.ok, true)
+    assert.equal(rej.json.data.status, "rejected")
+    assert.equal(rej.json.data.rejectionReason, "manter")
+    const show = await h.run(["item", "show", key, "--json"])
+    assert.equal(show.json.ok, true)
+})
+
+test("project create --short-description persiste e aparece no show", async () => {
+    const c = await h.run(["project", "create", "Com Curta", "--short-description", "Resumo em uma linha.", "--json"])
+    assert.equal(c.json.ok, true)
+    assert.equal(c.json.data.shortDescription, "Resumo em uma linha.")
+    const s = await h.run(["project", "show", c.json.data.slug, "--json"])
+    assert.equal(s.json.data.shortDescription, "Resumo em uma linha.")
+})
+
+test("activity note add atribui ao usuario-desktop e list devolve", async () => {
+    const add = await h.run(["activity", "note", "add", "--item", "MP-1", "--text", "anotação manual", "--json"])
+    assert.equal(add.json.ok, true)
+    assert.equal(add.json.data.scopeType, "item")
+    const list = await h.run(["activity", "note", "list", "--item", "MP-1", "--json"])
+    assert.ok(list.json.data.some((n) => n.body === "anotação manual"))
+})
+
+test("audit list --project filtra por ação", async () => {
+    const a = await h.run(["audit", "list", "--project", "MP", "--action", "set-status", "--json"])
+    assert.equal(a.json.ok, true)
+    assert.ok(a.json.data.every((e) => e.action === "set-status"))
+})
+
+test("activity list --provider filtra eventos de agente", async () => {
+    const a = await h.run(["activity", "list", "--project", "MP", "--actor-type", "agent", "--json"])
+    assert.equal(a.json.ok, true)
+    assert.ok(a.json.data.every((e) => e.actorType === "agent"))
+})
