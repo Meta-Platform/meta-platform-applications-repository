@@ -29,10 +29,10 @@ const EcosystemManagerController = (params) => {
         ws.on && ws.on("close", () => { try { daemonWs.close() } catch(e){} })
     }
 
-    const RunPackage = async ({ namespaceRepo, moduleName, layerName, packageName, ext, parentGroup, packagePath, startupParams }) => {
+    const RunPackage = async ({ namespaceRepo, moduleName, layerName, packageName, ext, parentGroup, packagePath, startupParams, launchedBy }) => {
         try {
             const path = await _ResolvePath({ namespaceRepo, moduleName, layerName, packageName, ext, parentGroup, packagePath })
-            await instanceManagerRuntimeService.RunPackage({ packagePath: path, startupParams })
+            await instanceManagerRuntimeService.RunPackage({ packagePath: path, startupParams, launchedBy })
             return { started: true, packagePath: path }
         } catch(e){
             console.log(e)

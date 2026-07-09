@@ -46,6 +46,8 @@
     /* ============================================================ */
     --mp-accent-cyan:   #00B7C2;
     --mp-accent-blue:   #2D74C4;
+    /* tint do acento — fundo de item selecionado em árvores/listas */
+    --mp-accent-soft:   rgba(45, 116, 196, 0.12);
     --mp-accent-orange: #C96A1E;
     --mp-accent-yellow: #F2C230;
     --mp-accent-pink:   #E96AB6;

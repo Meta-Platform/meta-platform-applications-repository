@@ -26,6 +26,19 @@
           ]
         },
         {
+            "summary": "GetPackagePath",
+            "method": "POST",
+            "path": "/package/path",
+            "parameters": [
+              { "name": "namespaceRepo", "in": "body", "type": "string", "required": true },
+              { "name": "moduleName",    "in": "body", "type": "string", "required": true },
+              { "name": "layerName",     "in": "body", "type": "string", "required": true },
+              { "name": "packageName",   "in": "body", "type": "string", "required": true },
+              { "name": "ext",           "in": "body", "type": "string", "required": true },
+              { "name": "parentGroup",   "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
             "summary": "ListModules",
             "method": "GET",
             "path": "/module/list"

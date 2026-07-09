@@ -57,6 +57,12 @@
 					"in": "body",
 					"type": "json",
 					"required": false
+				},
+				{
+					"name": "launchedBy",
+					"in": "body",
+					"type": "string",
+					"required": false
 				}
 			]
 		},

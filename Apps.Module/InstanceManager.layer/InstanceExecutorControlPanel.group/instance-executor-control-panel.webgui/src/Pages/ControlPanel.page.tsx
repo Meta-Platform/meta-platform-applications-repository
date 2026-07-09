@@ -1,35 +1,47 @@
 import * as React              from "react"
 import { useEffect, useState } from "react"
-import styled                  from "styled-components"
 import { connect }             from "react-redux"
-import { Container, Grid}      from "semantic-ui-react"
 
 import { bindActionCreators } from "redux"
 import qs                     from "query-string"
-import { 
+import {
 	useLocation,
 	useNavigate
   } from "react-router-dom"
 
-import SidebarMenu from "../Components/SidebarMenu"
-
-const Column = Grid.Column
+import TopMenu, { MENU_ITEMS, DEFAULT_MENU_ITEM } from "../Components/TopMenu"
 
 import TaskMonitor from "../Containers/TaskMonitor.container"
-import ControlPanelContainer from "../Containers/ControlPanel.container"
-import PackageExplorerContainer from "../Containers/PackageExplorer.container"
-import RepositoriesContainer from "../Containers/Repositories.container"
-import TerminalContainer from "../Containers/Terminal.container"
+import LauncherContainer from "../Containers/Launcher.container"
 
 import QueryParamsActionsCreator from "../Actions/QueryParams.actionsCreator"
 
-const ControlPanelPage = ({ 
-	HTTPServerManager, 
+// Painéis antigos que ainda podem estar salvos numa URL/bookmark. "packages" e
+// "repositories" foram fundidos no Launcher; "instances" e "terminal" saíram (o
+// que está no ar aparece no monitor, e o terminal vive na aba do pacote CLI).
+const LEGACY_PANEL_ALIAS:any = {
+	"packages"              : "launcher",
+	"repositories"          : "launcher",
+	"terminal"              : "launcher",
+	"environments"          : "monitor",
+	"instances"             : "monitor",
+	"task executor monitor" : "monitor"
+}
+
+const IsKnownPanel = (panel:string) => MENU_ITEMS.some(({ name }) => name === panel)
+
+const ResolvePanel = (panel?:string) => {
+	if(!panel) return DEFAULT_MENU_ITEM
+	if(IsKnownPanel(panel)) return panel
+	return LEGACY_PANEL_ALIAS[panel] || DEFAULT_MENU_ITEM
+}
+
+const ControlPanelPage = ({
+	HTTPServerManager,
 	QueryParams,
 	AddQueryParam,
 	SetQueryParams
 }:any) => {
-
 
 	const [ activeItem, setActiveItem ] = useState<string>()
 
@@ -51,49 +63,31 @@ const ControlPanelPage = ({
 	useEffect(() => {
 		if(activeItem){
 			AddQueryParam("panel", activeItem)
-		} else if(!activeItem && queryParams.panel){
-			setActiveItem(queryParams.panel as string)
 		} else {
-			setActiveItem("packages")
+			setActiveItem(ResolvePanel(queryParams.panel as string))
 		}
-
 	}, [activeItem])
 
+	const handleSelectMenu = (menuItem:string) => setActiveItem(menuItem)
 
-	const handleSelectMenu = (activeItem) => setActiveItem(activeItem)
+	const renderActivePanel = () => {
+		switch(activeItem){
+			case "launcher":
+				return <LauncherContainer serverManagerInformation={HTTPServerManager}/>
+			case "monitor":
+			default:
+				return <TaskMonitor/>
+		}
+	}
 
-	return <Container fluid={true}>
-				<Grid>
-					<Column  style={{width:"auto", paddingRight:0}}>
-						<SidebarMenu 
-							title="Instance Executor Panel" 
-							onSelectMenu={handleSelectMenu}
-							activeItem={activeItem}/>
-					</Column>
-					<Column style={{width:"auto", paddingLeft:0}}>
-						{
-							activeItem === "packages"
-							&& <PackageExplorerContainer serverManagerInformation={HTTPServerManager}/>
-						}
-						{
-							activeItem === "environments"
-							&& <ControlPanelContainer serverManagerInformation={HTTPServerManager}/>
-						}
-						{
-							activeItem === "task executor monitor"
-							&& <TaskMonitor />
-						}
-						{
-							activeItem === "repositories"
-							&& <RepositoriesContainer serverManagerInformation={HTTPServerManager}/>
-						}
-						{
-							activeItem === "terminal"
-							&& <TerminalContainer serverManagerInformation={HTTPServerManager}/>
-						}
-					</Column>
-				</Grid>
-		</Container>
+	return <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+			<TopMenu
+				activeItem={activeItem}
+				onSelectMenu={handleSelectMenu}/>
+			<div style={{ flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}>
+				{ activeItem && renderActivePanel() }
+			</div>
+		</div>
 }
 
 

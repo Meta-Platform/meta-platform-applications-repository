@@ -31,6 +31,22 @@ const TaskExecutorMonitorController = (params) => {
         _sendList()
     }
 
+    // Stream das INSTÂNCIAS lançadas pelo daemon (apps in-process + desktop em
+    // processo separado). Ponte 1:1 com o stream do daemon: ele já empurra a
+    // lista inteira a cada mudança.
+    const _StreamInstances = async (ws) => {
+        let daemonWs
+        try { daemonWs = await instanceManagerRuntimeService.OpenInstanceListStream() }
+        catch(e){ try { ws.close() } catch(_){}; return }
+
+        daemonWs.on("message", (raw) => { try { ws.send(raw.toString()) } catch(e){} })
+        daemonWs.on("close",   () => { try { ws.close() } catch(e){} })
+        daemonWs.on("error",   () => {})
+        ws.on && ws.on("close", () => { try { daemonWs.close() } catch(e){} })
+    }
+
+    const ListInstances = () => instanceManagerRuntimeService.ListInstances()
+
     const ListTasks = () => instanceManagerRuntimeService.ListTasks()
 
     const GetMonitoringState = () => instanceManagerRuntimeService.ListTasks()
@@ -49,6 +65,8 @@ const TaskExecutorMonitorController = (params) => {
         controllerName : "TaskExecutorMonitorController",
         TaskList: _StreamTasks,
         MonitoringState: _StreamTasks,
+        InstanceList: _StreamInstances,
+        ListInstances,
         ListTasks,
         GetMonitoringState,
         GetTaskTreeById,

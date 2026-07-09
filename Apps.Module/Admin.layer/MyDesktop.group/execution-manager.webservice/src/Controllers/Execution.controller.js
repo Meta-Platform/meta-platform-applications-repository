@@ -58,7 +58,7 @@ const ExecutionController = (params) => {
         }
 
         try {
-            await instanceManager.RunPackage({ packagePath })
+            await instanceManager.RunPackage({ packagePath, launchedBy: "my-desktop" })
             if(executableName) startedByPanel.set(executableName, packagePath)
             _Notify("Execution.RunApplication", "info", `Execução solicitada ao daemon: ${packagePath}`)
             return { started: true, packagePath, executableName }

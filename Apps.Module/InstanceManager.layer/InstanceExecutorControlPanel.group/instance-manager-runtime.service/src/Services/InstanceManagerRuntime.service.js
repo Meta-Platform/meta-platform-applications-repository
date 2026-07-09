@@ -29,6 +29,11 @@ const InstanceManagerRuntimeService = (params) => {
         ListPackages: client.ListPackages,
         OpenPackageListStream: client.OpenPackageListStream,
 
+        // Instâncias que o daemon lançou (apps in-process + desktop em processo
+        // separado). É o que o monitor de processos do painel apresenta.
+        ListInstances: client.ListInstances,
+        OpenInstanceListStream: client.OpenInstanceListStream,
+
         // Tarefas do task-executor do daemon
         ListTasks: client.ListTasks,
         GetTask: client.GetTask,

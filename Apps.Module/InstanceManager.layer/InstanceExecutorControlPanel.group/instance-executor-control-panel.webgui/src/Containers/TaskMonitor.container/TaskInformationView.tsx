@@ -1,18 +1,13 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
-import { 
-	Segment, 
-	Loader, 
+import {
+	Segment,
+	Loader,
 	Header,
 	Label,
+	Button,
 	Tab,
-	TabPane,
-	Form,
-	Divider,
-	FormGroup,
-	FormField,
-	Input,
-	Select
+	TabPane
  } from 'semantic-ui-react'
 
 
@@ -48,7 +43,8 @@ const ActivationRulesView = ({rules}) => {
 
 const TaskInformationView = ({
 	taskId,
-	serverManagerInformation
+	serverManagerInformation,
+	onClose
 }) => {
 
 	const [ taskInformation, setTaskInformation ] = useState<any>()
@@ -128,6 +124,10 @@ const TaskInformationView = ({
     ]
 
 	return <Segment style={{backgroundColor: "#f4f4f4"}}>
+				{
+					onClose &&
+					<Button circular icon='close' floated="right" size="mini" onClick={() => onClose()}/>
+				}
 				<Header as='h2' textAlign='center'>
 					{
 						taskInformation

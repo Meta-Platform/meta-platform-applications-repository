@@ -25,9 +25,7 @@ const ICON_MAP = {
 const InstanceExecutorControlPanelGuiService = (params) => {
 
     const {
-        taskExecutorMachineService,
         repositoryManagerService,
-        ecosystemManagerService,
         commandLineRuntimeService,
         instanceManagerRuntimeService,
         instanceExecutorControlPanelWebservice,
@@ -36,10 +34,10 @@ const InstanceExecutorControlPanelGuiService = (params) => {
 
     // Mesmo saco de parâmetros que o endpoint-group da webservice injeta nos
     // controllers (união de todos; chaves extras são ignoradas por cada um).
+    // Execução e monitoração são DELEGADAS ao daemon via instanceManagerRuntime —
+    // o painel não instancia mais task-executor nem ecosystem-manager in-process.
     const controllerParams = {
-        taskExecutorMachineService,
         repositoryManagerService,
-        ecosystemManagerService,
         commandLineRuntimeService,
         instanceManagerRuntimeService
     }

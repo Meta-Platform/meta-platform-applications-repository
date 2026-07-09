@@ -15,6 +15,7 @@
 /* DARK — neo-brutalismo escuro (fundo carvão, bordas claras)         */
 /* ================================================================== */
 :root[data-theme="dark"] {
+    --mp-accent-soft:   rgba(77, 124, 255, 0.20);
     --mp-paper:         #16181d;
     --mp-paper-2:       #1d2027;
     --mp-paper-3:       #262a32;
@@ -159,6 +160,7 @@
 
     --mp-accent-cyan:   #00e5ff;
     --mp-accent-blue:   #4d7cff;
+    --mp-accent-soft:   rgba(176, 107, 255, 0.20);
     --mp-accent-orange: #ff8a3d;
     --mp-accent-yellow: #ffd93d;
     --mp-accent-pink:   #ff4ecd;

@@ -12,6 +12,16 @@
       "path": "/monitoring"
     },
     {
+      "summary": "ListInstances",
+      "method": "GET",
+      "path": "/list-instances"
+    },
+    {
+      "summary": "InstanceList",
+      "method": "WS",
+      "path": "/instance-list"
+    },
+    {
       "summary": "ListTasks",
       "method": "GET",
       "path": "/list-task"
