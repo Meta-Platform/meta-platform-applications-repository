@@ -308,3 +308,50 @@ test("project_changes devolve a janela inteira, resumo e o cursor latestAt", asy
     const after = await byName("project_changes").handler({ project: "MCP", since: new Date(Date.now() + 60_000).toISOString() })
     assert.equal(after.count, 0)
 })
+
+// ---- Contexto do ecossistema via MCP ----
+test("agente lista pacotes do catálogo e vincula vários a um item", async () => {
+    const fs2 = require("fs")
+    const root = path.join(TMP, "eco-mcp")
+    const repo = path.join(root, "R")
+    for (const rel of ["A.Module/B.layer/G.group/x.lib", "A.Module/B.layer/G.group/x.webgui"])
+        fs2.mkdirSync(path.join(repo, rel, "metadata"), { recursive: true })
+    for (const rel of ["A.Module/B.layer/G.group/x.lib", "A.Module/B.layer/G.group/x.webgui"])
+        fs2.writeFileSync(path.join(repo, rel, "metadata", "package.json"), "{}")
+    fs2.writeFileSync(path.join(root, "repositories.json"), JSON.stringify({ R: { installationPath: repo } }))
+
+    const ecoStore = InitializeProjectStore({
+        storage: path.join(TMP, "eco-mcp.sqlite"),
+        attachmentsDirPath: path.join(TMP, "att"),
+        ecosystemDataPath: root
+    })
+    await ecoStore.ConnectAndSync()
+    const ecoTools = BuildTools({ store: ecoStore, actor })
+    const byN = (n) => ecoTools.find((t) => t.name === n)
+
+    const indexed = await byN("index_ecosystem_packages").handler({})
+    assert.equal(indexed.indexed, 2)
+
+    const found = await byN("list_ecosystem_packages").handler({ type: "webgui" })
+    assert.equal(found.length, 1)
+    assert.equal(found[0].packageName, "x.webgui")
+    assert.equal(found[0].groupName, "G.group")
+
+    const p = await ecoStore.CreateProject({ name: "P", keyPrefix: "P", actor: { source: "cli" } })
+    const it = await ecoStore.CreateItem({ project: p.id, type: "task", title: "atravessa lib e gui" })
+
+    await byN("set_item_packages").handler({
+        item: it.key,
+        packages: [{ package: "x.webgui", role: "primary" }, { package: "x.lib" }]
+    })
+    const linked = await byN("list_item_packages").handler({ item: it.key })
+    assert.equal(linked.length, 2)
+
+    // filtro: o que está aberto neste pacote?
+    const items = await byN("list_items").handler({ project: p.id, package: "x.lib" })
+    assert.equal(items.length, 1)
+    assert.equal(items[0].key, it.key)
+
+    await byN("remove_item_package").handler({ item: it.key, package: "x.lib" })
+    assert.equal((await byN("list_item_packages").handler({ item: it.key })).length, 1)
+})

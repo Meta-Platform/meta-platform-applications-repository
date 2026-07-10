@@ -102,8 +102,10 @@ const WorkItemsStore = (ctx) => {
         return data
     }
 
-    const ListItems = async ({ project, type, status, parent, board, assignee, text, priority, milestone, sprint, horizon, clarityState, effort, value, area, limit = 200, offset = 0, sort = "order" } = {}) => {
+    const ListItems = async ({ project, type, status, parent, board, assignee, text, priority, milestone, sprint, horizon, clarityState, effort, value, area, package: pkg, limit = 200, offset = 0, sort = "order" } = {}) => {
         const where = { deletedAt: null }
+        // "o que está aberto no meta-project-manager.webgui?"
+        if(pkg) where.id = { [Op.in]: await store.ItemIdsByPackage(pkg) }
         if(project) where.projectId = (await store.ResolveProject(project)).id
         if(type) where.type = type
         if(status) where.statusKey = status
@@ -118,7 +120,12 @@ const WorkItemsStore = (ctx) => {
         if(area) where.area = area
         if(parent !== undefined) where.parentId = parent === null || parent === "none" ? null : (await ResolveItem(parent)).id
         if(assignee) where.assigneeUserId = await _resolveUserId(assignee)
-        if(text) where.title = { [Op.like]: `%${text}%` }
+        // Busca por texto casa TÍTULO ou KEY: quem digita "MPMB-39" está procurando
+        // aquele item, não um título que contenha esse trecho.
+        if(text) where[Op.or] = [
+            { title: { [Op.like]: `%${text}%` } },
+            { key:   { [Op.like]: `%${String(text).toUpperCase()}%` } }
+        ]
         const order = sort === "created" ? [["createdAt", "DESC"]]
             : sort === "priority" ? [["priority", "DESC"]]
             : sort === "value" ? [[literal("CASE value WHEN 'critical' THEN 5 WHEN 'high' THEN 4 WHEN 'medium' THEN 3 WHEN 'low' THEN 2 ELSE 1 END"), "DESC"]]
@@ -129,18 +136,21 @@ const WorkItemsStore = (ctx) => {
 
     const GetItem = async ({ item } = {}) => {
         const instance = await ResolveItem(item)
-        const [checklist, acceptanceCriteria, links, children] = await Promise.all([
+        const [checklist, acceptanceCriteria, links, children, packages] = await Promise.all([
             WorkItemChecklistItem.findAll({ where: { workItemId: instance.id }, order: [["order", "ASC"]] }),
             WorkItemAcceptanceCriteria.findAll({ where: { workItemId: instance.id }, order: [["order", "ASC"]] }),
             WorkItemLink.findAll({ where: { [Op.or]: [{ sourceItemId: instance.id }, { targetItemId: instance.id }] } }),
-            WorkItem.findAll({ where: { parentId: instance.id, deletedAt: null }, order: [["order", "ASC"]] })
+            WorkItem.findAll({ where: { parentId: instance.id, deletedAt: null }, order: [["order", "ASC"]] }),
+            // Onde se mexe: os pacotes do ecossistema que este item toca.
+            store.ListItemPackages({ item: instance.id })
         ])
         return {
             ...Serialize(instance),
             checklist: SerializeMany(checklist),
             acceptanceCriteria: SerializeMany(acceptanceCriteria),
             links: SerializeMany(links),
-            children: SerializeMany(children)
+            children: SerializeMany(children),
+            packages
         }
     }
 

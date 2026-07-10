@@ -316,13 +316,29 @@ const AgentsStore = (ctx) => {
         "set-default:board": ({ targetId, actor }) => store.SetDefaultBoard({ board: targetId, actor })
     }
 
+    // Quem decide um pedido é sempre uma pessoa: a GUI e a CLI rodam no desktop e
+    // não têm login, então chegam sem `actorUserId` e a decisão acabaria gravada
+    // como `system`. Sem usuário explícito, atribui ao usuario-desktop — mesma
+    // precedência de AddActivityNote.
+    //
+    // Um ator com identidade de agente NUNCA recebe o fallback: se recebesse,
+    // um agente que chamasse approve pela CLI apareceria na auditoria como
+    // decisão humana. Ele continua gravado como `agent`, e o gate segue visível.
+    const _resolveDecider = async (actor = {}) => {
+        if(actor.actorUserId) return { ...actor, actorType: actor.actorType || "human" }
+        if(actor.session || actor.source === "agent" || actor.source === "mcp") return actor
+        const desktop = await store.EnsureDesktopUser()
+        return { ...actor, actorUserId: desktop.id, actorType: "desktop" }
+    }
+
     const ApproveRequest = async ({ request, actor } = {}) => {
         const req = await ResolveCreationRequest(request)
         if(req.status !== "pending")
             throw new DomainError("VALIDATION_ERROR", `Pedido já ${req.status}.`, { status: req.status })
         const payload = req.payloadJson ? JSON.parse(req.payloadJson) : {}
         const actionName = req.actionName || "create"
-        const execActor = { source: "agent", actorSessionId: req.agentSessionId, actorUserId: actor && actor.actorUserId }
+        const decider = await _resolveDecider(actor)
+        const execActor = { source: "agent", actorSessionId: req.agentSessionId, actorUserId: decider.actorUserId }
 
         // Executor por (ação:tipo). O ator de execução NÃO tem `session`, então
         // os gates não disparam de novo — é a decisão humana que está sendo aplicada.
@@ -335,17 +351,17 @@ const AgentsStore = (ctx) => {
             result = await executor({ payload, targetId: req.targetId, actor: execActor })
         } catch(err){
             const snapshot = err && typeof err.toResponse === "function" ? err.toResponse() : { message: err && err.message }
-            await req.update({ status: "failed", decidedAt: new Date(), decidedByUserId: actor && actor.actorUserId, errorSnapshot: JSON.stringify(snapshot) })
-            await writeAudit({ projectId: req.projectId, entityType: "creation-request", entityId: req.id, action: "execute-failed", actor, metadata: { actionName, type: req.type, error: snapshot.message } })
+            await req.update({ status: "failed", decidedAt: new Date(), decidedByUserId: decider.actorUserId, errorSnapshot: JSON.stringify(snapshot) })
+            await writeAudit({ projectId: req.projectId, entityType: "creation-request", entityId: req.id, action: "execute-failed", actor: decider, metadata: { actionName, type: req.type, error: snapshot.message } })
             emit("approval.failed", { request: Serialize(await req.reload()), error: snapshot })
             throw err
         }
 
         await req.update({
             status: "approved", resultId: result && result.id, resultSnapshot: JSON.stringify(result),
-            decidedAt: new Date(), executedAt: new Date(), decidedByUserId: actor && actor.actorUserId
+            decidedAt: new Date(), executedAt: new Date(), decidedByUserId: decider.actorUserId
         })
-        await writeAudit({ projectId: req.projectId, entityType: "creation-request", entityId: req.id, action: "approve", actor, metadata: { actionName, type: req.type, resultId: result && result.id } })
+        await writeAudit({ projectId: req.projectId, entityType: "creation-request", entityId: req.id, action: "approve", actor: decider, metadata: { actionName, type: req.type, resultId: result && result.id } })
         const data = Serialize(await req.reload())
         emit("agent.session.confirmed", { request: data, result }) // retrocompat
         emit("approval.approved", { request: data, result })
@@ -358,8 +374,9 @@ const AgentsStore = (ctx) => {
         const req = await ResolveCreationRequest(request)
         if(req.status !== "pending")
             throw new DomainError("VALIDATION_ERROR", `Pedido já ${req.status}.`, { status: req.status })
-        await req.update({ status: "rejected", decidedAt: new Date(), decidedByUserId: actor && actor.actorUserId, rejectionReason: reason })
-        await writeAudit({ projectId: req.projectId, entityType: "creation-request", entityId: req.id, action: "reject", actor, metadata: { reason } })
+        const decider = await _resolveDecider(actor)
+        await req.update({ status: "rejected", decidedAt: new Date(), decidedByUserId: decider.actorUserId, rejectionReason: reason })
+        await writeAudit({ projectId: req.projectId, entityType: "creation-request", entityId: req.id, action: "reject", actor: decider, metadata: { reason } })
         const data = Serialize(await req.reload())
         emit("approval.rejected", { request: data })
         return data

@@ -4,7 +4,8 @@
         "serverName",
         "MPM_DB_FILE_PATH",
         "MPM_ATTACHMENTS_DIR_PATH",
-        "MPM_MAX_ATTACHMENT_BYTES"
+        "MPM_MAX_ATTACHMENT_BYTES",
+        "MPM_ECOSYSTEM_DATA_PATH"
     ],
     "services": [
         {
@@ -29,7 +30,8 @@
             "params": {
                 "MPM_DB_FILE_PATH": "{{MPM_DB_FILE_PATH}}",
                 "MPM_ATTACHMENTS_DIR_PATH": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                "MPM_MAX_ATTACHMENT_BYTES": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                "MPM_MAX_ATTACHMENT_BYTES": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                "MPM_ECOSYSTEM_DATA_PATH": "{{MPM_ECOSYSTEM_DATA_PATH}}"
             },
             "bound-params": {
                 "serverService": "@@/server-service",

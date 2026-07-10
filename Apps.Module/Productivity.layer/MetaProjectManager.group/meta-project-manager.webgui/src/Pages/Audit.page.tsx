@@ -12,6 +12,7 @@ import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import { Loading, EmptyState, ErrorBanner } from "../Components/Primitives"
 import { formatDateTime } from "../Utils/format"
 import { activityTitle, activityDetail, activityIcon, actorName, activityItemId } from "../Utils/activity"
+import { actorTypeLabel, sourceLabel, entityLabel } from "../Utils/labels"
 
 type ViewMode = "timeline" | "table"
 
@@ -179,7 +180,7 @@ const AuditPage = () => {
             </select>
             <select className="mpm-inline-select" title="Humano, agente de IA, sistema ou usuario-desktop"
                 value={filters.actorType || ""} onChange={(e) => setFilter("actorType", e.target.value)}>
-                {ACTOR_TYPES.map((t) => <option key={t} value={t}>{t ? `Ator: ${t}` : "Ator: todos"}</option>)}
+                {ACTOR_TYPES.map((t) => <option key={t} value={t}>{t ? `Ator: ${actorTypeLabel(t)}` : "Ator: todos"}</option>)}
             </select>
             <input className="mpm-inline-select" style={{ minWidth: 130 }} title="Ex.: create, update, set-status"
                 value={filters.action || ""} placeholder="ação…" onChange={(e) => setFilter("action", e.target.value)} />
@@ -205,11 +206,11 @@ const AuditPage = () => {
             ? <div className="mpm-audit__bar mpm-audit__bar--adv">
                 <select className="mpm-inline-select" title="De onde a ação partiu"
                     value={filters.source || ""} onChange={(e) => setFilter("source", e.target.value)}>
-                    {SOURCES.map((t) => <option key={t} value={t}>{t ? `Fonte: ${t}` : "Fonte: todas"}</option>)}
+                    {SOURCES.map((t) => <option key={t} value={t}>{t ? `Fonte: ${sourceLabel(t)}` : "Fonte: todas"}</option>)}
                 </select>
                 <select className="mpm-inline-select" title="Provider do agente de IA"
                     value={filters.provider || ""} onChange={(e) => setFilter("provider", e.target.value)}>
-                    {PROVIDERS.map((t) => <option key={t} value={t}>{t ? `Provider: ${t}` : "Provider: todos"}</option>)}
+                    {PROVIDERS.map((t) => <option key={t} value={t}>{t ? `Provedor: ${t}` : "Provedor: todos"}</option>)}
                 </select>
                 <input className="mpm-inline-select" style={{ minWidth: 150 }} title="Nome do modelo"
                     value={filters.model || ""} placeholder="modelo (claude-opus-4)…"
@@ -289,7 +290,7 @@ const AuditPage = () => {
                                                 </div>
                                                 <div className="mpm-timeline__meta mpm-mono">
                                                     <span>{e.source}</span>
-                                                    <span>{e.entityType}</span>
+                                                    <span title={e.entityType}>{entityLabel(e.entityType)}</span>
                                                     {e.traceId ? <span title="trace/sessão">{e.traceId}</span> : null}
                                                     <span>{formatDateTime(e.createdAt)}</span>
                                                     {activityItemId(e)
@@ -325,15 +326,15 @@ const AuditPage = () => {
                                     <tr key={e.id}>
                                         <td className="mpm-mono">{formatDateTime(e.createdAt)}</td>
                                         <td>{actorName(e, usersById)}</td>
-                                        <td><span className="mpm-chip mpm-chip--neutral">{e.actorType || "—"}</span></td>
+                                        <td><span className="mpm-chip mpm-chip--neutral" title={e.actorType}>{e.actorType ? actorTypeLabel(e.actorType) : "—"}</span></td>
                                         <td className="mpm-mono">{e.action}</td>
                                         <td className="mpm-mono">
                                             {activityItemId(e)
                                                 ? <a className="mpm-item-ref" onClick={() => setSelected(activityItemId(e)!)}
-                                                    title="Abrir o item completo">{e.entityType}</a>
-                                                : e.entityType}
+                                                    title="Abrir o item completo">{entityLabel(e.entityType)}</a>
+                                                : entityLabel(e.entityType)}
                                         </td>
-                                        <td className="mpm-mono">{e.source}</td>
+                                        <td className="mpm-mono" title={e.source}>{sourceLabel(e.source)}</td>
                                         <td className="mpm-mono">{e.model || "—"}</td>
                                         <td className="mpm-mono">{e.traceId || "—"}</td>
                                     </tr>)}

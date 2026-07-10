@@ -11,6 +11,7 @@ import ThemeMenu from "./ThemeMenu"
 import GlobalApprovalModal from "./GlobalApprovalModal"
 import ToastStack from "./ToastStack"
 import useApprovalQueue from "../Hooks/useApprovalQueue"
+import { HandleZoomShortcut, GetSavedZoom } from "../Utils/zoom"
 
 // Estado persistido da coluna do projeto (largura + colapsada), guardado no
 // servidor via AppState — sobrevive ao restart do app. O rail é sempre visível.
@@ -96,6 +97,26 @@ const AppShell = ({ active, activeProjectId, activeProjectName, breadcrumb, titl
         window.addEventListener("keydown", onKey)
         return () => window.removeEventListener("keydown", onKey)
     }, [])
+
+    // Ctrl + "+" / "-" / "0": aumenta, diminui e restaura a fonte da interface,
+    // como num editor. A escolha fica salva e é reaplicada no próximo boot.
+    const [zoom, setZoom] = useState(GetSavedZoom())
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            const next = HandleZoomShortcut(e)
+            if (next !== null) setZoom(next)
+        }
+        window.addEventListener("keydown", onKey)
+        return () => window.removeEventListener("keydown", onKey)
+    }, [])
+    // Mostra o nível por um instante depois de mudar (feedback do atalho).
+    const [showZoom, setShowZoom] = useState(false)
+    useEffect(() => {
+        if (zoom === 1 && !showZoom) return
+        setShowZoom(true)
+        const timer = setTimeout(() => setShowZoom(false), 1200)
+        return () => clearTimeout(timer)
+    }, [zoom])
 
     // Esc fecha o modal do inspector quando aberto.
     useEffect(() => {
@@ -192,6 +213,10 @@ const AppShell = ({ active, activeProjectId, activeProjectName, breadcrumb, titl
                 onClose={() => setCmdOpen(false)}
                 activeProjectId={activeProjectId}
                 onCreateProject={onCreateProject} />
+            : null}
+
+        {showZoom
+            ? <div className="mpm-zoom-hud">{Math.round(zoom * 100)}%</div>
             : null}
 
         {/* Toasts do que os agentes fazem: ficam aqui para que "abrir" use o

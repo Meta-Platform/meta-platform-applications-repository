@@ -6,9 +6,12 @@ const ItemsController = (params) => {
     const ctx = GetContext(params)
     const { store } = ctx
 
-    const ListItems = async (p = {}) => Guard(async () => { await ctx.ready; return store.ListItems({ project: p.projectId, type: p.type, status: p.status, parent: p.parent, board: p.board, assignee: p.assignee, priority: p.priority, text: p.text, milestone: p.milestone, sprint: p.sprint, horizon: p.horizon, clarityState: p.clarityState, effort: p.effort, value: p.value, area: p.area, limit: p.limit, offset: p.offset, sort: p.sort }) })
+    const ListItems = async (p = {}) => Guard(async () => { await ctx.ready; return store.ListItems({ project: p.projectId, type: p.type, status: p.status, parent: p.parent, board: p.board, assignee: p.assignee, priority: p.priority, text: p.text, milestone: p.milestone, sprint: p.sprint, horizon: p.horizon, clarityState: p.clarityState, effort: p.effort, value: p.value, area: p.area, package: p.package, limit: p.limit, offset: p.offset, sort: p.sort }) })
     const CreateItem = async (p = {}) => Guard(async () => { await ctx.ready; return store.CreateItem({ project: p.projectId, type: p.type, title: p.title, description: p.description, parent: p.parent, board: p.board, priority: p.priority, statusKey: p.status, assignee: p.assignee, reporter: p.reporter, dueDate: p.dueDate, labels: p.labels, milestoneId: p.milestoneId, sprintId: p.sprintId, horizon: p.horizon, clarityState: p.clarityState, effort: p.effort, value: p.value, area: p.area, ideaOrigin: p.ideaOrigin, actor: Actor(p) }) })
     const GetItem = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "itemId"); return store.GetItem({ item: id }) })
+    // Busca global (todos os projetos, ou um só): casa título OU key do item.
+    const SearchItems = async (p = {}) => Guard(async () => { await ctx.ready; return store.ListItems({ text: p.text, project: p.project, limit: p.limit || 25, sort: "created" }) })
+
     const UpdateItem = async (p = {}) => Guard(async () => { await ctx.ready; return store.UpdateItem({ item: p.itemId, title: p.title, description: p.description, statusKey: p.status, priority: p.priority, progress: p.progress, dueDate: p.dueDate, assignee: p.assignee, labels: p.labels, blockedReason: p.blockedReason, milestoneId: p.milestoneId, sprintId: p.sprintId, horizon: p.horizon, clarityState: p.clarityState, effort: p.effort, value: p.value, area: p.area, ideaOrigin: p.ideaOrigin, repositoryUrl: p.repositoryUrl, branchName: p.branchName, commitHash: p.commitHash, pullRequestUrl: p.pullRequestUrl, environment: p.environment, packagePath: p.packagePath, moduleName: p.moduleName, layerName: p.layerName, groupName: p.groupName, actor: Actor(p) }) })
     const MoveItem = async (p = {}) => Guard(async () => { await ctx.ready; return p.board ? store.MoveToBoard({ item: p.itemId, board: p.board, status: p.status, actor: Actor(p) }) : store.MoveItem({ item: p.itemId, parent: p.parent, actor: Actor(p) }) })
     const SetItemStatus = async (p = {}) => Guard(async () => { await ctx.ready; return store.SetStatus({ item: p.itemId, status: p.status, actor: Actor(p) }) })
@@ -32,6 +35,7 @@ const ItemsController = (params) => {
         ListItems,
         CreateItem,
         GetItem,
+        SearchItems,
         UpdateItem,
         MoveItem,
         SetItemStatus,

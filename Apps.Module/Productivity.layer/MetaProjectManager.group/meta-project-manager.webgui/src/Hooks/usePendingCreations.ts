@@ -21,16 +21,18 @@ export const usePendingCreations = () => {
 
     useEffect(() => { reload() }, [reload])
 
-    const onEvents = useCallback((events: PlatformEvent[]) => {
-        const relevant = events.some((e) =>
-            typeof e.type === "string" &&
-            (e.type === "agent.session.pending" ||
-             e.type.indexOf("creation") >= 0 ||
-             e.type.indexOf("pending") >= 0))
-        if (relevant) reload()
-    }, [reload])
+    // Qualquer mudança pode ter criado (ou decidido) um pedido: o pedido nasce de
+    // um agente em OUTRO processo, e o que chega aqui é `audit.created`.
+    const onEvents = useCallback((_events: PlatformEvent[]) => { reload() }, [reload])
+    useEvents(onEvents)
 
-    useEvents(onEvents, 3000)
+    // Rede de segurança: a aprovação prende um agente do outro lado, então ela não
+    // pode depender só do fluxo de eventos. Um heartbeat garante que o pedido
+    // apareça mesmo se um tick de polling se perder.
+    useEffect(() => {
+        const timer = setInterval(reload, 5000)
+        return () => clearInterval(timer)
+    }, [reload])
 
     return { requests, count: requests.length, loading, reload }
 }

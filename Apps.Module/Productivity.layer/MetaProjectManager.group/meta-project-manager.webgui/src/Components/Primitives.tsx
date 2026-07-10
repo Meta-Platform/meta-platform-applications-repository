@@ -3,27 +3,28 @@ import { Icon } from "semantic-ui-react"
 
 import { WorkItem, User } from "../api/types"
 import { priorityClass, typeClass, statusClass, valueClass, horizonClass, horizonLabel, initials } from "../Utils/format"
+import { typeLabel, priorityLabel, statusLabel, valueLabel, effortLabel } from "../Utils/labels"
 
 export const TypeBadge = ({ type }: { type?: string }) =>
-    <span className={`mpm-badge ${typeClass(type)}`}>{type || "task"}</span>
+    <span className={`mpm-badge ${typeClass(type)}`} title={type}>{typeLabel(type)}</span>
 
 export const PriorityBadge = ({ priority }: { priority?: string }) =>
     (!priority || priority === "none")
         ? null
-        : <span className={`mpm-badge ${priorityClass(priority)}`}>{priority}</span>
+        : <span className={`mpm-badge ${priorityClass(priority)}`} title={priority}>{priorityLabel(priority)}</span>
 
 export const StatusChip = ({ status }: { status?: string }) =>
-    <span className={`mpm-chip ${statusClass(status)}`}>{(status || "").replace(/[-_]/g, " ")}</span>
+    <span className={`mpm-chip ${statusClass(status)}`} title={status}>{statusLabel(status)}</span>
 
 export const ValueBadge = ({ value }: { value?: string }) =>
     (!value || value === "none")
         ? null
-        : <span className={`mpm-badge ${valueClass(value)}`} title={`valor: ${value}`}>◆ {value}</span>
+        : <span className={`mpm-badge ${valueClass(value)}`} title={`valor: ${value}`}>◆ {valueLabel(value)}</span>
 
 export const EffortBadge = ({ effort }: { effort?: string }) =>
     !effort
         ? null
-        : <span className="mpm-badge mpm-badge--effort" title={`esforço: ${effort}`}>{effort.toUpperCase()}</span>
+        : <span className="mpm-badge mpm-badge--effort" title={`esforço: ${effort}`}>{effortLabel(effort)}</span>
 
 export const AreaBadge = ({ area }: { area?: string }) =>
     !area

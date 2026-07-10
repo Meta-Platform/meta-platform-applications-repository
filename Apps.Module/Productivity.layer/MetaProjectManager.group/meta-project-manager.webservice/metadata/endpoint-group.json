@@ -108,6 +108,26 @@
             "url": "/",
             "type": "controller",
             "params": {
+                "api-template": "APIs/Ecosystem.api.json",
+                "controller": "Controllers/Ecosystem.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "ecosystemDataPath": "{{MPM_ECOSYSTEM_DATA_PATH}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
                 "api-template": "APIs/Feedback.api.json",
                 "controller": "Controllers/Feedback.controller",
                 "controller-params": {

@@ -14,6 +14,7 @@ const AgentsStore     = require("./Store/AgentsStore")
 const ReportsStore    = require("./Store/ReportsStore")
 const PlanningStore   = require("./Store/PlanningStore")
 const FeedbackStore   = require("./Store/FeedbackStore")
+const EcosystemStore  = require("./Store/EcosystemStore")
 const ActivityStore   = require("./Store/ActivityStore")
 const ImportExport    = require("./Store/ImportExportStore")
 
@@ -147,6 +148,8 @@ const InitializeProjectStore = (options = {}) => {
     // FeedbackStore usa ResolveItem/ResolveProject e AddComment (espelho do
     // feedback no item) — precisa do store já povoado.
     Object.assign(store, FeedbackStore(ctx))
+    // EcosystemStore resolve itens e lê o disco (catálogo de pacotes).
+    Object.assign(store, EcosystemStore(ctx))
     Object.assign(store, ImportExport(ctx))
 
     return store

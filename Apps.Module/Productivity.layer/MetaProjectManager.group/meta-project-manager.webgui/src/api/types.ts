@@ -157,6 +157,8 @@ export interface WorkItem {
     acceptanceCriteria?: AcceptanceCriteria[]
     links?: WorkItemLink[]
     children?: WorkItem[]
+    // Pacotes do ecossistema que este item toca (GetItem os traz junto).
+    packages?: ItemPackage[]
     createdAt?: string
     updatedAt?: string
 }
@@ -460,6 +462,60 @@ export interface ListFeedbackQuery {
     entityId?: string
     since?: string
     until?: string
+    limit?: string
+    offset?: string
+}
+
+// ---- Contexto do ecossistema (Meta Platform) ----
+
+export interface EcosystemPackage {
+    id: ID
+    ref: string                 // "<repositório>:<Module/layer/[group/]pacote.tipo>"
+    repositoryName: string
+    namespace: string
+    moduleName: string
+    layerName: string
+    groupName?: string
+    packageName: string         // com sufixo: "meta-project-manager.webgui"
+    packageBaseName: string
+    packageType: string         // webgui | lib | cli | service | webservice | desktopapp…
+    packagePath?: string
+    missingAt?: string
+}
+
+// "primary" = onde o trabalho acontece; "touched" = também é alterado.
+export type PackageRole = "primary" | "touched"
+
+export interface ItemPackage {
+    id: ID
+    workItemId: ID
+    packageId?: ID
+    ref: string
+    repositoryName?: string
+    namespace?: string
+    moduleName?: string
+    layerName?: string
+    groupName?: string
+    packageName?: string
+    packageType?: string
+    role: PackageRole
+    note?: string
+}
+
+export interface ItemPackageInput {
+    package: string             // ref, namespace ou nome do pacote
+    role?: PackageRole
+    note?: string
+}
+
+export interface ListPackagesQuery {
+    text?: string
+    repository?: string
+    module?: string
+    layer?: string
+    group?: string
+    type?: string
+    includeMissing?: string
     limit?: string
     offset?: string
 }

@@ -19,11 +19,10 @@ import { activityTitle, activityDetail, activityIcon, activityItemId } from "../
 import downloadJson from "../Utils/downloadJson"
 import { feedbackTarget } from "../Utils/feedbackTarget"
 
-type OverviewTab = "resumo" | "descricao" | "auditoria"
+type OverviewTab = "resumo" | "auditoria"
 const OVERVIEW_TABS: { key: OverviewTab; label: string; icon: any; hint: string }[] = [
-    { key: "resumo",    label: "Resumo",    icon: "home",       hint: "Boards e atividade recente" },
-    { key: "descricao", label: "Descrição", icon: "align left", hint: "Descrição longa do projeto" },
-    { key: "auditoria", label: "Auditoria", icon: "history",    hint: "Tudo que humanos e agentes fizeram neste projeto" }
+    { key: "resumo",    label: "Visão geral", icon: "home",    hint: "Descrição do projeto, boards e atividade recente" },
+    { key: "auditoria", label: "Auditoria",   icon: "history", hint: "Tudo que humanos e agentes fizeram neste projeto" }
 ]
 
 // Só agrupa eventos consecutivos cuja FRASE é idêntica (ex.: 12 vínculos criados
@@ -193,7 +192,23 @@ const ProjectPage = () => {
                 </div>
 
                 {tab === "resumo"
-                    ? <div className="mpm-overview-grid">
+                    ? <div className="mpm-overview">
+                        {/* A descrição é o que a pessoa (e o agente) precisa ler primeiro. */}
+                        <div className="mpm-overview__main">
+                            <div className="mpm-panel">
+                                <div className="mpm-panel__title"><Icon name="align left" /> Descrição</div>
+                                {project.description
+                                    ? <div {...feedbackTarget({ entityType: "project", entityId: project.id, project: project.id, field: "description", fieldLabel: "Descrição do projeto" })}>
+                                        <Markdown>{project.description}</Markdown>
+                                    </div>
+                                    : <div className="mpm-tabpanel-empty">
+                                        <Icon name="align left" size="large" />
+                                        <div>Este projeto ainda não tem descrição.</div>
+                                    </div>}
+                            </div>
+                        </div>
+
+                        <aside className="mpm-overview__side">
                         <div className="mpm-panel">
                             <div className="mpm-panel__title">
                                 <Icon name="columns" /> Boards ({boards.length})
@@ -255,19 +270,7 @@ const ProjectPage = () => {
                                     })}
                                 </div>}
                         </div>
-                    </div>
-                    : null}
-
-                {tab === "descricao"
-                    ? <div className="mpm-panel">
-                        {project.description
-                            ? <div {...feedbackTarget({ entityType: "project", entityId: project.id, project: project.id, field: "description", fieldLabel: "Descrição do projeto" })}>
-                                <Markdown>{project.description}</Markdown>
-                            </div>
-                            : <div className="mpm-tabpanel-empty">
-                                <Icon name="align left" size="large" />
-                                <div>Este projeto ainda não tem descrição.</div>
-                            </div>}
+                        </aside>
                     </div>
                     : null}
 

@@ -16,12 +16,15 @@ const ENTITIES: Record<string, EntityInfo> = {
     "comment":          { label: "comentário",          article: "o" },
     "attachment":       { label: "anexo",               article: "o" },
     "activity-note":    { label: "anotação",            article: "a" },
-    "milestone":        { label: "milestone",           article: "o" },
+    "milestone":        { label: "entrega",             article: "a" },
     "sprint":           { label: "sprint",              article: "o" },
     "user":             { label: "usuário",             article: "o" },
     "agent-profile":    { label: "agente",              article: "o" },
     "agent-session":    { label: "sessão de agente",    article: "a" },
-    "creation-request": { label: "pedido de aprovação", article: "o" }
+    "creation-request": { label: "pedido de aprovação", article: "o" },
+    "feedback":         { label: "feedback",            article: "o" },
+    "checklist-item":   { label: "passo de checklist",  article: "o" },
+    "acceptance-criteria": { label: "critério de aceite", article: "o" }
 }
 
 const entityOf = (type: string): EntityInfo => ENTITIES[type] || { label: type, article: "o" }

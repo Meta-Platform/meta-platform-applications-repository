@@ -4,6 +4,7 @@ import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
 import useEvents from "../Hooks/useEvents"
+import useResizableModal from "../Hooks/useResizableModal"
 import { auditEntriesOf } from "../Utils/agentEvents"
 import { actorName } from "../Utils/activity"
 import {
@@ -11,17 +12,20 @@ import {
     WORK_ITEM_TYPES, HORIZONS, CLARITY_STATES, EFFORTS, ITEM_VALUES, AREA_SUGGESTIONS
 } from "../api/types"
 import { horizonLabel, formatDateTime } from "../Utils/format"
+import { typeLabel, priorityLabel, statusLabel, clarityLabel, effortLabel, valueLabel } from "../Utils/labels"
 import { TypeBadge, StatusChip, Loading, ErrorBanner } from "./Primitives"
 import AttachmentPanel from "./AttachmentPanel"
 import CommentTimeline from "./CommentTimeline"
 import AuditTimeline from "./AuditTimeline"
 import LinkPanel from "./LinkPanel"
 import SoftwareContextSection from "./SoftwareContextSection"
+import EcosystemContextSection from "./EcosystemContextSection"
 import DescriptionEditor from "./DescriptionEditor"
 import Markdown from "./Markdown"
 import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import ConfirmActionModal from "./ConfirmActionModal"
 import { feedbackTarget } from "../Utils/feedbackTarget"
+import useFeedback from "../Hooks/useFeedback"
 
 const PRIORITIES = ["none", "low", "medium", "high", "urgent"]
 
@@ -96,12 +100,17 @@ const ItemNotes = ({ itemId }: { itemId: string }) => {
 // WorkItemInspector (spec §11.1 / §8.1): modal de item organizado em ABAS.
 const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, onChanged }: WorkItemInspectorProps) => {
     const api = useApi()
+    const feedback = useFeedback()
+    // Âncora para achar o modal e lembrar o tamanho que o usuário deu a ESTE item.
+    const modalAnchor = useResizableModal(itemId)
     const [item, setItem] = useState<WorkItem | null>(null)
     const [error, setError] = useState<string | null>(null)
     const [checkDraft, setCheckDraft] = useState("")
     const [critDraft, setCritDraft] = useState("")
     const [milestones, setMilestones] = useState<Milestone[]>([])
     const [sprints, setSprints] = useState<Sprint[]>([])
+    // Escopo do projeto no ecossistema: sugere primeiro os pacotes daquele grupo.
+    const [projectScope, setProjectScope] = useState<{ repository?: string; module?: string; layer?: string; group?: string }>({})
     const [tab, setTab] = useState<TabKey>("detalhes")
     // Resumo "clean": por padrão só campos PREENCHIDOS; o toggle revela os vazios.
     const [showEmptyFields, setShowEmptyFields] = useState(false)
@@ -155,6 +164,12 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
         if (!projectId) { setMilestones([]); setSprints([]); return }
         api.planning.listMilestones(projectId).then((l) => setMilestones(l || [])).catch(() => setMilestones([]))
         api.planning.listSprints(projectId).then((l) => setSprints(l || [])).catch(() => setSprints([]))
+        api.projects.get(projectId)
+            .then((p: any) => setProjectScope({
+                repository: p.contextRepository, module: p.contextModule,
+                layer: p.contextLayer, group: p.contextGroup
+            }))
+            .catch(() => setProjectScope({}))
     }, [projectId, api])
 
     const patch = async (fn: () => Promise<any>) => {
@@ -239,7 +254,33 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
             </div>
         </div>
 
-    const detailsTab = <>
+    // Duas colunas: a descrição (o que se lê e escreve) ocupa a coluna larga; os
+    // campos, o contexto e a entrega ficam na lateral. Em telas estreitas, empilha.
+    const detailsTab = <div className="mpm-details">
+        <div className="mpm-details__main">
+            {item.blockedReason
+                ? <div className="mpm-error-banner"><Icon name="ban" /> Bloqueado: {item.blockedReason}</div>
+                : null}
+
+            {descBlock}
+
+            {item.children && item.children.length > 0
+                ? <div className="mpm-col">
+                    <div className="mpm-section-title"><Icon name="sitemap" /> Subtarefas ({item.children.length})</div>
+                    {item.children.map((c) =>
+                        <button key={c.id} className="mpm-subtask"
+                            title={`Abrir ${c.key} para editar`}
+                            onClick={() => openRef(c.id)}>
+                            <span className="mpm-mono mpm-muted">{c.key}</span>
+                            <StatusChip status={c.statusKey} />
+                            <span className="mpm-subtask__title">{c.title}</span>
+                            <Icon name="chevron right" className="mpm-muted" />
+                        </button>)}
+                </div>
+                : null}
+        </div>
+
+        <aside className="mpm-details__side">
         <div className="mpm-row" style={{ justifyContent: "flex-end" }}>
             {hiddenCount > 0 || showEmptyFields
                 ? <button className="mpm-btn mpm-btn--ghost mpm-btn--sm"
@@ -256,7 +297,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 <span className="mpm-field__label" title="Natureza do trabalho: epic, feature, história, tarefa, bug…">Tipo</span>
                 <select className="mpm-inline-select" value={item.type}
                     onChange={(e) => patch(() => api.items.update(item.id, { type: e.target.value }))}>
-                    {WORK_ITEM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                    {WORK_ITEM_TYPES.map((t) => <option key={t} value={t}>{typeLabel(t)}</option>)}
                 </select>
             </div>
             <div className="mpm-field">
@@ -266,14 +307,14 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                     {(statusOptions && statusOptions.length > 0
                         ? statusOptions
                         : [{ statusKey: item.statusKey, name: item.statusKey }]).map((s) =>
-                        <option key={s.statusKey} value={s.statusKey}>{s.name}</option>)}
+                        <option key={s.statusKey} value={s.statusKey}>{statusLabel(s.name)}</option>)}
                 </select>
             </div>
             <div className="mpm-field">
                 <span className="mpm-field__label" title="Quão urgente é fazer">Prioridade</span>
                 <select className="mpm-inline-select" value={item.priority}
                     onChange={(e) => patch(() => api.items.update(item.id, { priority: e.target.value }))}>
-                    {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+                    {PRIORITIES.map((p) => <option key={p} value={p}>{priorityLabel(p)}</option>)}
                 </select>
             </div>
             {optional(!!item.assigneeUserId, <div className="mpm-field">
@@ -313,7 +354,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 <select className="mpm-inline-select" value={item.clarityState || ""}
                     onChange={(e) => patch(() => api.items.update(item.id, { clarityState: e.target.value }))}>
                     <option value="">—</option>
-                    {CLARITY_STATES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    {CLARITY_STATES.map((c) => <option key={c} value={c}>{clarityLabel(c)}</option>)}
                 </select>
             </div>)}
             {optional(!!item.effort, <div className="mpm-field">
@@ -321,7 +362,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 <select className="mpm-inline-select" value={item.effort || ""}
                     onChange={(e) => patch(() => api.items.update(item.id, { effort: e.target.value }))}>
                     <option value="">—</option>
-                    {EFFORTS.map((ef) => <option key={ef} value={ef}>{ef.toUpperCase()}</option>)}
+                    {EFFORTS.map((ef) => <option key={ef} value={ef}>{effortLabel(ef)}</option>)}
                 </select>
             </div>)}
             {optional(!!item.value, <div className="mpm-field">
@@ -329,7 +370,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 <select className="mpm-inline-select" value={item.value || ""}
                     onChange={(e) => patch(() => api.items.update(item.id, { value: e.target.value }))}>
                     <option value="">—</option>
-                    {ITEM_VALUES.map((v) => <option key={v} value={v}>{v}</option>)}
+                    {ITEM_VALUES.map((v) => <option key={v} value={v}>{valueLabel(v)}</option>)}
                 </select>
             </div>)}
             {optional(!!item.area, <div className="mpm-field">
@@ -349,29 +390,11 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
             </div>)}
         </div>
 
-        {item.blockedReason
-            ? <div className="mpm-error-banner"><Icon name="ban" /> Bloqueado: {item.blockedReason}</div>
-            : null}
-
-        {descBlock}
-
-        {item.children && item.children.length > 0
-            ? <div className="mpm-col">
-                <div className="mpm-section-title"><Icon name="sitemap" /> Subtarefas ({item.children.length})</div>
-                {item.children.map((c) =>
-                    <button key={c.id} className="mpm-subtask"
-                        title={`Abrir ${c.key} para editar`}
-                        onClick={() => openRef(c.id)}>
-                        <span className="mpm-mono mpm-muted">{c.key}</span>
-                        <StatusChip status={c.statusKey} />
-                        <span className="mpm-subtask__title">{c.title}</span>
-                        <Icon name="chevron right" className="mpm-muted" />
-                    </button>)}
-            </div>
-            : null}
+        <EcosystemContextSection item={item} scope={projectScope} onChanged={() => patch(async () => {})} />
 
         <SoftwareContextSection item={item} onSave={(input) => patch(() => api.items.update(item.id, input))} />
-    </>
+        </aside>
+    </div>
 
     const criteriaTab = <div className="mpm-col"
         {...feedbackTarget({ entityType: "work-item", entityId: item.id, item: item.key, project: pid, field: "acceptanceCriteria", fieldLabel: "Critérios de aceite" })}>
@@ -447,7 +470,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
     // Referências clicadas DENTRO do modal (texto markdown, vínculos, subtarefas)
     // navegam no próprio modal, empilhando no drill — não abrem outro inspector.
     return <ItemNavigatorProvider onOpenItem={openRef}>
-        <aside className="mpm-inspector">
+        <aside className="mpm-inspector" ref={modalAnchor as any}>
         {/* Header sticky: key, tipo, título editável e ações */}
         <div className="mpm-inspector__head">
             {drill.length > 0
@@ -459,6 +482,23 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
             <TypeBadge type={item.type} />
             <StatusChip status={item.statusKey} />
             <span style={{ flex: 1 }} />
+            {/* Feedback sobre a TAREFA inteira (o botão direito num campo dá feedback
+                sobre aquele campo). O balão abre ao lado do botão. */}
+            <span className="mpm-iconbtn" title="Feedback para o agente sobre esta tarefa"
+                onClick={(e) => {
+                    const box = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    feedback.openAt({
+                        x: box.left - 340, y: box.bottom + 6,
+                        target: {
+                            entityType: "work-item", entityId: item.id, item: item.key,
+                            project: pid, fieldLabel: `Tarefa ${item.key}`
+                        },
+                        excerpt: item.title,
+                        screen: window.location.hash || window.location.pathname
+                    })
+                }}>
+                <Icon name="comment alternate outline" />
+            </span>
             <span className="mpm-iconbtn" title="Excluir item" onClick={() => setConfirmDelete(true)}><Icon name="trash" /></span>
             <span className="mpm-iconbtn" title="Fechar" onClick={onClose}><Icon name="close" /></span>
         </div>

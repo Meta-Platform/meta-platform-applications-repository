@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
-import { Project } from "../api/types"
+import useItemNavigator from "../Hooks/useItemNavigator"
+import { Project, WorkItem } from "../api/types"
 
 interface Command {
     id: string
@@ -28,13 +29,37 @@ interface CommandBarProps {
 const CommandBar = ({ onClose, activeProjectId, onCreateProject }: CommandBarProps) => {
     const api = useApi()
     const navigate = useNavigate()
+    const nav = useItemNavigator()
     const [query, setQuery] = useState("")
     const [projects, setProjects] = useState<Project[]>([])
+    const [items, setItems] = useState<WorkItem[]>([])
     const [cursor, setCursor] = useState(0)
 
     useEffect(() => {
         api.projects.list({}).then((l) => setProjects(l || [])).catch(() => setProjects([]))
     }, [api])
+
+    // Itens vêm do servidor (são milhares): busca por título OU key, com debounce.
+    // Digitar "MPMB-39" tem de achar aquele item, esteja em que projeto estiver.
+    useEffect(() => {
+        const text = query.trim()
+        if (text.length < 2) { setItems([]); return }
+        let alive = true
+        const timer = setTimeout(() => {
+            api.items.search(text, undefined, 15)
+                .then((l) => { if (alive) setItems(l || []) })
+                .catch(() => { if (alive) setItems([]) })
+        }, 180)
+        return () => { alive = false; clearTimeout(timer) }
+    }, [query, api])
+
+    // Abre o item onde o usuário está (o inspector da tela atual). Sem inspector
+    // por perto, cai no board do projeto do item.
+    const openItem = (item: WorkItem) => {
+        onClose()
+        if (nav) nav.openItem(item.id)
+        else navigate(`/projects/${item.projectId}/board`)
+    }
 
     const commands: Command[] = useMemo(() => {
         const list: Command[] = [
@@ -62,13 +87,26 @@ const CommandBar = ({ onClose, activeProjectId, onCreateProject }: CommandBarPro
         return list
     }, [projects, activeProjectId, navigate, onClose, onCreateProject])
 
-    // Busca por rótulo, descrição curta, key e slug.
+    // Busca por rótulo, descrição curta, key e slug — e pelos itens vindos do
+    // servidor, que aparecem primeiro quando a busca casa uma key exata.
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase()
+        const itemCommands: Command[] = items.map((it) => ({
+            id: `item-${it.id}`,
+            label: `${it.key} — ${it.title}`,
+            icon: "tasks",
+            hint: it.statusKey,
+            keywords: it.key,
+            run: () => openItem(it)
+        }))
         if (!q) return commands
-        return commands.filter((c) =>
+        const matched = commands.filter((c) =>
             `${c.label} ${c.hint || ""} ${c.keywords || ""}`.toLowerCase().indexOf(q) >= 0)
-    }, [commands, query])
+        // Key exata ("MPMB-39") vem no topo; o resto segue a ordem natural.
+        const exact = itemCommands.filter((c) => (c.keywords || "").toLowerCase() === q)
+        const rest = itemCommands.filter((c) => (c.keywords || "").toLowerCase() !== q)
+        return [...exact, ...rest, ...matched]
+    }, [commands, query, items])
 
     useEffect(() => { setCursor(0) }, [query])
 

@@ -11,7 +11,9 @@ interface SoftwareContextSectionProps {
     onSave: (input: SoftwareContextFields) => void
 }
 
-// SoftwareContextSection (feature 2): edição do contexto de software do item.
+// Contexto de ENTREGA: como o trabalho foi (ou será) entregue — branch, commit,
+// pull request, ambiente. "Onde se mexe" é outra pergunta, respondida pelo
+// EcosystemContextSection (pacote na hierarquia da Meta Platform).
 const SoftwareContextSection = ({ item, onSave }: SoftwareContextSectionProps) => {
     const rev = item.updatedAt || ""
 
@@ -28,8 +30,8 @@ const SoftwareContextSection = ({ item, onSave }: SoftwareContextSectionProps) =
         </div>
 
     return <div className="mpm-col">
-        <div className="mpm-section-title"><Icon name="code branch" /> Contexto de software</div>
-        {textField("Repositório", "repositoryUrl", "https://...")}
+        <div className="mpm-section-title"><Icon name="code branch" /> Entrega</div>
+        {textField("Repositório (URL)", "repositoryUrl", "https://...")}
         <div className="mpm-row mpm-gap-4">
             {textField("Branch", "branchName")}
             {textField("Commit", "commitHash")}
@@ -41,12 +43,6 @@ const SoftwareContextSection = ({ item, onSave }: SoftwareContextSectionProps) =
                 onChange={(e) => onSave({ environment: e.target.value })}>
                 {ENVIRONMENTS.map((env) => <option key={env || "none"} value={env}>{env || "—"}</option>)}
             </select>
-        </div>
-        {textField("Caminho do pacote", "packagePath")}
-        <div className="mpm-row mpm-gap-4">
-            {textField("Módulo", "moduleName")}
-            {textField("Camada", "layerName")}
-            {textField("Grupo", "groupName")}
         </div>
     </div>
 }

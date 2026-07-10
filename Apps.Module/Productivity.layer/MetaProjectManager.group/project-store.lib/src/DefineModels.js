@@ -21,6 +21,12 @@ const DefineModels = (sequelize) => {
         keySeq:        { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
         repositoryUrl: { type: DataTypes.STRING },
         localPath:     { type: DataTypes.STRING },
+        // Escopo do projeto no ecossistema: os itens herdam isto como sugestão
+        // ao escolher em qual pacote se mexe.
+        contextRepository: { type: DataTypes.STRING },
+        contextModule:     { type: DataTypes.STRING },
+        contextLayer:      { type: DataTypes.STRING },
+        contextGroup:      { type: DataTypes.STRING },
         defaultBoardId:{ type: DataTypes.STRING },
         ownerUserId:   { type: DataTypes.STRING },
         archivedAt:    { type: DataTypes.DATE },
@@ -362,6 +368,58 @@ const DefineModels = (sequelize) => {
         { fields: ["claimExpiresAt"] }, { fields: ["createdAt"] }
     ] })
 
+    // ── Contexto do ecossistema (Meta Platform) ──────────────────────────────
+    //
+    // Catálogo de pacotes, indexado a partir dos repositórios declarados em
+    // repositories.json. Serve para que pessoa e agente localizem o contexto sem
+    // digitar nomes à mão (e errar).
+    const EcosystemPackage = sequelize.define("EcosystemPackage", {
+        id:              idField,
+        // Identidade: "<repositório>:<Module/layer/[group/]pacote.tipo>".
+        ref:             { type: DataTypes.STRING, allowNull: false, unique: true },
+        repositoryName:  { type: DataTypes.STRING, allowNull: false },
+        namespace:       { type: DataTypes.STRING, allowNull: false },
+        moduleName:      { type: DataTypes.STRING, allowNull: false },
+        layerName:       { type: DataTypes.STRING, allowNull: false },
+        groupName:       { type: DataTypes.STRING },
+        packageName:     { type: DataTypes.STRING, allowNull: false },   // com sufixo
+        packageBaseName: { type: DataTypes.STRING, allowNull: false },
+        packageType:     { type: DataTypes.STRING, allowNull: false },
+        packagePath:     { type: DataTypes.STRING },                     // caminho absoluto no disco
+        // Um pacote que sumiu do disco não é apagado (itens ainda apontam para
+        // ele): fica marcado, e some das sugestões.
+        missingAt:       { type: DataTypes.DATE },
+        indexedAt:       { type: DataTypes.DATE }
+    }, { tableName: "ecosystem_packages", indexes: [
+        { fields: ["repositoryName"] }, { fields: ["packageType"] },
+        { fields: ["moduleName"] }, { fields: ["layerName"] }, { fields: ["groupName"] },
+        { fields: ["packageBaseName"] }
+    ] })
+
+    // Um item pode tocar VÁRIOS pacotes (uma mudança atravessa store, webservice,
+    // MCP e GUI). Por isso a relação é N:N, e não colunas no item.
+    //
+    // Os campos do pacote são copiados no vínculo: o item continua legível mesmo
+    // se o pacote sair do catálogo, e permite apontar um pacote ainda não indexado.
+    const WorkItemPackage = sequelize.define("WorkItemPackage", {
+        id:              idField,
+        workItemId:      { type: DataTypes.STRING, allowNull: false },
+        packageId:       { type: DataTypes.STRING },
+        ref:             { type: DataTypes.STRING, allowNull: false },
+        repositoryName:  { type: DataTypes.STRING },
+        namespace:       { type: DataTypes.STRING },
+        moduleName:      { type: DataTypes.STRING },
+        layerName:       { type: DataTypes.STRING },
+        groupName:       { type: DataTypes.STRING },
+        packageName:     { type: DataTypes.STRING },
+        packageType:     { type: DataTypes.STRING },
+        // "primary" = onde o trabalho acontece; "touched" = também é alterado.
+        role:            { type: DataTypes.STRING, allowNull: false, defaultValue: "touched" },
+        note:            { type: DataTypes.STRING }
+    }, { tableName: "work_item_packages", indexes: [
+        { fields: ["workItemId"] }, { fields: ["ref"] }, { fields: ["packageId"] }
+    ] })
+
     const AppState = sequelize.define("AppState", {
         key:   { type: DataTypes.STRING, primaryKey: true, allowNull: false, unique: true },
         value: { type: DataTypes.JSON, allowNull: true }
@@ -371,7 +429,8 @@ const DefineModels = (sequelize) => {
         Project, Board, BoardColumn, WorkItem, WorkItemLink,
         WorkItemChecklistItem, WorkItemAcceptanceCriteria,
         Attachment, Comment, User, AgentProfile, AgentSession,
-        CreationRequest, Milestone, Sprint, AuditEvent, ActivityNote, AgentFeedback, AppState
+        CreationRequest, Milestone, Sprint, AuditEvent, ActivityNote, AgentFeedback,
+        EcosystemPackage, WorkItemPackage, AppState
     }
 }
 

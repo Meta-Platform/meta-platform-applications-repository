@@ -365,6 +365,55 @@ test("rejeitar delete com motivo preserva o item e grava rejectionReason", async
     assert.equal(still.id, it.id)
 })
 
+// A GUI e a CLI rodam no desktop e não têm login: chamam approve/reject sem
+// actorUserId. Antes, a decisão era gravada como actorType "system" e o pedido
+// ficava com decidedByUserId null — apagando quem autorizou, que é a única
+// informação que o gate existe para produzir.
+test("aprovar sem actorUserId credita o usuario-desktop, não system", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Aprovado pela GUI" })
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+
+    const { request } = await store.ApproveRequest({ request: pend.id, actor: { source: "api" } })
+
+    const desktop = await store.EnsureDesktopUser()
+    assert.equal(request.decidedByUserId, desktop.id)
+
+    const [ev] = await store.ListActivity({ action: "approve", limit: 1, actor: { source: "gui" } })
+    assert.equal(ev.entityId, pend.id)
+    assert.equal(ev.actorType, "desktop")
+    assert.equal(ev.actorUserId, desktop.id)
+})
+
+test("rejeitar sem actorUserId também credita o usuario-desktop", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Rejeitado pela GUI" })
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+
+    const rej = await store.RejectRequest({ request: pend.id, reason: "não", actor: { source: "api" } })
+
+    const desktop = await store.EnsureDesktopUser()
+    assert.equal(rej.decidedByUserId, desktop.id)
+    const [ev] = await store.ListActivity({ action: "reject", limit: 1, actor: { source: "gui" } })
+    assert.equal(ev.actorType, "desktop")
+})
+
+// O fallback NÃO pode mascarar um agente: se um agente chamar approve pela CLI,
+// a auditoria tem que continuar dizendo "agent", nunca "desktop".
+test("ator com identidade de agente nunca vira usuario-desktop ao aprovar", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Agente aprovando" })
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+
+    await store.ApproveRequest({ request: pend.id, actor: AGENT })
+
+    const [ev] = await store.ListActivity({ action: "approve", limit: 1, actor: { source: "gui" } })
+    assert.equal(ev.entityId, pend.id)
+    assert.equal(ev.actorType, "agent")
+    const desktop = await store.EnsureDesktopUser()
+    assert.notEqual(ev.actorUserId, desktop.id)
+})
+
 test("idempotência: mesmo resumeToken reusa o pedido pendente", async () => {
     const it = await store.CreateItem({ project: "MP", type: "task", title: "Idempotente" })
     const AG = { ...AGENT, resumeToken: "tok-del-1" }
@@ -712,4 +761,121 @@ test("feedback filtra por item e por janela de tempo", async () => {
     const past = new Date(Date.now() - 60_000).toISOString()
     const some = await store.ListFeedback({ project: "MP", status: "all", since: past })
     assert.ok(some.length >= 1)
+})
+
+// ---- Contexto do ecossistema (Meta Platform) ----
+//
+// O catálogo vem do disco; os testes montam um repositório de mentira e apontam
+// o ecosystemDataPath para ele — nada depende da máquina de quem roda.
+const fsx = require("fs")
+
+const makeFakeEcosystem = () => {
+    const root = path.join(TMP, "eco")
+    const repo = path.join(root, "repos", "FakeRepo")
+    const pkgs = [
+        "Apps.Module/Productivity.layer/Demo.group/demo.webgui",
+        "Apps.Module/Productivity.layer/Demo.group/demo.lib",
+        "Main.Module/Application.layer/solo.cli"
+    ]
+    for (const rel of pkgs) fsx.mkdirSync(path.join(repo, rel, "metadata"), { recursive: true })
+    for (const rel of pkgs) fsx.writeFileSync(path.join(repo, rel, "metadata", "package.json"), "{}")
+    // ruído: contêiner sem pacote e node_modules
+    fsx.mkdirSync(path.join(repo, "Apps.Module/Empty.layer"), { recursive: true })
+    fsx.mkdirSync(path.join(repo, "node_modules/x.lib/metadata"), { recursive: true })
+    fsx.writeFileSync(path.join(repo, "node_modules/x.lib/metadata/package.json"), "{}")
+
+    fsx.mkdirSync(root, { recursive: true })
+    fsx.writeFileSync(path.join(root, "repositories.json"), JSON.stringify({
+        FakeRepo: { installationPath: repo, sourceData: { sourceType: "LOCAL_FS", path: repo } }
+    }))
+    return root
+}
+
+let ecoStore
+test("indexa os pacotes do disco, ignorando contêineres e node_modules", async () => {
+    const ecosystemDataPath = makeFakeEcosystem()
+    ecoStore = InitializeProjectStore({
+        storage: path.join(TMP, "eco.sqlite"),
+        attachmentsDirPath: path.join(TMP, "att"),
+        ecosystemDataPath
+    })
+    await ecoStore.ConnectAndSync()
+
+    const result = await ecoStore.IndexEcosystemPackages({ actor: { source: "cli" } })
+    assert.equal(result.indexed, 3)
+
+    const all = await ecoStore.ListEcosystemPackages({})
+    const names = all.map((p) => p.packageName).sort()
+    assert.deepEqual(names, ["demo.lib", "demo.webgui", "solo.cli"])
+
+    // hierarquia decomposta, com e sem grupo
+    const webgui = all.find((p) => p.packageName === "demo.webgui")
+    assert.equal(webgui.moduleName, "Apps.Module")
+    assert.equal(webgui.layerName, "Productivity.layer")
+    assert.equal(webgui.groupName, "Demo.group")
+    assert.equal(webgui.packageType, "webgui")
+    assert.equal(webgui.repositoryName, "FakeRepo")
+
+    const solo = all.find((p) => p.packageName === "solo.cli")
+    assert.equal(solo.groupName, null)
+})
+
+test("um pacote que some do disco fica ausente, não é apagado", async () => {
+    const removed = path.join(TMP, "eco", "repos", "FakeRepo", "Main.Module/Application.layer/solo.cli")
+    fsx.rmSync(removed, { recursive: true, force: true })
+
+    const result = await ecoStore.IndexEcosystemPackages({ actor: { source: "cli" } })
+    assert.equal(result.markedMissing, 1)
+
+    const visible = await ecoStore.ListEcosystemPackages({})
+    assert.ok(!visible.some((p) => p.packageName === "solo.cli"))
+
+    const withMissing = await ecoStore.ListEcosystemPackages({ includeMissing: true })
+    assert.ok(withMissing.some((p) => p.packageName === "solo.cli"))
+})
+
+test("um item toca VÁRIOS pacotes, e dá para filtrar itens por pacote", async () => {
+    const p = await ecoStore.CreateProject({ name: "Eco", keyPrefix: "ECO", actor: { source: "cli" } })
+    const it = await ecoStore.CreateItem({ project: p.id, type: "task", title: "Muda GUI e lib" })
+
+    await ecoStore.SetItemPackages({
+        item: it.key,
+        packages: [{ package: "demo.webgui", role: "primary" }, "demo.lib"],
+        actor: { source: "gui" }
+    })
+
+    const full = await ecoStore.GetItem({ item: it.key })
+    assert.equal(full.packages.length, 2)
+    assert.equal(full.packages.find((x) => x.packageName === "demo.webgui").role, "primary")
+    assert.equal(full.packages.find((x) => x.packageName === "demo.lib").role, "touched")
+
+    // filtro: o que está aberto neste pacote?
+    const byPackage = await ecoStore.ListItems({ project: p.id, package: "demo.lib" })
+    assert.equal(byPackage.length, 1)
+    assert.equal(byPackage[0].id, it.id)
+
+    const other = await ecoStore.ListItems({ project: p.id, package: "FakeRepo:Main.Module/Application.layer/solo.cli" })
+    assert.equal(other.length, 0)
+})
+
+test("vincular pacote inexistente falha; nome ambíguo pede o ref completo", async () => {
+    const p = await ecoStore.ListItems({ limit: 1 })
+    await assert.rejects(
+        () => ecoStore.AddItemPackage({ item: p[0].key, package: "nao-existe.lib" }),
+        (e) => e.code === "NOT_FOUND"
+    )
+    // "demo" casa com demo.webgui e demo.lib
+    await assert.rejects(
+        () => ecoStore.AddItemPackage({ item: p[0].key, package: "demo" }),
+        (e) => e.code === "VALIDATION_ERROR" && e.details.candidates.length === 2
+    )
+})
+
+test("remover o vínculo tira o item do filtro daquele pacote", async () => {
+    const [it] = await ecoStore.ListItems({ limit: 1 })
+    await ecoStore.RemoveItemPackage({ item: it.key, package: "demo.lib", actor: { source: "gui" } })
+    const left = await ecoStore.GetItem({ item: it.key })
+    assert.equal(left.packages.length, 1)
+    const byPackage = await ecoStore.ListItems({ package: "demo.lib" })
+    assert.equal(byPackage.length, 0)
 })

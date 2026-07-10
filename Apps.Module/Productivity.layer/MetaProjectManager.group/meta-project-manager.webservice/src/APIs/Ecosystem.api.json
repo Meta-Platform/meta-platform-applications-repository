@@ -1,0 +1,117 @@
+{
+    "name": "Ecosystem",
+    "endpoints": [
+        {
+            "summary": "ListPackages",
+            "method": "GET",
+            "path": "/ecosystem/packages",
+            "parameters": [
+                {
+                    "name": "text",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "repository",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "module",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "layer",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "group",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "type",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "includeMissing",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "limit",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "offset",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "GetPackage",
+            "method": "GET",
+            "path": "/ecosystem/packages/:packageRef",
+            "parameters": [
+                {
+                    "name": "packageRef",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "IndexPackages",
+            "method": "POST",
+            "path": "/ecosystem/index",
+            "parameters": []
+        },
+        {
+            "summary": "ListItemPackages",
+            "method": "GET",
+            "path": "/items/:itemId/packages",
+            "parameters": [
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "SetItemPackages",
+            "method": "PUT",
+            "path": "/items/:itemId/packages",
+            "parameters": [
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "packages",
+                    "in": "body",
+                    "type": "array",
+                    "required": true
+                }
+            ]
+        }
+    ]
+}

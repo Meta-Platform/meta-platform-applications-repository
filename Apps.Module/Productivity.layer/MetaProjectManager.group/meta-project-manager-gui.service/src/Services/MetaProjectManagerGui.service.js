@@ -14,6 +14,8 @@ const CONTROLLER_MODULES = {
     Boards:      { controller: "Controllers/Boards.controller",      api: "APIs/Boards.api.json" },
     Items:       { controller: "Controllers/Items.controller",       api: "APIs/Items.api.json" },
     Comments:    { controller: "Controllers/Comments.controller",    api: "APIs/Comments.api.json" },
+    Feedback:    { controller: "Controllers/Feedback.controller",    api: "APIs/Feedback.api.json" },
+    Ecosystem:   { controller: "Controllers/Ecosystem.controller",   api: "APIs/Ecosystem.api.json" },
     Attachments: { controller: "Controllers/Attachments.controller", api: "APIs/Attachments.api.json" },
     Users:       { controller: "Controllers/Users.controller",       api: "APIs/Users.api.json" },
     Agents:      { controller: "Controllers/Agents.controller",      api: "APIs/Agents.api.json" },
@@ -31,12 +33,13 @@ const MetaProjectManagerGuiService = (params) => {
         dbFilePath,
         attachmentsDirPath,
         maxAttachmentBytes,
+        ecosystemDataPath,
         onReady
     } = params
 
     // Mesmo saco de parâmetros que o endpoint-group da webservice injeta nos
     // controllers (o AppContext singleton garante UM store compartilhado).
-    const controllerParams = { projectStoreLib, dbFilePath, attachmentsDirPath, maxAttachmentBytes }
+    const controllerParams = { projectStoreLib, dbFilePath, attachmentsDirPath, maxAttachmentBytes, ecosystemDataPath }
 
     const registry = {}
     const manifest = {}

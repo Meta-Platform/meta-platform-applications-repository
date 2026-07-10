@@ -43,6 +43,18 @@
     },
     {
         "appType":"APP",
+        "executable":"executor-panel",
+        "packageNamespace":"Apps.Module/InstanceManager.layer/InstanceExecutorControlPanel.group/instance-executor-control-panel.webapp",
+        "supervisorSocketFileName":"executor-panel.sock"
+    },
+    {
+        "appType":"DESKTOP",
+        "executable":"executor-panel-desktop",
+        "packageNamespace":"Apps.Module/InstanceManager.layer/InstanceExecutorControlPanel.group/instance-executor-control-panel.desktopapp",
+        "supervisorSocketFileName":"executor-panel-desktop.sock"
+    },
+    {
+        "appType":"APP",
         "executable":"meta-project-manager",
         "packageNamespace":"Apps.Module/Productivity.layer/MetaProjectManager.group/meta-project-manager.webapp",
         "supervisorSocketFileName":"meta-project-manager.sock"

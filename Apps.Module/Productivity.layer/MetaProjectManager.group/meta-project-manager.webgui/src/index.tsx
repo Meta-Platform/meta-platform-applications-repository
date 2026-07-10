@@ -13,15 +13,13 @@ import "./Styles/themes.css"
 import "./Styles/mpm.css"
 
 import { applySavedTheme } from "./Utils/theme"
+import { applySavedZoom } from "./Utils/zoom"
 
-// O Meta Project Manager abre em tema escuro por padrão (estética de IDE),
-// respeitando a escolha do usuário quando já houver uma salva.
-try {
-	if (!window.localStorage.getItem("mp-theme")) window.localStorage.setItem("mp-theme", "dark")
-} catch (_) {}
-
-// aplica o tema salvo (dark/gray/blue/cyberpunk) antes de renderizar
+// O Meta Project Manager abre em grayscale; se o usuário já escolheu outro tema,
+// a escolha dele manda (ver Utils/theme.ts).
+// Aplica tema e zoom antes do render, para não piscar.
 applySavedTheme()
+applySavedZoom()
 
 import PagesMapper from "./Mappers/Pages.mapper"
 

@@ -89,6 +89,37 @@
                     "in": "query",
                     "type": "string",
                     "required": false
+                },
+                {
+                    "name": "package",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "SearchItems",
+            "method": "GET",
+            "path": "/items/search",
+            "parameters": [
+                {
+                    "name": "text",
+                    "in": "query",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "project",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "limit",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
                 }
             ]
         },

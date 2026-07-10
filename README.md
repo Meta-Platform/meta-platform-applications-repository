@@ -66,6 +66,11 @@ a desenvolvimento. Executáveis publicados em
 | `package-developer.webapp` | webapp | Apps | Tools | PackageDeveloper | Composição do Package Developer | Desenvolvido | `@@/server-service`, `@/package-developer.{lib,webgui,webservice}` | `developer` |
 | `package-developer.webgui` | webgui | Apps | Tools | PackageDeveloper | Front-end | Desenvolvido | `@@/server-service` | — |
 | `package-developer.webservice` | webservice | Apps | Tools | PackageDeveloper | API HTTP | Desenvolvido | `@@/server-service`, `@/package-developer.lib` | — |
+| `instance-executor-control-panel.desktopapp` | desktopapp | Apps | InstanceManager | InstanceExecutorControlPanel | Composição desktop (Electron **GUI-host + streaming**) do painel do executor de instâncias | Desenvolvido | `@/instance-executor-control-panel.{webgui,webservice,-gui.service}` + serviços de core (`repository-manager`, `task-executor-machine`, `environment-runtime-manager`, `ecosystem-manager`) | `executor-panel-desktop` |
+| `instance-executor-control-panel.webapp` | webapp | Apps | InstanceManager | InstanceExecutorControlPanel | Composição web do painel do executor de instâncias | Desenvolvido | `@@/server-service`, `@/instance-executor-control-panel.{webgui,webservice}` + serviços de core | `executor-panel` |
+| `instance-executor-control-panel.webgui` | webgui | Apps | InstanceManager | InstanceExecutorControlPanel | Front-end (control panel / package explorer / task monitor); **dual-transport** HTTP/IPC | Desenvolvido | `@@/server-service` | — |
+| `instance-executor-control-panel.webservice` | webservice | Apps | InstanceManager | InstanceExecutorControlPanel | API HTTP+WS (TaskExecutorMonitor / RepositoryManager / EcosystemManager) | Desenvolvido | `@@/server-service` + serviços de core | — |
+| `instance-executor-control-panel-gui.service` | service | Apps | InstanceManager | InstanceExecutorControlPanel | Hospeda os 3 controllers da webservice via IPC (Electron GUI-host, com streaming) | Desenvolvido | `@/instance-executor-control-panel.webservice` (+ serviços de core) | — |
 | `ui-components.lib` | lib | Base | Library | — | Biblioteca de componentes React (UI) | Desenvolvido (sem `metadata/` namespace) | consumida em build pelos `webgui` | — |
 
 > `@@/server-service` e `@/server-manager.*` são fornecidos pelo
@@ -102,8 +107,9 @@ a desenvolvimento. Executáveis publicados em
 
 ## Estrutura do repositório
 
-- **Apps.Module** → `Admin.layer` (DataSource, MyDesktop) e `Tools.layer`
-  (APIDesigner, MetaCloud, PackageDeveloper).
+- **Apps.Module** → `Admin.layer` (DataSource, MyDesktop), `Tools.layer`
+  (APIDesigner, MetaCloud, PackageDeveloper) e `InstanceManager.layer`
+  (InstanceExecutorControlPanel).
 - **Base.Module** → `Library.layer` (ui-components) e `Service.layer`
   (datasource-manager.service).
 

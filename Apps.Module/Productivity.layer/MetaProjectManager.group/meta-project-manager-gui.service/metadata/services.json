@@ -9,7 +9,8 @@
         "params": [
             "dbFilePath",
             "attachmentsDirPath",
-            "maxAttachmentBytes"
+            "maxAttachmentBytes",
+            "ecosystemDataPath"
         ]
     }
 ]

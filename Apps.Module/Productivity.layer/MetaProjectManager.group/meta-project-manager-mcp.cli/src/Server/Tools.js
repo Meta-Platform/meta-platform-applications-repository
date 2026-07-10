@@ -472,12 +472,13 @@ const BuildTools = ({ store, actor }) => {
                 priority: S.enum(PRIORITIES, "Prioridade"),
                 milestone: S.str("Milestone (id|nome)"),
                 sprint: S.str("Sprint (id|nome)"),
+                package: S.str("Só os itens que tocam este pacote (ref|namespace|nome)"),
                 horizon: S.enum(HORIZONS, "Horizonte"),
                 text: S.str("Busca textual"),
                 limit: S.num("Máx. de itens"),
                 offset: S.num("Deslocamento")
             }, ["project"]),
-            handler: (i) => store.ListItems({ project: i.project, type: i.type, status: i.status, parent: i.parent, board: i.board, assignee: i.assignee, priority: i.priority, milestone: i.milestone, sprint: i.sprint, horizon: i.horizon, text: i.text, limit: i.limit, offset: i.offset })
+            handler: (i) => store.ListItems({ project: i.project, type: i.type, status: i.status, parent: i.parent, board: i.board, assignee: i.assignee, priority: i.priority, milestone: i.milestone, sprint: i.sprint, horizon: i.horizon, text: i.text, package: i.package, limit: i.limit, offset: i.offset })
         },
         {
             name: "get_item",
@@ -630,7 +631,7 @@ const BuildTools = ({ store, actor }) => {
                 area: S.str("Área"),
                 limit: S.num("Máx. de itens (padrão 50)")
             }, ["text"]),
-            handler: (i) => store.ListItems({ text: i.text, project: i.project, type: i.type, status: i.status, assignee: i.assignee, area: i.area, limit: i.limit || 50, sort: "created" })
+            handler: (i) => store.ListItems({ text: i.text, project: i.project, type: i.type, status: i.status, assignee: i.assignee, area: i.area, package: i.package, limit: i.limit || 50, sort: "created" })
         },
         {
             name: "list_milestones",
@@ -655,6 +656,76 @@ const BuildTools = ({ store, actor }) => {
             description: "Lista os itens ATRASADOS (prazo vencido) do projeto — riscos que podem conflitar com um novo plano.",
             inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }, ["project"]),
             handler: (i) => store.Overdue({ project: i.project })
+        },
+
+        // ───────────── Contexto do ecossistema (Meta Platform) ─────────────
+        //
+        // "Onde mexo?" não se responde com uma URL de repositório, e sim com um
+        // PACOTE: Repositório → Módulo → Camada → Grupo → Pacote (.lib, .webgui,
+        // .cli, .service, .webservice, .desktopapp…). Um item pode tocar VÁRIOS.
+        // NÃO digite o nome de cabeça: liste e use o `ref` que voltar.
+        {
+            name: "list_ecosystem_packages",
+            description: "Lista/pesquisa os pacotes reais do ecossistema (indexados do disco). Busque por nome, grupo, camada, módulo, repositório ou tipo. USE ANTES de vincular um item a um pacote — o `ref` devolvido aqui é o identificador correto.",
+            inputSchema: Obj({
+                text: S.str("Termo (nome do pacote, grupo, camada, módulo, repositório)"),
+                repository: S.str("Repositório (ex.: ApplicationsRepository)"),
+                module: S.str("Módulo (ex.: Apps.Module)"),
+                layer: S.str("Camada (ex.: Productivity.layer)"),
+                group: S.str("Grupo (ex.: MetaProjectManager.group)"),
+                type: S.str("Tipo do pacote (lib|webgui|cli|service|webservice|desktopapp|webapp)"),
+                limit: S.num("Máx. de pacotes"), offset: S.num("Deslocamento")
+            }),
+            handler: (i) => store.ListEcosystemPackages({
+                text: i.text, repository: i.repository, module: i.module,
+                layer: i.layer, group: i.group, type: i.type, limit: i.limit, offset: i.offset
+            })
+        },
+        {
+            name: "index_ecosystem_packages",
+            description: "Relê os repositórios do disco e atualiza o catálogo de pacotes. Rode quando um pacote novo não aparecer em list_ecosystem_packages.",
+            inputSchema: Obj({}),
+            handler: () => store.IndexEcosystemPackages(A({}))
+        },
+        {
+            name: "list_item_packages",
+            description: "Pacotes que um item toca, com o papel de cada um (primary = onde o trabalho acontece; touched = também é alterado).",
+            inputSchema: Obj({ item: S.str("Item (id|key)") }, ["item"]),
+            handler: (i) => store.ListItemPackages({ item: i.item })
+        },
+        {
+            name: "set_item_packages",
+            description: "Define TODOS os pacotes que o item toca (substitui os anteriores). Aceita o `ref` completo ou o nome do pacote quando único. LIVRE. Uma mudança real costuma atravessar store, webservice, MCP e GUI — liste todos.",
+            inputSchema: Obj({
+                item: S.str("Item (id|key)"),
+                packages: {
+                    type: "array",
+                    description: "Pacotes tocados",
+                    items: Obj({
+                        package: S.str("ref, namespace ou nome do pacote"),
+                        role: S.enum(["primary", "touched"], "Papel (padrão: touched)"),
+                        note: S.str("O que muda neste pacote")
+                    }, ["package"])
+                }
+            }, ["item", "packages"]),
+            handler: (i) => store.SetItemPackages(A({ item: i.item, packages: i.packages }))
+        },
+        {
+            name: "add_item_package",
+            description: "Vincula um pacote a um item, sem mexer nos outros. LIVRE.",
+            inputSchema: Obj({
+                item: S.str("Item (id|key)"),
+                package: S.str("ref, namespace ou nome do pacote"),
+                role: S.enum(["primary", "touched"], "Papel (padrão: touched)"),
+                note: S.str("O que muda neste pacote")
+            }, ["item", "package"]),
+            handler: (i) => store.AddItemPackage(A({ item: i.item, package: i.package, role: i.role, note: i.note }))
+        },
+        {
+            name: "remove_item_package",
+            description: "Desvincula um pacote de um item. LIVRE.",
+            inputSchema: Obj({ item: S.str("Item (id|key)"), package: S.str("ref ou nome do pacote") }, ["item", "package"]),
+            handler: (i) => store.RemoveItemPackage(A({ item: i.item, package: i.package }))
         },
 
         // ───────────── Feedback do humano (fila com claim exclusivo) ─────────────

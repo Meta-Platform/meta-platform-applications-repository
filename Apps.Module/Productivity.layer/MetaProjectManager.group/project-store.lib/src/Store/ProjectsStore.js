@@ -116,7 +116,8 @@ const ProjectsStore = (ctx) => {
 
     const UpdateProject = async ({ project, actor, ...fields } = {}) => {
         const instance = await ResolveProject(project)
-        const allowed = ["name", "shortDescription", "description", "icon", "color", "status", "repositoryUrl", "localPath", "defaultBoardId", "ownerUserId"]
+        const allowed = ["name", "shortDescription", "description", "icon", "color", "status", "repositoryUrl", "localPath", "defaultBoardId", "ownerUserId",
+            "contextRepository", "contextModule", "contextLayer", "contextGroup"]
         const patch = {}
         for(const key of allowed) if(fields[key] !== undefined) patch[key] = fields[key]
         if(patch.shortDescription !== undefined) _assertShortDescription(patch.shortDescription)

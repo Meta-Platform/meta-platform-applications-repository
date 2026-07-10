@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useEffect, useState } from "react"
 import { Icon } from "semantic-ui-react"
 
 import { ListItemsQuery } from "../api/items"
@@ -7,14 +8,17 @@ import {
     WORK_ITEM_TYPES, HORIZONS, AREA_SUGGESTIONS
 } from "../api/types"
 import { horizonLabel } from "../Utils/format"
+import { typeLabel, priorityLabel } from "../Utils/labels"
 import { GroupBy } from "../Hooks/useItemFilters"
+import useApi from "../Hooks/useApi"
+import { EcosystemPackage } from "../api/types"
 
 const PRIORITIES = ["urgent", "high", "medium", "low", "none"]
 
 const GROUPS: { key: GroupBy; label: string }[] = [
     { key: "none", label: "Sem agrupamento" },
     { key: "horizon", label: "Por horizonte" },
-    { key: "parent", label: "Por epic/feature" },
+    { key: "parent", label: "Por épico/funcionalidade" },
     { key: "area", label: "Por área" },
     { key: "sprint", label: "Por sprint" }
 ]
@@ -38,6 +42,15 @@ interface ItemFilterBarProps {
 const ItemFilterBar = ({ filters, setFilter, group, setGroup, reset, activeCount,
     users, milestones, sprints, areas, showGroup }: ItemFilterBarProps) => {
 
+    const api = useApi()
+    // Pacotes do ecossistema que aparecem no filtro. Só os que existem de verdade.
+    const [packages, setPackages] = useState<EcosystemPackage[]>([])
+    useEffect(() => {
+        api.ecosystem.listPackages({ limit: "200" })
+            .then((l) => setPackages(l || []))
+            .catch(() => setPackages([]))
+    }, [api])
+
     const areaList = (areas && areas.length > 0) ? areas : AREA_SUGGESTIONS
     const sel = (name: keyof ListItemsQuery) => (filters as any)[name] || ""
 
@@ -49,7 +62,9 @@ const ItemFilterBar = ({ filters, setFilter, group, setGroup, reset, activeCount
             {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
 
-    const plain = (values: string[]) => values.map((v) => ({ value: v, label: v }))
+    // O valor vai cru para a API; o humano lê em português.
+    const labeled = (values: string[], label: (v: string) => string) =>
+        values.map((v) => ({ value: v, label: label(v) }))
 
     return <div className="mpm-filterbar">
         <span className="mpm-filterbar__search">
@@ -58,13 +73,16 @@ const ItemFilterBar = ({ filters, setFilter, group, setGroup, reset, activeCount
                 value={sel("text")} onChange={(e) => setFilter("text", e.target.value)} />
         </span>
 
-        {pill("type", "Tipo", plain(WORK_ITEM_TYPES as any))}
-        {pill("priority", "Prioridade", plain(PRIORITIES))}
+        {pill("type", "Tipo", labeled(WORK_ITEM_TYPES as any, typeLabel))}
+        {pill("priority", "Prioridade", labeled(PRIORITIES, priorityLabel))}
         {pill("horizon", "Horizonte", (HORIZONS as any as string[]).map((h) => ({ value: h, label: horizonLabel(h as any) })))}
-        {pill("area", "Área", plain(areaList))}
+        {pill("area", "Área", areaList.map((a) => ({ value: a, label: a })))}
         {pill("assignee", "Responsável", users.map((u) => ({ value: u.id, label: u.displayName })))}
         {pill("milestone", "Entrega", milestones.map((m) => ({ value: m.id, label: m.name })))}
         {pill("sprint", "Sprint", sprints.map((s) => ({ value: s.id, label: s.name })))}
+        {packages.length > 0
+            ? pill("package", "Pacote", packages.map((p) => ({ value: p.ref, label: p.packageName })))
+            : null}
 
         {showGroup && setGroup
             ? <select className={`mpm-inline-select ${group && group !== "none" ? "is-set" : ""}`}

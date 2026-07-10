@@ -67,6 +67,8 @@ export interface ListItemsQuery {
     effort?: string
     value?: string
     area?: string
+    // Só os itens que tocam este pacote do ecossistema (ref|namespace|nome).
+    package?: string
     sort?: string   // order | created | priority | value
 }
 
@@ -76,6 +78,10 @@ const CreateItemsApi = (call: Caller) => ({
 
     create: (projectId: string, input: CreateItemInput): Promise<WorkItem> =>
         call("Items", "CreateItem", { projectId, ...input }),
+
+    // Busca por título OU key, em todos os projetos (ou num só).
+    search: (text: string, project?: string, limit = 25): Promise<WorkItem[]> =>
+        call("Items", "SearchItems", { text, project, limit: String(limit) }),
 
     get: (itemId: string): Promise<WorkItem> =>
         call("Items", "GetItem", { itemId }),

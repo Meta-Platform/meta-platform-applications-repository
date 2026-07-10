@@ -4,6 +4,7 @@ import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
 import useItemNavigator from "../Hooks/useItemNavigator"
+import { relationLabel } from "../Utils/labels"
 import { WorkItem } from "../api/types"
 import { ErrorBanner } from "./Primitives"
 
@@ -78,7 +79,7 @@ const LinkPanel = ({ item, projectId, onChanged }: LinkPanelProps) => {
             const t = resolved[l.targetItemId]
             const label = t ? t.key : l.targetItemId
             return <div key={l.id} className="mpm-row">
-                <span className="mpm-chip mpm-chip--neutral">{l.relation}</span>
+                <span className="mpm-chip mpm-chip--neutral" title={l.relation}>{relationLabel(l.relation)}</span>
                 {nav
                     ? <a className="mpm-item-ref mpm-mono" href="#" title={`Abrir ${label}`}
                         onClick={(e) => { e.preventDefault(); nav.openItem(l.targetItemId) }}>{label}</a>
@@ -91,7 +92,7 @@ const LinkPanel = ({ item, projectId, onChanged }: LinkPanelProps) => {
 
         <div className="mpm-row">
             <select className="mpm-inline-select" value={relation} onChange={(e) => setRelation(e.target.value)}>
-                {RELATIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                {RELATIONS.map((r) => <option key={r} value={r}>{relationLabel(r)}</option>)}
             </select>
             <div style={{ position: "relative", flex: 1 }}>
                 <input className="mpm-input" placeholder="buscar item alvo (key ou título)..."
