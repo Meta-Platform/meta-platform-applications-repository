@@ -14,7 +14,7 @@ type DesktopIconProps = {
     title?: string
     iconUrl?: string
     selected: boolean
-    running?: boolean
+    instanceCount?: number
     launch?: LaunchInfo
     position: IconPosition
     dragging?: boolean
@@ -24,7 +24,7 @@ type DesktopIconProps = {
 }
 
 const DesktopIcon = ({
-    label, title, iconUrl, selected, running, launch, position, dragging,
+    label, title, iconUrl, selected, instanceCount = 0, launch, position, dragging,
     onPointerDown, onOpen, onContextMenu
 }:DesktopIconProps) => {
 
@@ -42,6 +42,12 @@ const DesktopIcon = ({
     const isOpened    = phase === "ready"
     const hasPercent  = isBuilding && typeof launch!.percentage === "number"
 
+    // Uma instância → marca de "em execução". Duas ou mais → o badge passa a
+    // contar quantas janelas daquele aplicativo estão abertas.
+    const isRunning = instanceCount > 0
+    const hasManyInstances = instanceCount > 1
+    const runningTitle = hasManyInstances ? `${instanceCount} instâncias em execução` : "Em execução"
+
     return <button
         type="button"
         className={`myd-icon ${selected ? "myd-icon--selected" : ""} ${dragging ? "myd-icon--dragging" : ""} ${isOpened ? "myd-icon--opened" : ""} ${isBuilding ? "myd-icon--building" : ""}`}
@@ -53,7 +59,12 @@ const DesktopIcon = ({
         onKeyDown={(e) => { if(e.key === "Enter") onOpen() }}>
 
         <span className="myd-icon__frame">
-            { running && <span className="myd-icon__running" title="Em execução"/> }
+            {
+                isRunning &&
+                <span className={`myd-icon__running ${hasManyInstances ? "myd-icon__running--count" : ""}`} title={runningTitle}>
+                    { hasManyInstances && instanceCount }
+                </span>
+            }
             {
                 showImage
                     ? <img className="myd-icon__img" src={iconUrl} alt={label} onError={() => setImageFailed(true)}/>

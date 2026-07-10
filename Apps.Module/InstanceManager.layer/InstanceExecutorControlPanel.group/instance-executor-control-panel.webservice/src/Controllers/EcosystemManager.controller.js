@@ -40,7 +40,7 @@ const EcosystemManagerController = (params) => {
         }
     }
 
-    // Encerra o processo/pacote em execução (delega StopPackage ao daemon).
+    // Encerra TODAS as instâncias de um pacote (delega StopPackage ao daemon).
     const StopPackage = async ({ namespaceRepo, moduleName, layerName, packageName, ext, parentGroup, packagePath }) => {
         try {
             const path = await _ResolvePath({ namespaceRepo, moduleName, layerName, packageName, ext, parentGroup, packagePath })
@@ -52,10 +52,23 @@ const EcosystemManagerController = (params) => {
         }
     }
 
+    // Encerra UMA instância pelo seu id — um mesmo pacote desktop pode estar
+    // aberto várias vezes, e o monitor lista uma linha por instância.
+    // 1 parâmetro (instanceId) chega como valor direto (contrato do server-manager).
+    const StopInstance = async (instanceId) => {
+        try {
+            return await instanceManagerRuntimeService.StopInstance({ instanceId })
+        } catch(e){
+            console.log(e)
+            throw e
+        }
+    }
+
     return Object.freeze({
         controllerName : "EcosystemManagerController",
         RunPackage,
         StopPackage,
+        StopInstance,
         ListPackages: instanceManagerRuntimeService.ListPackages,
         PackageList
     })

@@ -90,11 +90,12 @@ const TaskMonitorContainer = ({ HTTPServerManager }:any) => {
         onDisconnection : () => setInstanceList([])
     })
 
-    // Encerrar uma instância é encerrar o pacote no daemon (por caminho), não
-    // encerrar uma task: um desktop app sequer tem task.
+    // Encerrar uma instância é encerrar aquela instância no daemon, não a task
+    // (um desktop app sequer tem task) e nem o pacote inteiro: o mesmo pacote
+    // pode estar aberto em várias instâncias, e só esta linha deve fechar.
     const stopInstance = (instance:any) =>
         getEcosystemManagerAPI()
-        .StopPackage({ packagePath: instance.packagePath })
+        .StopInstance({ instanceId: instance.instanceId })
         .then(() => updateInstanceList())
         .catch(() => {})
 

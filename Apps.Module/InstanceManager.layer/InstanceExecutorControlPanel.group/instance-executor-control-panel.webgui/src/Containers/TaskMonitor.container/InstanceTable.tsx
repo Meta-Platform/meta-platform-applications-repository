@@ -68,7 +68,7 @@ const InstanceTable = ({ instanceList = [], onStopInstance }:any) =>
             <Table.Body>
                 {
                     instanceList.map((instance:any) =>
-                        <InstanceRow key={instance.packagePath} instance={instance} onStop={onStopInstance}/>)
+                        <InstanceRow key={instance.instanceId} instance={instance} onStop={onStopInstance}/>)
                 }
                 {
                     instanceList.length === 0 &&

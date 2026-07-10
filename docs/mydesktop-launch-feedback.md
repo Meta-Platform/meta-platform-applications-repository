@@ -13,9 +13,10 @@ ele consome um stream do daemon.
 
 Apps desktop rodam em **processo separado e destacado** (`run package`), porque o
 Electron faz `process.exit(0)` ao fechar a janela — se rodasse in-process,
-derrubaria o daemon. Consequência: o app lançado **não** aparece no `ListRunning`
-do daemon (não é uma task in-process) e o `%` de build vive **dentro** do
-processo Electron do app. Era preciso um canal explícito de volta ao daemon.
+derrubaria o daemon. Consequência: o app lançado **não é uma task** do executor
+in-process (ele é uma *instância*, registrada no `instance-store.lib`) e o `%` de
+build vive **dentro** do processo Electron do app. Era preciso um canal explícito
+de volta ao daemon.
 
 ## Fluxo ponta a ponta
 
@@ -25,7 +26,7 @@ processo Electron do app. Era preciso um canal explícito de volta ao daemon.
       ▼
 executor-manager daemon  ── RunPackage ──► spawn `run package` (destacado)
       │  injeta no env: META_LAUNCH_PROGRESS_SOCKET (= socket do daemon)
-      │                 META_LAUNCH_ID              (= packagePath)
+      │                 META_LAUNCH_ID              (= instanceId desta execução)
       ▼
   app lançado (desktop-window-instance.lib / electron-main.js)
       • janela criada        ─POST /ecosystem-manager/report-launch-progress {phase:"window-ready"}
@@ -44,9 +45,19 @@ home-screen.webgui  (IPCWebSocket → Desktop.container → ícone/dock)
 
 ### Contrato de evento
 
-`{ launchId, phase, percentage? }` onde `phase ∈ { launching | window-ready |
-building | ready | closed }`. O `launchId` é o **packagePath** (o webgui
-correlaciona com o ícone via o `packagePath` que o `RunApplication` retorna).
+`{ launchId, packagePath, phase, percentage? }` onde `phase ∈ { launching |
+window-ready | building | ready | closed }`.
+
+O `launchId` é o **`instanceId`** — a identidade daquela execução, gerada pelo
+daemon no `RunPackage`. Os dois campos são necessários e têm papéis distintos:
+
+- `packagePath` diz **a qual ícone** o evento pertence (o webgui correlaciona com
+  o `packagePath` que o `RunApplication` retorna);
+- `launchId` diz **qual instância** daquele ícone abriu ou fechou — o mesmo pacote
+  desktop pode estar aberto várias vezes.
+
+O app lançado só conhece o seu `launchId` (via `META_LAUNCH_ID`); o `packagePath`
+é acrescentado pelo daemon ao reemitir o evento.
 
 ## Peças
 
@@ -59,11 +70,35 @@ correlaciona com o ícone via o `packagePath` que o `RunApplication` retorna).
 | GUI-host | `desktop-gui.service` (`InvokeStream`) | entrega o stream ao renderer por IPC (`wsShim`) |
 | GUI | `home-screen.webgui` (`IPCWebSocket`, `GetBuildProgressSocket`, `DesktopIcon`, `Dock`) | consome e desenha os estados |
 
+## Múltiplas instâncias do mesmo aplicativo
+
+Um pacote `.desktopapp` pode estar aberto várias vezes. Cada lançamento recebe um
+`instanceId` (UUID) do daemon, que é a chave de tudo:
+
+- **Contagem no ícone.** Com uma instância, o badge é a marca de "em execução";
+  com duas ou mais, ele passa a exibir **o número de janelas abertas** (2, 3, 4…).
+  O container une as instâncias do polling (`ListRunning`) com as que o stream
+  acabou de abrir, deduplicando por `instanceId`.
+- **Encerrar sabendo qual.** O menu de contexto com uma instância encerra direto;
+  com várias, abre um submenu com `Instância 1 (14:02)`, `Instância 2 (14:31)`… e
+  `Encerrar todas`. `StopInstance(instanceId)` fecha a janela escolhida;
+  `StopApplication(executableName)` fecha todas.
+- **Quem morreu.** O `closed` traz o `launchId` da instância que saiu, então o
+  contador cai de 3 para 2 sem ambiguidade.
+
+No store (`instance-store.lib`), `instanceId` é a identidade (UNIQUE) e
+`packagePath` deixou de ser único. Só `kind: "desktop"` admite várias instâncias:
+`app` (in-process) e `cli` continuam um-por-pacote.
+
 ## Detalhes que evitam bugs
 
-- **"aberto" vem do stream, não do polling.** Como o app destacado não aparece no
-  `ListRunning`, a marcação de "rodando" é dirigida por `ready`/`closed`
-  (estado `launchOpenExecs` no container), que o polling **não** sobrescreve.
+- **O `closed` de uma instância não pode limpar a barra de outra.** O progresso
+  guardado por ícone carrega o `instanceId` que o gerou; só é limpo se o
+  `launchId` do `closed` bater.
+- **O stream reage na hora; o polling, a cada 5s.** `ListRunning` (que hoje lê as
+  instâncias reais do daemon, via `ListInstances`) é a fonte de verdade, mas o
+  contador do ícone não espera por ele: `ready`/`closed` somam e subtraem
+  instâncias imediatamente, e a união é feita por `instanceId`.
 - **Não reportar `building` depois de `ready`.** O webpack pode disparar
   `onChangeProgress(100)` uma última vez após o build resolver; sem uma trava
   (`_launchProgressDone` no `electron-main.js`) esse `building 100` chegaria

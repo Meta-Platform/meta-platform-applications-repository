@@ -17,22 +17,20 @@ const ExecutionController = (params) => {
     const CreateInstanceManagerClient = instanceManagerClientLib.require("CreateInstanceManagerClient")
     const instanceManager = CreateInstanceManagerClient({ platformApplicationSocketPath })
 
-    // Mapa em memória do que ESTE painel iniciou nesta sessão: executableName ->
-    // packagePath. Usado para casar o contrato do webgui (que fala em
-    // executableName) com o daemon (que fala em packagePath).
-    const startedByPanel = new Map()
+    // Mapa em memória do que ESTE painel iniciou nesta sessão, nos dois sentidos.
+    // Usado para casar o contrato do webgui (que fala em executableName) com o
+    // daemon (que fala em packagePath e instanceId).
+    const executableToPath = new Map()
+    const pathToExecutable = new Map()
+
+    const _RememberExecutable = (executableName, packagePath) => {
+        if(!executableName || !packagePath) return
+        executableToPath.set(executableName, packagePath)
+        pathToExecutable.set(packagePath, executableName)
+    }
 
     const _Notify = (origin, type, message) =>
         NotifyEvent({ origin, type: "log", content: { sourceName: origin, type, message } })
-
-    // Caminhos dos pacotes atualmente em serviço no daemon.
-    const _GetRunningPackagePaths = async () => {
-        const supervised = await instanceManager.ListPackages()
-        return new Set((supervised || [])
-            .filter((p) => p && p.packageInService && p.applicationInServiceState)
-            .map((p) => p.applicationInServiceState.staticParameters && p.applicationInServiceState.staticParameters.rootPath)
-            .filter(Boolean))
-    }
 
     // Lança uma aplicação instalada. Recebe a IDENTIDADE do pacote
     // (namespaceRepo/moduleName/...) — o caminho é resolvido aqui e a execução
@@ -58,50 +56,74 @@ const ExecutionController = (params) => {
         }
 
         try {
-            await instanceManager.RunPackage({ packagePath, launchedBy: "my-desktop" })
-            if(executableName) startedByPanel.set(executableName, packagePath)
+            const result = await instanceManager.RunPackage({ packagePath, launchedBy: "my-desktop" })
+            _RememberExecutable(executableName, packagePath)
+            const instanceId = result && result.instanceId
             _Notify("Execution.RunApplication", "info", `Execução solicitada ao daemon: ${packagePath}`)
-            return { started: true, packagePath, executableName }
+            return { started: true, packagePath, executableName, instanceId }
         } catch (e) {
             _Notify("Execution.RunApplication", "error", `Falha ao executar ${packagePath}: ${e.message || e}`)
             throw e
         }
     }
 
-    // Lista as aplicações iniciadas por este painel que ainda estão em serviço
-    // no daemon. Mantém o contrato: { running: [{ executableName }] }.
+    // Lista as INSTÂNCIAS em execução no daemon que correspondem a aplicações
+    // conhecidas por este painel. O daemon é a fonte da verdade: um mesmo
+    // executável pode aparecer em várias instâncias, cada uma com seu instanceId.
+    // Contrato: { running: [{ instanceId, executableName, packagePath, startedAt }] }.
     const ListRunning = async () => {
-        let runningPaths
+        let instanceList
         try {
-            runningPaths = await _GetRunningPackagePaths()
+            instanceList = await instanceManager.ListInstances()
         } catch (e) {
             return { running: [] }
         }
 
-        const running = []
-        for(const [executableName, packagePath] of startedByPanel){
-            if(runningPaths.has(packagePath))
-                running.push({ executableName, packagePath })
-            else
-                startedByPanel.delete(executableName)
-        }
+        const running = (instanceList || [])
+            .map((instance) => {
+                const executableName = pathToExecutable.get(instance.packagePath)
+                if(!executableName) return undefined
+                return {
+                    instanceId: instance.instanceId,
+                    executableName,
+                    packagePath: instance.packagePath,
+                    startedAt: instance.startedAt
+                }
+            })
+            .filter(Boolean)
+
         return { running }
     }
 
-    // Encerra uma aplicação pelo executableName (endpoint de 1 parâmetro → valor
-    // posicional). Delega o encerramento ao daemon via packagePath.
+    // Encerra TODAS as instâncias de uma aplicação pelo executableName (endpoint
+    // de 1 parâmetro → valor posicional).
     const StopApplication = async (executableName) => {
-        const packagePath = startedByPanel.get(executableName)
+        const packagePath = executableToPath.get(executableName)
         if(!packagePath)
             throw `Nenhuma instância em execução para "${executableName}".`
 
         try {
             const result = await instanceManager.StopPackage({ packagePath })
-            startedByPanel.delete(executableName)
             _Notify("Execution.StopApplication", "info", `Encerramento solicitado ao daemon: ${executableName}`)
             return { stopped: true, executableName, ...result }
         } catch (e) {
             _Notify("Execution.StopApplication", "error", `Falha ao encerrar ${executableName}: ${e.message || e}`)
+            throw e
+        }
+    }
+
+    // Encerra UMA instância pelo seu id — é o que permite fechar a janela certa
+    // quando a mesma aplicação está aberta várias vezes (endpoint de 1 parâmetro
+    // → valor posicional).
+    const StopInstance = async (instanceId) => {
+        if(!instanceId) throw "É necessário informar a instância a encerrar."
+
+        try {
+            const result = await instanceManager.StopInstance({ instanceId })
+            _Notify("Execution.StopInstance", "info", `Encerramento solicitado ao daemon: instância ${instanceId}`)
+            return { stopped: true, instanceId, ...result }
+        } catch (e) {
+            _Notify("Execution.StopInstance", "error", `Falha ao encerrar a instância ${instanceId}: ${e.message || e}`)
             throw e
         }
     }
@@ -133,6 +155,7 @@ const ExecutionController = (params) => {
         RunApplication,
         ListRunning,
         StopApplication,
+        StopInstance,
         BuildProgressStream
     }
 }

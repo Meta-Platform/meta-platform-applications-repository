@@ -10,13 +10,13 @@ type LaunchInfo = { phase: "launching" | "window-ready" | "building" | "ready", 
 type DockItemProps = {
     label: string
     iconUrl?: string
-    running?: boolean
+    instanceCount?: number
     launch?: LaunchInfo
     onOpen: () => void
     onContextMenu?: (e:React.MouseEvent) => void
 }
 
-const DockItem = ({ label, iconUrl, running, launch, onOpen, onContextMenu }:DockItemProps) => {
+const DockItem = ({ label, iconUrl, instanceCount = 0, launch, onOpen, onContextMenu }:DockItemProps) => {
     const [ imageFailed, setImageFailed ] = useState(false)
     const showImage = iconUrl && !imageFailed
 
@@ -24,17 +24,28 @@ const DockItem = ({ label, iconUrl, running, launch, onOpen, onContextMenu }:Doc
     const isSpinning = phase === "launching"
     const isBuilding = phase === "window-ready" || phase === "building"
     const hasPercent = isBuilding && typeof launch!.percentage === "number"
-    // ponto de "em execução" some enquanto há spinner/barra (evita dois badges no canto)
-    const showRunDot = running && !isSpinning && !isBuilding
+
+    // Uma instância → ponto de "em execução". Duas ou mais → o badge conta as
+    // janelas abertas daquele aplicativo.
+    const isRunning        = instanceCount > 0
+    const hasManyInstances = instanceCount > 1
+    // o badge some enquanto há spinner/barra (evita dois badges no canto)
+    const showRunDot = isRunning && !isSpinning && !isBuilding
+    const runLabel = hasManyInstances ? `${instanceCount} em execução` : "em execução"
 
     return <button
         type="button"
-        className={`myd-dock__item ${running ? "myd-dock__item--running" : ""} ${isBuilding ? "myd-dock__item--building" : ""}`}
-        aria-label={running ? `${label} (em execução)` : label}
+        className={`myd-dock__item ${isRunning ? "myd-dock__item--running" : ""} ${isBuilding ? "myd-dock__item--building" : ""}`}
+        aria-label={isRunning ? `${label} (${runLabel})` : label}
         onClick={onOpen}
         onContextMenu={(e) => { e.preventDefault(); onContextMenu && onContextMenu(e) }}>
-        <span className="myd-dock__label">{label}{ running && <span className="myd-dock__label-run">• em execução</span> }</span>
-        { showRunDot && <span className="myd-dock__run-dot" title="em execução"/> }
+        <span className="myd-dock__label">{label}{ isRunning && <span className="myd-dock__label-run">• {runLabel}</span> }</span>
+        {
+            showRunDot &&
+            <span className={`myd-dock__run-dot ${hasManyInstances ? "myd-dock__run-dot--count" : ""}`} title={runLabel}>
+                { hasManyInstances && instanceCount }
+            </span>
+        }
         {
             showImage
                 ? <img className="myd-dock__img" src={iconUrl} alt={label} onError={() => setImageFailed(true)}/>
@@ -55,7 +66,7 @@ const DockItem = ({ label, iconUrl, running, launch, onOpen, onContextMenu }:Doc
 // Dock inferior centralizado com os apps instalados. Clique lança a aplicação;
 // botão direito abre o menu de contexto (abrir / encerrar / remover).
 type DockProps = {
-    apps: Array<{ key:string, label:string, iconUrl?:string, running?:boolean, launch?:LaunchInfo, onOpen:()=>void, onContextMenu?:(e:React.MouseEvent)=>void }>
+    apps: Array<{ key:string, label:string, iconUrl?:string, instanceCount?:number, launch?:LaunchInfo, onOpen:()=>void, onContextMenu?:(e:React.MouseEvent)=>void }>
 }
 
 const Dock = ({ apps }:DockProps) => {
@@ -65,7 +76,7 @@ const Dock = ({ apps }:DockProps) => {
             {
                 apps.map((app) =>
                     <DockItem key={app.key} label={app.label} iconUrl={app.iconUrl}
-                        running={app.running} launch={app.launch} onOpen={app.onOpen} onContextMenu={app.onContextMenu}/>)
+                        instanceCount={app.instanceCount} launch={app.launch} onOpen={app.onOpen} onContextMenu={app.onContextMenu}/>)
             }
         </div>
     </div>

@@ -26,6 +26,7 @@ const InstanceManagerRuntimeService = (params) => {
         // Pacotes / processos supervisionados
         RunPackage: client.RunPackage,
         StopPackage: client.StopPackage,
+        StopInstance: client.StopInstance,
         ListPackages: client.ListPackages,
         OpenPackageListStream: client.OpenPackageListStream,
 

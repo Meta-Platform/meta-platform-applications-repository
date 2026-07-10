@@ -85,7 +85,12 @@ const ContextMenu = ({ x, y, items, onClose }:ContextMenuProps) => {
                                 <span>{item.label}</span>
                                 <Icon name={isExpanded ? "angle down" : "angle right"} className="myd-ctx-chevron"/>
                             </button>
-                            { isExpanded && item.children.map((child, childKey) => _RenderLeaf(child, childKey, true)) }
+                            {
+                                isExpanded && item.children.map((child, childKey) =>
+                                    child.divider
+                                        ? <div key={childKey} className="myd-ctx-divider"/>
+                                        : _RenderLeaf(child, childKey, true))
+                            }
                         </React.Fragment>
                     }
 

@@ -50,7 +50,22 @@ type DesktopApplication = {
 }
 
 type LaunchPhase = "launching" | "window-ready" | "building" | "ready"
-type LaunchInfo  = { phase: LaunchPhase, percentage?: number }
+// `instanceId` amarra o progresso exibido no ícone à instância que o gerou: com
+// várias janelas do mesmo app abertas, o "closed" de uma não pode apagar a barra
+// de outra.
+type LaunchInfo  = { phase: LaunchPhase, percentage?: number, instanceId?: string }
+
+// Uma execução viva de uma aplicação. O daemon dá a identidade (`instanceId`);
+// o mesmo `executableName` pode ter várias.
+type RunningInstance = { instanceId: string, executableName: string, packagePath: string, startedAt?: string }
+
+// Hora de início, para distinguir as instâncias no menu de encerramento.
+const FormatInstanceTime = (startedAt?:string) => {
+    if(!startedAt) return ""
+    const date = new Date(startedAt)
+    if(isNaN(date.getTime())) return ""
+    return ` (${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})`
+}
 
 type Toast = { tone: "exec" | "success" | "danger", title: string, message: string, spinner?: boolean, iconUrl?: string }
 type ConfirmState = { title: string, message: string, confirmLabel: string, danger?: boolean, onConfirm: () => void }
@@ -83,20 +98,19 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     const [ positions, setPositions ]             = useState<IconPositions>(LoadPositions())
     const [ surfaceHeight, setSurfaceHeight ]     = useState<number>(600)
     const [ marquee, setMarquee ]                 = useState<Rect>()
-    const [ runningExecutables, setRunningExecutables ] = useState<string[]>([])
-    // Apps abertos detectados pelo STREAM de lançamento (ready → aberto, closed →
-    // fechado). Necessário porque apps desktop rodam destacados e NÃO aparecem no
-    // ListRunning do daemon (o polling não os vê) — então a marcação de "rodando"
-    // precisa vir do stream para se manter enquanto o app estiver aberto.
-    const [ launchOpenExecs, setLaunchOpenExecs ] = useState<string[]>([])
+    // Instâncias em execução reportadas pelo daemon (polling de 5s).
+    const [ runningInstances, setRunningInstances ] = useState<RunningInstance[]>([])
+    // Instâncias abertas detectadas pelo STREAM de lançamento (ready → aberta,
+    // closed → fechada). O stream reage na hora; o polling só a cada 5s.
+    const [ launchOpenInstances, setLaunchOpenInstances ] = useState<{ [instanceId:string]: RunningInstance }>({})
     // Progresso de lançamento por ícone (av.key). Alimentado pelo stream do
-    // daemon (BuildProgressStream), que fala em launchId = packagePath; o mapa
-    // pathToKey correlaciona com o ícone. Eventos que chegam antes de sabermos
-    // o packagePath (o "launching" é emitido antes do RunApplication retornar)
-    // ficam em pendingPath até o mapeamento existir.
+    // daemon (BuildProgressStream), que envia launchId (= instanceId) e o
+    // packagePath; o mapa pathToKey correlaciona o pacote com o ícone. Eventos
+    // que chegam antes de sabermos o packagePath (o "launching" é emitido antes
+    // do RunApplication retornar) ficam em pendingPath até o mapeamento existir.
     const [ launchByKey, setLaunchByKey ] = useState<{ [key:string]: LaunchInfo }>({})
     const pathToKeyRef   = useRef<{ [path:string]: string }>({})
-    const pendingPathRef = useRef<{ [path:string]: LaunchInfo }>({})
+    const pendingPathRef = useRef<{ [path:string]: Array<{ launchId:string, phase:LaunchPhase, percentage?:number }> }>({})
 
     const [ theme, setTheme ]                     = useState<ThemeName>(GetSavedTheme())
     const [ isWelcomeOpen, setIsWelcomeOpen ]     = useState<boolean>(false)
@@ -130,38 +144,63 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     const fetchRunning = async () => {
         try {
             const response = await _GetExecutionAPI().ListRunning({})
-            const list = (response.data && response.data.running) || response.data || []
-            setRunningExecutables(list.map((r:any) => r.executableName || r.executable).filter(Boolean))
+            const list = (response.data && response.data.running) || []
+            setRunningInstances(list.filter((r:any) => r && r.instanceId && r.executableName))
         } catch(_) { /* backend pode não expor ainda */ }
     }
 
-    // Aplica um evento de progresso ao ícone correspondente. Enquanto o
-    // packagePath não estiver mapeado para uma key, o evento fica pendente.
-    const _ApplyProgress = (launchId:string, phase:LaunchPhase, percentage?:number) => {
-        const key = pathToKeyRef.current[launchId]
-        if(!key){ pendingPathRef.current[launchId] = { phase, percentage }; return }
+    // Esquece uma instância encerrada nas duas fontes (stream e polling), para o
+    // contador do ícone cair de imediato em vez de esperar o próximo polling.
+    const _ForgetInstance = (instanceId:string) => {
+        setLaunchOpenInstances((prev) => { const next = { ...prev }; delete next[instanceId]; return next })
+        setRunningInstances((prev) => prev.filter((i) => i.instanceId !== instanceId))
+    }
+
+    // Aplica um evento de progresso ao ícone do pacote. Enquanto o packagePath
+    // não estiver mapeado para uma key, os eventos ficam pendentes.
+    const _ApplyProgress = (launchId:string, packagePath:string, phase:LaunchPhase, percentage?:number) => {
+        const key = pathToKeyRef.current[packagePath]
+        if(!key){
+            const pending = pendingPathRef.current[packagePath] || []
+            pendingPathRef.current[packagePath] = [ ...pending, { launchId, phase, percentage } ]
+            return
+        }
         const av = appViewsRef.current.find((a:any) => a.key === key)
 
         if(phase === "closed" as any){
-            setLaunchByKey((prev) => { const next = { ...prev }; delete next[key]; return next })
-            if(av && av.executableName)
-                setLaunchOpenExecs((prev) => prev.filter((e) => e !== av.executableName))
+            // Só limpa a barra se ela pertencer À INSTÂNCIA que fechou: outra
+            // janela do mesmo app pode estar subindo neste instante. O spinner
+            // otimista (ainda sem instanceId) fica com a rede de segurança de
+            // handleLaunch, que o limpa por tempo.
+            setLaunchByKey((prev) => {
+                if(!prev[key] || prev[key].instanceId !== launchId) return prev
+                const next = { ...prev }; delete next[key]; return next
+            })
+            _ForgetInstance(launchId)
             setToast({ tone: "exec", title: "Encerrado", message: `${av ? av.label : "Aplicativo"} foi fechado.`, iconUrl: av && av.iconUrl })
             return
         }
 
-        setLaunchByKey((prev) => ({ ...prev, [key]: { phase, ...(percentage !== undefined ? { percentage } : {}) } }))
+        setLaunchByKey((prev) => ({ ...prev, [key]: { phase, instanceId: launchId, ...(percentage !== undefined ? { percentage } : {}) } }))
 
         // "ready": build concluído → a barra some (isBuilding vira false) e a
-        // marcação de "aberto" passa a valer (via launchOpenExecs) e se mantém
-        // enquanto o app estiver aberto. O destaque de "aberto" (pulso) some após
-        // um instante, deixando só o badge permanente.
+        // instância passa a contar como aberta, e assim se mantém enquanto o app
+        // estiver no ar. O destaque de "aberto" (pulso) some após um instante,
+        // deixando só o badge permanente.
         if(phase === "ready"){
             if(av && av.executableName)
-                setLaunchOpenExecs((prev) => prev.includes(av.executableName) ? prev : [...prev, av.executableName])
+                setLaunchOpenInstances((prev) => ({
+                    ...prev,
+                    [launchId]: {
+                        instanceId: launchId,
+                        executableName: av.executableName,
+                        packagePath,
+                        startedAt: (prev[launchId] && prev[launchId].startedAt) || new Date().toISOString()
+                    }
+                }))
             setToast({ tone: "success", title: "Pronto", message: `${av ? av.label : "Aplicativo"} está pronto para uso.`, iconUrl: av && av.iconUrl })
             setTimeout(() => setLaunchByKey((prev) =>
-                (prev[key] && prev[key].phase === "ready")
+                (prev[key] && prev[key].phase === "ready" && prev[key].instanceId === launchId)
                     ? (() => { const n = { ...prev }; delete n[key]; return n })()
                     : prev
             ), 2600)
@@ -174,7 +213,10 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
         if(!packagePath) return
         pathToKeyRef.current[packagePath] = key
         const pending = pendingPathRef.current[packagePath]
-        if(pending){ delete pendingPathRef.current[packagePath]; _ApplyProgress(packagePath, pending.phase, pending.percentage) }
+        if(pending){
+            delete pendingPathRef.current[packagePath]
+            pending.forEach((event) => _ApplyProgress(event.launchId, packagePath, event.phase, event.percentage))
+        }
     }
 
     // Stream de progresso de lançamento (aberto uma vez, vive com o desktop).
@@ -183,8 +225,12 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
         if(!socket) return
         socket.onmessage = (evt:any) => {
             try {
-                const { launchId, phase, percentage } = JSON.parse(evt.data)
-                if(launchId && phase) _ApplyProgress(launchId, phase, percentage)
+                const { launchId, packagePath, phase, percentage } = JSON.parse(evt.data)
+                if(!launchId || !phase) return
+                // Daemon anterior ao instanceId emitia o packagePath COMO launchId.
+                // Sem este fallback, um daemon desatualizado faria o ícone perder
+                // spinner e barra de progresso, em silêncio.
+                _ApplyProgress(launchId, packagePath || launchId, phase, percentage)
             } catch(e){}
         }
         return () => { try { socket.close() } catch(e){} }
@@ -217,11 +263,24 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     const positionsRef = useRef(positions);   positionsRef.current = positions
     const appViewsRef  = useRef(appViews);     appViewsRef.current = appViews
 
-    // "rodando/aberto" = detectado pelo daemon (polling) OU pelo stream de
-    // lançamento (apps desktop destacados, que o polling não vê).
-    const isAppRunning = (av:any) =>
-        Boolean(av && av.executableName && (runningExecutables.includes(av.executableName) || launchOpenExecs.includes(av.executableName)))
-    const openCount = new Set([...runningExecutables, ...launchOpenExecs]).size
+    // Instâncias vivas = as que o daemon reporta no polling MAIS as que o stream
+    // de lançamento acabou de abrir (o stream reage na hora; o polling, a cada 5s).
+    // A união é feita por instanceId, e o registro do polling prevalece — é o que
+    // traz o startedAt persistido.
+    const instanceById: { [instanceId:string]: RunningInstance } = {}
+    Object.values(launchOpenInstances).forEach((instance) => { instanceById[instance.instanceId] = instance })
+    runningInstances.forEach((instance) => { instanceById[instance.instanceId] = instance })
+
+    // Da mais antiga para a mais nova: é a ordem em que são numeradas no menu.
+    const allInstances = Object.values(instanceById)
+        .sort((a, b) => String(a.startedAt || "").localeCompare(String(b.startedAt || "")))
+
+    const InstancesOf = (av:any):RunningInstance[] =>
+        av && av.executableName
+            ? allInstances.filter((instance) => instance.executableName === av.executableName)
+            : []
+
+    const openCount = allInstances.length
     const selectedRef  = useRef(selectedKeys); selectedRef.current = selectedKeys
 
     // mede a altura da superfície (para o layout padrão em colunas)
@@ -395,17 +454,58 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
         views.forEach((av) => handleLaunch(av))
     }
 
-    // ---- fechar (instância em execução) ------------------------------------
-    const handleClose = async (av:any) => {
+    // ---- fechar ------------------------------------------------------------
+    // Encerra UMA instância. É o instanceId — dado pelo daemon — que diz qual das
+    // janelas abertas daquele aplicativo deve ser fechada.
+    const handleCloseInstance = async (av:any, instance:RunningInstance, position?:number) => {
+        const target = position ? `${av.label} (instância ${position})` : av.label
+        setToast({ tone: "exec", title: "Encerrar", message: `Encerrando ${target}…`, spinner: true })
+        try {
+            await _GetExecutionAPI().StopInstance({ instanceId: instance.instanceId })
+            _ForgetInstance(instance.instanceId)
+            setToast({ tone: "success", title: "Encerrar", message: `${target} foi encerrado.` })
+            fetchRunning()
+        } catch(e:any) {
+            setToast({ tone: "danger", title: "Falha ao encerrar", message: (typeof e === "string" ? e : e?.message) || "Falha ao encerrar." })
+        }
+    }
+
+    // Encerra TODAS as instâncias de um aplicativo.
+    const handleCloseAll = async (av:any) => {
         if(!av.executableName) return
-        setToast({ tone: "exec", title: "Encerrar", message: `Encerrando ${av.label}…`, spinner: true })
+        const instances = InstancesOf(av)
+        setToast({ tone: "exec", title: "Encerrar", message: `Encerrando ${instances.length} instâncias de ${av.label}…`, spinner: true })
         try {
             await _GetExecutionAPI().StopApplication({ executableName: av.executableName })
+            instances.forEach((instance) => _ForgetInstance(instance.instanceId))
             setToast({ tone: "success", title: "Encerrar", message: `${av.label} foi encerrado.` })
             fetchRunning()
         } catch(e:any) {
             setToast({ tone: "danger", title: "Falha ao encerrar", message: (typeof e === "string" ? e : e?.message) || "Falha ao encerrar." })
         }
+    }
+
+    // Item "Encerrar" do menu de contexto. Com uma instância, encerra direto; com
+    // várias, abre um submenu para o usuário escolher QUAL janela fechar.
+    const _BuildCloseMenuItems = (av:any):ContextMenuItem[] => {
+        const instances = InstancesOf(av)
+        if(instances.length === 0) return []
+        if(instances.length === 1)
+            return [ { label: "Encerrar", icon: "power off", onClick: () => handleCloseInstance(av, instances[0]) } ]
+
+        return [ {
+            label: `Encerrar (${instances.length})`,
+            icon: "power off",
+            children: [
+                ...instances.map((instance, index) => ({
+                    label: `Instância ${index + 1}${FormatInstanceTime(instance.startedAt)}`,
+                    icon: "window close",
+                    onClick: () => handleCloseInstance(av, instance, index + 1)
+                })),
+                { divider: true, label: "" },
+                { label: "Encerrar todas", icon: "power off", danger: true, onClick: () => handleCloseAll(av) }
+            ]
+        } ]
     }
 
     // ---- atualizar todos os repositórios -----------------------------------
@@ -515,7 +615,6 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
         let targetKeys = selectedKeys
         if(!selectedKeys.includes(av.key)) { targetKeys = [ av.key ]; setSelectedKeys(targetKeys) }
         const many = targetKeys.length > 1
-        const isRunning = isAppRunning(av)
 
         const items:ContextMenuItem[] = many
             ? [
@@ -525,7 +624,7 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
             ]
             : [
                 { label: "Abrir", icon: "external", onClick: () => handleLaunch(av) },
-                ...(isRunning ? [{ label: "Encerrar", icon: "power off", onClick: () => handleClose(av) } as ContextMenuItem] : []),
+                ..._BuildCloseMenuItems(av),
                 { divider: true, label: "" },
                 { label: "Remover", icon: "trash", danger: true, onClick: () => handleUninstallSelection([ av.key ]) }
             ]
@@ -535,10 +634,9 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     // Menu de contexto do dock (item único) — não altera a seleção da área de trabalho.
     const openDockMenu = (e:React.MouseEvent, av:any) => {
         e.preventDefault()
-        const isRunning = isAppRunning(av)
         setContextMenu({ x: e.clientX, y: e.clientY, items: [
             { label: "Abrir", icon: "external", onClick: () => handleLaunch(av) },
-            ...(isRunning ? [{ label: "Encerrar", icon: "power off", onClick: () => handleClose(av) } as ContextMenuItem] : []),
+            ..._BuildCloseMenuItems(av),
             { divider: true, label: "" },
             { label: "Remover", icon: "trash", danger: true, onClick: () => handleUninstallSelection([ av.key ]) }
         ] })
@@ -581,7 +679,7 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
                         title={av.title}
                         iconUrl={av.iconUrl}
                         selected={selectedKeys.includes(av.key)}
-                        running={isAppRunning(av)}
+                        instanceCount={InstancesOf(av).length}
                         launch={launchByKey[av.key]}
                         position={position}
                         dragging={interaction.current.mode === "dragging" && selectedKeys.includes(av.key)}
@@ -605,7 +703,7 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
 
         <Dock apps={appViews.map((av) => ({
             key: av.key, label: av.label, iconUrl: av.iconUrl,
-            running: isAppRunning(av),
+            instanceCount: InstancesOf(av).length,
             launch: launchByKey[av.key],
             onOpen: () => handleLaunch(av),
             onContextMenu: (e:React.MouseEvent) => openDockMenu(e, av)

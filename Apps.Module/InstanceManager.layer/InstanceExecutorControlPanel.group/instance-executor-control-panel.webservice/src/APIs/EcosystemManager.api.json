@@ -79,6 +79,14 @@
 				{ "name": "parentGroup", "in": "body", "type": "string", "required": false },
 				{ "name": "packagePath", "in": "body", "type": "string", "required": false }
 			]
+		},
+		{
+			"summary": "StopInstance",
+			"method": "POST",
+			"path": "/stop-instance",
+			"parameters": [
+				{ "name": "instanceId", "in": "body", "type": "string", "required": true }
+			]
 		}
 	]
 }
