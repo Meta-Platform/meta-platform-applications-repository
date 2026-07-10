@@ -18,6 +18,7 @@ import { formatDateTime } from "../Utils/format"
 import { activityTitle, activityDetail, activityIcon, activityItemId } from "../Utils/activity"
 import downloadJson from "../Utils/downloadJson"
 import { feedbackTarget } from "../Utils/feedbackTarget"
+import useFeedback from "../Hooks/useFeedback"
 
 type OverviewTab = "resumo" | "auditoria"
 const OVERVIEW_TABS: { key: OverviewTab; label: string; icon: any; hint: string }[] = [
@@ -43,6 +44,7 @@ const groupActivity = (entries: ActivityEntry[], usersById: Record<string, User>
 const ProjectPage = () => {
     const api = useApi()
     const navigate = useNavigate()
+    const feedback = useFeedback()
     const { projectId } = useParams<{ projectId: string }>()
 
     const [project, setProject] = useState<Project | null>(null)
@@ -196,7 +198,28 @@ const ProjectPage = () => {
                         {/* A descrição é o que a pessoa (e o agente) precisa ler primeiro. */}
                         <div className="mpm-overview__main">
                             <div className="mpm-panel">
-                                <div className="mpm-panel__title"><Icon name="align left" /> Descrição</div>
+                                <div className="mpm-panel__title">
+                                    <Icon name="align left" /> Descrição
+                                    {/* Sugerir ao agente uma melhoria no texto do projeto.
+                                        O balão abre logo abaixo do ícone. */}
+                                    <span className="mpm-iconbtn" style={{ marginLeft: "auto" }}
+                                        title="Feedback para o agente sobre a descrição do projeto"
+                                        onClick={(e) => {
+                                            const box = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                                            feedback.openAt({
+                                                x: box.right - 380, y: box.bottom + 6,
+                                                target: {
+                                                    entityType: "project", entityId: project.id, project: project.id,
+                                                    field: "description", fieldLabel: "Descrição do projeto"
+                                                },
+                                                // trecho, não o texto todo: é só contexto para o agente
+                                                excerpt: project.description ? project.description.slice(0, 500) : undefined,
+                                                screen: window.location.hash || window.location.pathname
+                                            })
+                                        }}>
+                                        <Icon name="comment alternate outline" />
+                                    </span>
+                                </div>
                                 {project.description
                                     ? <div {...feedbackTarget({ entityType: "project", entityId: project.id, project: project.id, field: "description", fieldLabel: "Descrição do projeto" })}>
                                         <Markdown>{project.description}</Markdown>
