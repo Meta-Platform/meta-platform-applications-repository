@@ -78,7 +78,7 @@ const ItemFilterBar = ({ filters, setFilter, group, setGroup, reset, activeCount
         <div className="mpm-filterbar__scroll">
         <span className="mpm-filterbar__search">
             <Icon name="search" className="mpm-muted" />
-            <input className="mpm-inline-select" placeholder="buscar texto..."
+            <input placeholder="buscar texto..."
                 value={sel("text")} onChange={(e) => setFilter("text", e.target.value)} />
         </span>
 

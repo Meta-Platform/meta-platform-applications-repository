@@ -7,7 +7,7 @@ import useApi from "../Hooks/useApi"
 import useLiveReload from "../Hooks/useLiveReload"
 import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import useItemFilters from "../Hooks/useItemFilters"
-import { Project, WorkItem, User, Milestone, Sprint, HORIZONS } from "../api/types"
+import { Project, WorkItem, User, Milestone, Sprint } from "../api/types"
 import AppShell from "../Components/AppShell"
 import WorkItemInspector from "../Components/WorkItemInspector"
 import ItemFilterBar from "../Components/ItemFilterBar"
@@ -15,11 +15,14 @@ import {
     TypeBadge, PriorityBadge, ValueBadge, EffortBadge, AreaBadge, HorizonChip,
     StatusChip, Avatar, ItemMeta, Loading, EmptyState, ErrorBanner
 } from "../Components/Primitives"
-import { horizonLabel } from "../Utils/format"
+import { summarize } from "../Utils/summary"
 
-// BacklogPage (Fase 2): backlog priorizado por VALOR (sort=value), com filtros,
-// badges (tipo/valor/esforço/área/horizonte) e atribuição inline de horizonte,
-// milestone e sprint.
+// BacklogPage: backlog priorizado por VALOR (sort=value).
+//
+// É uma LISTA, não uma tabela: quem prioriza precisa LER o item, e as colunas de
+// edição inline (horizonte, entrega, sprint) espremiam o título em um terço da
+// largura. Editar continua a um clique, no modal — a lista existe para decidir o
+// que abrir.
 const BacklogPage = () => {
     const api = useApi()
     const { projectId } = useParams<{ projectId: string }>()
@@ -35,6 +38,18 @@ const BacklogPage = () => {
     const [busy, setBusy] = useState(false)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+
+    const milestonesById = useMemo(() => {
+        const m: { [id: string]: Milestone } = {}
+        milestones.forEach((x) => { m[x.id] = x })
+        return m
+    }, [milestones])
+
+    const sprintsById = useMemo(() => {
+        const m: { [id: string]: Sprint } = {}
+        sprints.forEach((x) => { m[x.id] = x })
+        return m
+    }, [sprints])
 
     const usersById = useMemo(() => {
         const m: { [id: string]: User } = {}
@@ -71,11 +86,6 @@ const BacklogPage = () => {
         setBusy(true); setError(null)
         try { await api.items.create(projectId, { title: draft.trim(), status: "backlog" }); setDraft(""); await loadItems() }
         catch (e: any) { setError(e.message) } finally { setBusy(false) }
-    }
-
-    const patchItem = async (id: string, patch: () => Promise<any>) => {
-        setError(null)
-        try { await patch(); await loadItems() } catch (e: any) { setError(e.message) }
     }
 
     const inspector = selected
@@ -117,73 +127,56 @@ const BacklogPage = () => {
             ? <Loading />
             : items.length === 0
                 ? <EmptyState icon="clipboard list" title="Backlog vazio" hint="Adicione itens acima ou ajuste os filtros." />
-                : <div className="mpm-scroll-x"><table className="mpm-table mpm-table--fixed">
-                    <colgroup>
-                        <col style={{ width: "42%" }} />
-                        <col style={{ width: 74 }} />
-                        <col style={{ width: 58 }} />
-                        <col style={{ width: 118 }} />
-                        <col style={{ width: 148 }} />
-                        <col style={{ width: 148 }} />
-                        <col style={{ width: 56 }} />
-                        <col style={{ width: 90 }} />
-                    </colgroup>
-                    <thead><tr>
-                        <th>Item</th>
-                        <th title="Impacto/benefício">Valor</th>
-                        <th title="Tamanho estimado">Esf.</th>
-                        <th title="Quão perto de ser feito">Horizonte</th>
-                        <th title="Alvo de entrega com data (milestone, no jargão técnico)">Entrega</th>
-                        <th title="Janela de tempo (iteração)">Sprint</th>
-                        <th title="Responsável">Resp.</th>
-                        <th title="Comentários / anexos / progresso">Info</th>
-                    </tr></thead>
-                    <tbody>
-                        {items.map((it) => {
-                            const assignee = it.assigneeUserId ? usersById[it.assigneeUserId] : undefined
-                            return <tr key={it.id} className="mpm-table__row--clickable">
-                                {/* Célula do item em 2 linhas: metadados (ordem FIXA) + título.
-                                    Antes as chips vinham em ordens diferentes por linha. */}
-                                <td onClick={() => setSelected(it.id)}>
-                                    <div className="mpm-itemcell">
-                                        <div className="mpm-itemcell__meta">
-                                            <span className="mpm-mono mpm-muted">{it.key}</span>
-                                            <TypeBadge type={it.type} />
-                                            <PriorityBadge priority={it.priority} />
-                                            <StatusChip status={it.statusKey} />
-                                            <AreaBadge area={it.area} />
-                                        </div>
-                                        <div className="mpm-itemcell__title" title={it.title}>{it.title}</div>
-                                    </div>
-                                </td>
-                                <td><ValueBadge value={it.value} /></td>
-                                <td><EffortBadge effort={it.effort} /></td>
-                                <td onClick={(e) => e.stopPropagation()}>
-                                    <select className="mpm-inline-select" value={it.horizon || ""}
-                                        onChange={(e) => patchItem(it.id, () => api.items.update(it.id, { horizon: e.target.value }))}>
-                                        <option value="">—</option>
-                                        {HORIZONS.map((h) => <option key={h} value={h}>{horizonLabel(h)}</option>)}
-                                    </select>
-                                </td>
-                                <td onClick={(e) => e.stopPropagation()}>
-                                    <select className="mpm-inline-select" value={it.milestoneId || ""}
-                                        onChange={(e) => patchItem(it.id, () => api.planning.assignItemPlanning(it.id, { milestone: e.target.value || "none" }))}>
-                                        <option value="">—</option>
-                                        {milestones.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                    </select>
-                                </td>
-                                <td onClick={(e) => e.stopPropagation()}>
-                                    <select className="mpm-inline-select" value={it.sprintId || ""}
-                                        onChange={(e) => patchItem(it.id, () => api.planning.assignItemPlanning(it.id, { sprint: e.target.value || "none" }))}>
-                                        <option value="">—</option>
-                                        {sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                    </select>
-                                </td>
-                                <td onClick={() => setSelected(it.id)}><Avatar user={assignee} name={assignee ? assignee.displayName : "não atribuído"} /></td>
-                                <td onClick={() => setSelected(it.id)}><ItemMeta item={it} /></td>
-                            </tr>
-                        })}
-                    </tbody></table></div>}
+                : <div className="mpm-backlog">
+                    {items.map((it) => {
+                        const assignee = it.assigneeUserId ? usersById[it.assigneeUserId] : undefined
+                        const milestone = it.milestoneId ? milestonesById[it.milestoneId] : undefined
+                        const sprint = it.sprintId ? sprintsById[it.sprintId] : undefined
+                        const summary = summarize(it.description)
+                        // Rodapé só existe se houver o que mostrar: senão sobraria
+                        // uma linha divisória vazia embaixo de cada item.
+                        const hasFoot = !!(
+                            (it.value && it.value !== "none") || it.effort || it.horizon ||
+                            milestone || sprint || it.blockedReason ||
+                            it.commentCount || it.attachmentCount || it.progress
+                        )
+
+                        return <article key={it.id} className="mpm-backlog__item"
+                            onClick={() => setSelected(it.id)} title="Abrir o item">
+
+                            <div className="mpm-backlog__head">
+                                <span className="mpm-mono mpm-muted">{it.key}</span>
+                                <TypeBadge type={it.type} />
+                                <PriorityBadge priority={it.priority} />
+                                <StatusChip status={it.statusKey} />
+                                <AreaBadge area={it.area} />
+                                <span className="mpm-backlog__spacer" />
+                                <Avatar user={assignee} name={assignee ? assignee.displayName : "não atribuído"} />
+                            </div>
+
+                            <h3 className="mpm-backlog__title">{it.title}</h3>
+
+                            {summary ? <p className="mpm-backlog__summary">{summary}</p> : null}
+
+                            {/* Rodapé só com o que EXISTE: campo vazio não vira ruído. */}
+                            {hasFoot
+                            ? <div className="mpm-backlog__foot">
+                                <ValueBadge value={it.value} />
+                                <EffortBadge effort={it.effort} />
+                                {it.horizon ? <HorizonChip horizon={it.horizon} /> : null}
+                                {milestone
+                                    ? <span className="mpm-backlog__tag" title="Entrega"><Icon name="flag" />{milestone.name}</span>
+                                    : null}
+                                {sprint
+                                    ? <span className="mpm-backlog__tag" title="Sprint"><Icon name="rocket" />{sprint.name}</span>
+                                    : null}
+                                <span className="mpm-backlog__spacer" />
+                                <ItemMeta item={it} />
+                            </div>
+                            : null}
+                        </article>
+                    })}
+                </div>}
         </AppShell>
     </ItemNavigatorProvider>
 }
