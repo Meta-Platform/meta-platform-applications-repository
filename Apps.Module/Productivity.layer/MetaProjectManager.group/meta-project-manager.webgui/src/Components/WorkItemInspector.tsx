@@ -256,7 +256,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
 
     // Duas colunas: a descrição (o que se lê e escreve) ocupa a coluna larga; os
     // campos, o contexto e a entrega ficam na lateral. Em telas estreitas, empilha.
-    const detailsTab = <div className="mpm-details">
+    const detailsTab = <div className="mpm-details-scope"><div className="mpm-details">
         <div className="mpm-details__main">
             {item.blockedReason
                 ? <div className="mpm-error-banner"><Icon name="ban" /> Bloqueado: {item.blockedReason}</div>
@@ -394,7 +394,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
 
         <SoftwareContextSection item={item} onSave={(input) => patch(() => api.items.update(item.id, input))} />
         </aside>
-    </div>
+    </div></div>
 
     const criteriaTab = <div className="mpm-col"
         {...feedbackTarget({ entityType: "work-item", entityId: item.id, item: item.key, project: pid, field: "acceptanceCriteria", fieldLabel: "Critérios de aceite" })}>
