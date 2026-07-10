@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useState, useEffect } from "react"
+import { useRef, useState, useEffect } from "react"
 
 import {
     Button,
@@ -14,11 +14,13 @@ import {
 
 import CompareObjects from "../../Utils/CompareObjects"
 import GetAPI from "../../Utils/GetAPI"
+import { ResolveExecutableName } from "../../Utils/CommandGroup"
 
 import EntityHeader from "../../Components/ui/EntityHeader"
 import StartupParamsForm from "../../Components/StartupParamsForm"
 import ParamsViewer from "../../Components/ParamsViewer"
-import ExecutionTerminal from "../../Components/ExecutionTerminal"
+import CommandGroupForm from "../../Components/CommandGroupForm"
+import ExecutionTerminal, { ExecutionTerminalHandle } from "../../Components/ExecutionTerminal"
 
 import DependencyDiagram from "./DependencyDiagram"
 import PackageIcon from "./PackageIcon"
@@ -28,7 +30,8 @@ import { PackageInformation, IsBootable, IsCommandLine } from "./PackageTree"
 //
 // Um pacote pode ser:
 //   - não-bootável (lib, webgui...)  → só inspeção
-//   - CLI                            → executa num terminal real do daemon
+//   - CLI                            → executa num terminal real do daemon, pelo
+//                                      form do command-group ou por args livres
 //   - aplicação/serviço              → executa como instância supervisionada,
 //                                      com startup params opcionalmente alterados
 const PackageDetails = ({
@@ -45,6 +48,9 @@ const PackageDetails = ({
     const [ packagePath, setPackagePath ] = useState<string>()
     const [ isBusy, setIsBusy ] = useState(false)
     const [ errorMessage, setErrorMessage ] = useState<string>()
+    const [ commandStatus, setCommandStatus ] = useState<string>("idle")
+
+    const commandTerminalRef = useRef<ExecutionTerminalHandle>(null)
 
     const { repositoryParams, metadata, packageInService, applicationInServiceState } = packageInformation
 
@@ -55,6 +61,12 @@ const PackageDetails = ({
 
     const startupParamsSchema = metadata && metadata["startup-params-schema"]
     const startupParams       = metadata && metadata["startup-params"]
+
+    // O metadata do pacote chega inteiro do daemon, então o command-group já está
+    // aqui — o form de execução é montado sem nenhuma chamada extra.
+    const commandGroup    = metadata && metadata["command-group"]
+    const executableName  = ResolveExecutableName(metadata?.boot)
+    const hasCommandGroup = isCommandLine && Boolean(commandGroup?.commands?.length)
 
     const getRepositoryManagerAPI = () =>
         GetAPI({ apiName: "RepositoryManager", serverManagerInformation })
@@ -67,6 +79,7 @@ const PackageDetails = ({
         setErrorMessage(undefined)
         setDependencyHierarchy(undefined)
         setPackagePath(undefined)
+        setCommandStatus("idle")
         fetchDependencyHierarchy()
         if(isCommandLine) fetchPackagePath()
     }, [
@@ -161,6 +174,36 @@ const PackageDetails = ({
         </TabPane>
     })
 
+    // Form de execução montado a partir do command-group: escolhe-se o comando,
+    // preenchem-se os parâmetros e a saída aparece no terminal logo abaixo.
+    if(hasCommandGroup)
+        panes.push({
+            menuItem: { key: "commands", content: <span><Icon name="keyboard"/> comandos</span> },
+            render: () => <TabPane>
+                {
+                    packagePath
+                    ? <>
+                        <CommandGroupForm
+                            commandGroup={commandGroup}
+                            executableName={executableName}
+                            status={commandStatus}
+                            onExecute={(commandLineArgs:string) => commandTerminalRef.current?.Run(commandLineArgs)}
+                            onKill={() => commandTerminalRef.current?.Kill()}/>
+                        <div style={{ marginTop: "8px" }}>
+                            <ExecutionTerminal
+                                ref={commandTerminalRef}
+                                serverManagerInformation={serverManagerInformation}
+                                packagePath={packagePath}
+                                showControls={false}
+                                onStatusChange={setCommandStatus}
+                                height={300}/>
+                        </div>
+                    </>
+                    : <Loader active inline="centered" style={{ margin: "40px" }}/>
+                }
+            </TabPane>
+        })
+
     if(isCommandLine)
         panes.push({
             menuItem: { key: "terminal", content: <span><Icon name="terminal"/> terminal</span> },
@@ -231,7 +274,11 @@ const PackageDetails = ({
         {
             isCommandLine && isBootable &&
             <Message info size="tiny" style={{ marginTop: "8px" }}>
-                <Icon name="terminal"/> pacote de linha de comando — execute pela aba <strong>terminal</strong>.
+                <Icon name="terminal"/> pacote de linha de comando — execute pela aba {
+                    hasCommandGroup
+                    ? <><strong>comandos</strong> (form do command-group) ou <strong>terminal</strong> (argumentos livres)</>
+                    : <strong>terminal</strong>
+                }.
             </Message>
         }
 
