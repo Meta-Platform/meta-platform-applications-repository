@@ -66,6 +66,11 @@ const InitializeProjectStore = (options = {}) => {
     // e "no such table" em bancos novos).
     const ADDED_COLUMNS = [
         ["projects",          "shortDescription", "VARCHAR(255)"],
+        // Escopo do projeto no ecossistema (Repositório/Módulo/Camada/Grupo).
+        ["projects",          "contextRepository","VARCHAR(255)"],
+        ["projects",          "contextModule",    "VARCHAR(255)"],
+        ["projects",          "contextLayer",     "VARCHAR(255)"],
+        ["projects",          "contextGroup",     "VARCHAR(255)"],
         ["boards",            "shortDescription", "VARCHAR(255)"],
         ["milestones",        "shortDescription", "VARCHAR(255)"],
         ["sprints",           "shortDescription", "VARCHAR(255)"],

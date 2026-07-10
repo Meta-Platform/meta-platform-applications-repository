@@ -879,3 +879,39 @@ test("remover o vínculo tira o item do filtro daquele pacote", async () => {
     const byPackage = await ecoStore.ListItems({ package: "demo.lib" })
     assert.equal(byPackage.length, 0)
 })
+
+// ---- Migração de banco existente ----
+//
+// `sync()` só CRIA tabelas faltantes: uma coluna nova num modelo já existente
+// não aparece sozinha. Quem esquece de declará-la em ADDED_COLUMNS derruba o app
+// de quem já tem banco ("SQLITE_ERROR: no such column"), enquanto os testes —
+// que sempre nascem de um banco novo — passam.
+test("colunas novas do projeto chegam a um banco antigo (ALTER TABLE idempotente)", async () => {
+    const dbFile = path.join(TMP, "migracao.sqlite")
+    const CONTEXT_COLUMNS = ["contextRepository", "contextModule", "contextLayer", "contextGroup"]
+
+    let old = InitializeProjectStore({ storage: dbFile, attachmentsDirPath: path.join(TMP, "att") })
+    await old.ConnectAndSync()
+    const created = await old.CreateProject({ name: "Antigo", keyPrefix: "ANT", actor: { source: "cli" } })
+    // simula o banco de antes destas colunas existirem
+    for (const column of CONTEXT_COLUMNS)
+        await old.sequelize.query(`ALTER TABLE projects DROP COLUMN ${column}`)
+    await old.sequelize.close()
+
+    // reabrir aplica a migração; os dados continuam lá
+    const migrated = InitializeProjectStore({ storage: dbFile, attachmentsDirPath: path.join(TMP, "att") })
+    await migrated.ConnectAndSync()
+
+    const projects = await migrated.ListProjects({})
+    assert.equal(projects.length, 1)
+    assert.equal(projects[0].name, "Antigo")
+
+    const updated = await migrated.UpdateProject({
+        project: created.id, contextGroup: "MetaProjectManager.group", actor: { source: "cli" }
+    })
+    assert.equal(updated.contextGroup, "MetaProjectManager.group")
+
+    // rodar de novo não quebra (ADD COLUMN duplicado é ignorado)
+    await migrated.ConnectAndSync()
+    await migrated.sequelize.close()
+})
