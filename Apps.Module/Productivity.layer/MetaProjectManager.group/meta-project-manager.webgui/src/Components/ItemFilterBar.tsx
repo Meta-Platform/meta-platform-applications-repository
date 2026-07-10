@@ -55,18 +55,27 @@ const ItemFilterBar = ({ filters, setFilter, group, setGroup, reset, activeCount
     const sel = (name: keyof ListItemsQuery) => (filters as any)[name] || ""
 
     // Cada filtro é um select-pill; quando tem valor, ganha destaque (is-set).
-    const pill = (name: keyof ListItemsQuery, allLabel: string, options: { value: string; label: string }[]) =>
-        <select className={`mpm-inline-select ${sel(name) ? "is-set" : ""}`} title={allLabel}
-            value={sel(name)} onChange={(e) => setFilter(name, e.target.value)}>
-            <option value="">{allLabel}</option>
-            {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+    //
+    // O rótulo de cada opção leva o nome do filtro ("Tipo: bug") porque um select
+    // fechado mostra o texto da opção escolhida: sem o prefixo, o pill viraria só
+    // "bug" e ninguém saberia de qual filtro ele é.
+    const pill = (name: keyof ListItemsQuery, allLabel: string, options: { value: string; label: string }[]) => {
+        const current = sel(name)
+        return <select className={`mpm-inline-select ${current ? "is-set" : ""}`}
+            title={current ? `${allLabel}: ${current}` : allLabel}
+            value={current} onChange={(e) => setFilter(name, e.target.value)}>
+            <option value="">{allLabel}: todos</option>
+            {options.map((o) =>
+                <option key={o.value} value={o.value}>{allLabel}: {o.label}</option>)}
         </select>
+    }
 
     // O valor vai cru para a API; o humano lê em português.
     const labeled = (values: string[], label: (v: string) => string) =>
         values.map((v) => ({ value: v, label: label(v) }))
 
     return <div className="mpm-filterbar">
+        <div className="mpm-filterbar__scroll">
         <span className="mpm-filterbar__search">
             <Icon name="search" className="mpm-muted" />
             <input className="mpm-inline-select" placeholder="buscar texto..."
@@ -81,7 +90,11 @@ const ItemFilterBar = ({ filters, setFilter, group, setGroup, reset, activeCount
         {pill("milestone", "Entrega", milestones.map((m) => ({ value: m.id, label: m.name })))}
         {pill("sprint", "Sprint", sprints.map((s) => ({ value: s.id, label: s.name })))}
         {packages.length > 0
-            ? pill("package", "Pacote", packages.map((p) => ({ value: p.ref, label: p.packageName })))
+            ? pill("package", "Pacote", packages.map((p) => ({
+                value: p.ref,
+                // o mesmo nome pode existir em repositórios diferentes
+                label: `${p.packageName} (${p.groupName || p.layerName})`
+            })))
             : null}
 
         {showGroup && setGroup
@@ -92,12 +105,16 @@ const ItemFilterBar = ({ filters, setFilter, group, setGroup, reset, activeCount
             </select>
             : null}
 
-        <span className="mpm-toolbar__spacer" />
-        {activeCount > 0
-            ? <button className="mpm-btn mpm-btn--ghost mpm-btn--sm" onClick={reset}>
-                <Icon name="close" /> Limpar ({activeCount})
-            </button>
-            : null}
+        </div>
+
+        <div className="mpm-filterbar__actions">
+            {activeCount > 0
+                ? <button className="mpm-btn mpm-btn--ghost mpm-btn--sm" onClick={reset}
+                    title="Remover todos os filtros aplicados">
+                    <Icon name="close" /> Limpar ({activeCount})
+                </button>
+                : null}
+        </div>
     </div>
 }
 

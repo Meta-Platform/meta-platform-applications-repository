@@ -304,25 +304,38 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-toolbar--end { justify-content: flex-end; }
 
 /* Faixa fina, sem caixa: os filtros ficam sempre à vista sem roubar altura.
-   Não quebra linha — rola na horizontal quando não cabe. */
+   Não quebra linha — a lista de filtros rola na horizontal quando não cabe.
+
+   `flex: 0 0 auto` é obrigatório: `.mpm-content` é flex-column, e sem isso a
+   barra encolhe abaixo do próprio conteúdo — fica cortada ao meio e o board
+   sobe por baixo dela. */
 .mpm-filterbar {
-    display: flex; align-items: center; flex-wrap: nowrap;
-    gap: var(--mp-space-1);
+    flex: 0 0 auto;
+    display: flex; align-items: center; gap: var(--mp-space-2);
     padding: 0 0 var(--mp-space-2);
     background: transparent;
     border: none; border-bottom: 1px solid var(--mp-line-faint);
-    border-radius: 0;
-    overflow-x: auto;
-    scrollbar-width: thin;
 }
-.mpm-filterbar > * { flex: 0 0 auto; }
+/* Só os filtros rolam. As ações ("Limpar") ficam ancoradas e sempre visíveis. */
+.mpm-filterbar__scroll {
+    flex: 1 1 auto; min-width: 0;
+    display: flex; align-items: center; flex-wrap: nowrap;
+    gap: var(--mp-space-1);
+    overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: thin;
+    padding-bottom: 2px;
+}
+.mpm-filterbar__scroll > * { flex: 0 0 auto; }
+.mpm-filterbar__actions { flex: 0 0 auto; display: flex; align-items: center; gap: var(--mp-space-2); }
+
 .mpm-filterbar .mpm-inline-select {
-    min-width: 0; height: 26px; padding: 0 var(--mp-space-2);
+    min-width: 0; max-width: 190px; height: 26px; padding: 0 var(--mp-space-2);
     font-size: var(--mp-text-xs);
     background: transparent;
     border: 1px solid var(--mp-line-faint);
     border-radius: 999px;
     color: var(--mp-ink-3);
+    text-overflow: ellipsis;
 }
 .mpm-filterbar .mpm-inline-select:hover { border-color: var(--mp-line-soft); color: var(--mp-ink); }
 .mpm-filterbar .mpm-inline-select:focus { border-color: var(--mp-accent-blue); color: var(--mp-ink); }
@@ -333,7 +346,7 @@ html, body, #gui { height: 100%; margin: 0; }
     color: var(--mp-ink); font-weight: 600;
 }
 .mpm-filterbar__search { display: flex; align-items: center; gap: var(--mp-space-1); }
-.mpm-filterbar__search input { min-width: 150px; }
+.mpm-filterbar__search input { min-width: 150px; max-width: 220px; }
 
 .mpm-bulkbar {
     display: flex; align-items: center; flex-wrap: wrap; gap: var(--mp-space-2);
@@ -1290,6 +1303,11 @@ html, body, #gui { height: 100%; margin: 0; }
 /* NÃO limitar a largura do conteúdo: board, tabelas e filtros precisam acompanhar
    a janela. A medida de linha é resolvida só onde há TEXTO CORRIDO (docs/markdown). */
 .mpm-content { display: flex; flex-direction: column; align-items: stretch; }
+/* Nenhum filho da área principal encolhe. Num flex-column, um filho com
+   `overflow` (a barra de filtros, o kanban) encolheria abaixo do proprio
+   conteudo e apareceria cortado, com o resto da pagina subindo por baixo.
+   Quem rola e o `.mpm-content`. */
+.mpm-content > * { flex-shrink: 0; }
 
 /* Chips de status alinhados à altura dos botões da mesma barra de ações. */
 .mpm-page-head__actions { display: flex; align-items: center; gap: var(--mp-space-2); flex-wrap: wrap; }
