@@ -119,6 +119,10 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
     const [editingDesc, setEditingDesc] = useState(false)
     const [confirmDelete, setConfirmDelete] = useState(false)
     const [deleting, setDeleting] = useState(false)
+    // Tela cheia: o modal do item escapa da caixa e ocupa a janela inteira.
+    const [fullscreen, setFullscreen] = useState(false)
+    // Cadeia de ancestrais (para o breadcrumb hierárquico do header).
+    const [ancestors, setAncestors] = useState<WorkItem[]>([])
     // Drill-down: pilha de referências abertas a partir do item da prop. Uma ref
     // pode ser id ou key — GetItem resolve as duas — e é o que permite clicar numa
     // subtarefa ou numa referência do texto (CFGEC-26) sem sair do modal.
@@ -132,6 +136,24 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
     const load = () => api.items.get(currentId)
         .then((it) => setItem(it))
         .catch((e) => setError(e.message))
+
+    // Breadcrumb hierárquico: sobe a cadeia de pais (épico › história › tarefa),
+    // um GetItem por nível — normalmente 1–3. Limitado para nunca laçar.
+    useEffect(() => {
+        let cancelled = false
+        const walk = async () => {
+            const chain: WorkItem[] = []
+            let pid = item && item.parentId
+            let guard = 0
+            while (pid && guard < 6) {
+                try { const p = await api.items.get(pid); chain.unshift(p); pid = p.parentId; guard++ }
+                catch (_) { break }
+            }
+            if (!cancelled) setAncestors(chain)
+        }
+        if (item && item.parentId) walk(); else setAncestors([])
+        return () => { cancelled = true }
+    }, [item && item.id, item && item.parentId])
 
     // Trocar o item da prop zera o drill-down; navegar dentro dele só recarrega.
     useEffect(() => { setDrill([]) }, [itemId])
@@ -481,7 +503,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
     // Referências clicadas DENTRO do modal (texto markdown, vínculos, subtarefas)
     // navegam no próprio modal, empilhando no drill — não abrem outro inspector.
     return <ItemNavigatorProvider onOpenItem={openRef}>
-        <aside className="mpm-inspector" ref={modalAnchor as any}>
+        <aside className={`mpm-inspector ${fullscreen ? "is-fullscreen" : ""}`} ref={modalAnchor as any}>
         {/* Header sticky: key, tipo, título editável e ações */}
         <div className="mpm-inspector__head">
             {drill.length > 0
@@ -510,9 +532,26 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 }}>
                 <Icon name="comment alternate outline" />
             </span>
+            <span className="mpm-iconbtn" data-tip={fullscreen ? "Sair da tela cheia" : "Abrir em tela cheia"}
+                onClick={() => setFullscreen((f) => !f)}><Icon name={fullscreen ? "compress" : "expand"} /></span>
             <span className="mpm-iconbtn" data-tip="Excluir este item" onClick={() => setConfirmDelete(true)}><Icon name="trash" /></span>
             <span className="mpm-iconbtn" data-tip="Fechar" data-tip-shortcut="Esc" onClick={onClose}><Icon name="close" /></span>
         </div>
+
+        {ancestors.length > 0
+            ? <nav className="mpm-inspector__crumbs" aria-label="Hierarquia do item">
+                {ancestors.map((a) =>
+                    <span key={a.id} className="mpm-crumb-part">
+                        <button className="mpm-crumb" data-tip={a.title}
+                            onClick={() => openRef(a.id)}>
+                            <TypeBadge type={a.type} short />
+                            <span className="mpm-mono">{a.key}</span>
+                        </button>
+                        <Icon name="angle right" className="mpm-muted mpm-crumb__sep" />
+                    </span>)}
+                <span className="mpm-mono mpm-muted">{item.key}</span>
+            </nav>
+            : null}
 
         {changedBy
             ? <div className="mpm-stale-banner">

@@ -741,6 +741,27 @@ html, body, #gui { height: 100%; margin: 0; }
     padding: var(--mp-space-3) var(--mp-space-4);
     border-bottom: var(--mp-border);
 }
+
+/* Tela cheia: o inspector escapa da caixa do modal e ocupa a janela (position
+   fixed foge do overflow:hidden do modal). */
+.mpm-inspector.is-fullscreen {
+    position: fixed; inset: 0; z-index: 950;
+    border-radius: 0; background: var(--mp-surface);
+}
+
+/* Breadcrumb hierárquico do item (épico › história › tarefa). */
+.mpm-inspector__crumbs {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    padding: var(--mp-space-2) var(--mp-space-4) 0;
+}
+.mpm-crumb-part { display: inline-flex; align-items: center; gap: 6px; }
+.mpm-crumb {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: transparent; border: none; padding: 0; cursor: pointer;
+}
+.mpm-crumb .mpm-mono { color: var(--mp-muted); }
+.mpm-crumb:hover .mpm-mono { color: var(--mp-accent-blue); }
+.mpm-crumb__sep { font-size: 11px; margin: 0 !important; }
 .mpm-inspector__body { overflow-y: auto; padding: var(--mp-space-4); display: flex; flex-direction: column; gap: var(--mp-space-4); }
 .mpm-field { display: flex; flex-direction: column; gap: var(--mp-space-1); }
 .mpm-field__label { font-size: var(--mp-text-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--mp-muted); font-weight: 700; }
