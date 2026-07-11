@@ -283,7 +283,10 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
     // ecossistema e entrega. Antes ficava na lateral; agora abre a coluna principal,
     // compacta, logo acima da descrição — a lateral passou a ser a atividade.
     const fieldsBlock = <div className="mpm-details__fields">
-        <div className="mpm-row" style={{ justifyContent: "flex-end" }}>
+        <div className="mpm-row" style={{ alignItems: "center" }}>
+            <div className="mpm-section-title" style={{ flex: 1, margin: 0 }}>
+                <Icon name="sliders horizontal" /> Campos e contexto
+            </div>
             {hiddenCount > 0 || showEmptyFields
                 ? <button className="mpm-btn mpm-btn--ghost mpm-btn--sm"
                     title="Mostra também os campos ainda não preenchidos"
@@ -433,12 +436,13 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
 
     const detailsTab = <div className="mpm-details-scope"><div className="mpm-details">
         <div className="mpm-details__main">
-            {fieldsBlock}
-
             {item.blockedReason
                 ? <div className="mpm-error-banner"><Icon name="ban" /> Bloqueado: {item.blockedReason}</div>
                 : null}
 
+            {/* Descrição em destaque: é o PRIMEIRO conteúdo da coluna principal,
+                visível assim que o item abre. Os campos/contexto vêm depois — antes
+                soterravam a descrição e deixavam o usuário perdido. */}
             {descBlock}
 
             {typeFieldsBlock}
@@ -457,6 +461,10 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                         </button>)}
                 </div>
                 : null}
+
+            {/* Campos e contexto (metadados, prontidão, ecossistema, software):
+                por último — importam para editar, mas não são o que se lê ao abrir. */}
+            {fieldsBlock}
         </div>
 
         <aside className="mpm-details__side">
