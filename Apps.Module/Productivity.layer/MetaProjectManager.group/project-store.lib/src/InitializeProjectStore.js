@@ -12,6 +12,7 @@ const CommentsStore   = require("./Store/CommentsStore")
 const UsersStore      = require("./Store/UsersStore")
 const AgentsStore     = require("./Store/AgentsStore")
 const ReportsStore    = require("./Store/ReportsStore")
+const AnalyticsStore  = require("./Store/AnalyticsStore")
 const PlanningStore   = require("./Store/PlanningStore")
 const FeedbackStore   = require("./Store/FeedbackStore")
 const EcosystemStore  = require("./Store/EcosystemStore")
@@ -145,6 +146,7 @@ const InitializeProjectStore = (options = {}) => {
         UsersStore(ctx),
         AgentsStore(ctx),
         ReportsStore(ctx),
+        AnalyticsStore(ctx),
         PlanningStore(ctx),
         { ListActivity, GetAuditEvent, GetAppState, SetAppState },
     )

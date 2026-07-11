@@ -40,6 +40,8 @@ const ReportsController = (params) => {
     const ReportOverdue = async (p = {}) => Guard(async () => { await ctx.ready; return store.Overdue({ project: p.project }) })
     const ReportByAssignee = async (p = {}) => Guard(async () => { await ctx.ready; return store.ByAssignee({ project: p.project }) })
     const ReportByAgent = async (p = {}) => Guard(async () => { await ctx.ready; return store.ByAgent({ project: p.project }) })
+    // Fluxo temporal (CFD + throughput) reconstruído do audit log (MPMB-69).
+    const ReportFlow = async (p = {}) => Guard(async () => { await ctx.ready; return store.ProjectFlow({ project: p.project }) })
 
     return {
         controllerName: "ReportsController",
@@ -53,7 +55,8 @@ const ReportsController = (params) => {
         ReportBlocked,
         ReportOverdue,
         ReportByAssignee,
-        ReportByAgent
+        ReportByAgent,
+        ReportFlow
     }
 }
 

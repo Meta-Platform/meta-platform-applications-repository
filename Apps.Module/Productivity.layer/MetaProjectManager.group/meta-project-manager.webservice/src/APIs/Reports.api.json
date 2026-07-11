@@ -182,6 +182,25 @@
             ]
         },
         {
+            "summary": "ReportFlow",
+            "method": "GET",
+            "path": "/reports/flow",
+            "parameters": [
+                {
+                    "name": "project",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "_",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
             "summary": "ListAuditEvents",
             "method": "GET",
             "path": "/audit",

@@ -329,6 +329,29 @@ export interface ActivityEntry {
     createdAt?: string
 }
 
+// Fluxo temporal (CFD + throughput) reconstruído do audit log (MPMB-69).
+export interface FlowColumn {
+    statusKey: string
+    name: string
+    color: string
+    isDoneColumn: boolean
+}
+export interface FlowDay {
+    date: string                 // "YYYY-MM-DD" (UTC)
+    counts: Record<string, number>  // itens por status no fim do dia
+    total: number
+    created: number              // itens criados neste dia
+    completed: number            // itens concluídos neste dia (throughput)
+}
+export interface FlowReport {
+    projectId: ID
+    name: string
+    columns: FlowColumn[]
+    days: FlowDay[]
+    hasData: boolean             // false = histórico insuficiente (não plotar)
+    totals: { items: number; done: number; created: number; completed: number }
+}
+
 // Anotação de atividade (humana / usuario-desktop), distinta de Comment e AuditEvent.
 export interface ActivityNote {
     id: ID

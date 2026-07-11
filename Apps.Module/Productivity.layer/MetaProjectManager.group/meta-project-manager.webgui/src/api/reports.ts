@@ -1,9 +1,13 @@
 import { Caller } from "./client"
-import { ActivityEntry } from "./types"
+import { ActivityEntry, FlowReport } from "./types"
 
 const CreateReportsApi = (call: Caller) => ({
     activity: (query: { project?: string; limit?: string } = {}): Promise<ActivityEntry[]> =>
         call("Reports", "ListActivity", query),
+
+    // Fluxo temporal (CFD + throughput) reconstruído do audit log.
+    flow: (project?: string): Promise<FlowReport> =>
+        call("Reports", "ReportFlow", { project }),
 
     projectStatus: (project?: string): Promise<any> =>
         call("Reports", "ReportProjectStatus", { project }),

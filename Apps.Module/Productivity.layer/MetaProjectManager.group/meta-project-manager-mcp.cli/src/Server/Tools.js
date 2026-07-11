@@ -629,6 +629,12 @@ const BuildTools = ({ store, actor }) => {
             inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }, ["project"]),
             handler: (i) => store.RoadmapByHorizon({ project: i.project })
         },
+        {
+            name: "project_flow",
+            description: "Fluxo TEMPORAL do projeto reconstruído do histórico real (audit log): Cumulative Flow (itens por status por dia) e throughput (concluídos/criados por dia). `hasData:false` significa histórico insuficiente — não invente tendências nesse caso.",
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }, ["project"]),
+            handler: (i) => store.ProjectFlow({ project: i.project })
+        },
 
         // ───────────── Descobrir / decidir (criar novo vs. atualizar existente, conflitos) ─────────────
         {

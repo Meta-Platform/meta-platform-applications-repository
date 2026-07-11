@@ -2035,3 +2035,25 @@ html, body, #gui { height: 100%; margin: 0; }
     max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .mpm-backlog__tag .icon { margin: 0 !important; }
+
+/* ── Gráficos temporais (SVG manual, MPMB-69) ────────────────────────────── */
+.mpm-chart { display: flex; flex-direction: column; gap: var(--mp-space-2); }
+.mpm-chart__svg { width: 100%; height: auto; display: block; }
+.mpm-chart__grid { stroke: var(--mp-line-faint); stroke-width: 1; }
+.mpm-chart__ylabel, .mpm-chart__xlabel {
+    fill: var(--mp-muted); font-size: 10px; font-family: var(--mp-font-mono, monospace);
+}
+.mpm-chart__bar-done { fill: var(--mp-success); }
+.mpm-chart__bar-outline { fill: none; stroke: var(--mp-muted); stroke-width: 1; stroke-dasharray: 2 2; }
+.mpm-chart__legend {
+    display: flex; flex-wrap: wrap; gap: var(--mp-space-3);
+    font-size: var(--mp-text-xs); color: var(--mp-muted);
+}
+.mpm-chart__legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.mpm-chart__swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.mpm-chart__empty {
+    display: flex; flex-direction: column; align-items: center; gap: var(--mp-space-2);
+    padding: var(--mp-space-5) var(--mp-space-4);
+    color: var(--mp-muted); text-align: center; font-size: var(--mp-text-sm);
+    border: 1px dashed var(--mp-line-faint); border-radius: var(--mp-radius-sm);
+}

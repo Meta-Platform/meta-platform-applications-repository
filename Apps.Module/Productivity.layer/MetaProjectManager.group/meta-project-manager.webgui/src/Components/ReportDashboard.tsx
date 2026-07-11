@@ -3,8 +3,9 @@ import { useEffect, useState } from "react"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
-import { Project, WorkItem } from "../api/types"
+import { Project, WorkItem, FlowReport } from "../api/types"
 import { Metric, StatusChip, Loading, EmptyState, ErrorBanner } from "./Primitives"
+import FlowCharts from "./FlowCharts"
 
 interface GroupRow { userId?: string; label?: string; count: number }
 
@@ -19,6 +20,7 @@ const ReportDashboard = () => {
     const [overdue, setOverdue] = useState<WorkItem[]>([])
     const [byAssignee, setByAssignee] = useState<GroupRow[]>([])
     const [byAgent, setByAgent] = useState<GroupRow[]>([])
+    const [flow, setFlow] = useState<FlowReport | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -37,9 +39,10 @@ const ReportDashboard = () => {
             api.reports.blocked(project),
             api.reports.overdue(project),
             api.reports.byAssignee(project),
-            api.reports.byAgent(project)
-        ]).then(([st, bl, ov, ba, bg]) => {
-            setStatus(st); setBlocked(bl || []); setOverdue(ov || []); setByAssignee(ba || []); setByAgent(bg || [])
+            api.reports.byAgent(project),
+            api.reports.flow(project)
+        ]).then(([st, bl, ov, ba, bg, fl]) => {
+            setStatus(st); setBlocked(bl || []); setOverdue(ov || []); setByAssignee(ba || []); setByAgent(bg || []); setFlow(fl || null)
         }).catch((e) => setError(e.message)).then(() => setLoading(false))
     }, [project])
 
@@ -109,6 +112,7 @@ const ReportDashboard = () => {
                                 : null}
                         </div>
                         : null}
+                    <FlowCharts flow={flow} />
                     <div className="mpm-grid-cards">
                         {groupPanel("Por responsável", "user", byAssignee)}
                         {groupPanel("Por agente", "microchip", byAgent)}
