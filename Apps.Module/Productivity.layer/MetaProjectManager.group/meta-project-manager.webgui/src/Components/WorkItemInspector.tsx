@@ -485,7 +485,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
         {/* Header sticky: key, tipo, título editável e ações */}
         <div className="mpm-inspector__head">
             {drill.length > 0
-                ? <span className="mpm-iconbtn" title="Voltar para o item anterior" onClick={drillBack}>
+                ? <span className="mpm-iconbtn" data-tip="Voltar para o item anterior" onClick={drillBack}>
                     <Icon name="arrow left" />
                 </span>
                 : null}
@@ -495,7 +495,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
             <span style={{ flex: 1 }} />
             {/* Feedback sobre a TAREFA inteira (o botão direito num campo dá feedback
                 sobre aquele campo). O balão abre ao lado do botão. */}
-            <span className="mpm-iconbtn" title="Feedback para o agente sobre esta tarefa"
+            <span className="mpm-iconbtn" data-tip="Enviar feedback para o agente sobre esta tarefa"
                 onClick={(e) => {
                     const box = (e.currentTarget as HTMLElement).getBoundingClientRect()
                     feedback.openAt({
@@ -510,8 +510,8 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 }}>
                 <Icon name="comment alternate outline" />
             </span>
-            <span className="mpm-iconbtn" title="Excluir item" onClick={() => setConfirmDelete(true)}><Icon name="trash" /></span>
-            <span className="mpm-iconbtn" title="Fechar" onClick={onClose}><Icon name="close" /></span>
+            <span className="mpm-iconbtn" data-tip="Excluir este item" onClick={() => setConfirmDelete(true)}><Icon name="trash" /></span>
+            <span className="mpm-iconbtn" data-tip="Fechar" data-tip-shortcut="Esc" onClick={onClose}><Icon name="close" /></span>
         </div>
 
         {changedBy
@@ -519,7 +519,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 <Icon name="refresh" />
                 <span style={{ flex: 1 }}><strong>{changedBy}</strong> alterou este item.</span>
                 <button className="mpm-btn mpm-btn--sm" onClick={reloadFromServer}>recarregar</button>
-                <span className="mpm-iconbtn" title="Dispensar" onClick={() => setChangedBy(null)}>
+                <span className="mpm-iconbtn" data-tip="Dispensar este aviso" onClick={() => setChangedBy(null)}>
                     <Icon name="close" />
                 </span>
             </div>

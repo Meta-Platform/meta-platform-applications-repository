@@ -145,17 +145,17 @@ const AttachmentPanel = ({ itemId }: { itemId: string }) => {
                             : null}
                     </div>
                     {canPreview
-                        ? <span className="mpm-iconbtn mpm-btn--sm" title="Pré-visualizar"
+                        ? <span className="mpm-iconbtn mpm-btn--sm" data-tip={isOpen ? "Ocultar a pré-visualização" : "Pré-visualizar o anexo"}
                             onClick={() => setPreview((s) => ({ ...s, [a.id]: !s[a.id] }))}>
                             <Icon name={isOpen ? "eye slash" : "eye"} />
                         </span>
                         : null}
                     {canOpen
-                        ? <span className="mpm-iconbtn mpm-btn--sm" title={link ? "Abrir link" : "Baixar"} onClick={() => open(a)}>
+                        ? <span className="mpm-iconbtn mpm-btn--sm" data-tip={link ? "Abrir o link em nova aba" : "Baixar o arquivo"} onClick={() => open(a)}>
                             <Icon name={link ? "external" : "download"} />
                         </span>
                         : null}
-                    <span className="mpm-iconbtn mpm-btn--sm" title="Remover" onClick={() => remove(a.id)}><Icon name="trash" /></span>
+                    <span className="mpm-iconbtn mpm-btn--sm" data-tip="Remover o anexo" onClick={() => remove(a.id)}><Icon name="trash" /></span>
                 </div>
                 {isOpen
                     ? <AttachmentPreview attachment={a} downloadUrl={downloadUrl} isLink={link} />

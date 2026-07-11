@@ -29,7 +29,7 @@ const ToastStack = () => {
                         abrir
                     </button>
                     : null}
-                <span className="mpm-iconbtn" title="Dispensar" onClick={() => dismiss(t.id)}>
+                <span className="mpm-iconbtn" data-tip="Dispensar" onClick={() => dismiss(t.id)}>
                     <Icon name="close" />
                 </span>
             </div>)}

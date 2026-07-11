@@ -94,14 +94,15 @@ const WorkItemList = ({ items, usersById, statusOptions, groupBy, milestones, sp
                     <div className={`mpm-itemcell ${depth > 0 ? "mpm-itemcell--child" : ""}`} style={{ paddingLeft: depth * 18 }}>
                         <div className="mpm-itemcell__meta">
                             {hasChildren
-                                ? <span className="mpm-tree-toggle" title={isCollapsed ? "Expandir subitens" : "Recolher subitens"}
+                                ? <span className="mpm-tree-toggle" data-tip={isCollapsed ? "Mostrar os subitens" : "Ocultar os subitens"}
                                     onClick={(e) => { e.stopPropagation(); setCollapsed((c) => ({ ...c, [node.id]: !c[node.id] })) }}>
                                     <Icon name={isCollapsed ? "caret right" : "caret down"} />
                                     <span className="mpm-tree-count">{node._children.length}</span>
                                 </span>
                                 : <span className="mpm-tree-toggle" />}
                             <span className={`mpm-mono mpm-muted mpm-key ${copiedKey === node.key ? "is-copied" : ""}`}
-                                title="Copiar chave" onClick={(e) => { e.stopPropagation(); copyKey(node.key) }}>
+                                data-tip={copiedKey === node.key ? "Chave copiada!" : "Copiar a chave do item"}
+                                onClick={(e) => { e.stopPropagation(); copyKey(node.key) }}>
                                 {node.key}<Icon name={copiedKey === node.key ? "check" : "copy outline"} className="mpm-key__ico" />
                             </span>
                             <TypeBadge type={node.type} />

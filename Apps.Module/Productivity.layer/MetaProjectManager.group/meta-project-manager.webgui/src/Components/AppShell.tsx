@@ -10,6 +10,7 @@ import CommandBar from "./CommandBar"
 import ThemeMenu from "./ThemeMenu"
 import GlobalApprovalModal from "./GlobalApprovalModal"
 import ToastStack from "./ToastStack"
+import { TooltipLayer } from "./Tooltip"
 import useApprovalQueue from "../Hooks/useApprovalQueue"
 import { HandleZoomShortcut, GetSavedZoom } from "../Utils/zoom"
 
@@ -136,11 +137,11 @@ const AppShell = ({ active, activeProjectId, activeProjectName, breadcrumb, titl
         <header className="mpm-header">
             {/* Linha 1: identidade, trilha e ferramentas globais */}
             <div className="mpm-header__top">
-                <span className="mpm-iconbtn" title={`${collapsed ? "Mostrar" : "Ocultar"} menu do projeto (Ctrl+B)`}
+                <span className="mpm-iconbtn" data-tip={`${collapsed ? "Mostrar" : "Ocultar"} o menu do projeto`} data-tip-shortcut="Ctrl+B"
                     onClick={toggleCollapsed}>
                     <Icon name={collapsed ? "indent" : "outdent"} />
                 </span>
-                <div className="mpm-header__logo" title="Meta Project Manager" onClick={() => navigate("/")}>M</div>
+                <div className="mpm-header__logo" data-tip="Ir para a lista de projetos" onClick={() => navigate("/")}>M</div>
 
                 <nav className="mpm-crumbs" aria-label="Trilha">
                     {crumbs.map((c, i) => {
@@ -226,6 +227,10 @@ const AppShell = ({ active, activeProjectId, activeProjectName, breadcrumb, titl
         {/* Aprovação de agente é GLOBAL: surge sobre QUALQUER tela e sobre qualquer
             outro modal — é a única coisa que prende o agente do outro lado. */}
         <GlobalApprovalModal />
+
+        {/* Camada única de tooltip: lê `data-tip` de qualquer elemento (inclusive
+            dentro de modais/tabelas) e mostra o balão acessível em portal. */}
+        <TooltipLayer />
     </div>
 }
 

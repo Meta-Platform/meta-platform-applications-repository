@@ -114,7 +114,7 @@ const EcosystemContextSection = ({ item, scope, onChanged }: EcosystemContextSec
                             disabled={busy} onClick={() => toggleRole(p.ref)}>
                             {ROLE_LABEL[p.role]}
                         </button>
-                        <span className="mpm-iconbtn" title="Desvincular" onClick={() => remove(p.ref)}>
+                        <span className="mpm-iconbtn" data-tip="Desvincular este pacote do item" onClick={() => remove(p.ref)}>
                             <Icon name="close" />
                         </span>
                     </div>)}

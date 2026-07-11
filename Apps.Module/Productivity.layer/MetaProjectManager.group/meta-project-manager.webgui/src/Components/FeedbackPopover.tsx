@@ -86,7 +86,7 @@ const FeedbackPopover = ({ anchor, onClose, onSent }: FeedbackPopoverProps) => {
         <div className="mpm-fb-popover__head">
             <Icon name="comment alternate outline" />
             <strong style={{ flex: 1 }}>Feedback para o agente</strong>
-            <span className="mpm-iconbtn" title="Fechar" onClick={onClose}><Icon name="close" /></span>
+            <span className="mpm-iconbtn" data-tip="Fechar" data-tip-shortcut="Esc" onClick={onClose}><Icon name="close" /></span>
         </div>
 
         <div className="mpm-fb-popover__where">

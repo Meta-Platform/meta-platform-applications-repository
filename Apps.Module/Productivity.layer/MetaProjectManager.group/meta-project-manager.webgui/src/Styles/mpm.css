@@ -742,6 +742,35 @@ html, body, #gui { height: 100%; margin: 0; }
     font-size: var(--mp-text-sm); font-weight: 600;
 }
 
+/* ── Tooltip acessível (camada única, MPMB-60) ───────────────────────────────
+   Renderiza em portal com posição fixa, acima de tudo (inclusive modais). */
+.mpm-tooltip {
+    position: fixed; z-index: 1200;
+    transform: translateX(-50%);
+    max-width: 260px;
+    display: inline-flex; align-items: center; gap: var(--mp-space-2);
+    padding: 4px 8px;
+    background: var(--mp-surface); color: var(--mp-ink);
+    border: var(--mp-border-strong); border-radius: var(--mp-radius-sm);
+    box-shadow: var(--mp-shadow-2);
+    font-size: var(--mp-text-xs); line-height: 1.35;
+    pointer-events: none; white-space: normal;
+}
+.mpm-tooltip--top    { transform: translate(-50%, calc(-100% - 8px)); }
+.mpm-tooltip--bottom { transform: translate(-50%, 8px); }
+.mpm-tooltip__kbd {
+    flex: 0 0 auto;
+    font-family: var(--mp-font-mono); font-size: 10px;
+    padding: 0 4px; border: 1px solid var(--mp-line);
+    border-radius: 3px; color: var(--mp-muted); background: var(--mp-surface-2);
+}
+
+/* Foco de teclado perceptível nos botões só-ícone (MPMB-60). */
+.mpm-iconbtn:focus-visible {
+    outline: 2px solid var(--mp-accent-blue); outline-offset: 1px;
+    border-radius: var(--mp-radius-sm);
+}
+
 /* ============================================================ */
 /* Formulários                                                  */
 /* ============================================================ */

@@ -63,8 +63,8 @@ const CommentAttachments = ({ itemId, commentId, attachments, onChanged }:
             <div key={a.id} className="mpm-attach" style={{ padding: "4px 8px" }}>
                 <Icon name={isLink(a) ? "linkify" : "file outline"} />
                 <span className="mpm-attach__name" title={a.name}>{a.name}</span>
-                <span className="mpm-iconbtn mpm-btn--sm" title="Abrir" onClick={() => openAtt(a)}><Icon name={isLink(a) ? "external" : "download"} /></span>
-                <span className="mpm-iconbtn mpm-btn--sm" title="Remover" onClick={() => remove(a.id)}><Icon name="trash" /></span>
+                <span className="mpm-iconbtn mpm-btn--sm" data-tip={isLink(a) ? "Abrir o link" : "Baixar o arquivo"} onClick={() => openAtt(a)}><Icon name={isLink(a) ? "external" : "download"} /></span>
+                <span className="mpm-iconbtn mpm-btn--sm" data-tip="Remover o anexo" onClick={() => remove(a.id)}><Icon name="trash" /></span>
             </div>)}
         {open
             ? <div className="mpm-row">

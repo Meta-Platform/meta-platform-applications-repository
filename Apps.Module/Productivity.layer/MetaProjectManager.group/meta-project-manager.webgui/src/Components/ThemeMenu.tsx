@@ -39,7 +39,7 @@ const ThemeMenu = () => {
     }
 
     return <div style={{ position: "relative" }}>
-        <span className="mpm-iconbtn" title="Tema" onClick={() => setOpen((o) => !o)}>
+        <span className="mpm-iconbtn" data-tip="Trocar o tema (claro/escuro)" onClick={() => setOpen((o) => !o)}>
             <Icon name="paint brush" />
         </span>
         {open
