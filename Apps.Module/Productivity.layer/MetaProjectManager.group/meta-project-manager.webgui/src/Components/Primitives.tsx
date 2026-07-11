@@ -58,8 +58,14 @@ export const Progress = ({ value }: { value: number }) =>
         <div className="mpm-progress__fill" style={{ width: `${Math.max(0, Math.min(100, value || 0))}%` }} />
     </div>
 
-export const Metric = ({ value, label }: { value: React.ReactNode; label: string }) =>
-    <div className="mpm-metric">
+// Métrica de progresso. Com `onClick` vira um atalho de drill-down (abre a lista
+// filtrada); `tip` explica o cálculo (data-tip → tooltip acessível).
+export const Metric = ({ value, label, tip, onClick }: {
+    value: React.ReactNode; label: string; tip?: string; onClick?: () => void
+}) =>
+    <div className={`mpm-metric ${onClick ? "is-clickable" : ""}`}
+        {...(tip ? { "data-tip": tip } : {})}
+        {...(onClick ? { role: "button", tabIndex: 0, onClick, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick() } } } : {})}>
         <div className="mpm-metric__value">{value}</div>
         <div className="mpm-metric__label">{label}</div>
     </div>

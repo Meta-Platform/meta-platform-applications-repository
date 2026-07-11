@@ -6,7 +6,7 @@ import { Icon } from "semantic-ui-react"
 import useApi from "../Hooks/useApi"
 import useLiveReload from "../Hooks/useLiveReload"
 import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
-import { Project, ProjectMetrics, Board, ActivityEntry, User } from "../api/types"
+import { Project, ProjectMetrics, Board, ActivityEntry, User, WorkItem } from "../api/types"
 import AppShell from "../Components/AppShell"
 import PageFeedbackButton from "../Components/PageFeedbackButton"
 import NewBoardModal from "../Components/NewBoardModal"
@@ -15,7 +15,7 @@ import AuditTimeline from "../Components/AuditTimeline"
 import WorkItemInspector from "../Components/WorkItemInspector"
 import Markdown from "../Components/Markdown"
 import DescriptionEditor from "../Components/DescriptionEditor"
-import { Metric, Progress, StatusChip, Loading, ErrorBanner } from "../Components/Primitives"
+import { Metric, Progress, StatusChip, TypeBadge, Loading, ErrorBanner } from "../Components/Primitives"
 import { formatDateTime } from "../Utils/format"
 import { activityTitle, activityDetail, activityIcon, activityItemId } from "../Utils/activity"
 import downloadJson from "../Utils/downloadJson"
@@ -59,6 +59,8 @@ const ProjectPage = () => {
     const [deleting, setDeleting] = useState(false)
     const [tab, setTab] = useState<OverviewTab>("resumo")
     const [moreOpen, setMoreOpen] = useState(false)
+    // Painel "Requer atenção": itens bloqueados e atrasados (via reports).
+    const [attention, setAttention] = useState<{ blocked: WorkItem[]; overdue: WorkItem[] }>({ blocked: [], overdue: [] })
     // Descrição do projeto: leitura por padrão, editor rico (markdown + imagem) sob demanda.
     const [editingDesc, setEditingDesc] = useState(false)
     const [users, setUsers] = useState<User[]>([])
@@ -78,7 +80,24 @@ const ProjectPage = () => {
         api.boards.list(projectId).then((l) => setBoards(l || [])).catch(() => {})
         api.reports.activity({ project: projectId, limit: "20" }).then((l) => setActivity(l || [])).catch(() => {})
         api.users.list({}).then((l) => setUsers(l || [])).catch(() => {})
+        Promise.all([api.reports.blocked(projectId), api.reports.overdue(projectId)])
+            .then(([b, o]) => setAttention({ blocked: (b as WorkItem[]) || [], overdue: (o as WorkItem[]) || [] }))
+            .catch(() => setAttention({ blocked: [], overdue: [] }))
     }, [projectId, api])
+
+    // Drill-down de métrica: grava o filtro no mesmo storage que a lista lê e
+    // navega para a Lista já filtrada (a lista carrega o filtro ao montar).
+    const drillTo = (filters: Record<string, string>) => {
+        if (!projectId) return
+        try {
+            const key = `mpm-filters:workspace:${projectId}`
+            const raw = window.localStorage.getItem(key)
+            const cur = raw ? JSON.parse(raw) : { filters: {}, group: "none" }
+            cur.filters = filters
+            window.localStorage.setItem(key, JSON.stringify(cur))
+        } catch (_) { /* storage indisponível: navega sem filtro */ }
+        navigate(`/projects/${projectId}/list`)
+    }
 
     useEffect(() => { loadAll() }, [loadAll])
     // Um agente mexeu neste projeto: métricas, boards e atividade se atualizam sozinhos.
@@ -177,16 +196,50 @@ const ProjectPage = () => {
                         </div>
                         <Progress value={metrics.progress} />
                         <div className="mpm-metrics-row" style={{ marginTop: "var(--mp-space-4)" }}>
-                            <Metric value={metrics.total} label="Total" />
-                            <Metric value={metrics.done} label="Concluídos" />
-                            <Metric value={metrics.inProgress} label="Em progresso" />
-                            <Metric value={metrics.blocked} label="Bloqueados" />
-                            <Metric value={metrics.overdue} label="Atrasados" />
-                            <Metric value={metrics.stories} label="Histórias" />
-                            <Metric value={metrics.tasks} label="Tarefas" />
+                            <Metric value={metrics.total} label="Total"
+                                tip="Todos os itens do projeto. Abre a lista completa." onClick={() => drillTo({})} />
+                            <Metric value={metrics.done} label="Concluídos"
+                                tip="Itens em colunas de conclusão. Abre a lista filtrada por concluídos." onClick={() => drillTo({ status: "done" })} />
+                            <Metric value={metrics.inProgress} label="Em progresso"
+                                tip="Itens com status 'em progresso'. Abre a lista filtrada." onClick={() => drillTo({ status: "in-progress" })} />
+                            <Metric value={metrics.blocked} label="Bloqueados"
+                                tip="Status 'bloqueado' ou com motivo de bloqueio. Abre a lista filtrada." onClick={() => drillTo({ status: "blocked" })} />
+                            <Metric value={metrics.overdue} label="Atrasados"
+                                tip="Com prazo vencido e ainda não concluídos. Listados em 'Requer atenção' abaixo." />
+                            <Metric value={metrics.stories} label="Histórias"
+                                tip="Itens do tipo história. Abre a lista filtrada por tipo." onClick={() => drillTo({ type: "story" })} />
+                            <Metric value={metrics.tasks} label="Tarefas"
+                                tip="Itens do tipo tarefa. Abre a lista filtrada por tipo." onClick={() => drillTo({ type: "task" })} />
                         </div>
                     </div>
                     : null}
+
+                {/* Requer atenção: o que trava o projeto, do mais grave ao menos.
+                    Cada linha abre o item. */}
+                {(() => {
+                    const overdueOnly = attention.overdue.filter((o) => !attention.blocked.some((b) => b.id === o.id))
+                    if (attention.blocked.length === 0 && overdueOnly.length === 0) return null
+                    const row = (it: WorkItem, kind: "blocked" | "overdue") =>
+                        <button key={`${kind}-${it.id}`} className="mpm-attention__row" onClick={() => setSelected(it.id)}>
+                            <TypeBadge type={it.type} short />
+                            <span className="mpm-mono mpm-muted">{it.key}</span>
+                            <span className="mpm-attention__title" title={it.title}>{it.title}</span>
+                            <span className={`mpm-chip ${kind === "blocked" ? "mpm-chip--danger" : "mpm-chip--warning"}`}>
+                                {kind === "blocked" ? (it.blockedReason || "bloqueado") : "atrasado"}
+                            </span>
+                        </button>
+                    return <div className="mpm-card mpm-attention">
+                        <div className="mpm-row" style={{ marginBottom: "var(--mp-space-2)" }}>
+                            <Icon name="exclamation triangle" className="mpm-attention__ico" />
+                            <strong style={{ flex: 1 }}>Requer atenção</strong>
+                            <span className="mpm-muted mpm-mono">{attention.blocked.length + overdueOnly.length}</span>
+                        </div>
+                        <div className="mpm-col" style={{ gap: "var(--mp-space-1)" }}>
+                            {attention.blocked.map((it) => row(it, "blocked"))}
+                            {overdueOnly.map((it) => row(it, "overdue"))}
+                        </div>
+                    </div>
+                })()}
 
                 {/* Tabs: aproveita a tela pequena em vez de empilhar tudo. */}
                 <div className="mpm-tabs" role="tablist">
