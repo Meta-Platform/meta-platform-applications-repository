@@ -12,6 +12,8 @@ interface WorkItemCardProps {
     dragging?: boolean
     selected?: boolean
     onToggleSelect?: (id: string) => void
+    // rótulo do agente que está tocando o item AGORA (ao vivo) → estado "em execução"
+    agentActor?: string
     // drop de outro card sobre este (reordenar dentro da coluna)
     onDropCard?: () => void
 }
@@ -19,11 +21,12 @@ interface WorkItemCardProps {
 // WorkItemCard (spec §11.1): card de item no Kanban, com badges, drag nativo,
 // seleção (feature 4) e alvo de reorder (feature 5).
 const WorkItemCard = ({ item, usersById, onOpen, onDragStart, onDragEnd, dragging,
-    selected, onToggleSelect, onDropCard }: WorkItemCardProps) => {
+    selected, onToggleSelect, agentActor, onDropCard }: WorkItemCardProps) => {
     const assignee = item.assigneeUserId ? usersById[item.assigneeUserId] : undefined
+    const executing = !!agentActor
     return <div
         data-item-id={item.id}
-        className={`mpm-witem ${dragging ? "is-dragging" : ""} ${selected ? "is-selected" : ""}`}
+        className={`mpm-witem ${dragging ? "is-dragging" : ""} ${selected ? "is-selected" : ""} ${executing ? "is-executing" : ""}`}
         draggable
         onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", item.id); onDragStart(item.id) }}
         onDragEnd={onDragEnd}
@@ -41,6 +44,13 @@ const WorkItemCard = ({ item, usersById, onOpen, onDragStart, onDragEnd, draggin
             <span className="mpm-witem__key">{item.key}</span>
         </div>
         <div className="mpm-witem__title">{item.title}</div>
+        {executing
+            ? <div className="mpm-witem__exec" title={`Agente trabalhando neste item agora (${agentActor})`}>
+                <span className="mpm-exec-spinner" aria-hidden="true"><i /><i /><i /></span>
+                <span className="mpm-witem__exec-label">em execução</span>
+                <span className="mpm-witem__exec-actor mpm-mono">{agentActor}</span>
+            </div>
+            : null}
         <div className="mpm-row">
             <ItemMeta item={item} />
             <ValueBadge value={item.value} />

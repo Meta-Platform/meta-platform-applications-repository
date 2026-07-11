@@ -4,6 +4,7 @@ import { Icon } from "semantic-ui-react"
 
 import { Board, WorkItem, User } from "../api/types"
 import KanbanColumn from "./KanbanColumn"
+import useAgentActivity from "../Hooks/useAgentActivity"
 
 interface KanbanBoardProps {
     board: Board
@@ -28,6 +29,8 @@ const KanbanBoard = ({ board, items, usersById, onOpenItem, onMoveItem, onReorde
     onAddColumn, onRenameColumn, onDeleteColumn, selectedIds, onToggleSelect }: KanbanBoardProps) => {
     const [draggingId, setDraggingId] = useState<string | null>(null)
     const [newColumn, setNewColumn] = useState("")
+    // Itens que um agente está tocando AGORA (ao vivo) → card pulsa "em execução".
+    const agentActive = useAgentActivity(board.projectId)
 
     const commitAddColumn = () => {
         const v = newColumn.trim()
@@ -64,7 +67,8 @@ const KanbanBoard = ({ board, items, usersById, onOpenItem, onMoveItem, onReorde
                 onRenameColumn={onRenameColumn}
                 onDeleteColumn={onDeleteColumn}
                 selectedIds={selectedIds}
-                onToggleSelect={onToggleSelect} />)}
+                onToggleSelect={onToggleSelect}
+                agentActive={agentActive} />)}
         {orphans.length > 0
             ? <KanbanColumn
                 column={{ id: "__orphans__", boardId: board.id, name: "Sem coluna", statusKey: "__orphans__", order: 999, isDoneColumn: false }}
