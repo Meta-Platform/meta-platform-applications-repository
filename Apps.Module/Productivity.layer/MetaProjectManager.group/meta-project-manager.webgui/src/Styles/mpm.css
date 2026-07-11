@@ -1587,6 +1587,15 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-table--fixed { table-layout: fixed; }
 .mpm-table--fixed td { overflow: hidden; }
 
+/* Densidade da lista (compacta/confortável/ampla) — MPMB-65. */
+.mpm-density--compact .mpm-table td { padding-top: 2px; padding-bottom: 2px; }
+.mpm-density--compact .mpm-itemcell { gap: 1px; }
+.mpm-density--compact .mpm-itemcell__title { -webkit-line-clamp: 1; line-clamp: 1; }
+.mpm-density--wide .mpm-table td { padding-top: 10px; padding-bottom: 10px; }
+/* Menu de views salvas. */
+.mpm-view-row { display: flex; align-items: center; gap: 2px; }
+.mpm-density-seg .mpm-seg__btn { padding: 0 8px; }
+
 .mpm-itemcell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 /* Guia visual de hierarquia: linha tênue à esquerda de itens filhos. */
 .mpm-itemcell--child { border-left: 2px solid var(--mp-line-faint); margin-left: -2px; }

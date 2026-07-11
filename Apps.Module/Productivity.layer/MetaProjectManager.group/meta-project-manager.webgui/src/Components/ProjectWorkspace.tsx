@@ -7,8 +7,8 @@ import useApi from "../Hooks/useApi"
 import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import useEvents from "../Hooks/useEvents"
 import { auditEntriesOf } from "../Utils/agentEvents"
-import useItemFilters from "../Hooks/useItemFilters"
-import { useAppStateWriter } from "../Hooks/useAppState"
+import useItemFilters, { SavedView, GroupBy } from "../Hooks/useItemFilters"
+import { useAppStateWriter, useAppState } from "../Hooks/useAppState"
 import { Project, Board, WorkItem, User, Milestone, Sprint, PlatformEvent } from "../api/types"
 import AppShell from "./AppShell"
 import PageFeedbackButton from "./PageFeedbackButton"
@@ -47,7 +47,15 @@ const ProjectWorkspace = () => {
 
     // A URL é a fonte da verdade da view: /projects/:id/list => lista, resto => board.
     const view: ViewMode = pathname.endsWith("/list") ? "list" : "board"
-    const { filters, setFilter, group, setGroup, reset, activeCount } = useItemFilters("workspace", projectId)
+    const { filters, setFilter, group, setGroup, reset, applyView, activeCount } = useItemFilters("workspace", projectId)
+    // Views salvas e densidade: persistidas no servidor (AppState), por projeto.
+    const [savedViews, setSavedViews] = useAppState<SavedView[]>(`mpm.views:${projectId || "_"}`, [])
+    const [density, setDensity] = useAppState<string>(`mpm.density:${projectId || "_"}`, "comfortable")
+    const saveCurrentView = (name: string) => {
+        const id = `v${savedViews.length + 1}-${name.toLowerCase().replace(/\s+/g, "-").slice(0, 24)}`
+        setSavedViews([...savedViews.filter((v) => v.name !== name), { id, name, filters: { ...filters }, group: (group || "none") as GroupBy }])
+    }
+    const deleteView = (id: string) => setSavedViews(savedViews.filter((v) => v.id !== id))
     const filtersKey = JSON.stringify(filters)
     const filtersRef = useRef(filters)
     filtersRef.current = filters
@@ -308,7 +316,10 @@ const ProjectWorkspace = () => {
 
         <ItemFilterBar filters={filters} setFilter={setFilter} group={group} setGroup={setGroup}
             reset={reset} activeCount={activeCount} users={users} milestones={milestones} sprints={sprints}
-            showGroup={view === "list"} />
+            showGroup={view === "list"}
+            views={savedViews} onApplyView={(v) => applyView(v.filters, v.group)}
+            onSaveView={saveCurrentView} onDeleteView={deleteView}
+            density={density} setDensity={setDensity} />
 
         {selectedIds.length > 0
             ? <BulkActionBar
@@ -335,7 +346,7 @@ const ProjectWorkspace = () => {
 
         <ErrorBanner error={error} />
 
-        <div onContextMenu={onContextMenu}>
+        <div onContextMenu={onContextMenu} className={view === "list" ? `mpm-density--${density}` : undefined}>
         {loading
             ? <Loading />
             : view === "board"

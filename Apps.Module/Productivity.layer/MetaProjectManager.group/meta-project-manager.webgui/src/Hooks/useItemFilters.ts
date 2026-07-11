@@ -6,6 +6,15 @@ import { ListItemsQuery } from "../api/items"
 // em localStorage (tabela app_state não exposta via controllers listados).
 export type GroupBy = "none" | "horizon" | "parent" | "area" | "sprint"
 
+// View salva: um conjunto nomeado de filtros + agrupamento (persistido no
+// servidor via AppState, por projeto).
+export interface SavedView {
+    id: string
+    name: string
+    filters: ListItemsQuery
+    group: GroupBy
+}
+
 export interface WorkspaceFilterState {
     filters: ListItemsQuery
     group: GroupBy
@@ -52,9 +61,13 @@ export const useItemFilters = (scope: string, projectId?: string) => {
 
     const reset = useCallback(() => persist(DEFAULT), [persist])
 
+    // Aplica uma VIEW salva de uma vez (troca filtros + agrupamento juntos).
+    const applyView = useCallback((filters: ListItemsQuery, group: GroupBy) =>
+        persist({ filters: { ...filters }, group: group || "none" }), [persist])
+
     const activeCount = Object.keys(state.filters).filter((k) => k !== "sort" && (state.filters as any)[k]).length
 
-    return { filters: state.filters, group: state.group, setFilter, setGroup, reset, activeCount }
+    return { filters: state.filters, group: state.group, setFilter, setGroup, reset, applyView, activeCount }
 }
 
 export default useItemFilters
