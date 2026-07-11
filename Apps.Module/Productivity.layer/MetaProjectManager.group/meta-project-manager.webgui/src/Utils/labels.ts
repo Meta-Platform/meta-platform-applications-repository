@@ -7,19 +7,17 @@
 // Toda função devolve o valor cru quando não conhece a chave: um status novo
 // aparece como está, em vez de sumir da tela.
 
+import { workItemType } from "../Domain/workItemTypes"
+
 const pick = (map: Record<string, string>, value?: string, fallback = "") => {
     if (!value) return fallback
     return map[value.toLowerCase()] || value.replace(/[-_]/g, " ")
 }
 
 // ── Item de trabalho ─────────────────────────────────────────────────────────
-const TYPES: Record<string, string> = {
-    epic: "épico", feature: "funcionalidade", story: "história", task: "tarefa",
-    subtask: "subtarefa", bug: "bug", improvement: "melhoria", refactor: "refatoração",
-    documentation: "documentação", research: "investigação", automation: "automação",
-    "tech-debt": "dívida técnica", decision: "decisão"
-}
-export const typeLabel = (type?: string) => pick(TYPES, type, "tarefa")
+// O rótulo do tipo vem do registro central (Domain/workItemTypes) — fonte única
+// de ícone/rótulo/cor/hierarquia por tipo.
+export const typeLabel = (type?: string) => workItemType(type).label
 
 const PRIORITIES: Record<string, string> = {
     none: "nenhuma", low: "baixa", medium: "média", high: "alta", urgent: "urgente", critical: "crítica"

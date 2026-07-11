@@ -2,11 +2,18 @@ import * as React from "react"
 import { Icon } from "semantic-ui-react"
 
 import { WorkItem, User } from "../api/types"
-import { priorityClass, typeClass, statusClass, valueClass, horizonClass, horizonLabel, initials } from "../Utils/format"
-import { typeLabel, priorityLabel, statusLabel, valueLabel, effortLabel } from "../Utils/labels"
+import { priorityClass, statusClass, valueClass, horizonClass, horizonLabel, initials } from "../Utils/format"
+import { priorityLabel, statusLabel, valueLabel, effortLabel } from "../Utils/labels"
+import { workItemType } from "../Domain/workItemTypes"
 
-export const TypeBadge = ({ type }: { type?: string }) =>
-    <span className={`mpm-badge ${typeClass(type)}`} title={type}>{typeLabel(type)}</span>
+// Badge de tipo: ÍCONE + rótulo + cor (a semântica não depende só da cor).
+// Tudo vem do registro central (Domain/workItemTypes). `short` usa o rótulo curto.
+export const TypeBadge = ({ type, short }: { type?: string; short?: boolean }) => {
+    const def = workItemType(type)
+    return <span className={`mpm-badge ${def.colorClass}`} title={def.label}>
+        <Icon name={def.icon as any} style={{ margin: 0 }} /> {short ? def.shortLabel : def.label}
+    </span>
+}
 
 export const PriorityBadge = ({ priority }: { priority?: string }) =>
     (!priority || priority === "none")

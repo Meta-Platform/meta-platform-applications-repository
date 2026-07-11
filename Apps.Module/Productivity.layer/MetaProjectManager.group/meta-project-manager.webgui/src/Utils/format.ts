@@ -2,6 +2,8 @@
 // classes/labels do design system (tokens --mp-* via mpm.css). Nunca cores
 // hardcoded: devolvem chaves de classe / nomes semânticos.
 
+import { typeColorClass } from "../Domain/workItemTypes"
+
 export const initials = (name?: string): string => {
     if (!name) return "?"
     const parts = name.trim().split(/\s+/).slice(0, 2)
@@ -19,23 +21,8 @@ export const priorityClass = (priority?: string): string => {
     }
 }
 
-export const typeClass = (type?: string): string => {
-    switch ((type || "task").toLowerCase()) {
-        case "epic":          return "mpm-badge--type-epic"
-        case "feature":       return "mpm-badge--type-feature"
-        case "story":         return "mpm-badge--type-story"
-        case "bug":           return "mpm-badge--type-bug"
-        case "subtask":       return "mpm-badge--type-subtask"
-        case "improvement":   return "mpm-badge--type-story"
-        case "refactor":      return "mpm-badge--type-refactor"
-        case "documentation": return "mpm-badge--type-doc"
-        case "research":      return "mpm-badge--type-research"
-        case "automation":    return "mpm-badge--type-automation"
-        case "tech-debt":     return "mpm-badge--type-bug"
-        case "decision":      return "mpm-badge--type-decision"
-        default:              return "mpm-badge--type-task"
-    }
-}
+// classe de cor da badge de tipo — derivada do registro central de tipos.
+export const typeClass = (type?: string): string => typeColorClass(type)
 
 // classe de badge de valor (--mpm-badge--val-*)
 export const valueClass = (value?: string): string => {
