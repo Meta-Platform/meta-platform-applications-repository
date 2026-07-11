@@ -25,6 +25,12 @@
                     "required": false
                 },
                 {
+                    "name": "entityType",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
                     "name": "entityId",
                     "in": "query",
                     "type": "string",

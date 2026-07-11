@@ -459,6 +459,7 @@ export interface ListFeedbackQuery {
     project?: string
     status?: FeedbackStatus | "all"
     item?: string
+    entityType?: string          // escopo: work-item | project | planning | ideas | board | list | backlog
     entityId?: string
     since?: string
     until?: string

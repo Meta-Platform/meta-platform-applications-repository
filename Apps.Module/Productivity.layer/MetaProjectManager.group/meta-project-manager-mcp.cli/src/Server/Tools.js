@@ -736,17 +736,18 @@ const BuildTools = ({ store, actor }) => {
         // exclusivo e tem prazo) antes de trabalhar, e feche com resolve_feedback.
         {
             name: "list_feedback",
-            description: "Lista feedbacks do humano para os agentes. Por padrão só os ABERTOS (inclui os que estavam com outro agente e cujo claim expirou). Cada feedback diz o campo, a entidade e o trecho criticado. FLUXO: list_feedback → claim_feedback → (aplique a correção) → resolve_feedback.",
+            description: "Lista feedbacks do humano para os agentes. Por padrão só os ABERTOS (inclui os que estavam com outro agente e cujo claim expirou). Cada feedback diz o campo/escopo, a entidade e o trecho criticado. Além do feedback de ITEM, o humano dá feedback de ESCOPO (de tela): sobre o projeto inteiro (scope=project), todo o planejamento (scope=planning), todas as ideias (scope=ideas), o board/lista/backlog — filtre por `scope` para pegar só um recorte. FLUXO: list_feedback → claim_feedback → (aplique a correção) → resolve_feedback.",
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"),
                 status: S.enum(["open","in-analysis","resolved","dismissed","all"], "Status (padrão: open)"),
                 item: S.str("Só os feedbacks deste item (id|key)"),
+                scope: S.enum(["work-item","project","planning","ideas","board","list","backlog"], "Escopo: só o feedback deste recorte (ex.: planning = todo o planejamento)"),
                 since: S.str("Criados a partir desta data/hora (ISO)"),
                 until: S.str("Criados até esta data/hora (ISO)"),
                 limit: S.num("Máx. de feedbacks"), offset: S.num("Deslocamento")
             }),
             handler: (i) => store.ListFeedback({
-                project: i.project, status: i.status, item: i.item,
+                project: i.project, status: i.status, item: i.item, entityType: i.scope,
                 since: i.since, until: i.until, limit: i.limit, offset: i.offset
             })
         },

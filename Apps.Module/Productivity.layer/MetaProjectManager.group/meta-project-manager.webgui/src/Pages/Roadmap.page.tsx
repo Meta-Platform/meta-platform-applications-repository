@@ -8,6 +8,7 @@ import useLiveReload from "../Hooks/useLiveReload"
 import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import { Project, Milestone, Sprint, WorkItem, User, HorizonBoard as HorizonBoardData } from "../api/types"
 import AppShell from "../Components/AppShell"
+import PageFeedbackButton from "../Components/PageFeedbackButton"
 import MilestoneModal from "../Components/MilestoneModal"
 import SprintModal from "../Components/SprintModal"
 import ConfirmActionModal from "../Components/ConfirmActionModal"
@@ -115,6 +116,7 @@ const RoadmapPage = () => {
             title={project ? project.name : "Projeto"}
             subtitle="Planejamento · entregas, sprints e horizontes"
             actions={<>
+                <PageFeedbackButton scope="planning" projectId={projectId} label="Todo o planejamento" compact />
                 <div className="mpm-seg">
                     <button className={`mpm-seg__btn ${mode === "date" ? "is-active" : ""}`} title="Linha do tempo das entregas, ordenada pela data-alvo" onClick={() => setMode("date")}><Icon name="calendar" /> Por data</button>
                     <button className={`mpm-seg__btn ${mode === "horizon" ? "is-active" : ""}`} title="Itens agrupados por horizonte (agora/próximo/depois/talvez)" onClick={() => setMode("horizon")}><Icon name="align left" /> Por horizonte</button>

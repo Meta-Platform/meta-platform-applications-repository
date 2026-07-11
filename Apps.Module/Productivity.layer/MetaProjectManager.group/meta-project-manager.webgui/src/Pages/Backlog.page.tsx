@@ -9,6 +9,7 @@ import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import useItemFilters from "../Hooks/useItemFilters"
 import { Project, WorkItem, User, Milestone, Sprint } from "../api/types"
 import AppShell from "../Components/AppShell"
+import PageFeedbackButton from "../Components/PageFeedbackButton"
 import WorkItemInspector from "../Components/WorkItemInspector"
 import ItemFilterBar from "../Components/ItemFilterBar"
 import {
@@ -104,6 +105,7 @@ const BacklogPage = () => {
             ]}
             title={project ? project.name : "Projeto"}
             subtitle="Backlog · priorizado por valor"
+            actions={<PageFeedbackButton scope="backlog" projectId={projectId} label="Todo o backlog" />}
             onInspectorClose={() => setSelected(null)}>
 
         <div className="mpm-card">

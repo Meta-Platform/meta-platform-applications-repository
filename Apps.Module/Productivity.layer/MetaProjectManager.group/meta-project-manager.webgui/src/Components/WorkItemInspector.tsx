@@ -43,14 +43,15 @@ interface WorkItemInspectorProps {
 // Abas do modal de item (spec §8.1): evita uma rolagem única gigante.
 // "Detalhes" reúne os campos do item e a descrição — eram duas abas (Resumo e
 // Descrição), o que obrigava a alternar para ver contexto enquanto se escrevia.
-type TabKey = "detalhes" | "criterios" | "checklist" | "vinculos" | "anexos" | "atividade" | "auditoria"
+// A atividade (anotações + comentários) NÃO é mais uma aba: vive fixa na lateral
+// da aba "Detalhes", sempre visível ao lado da descrição.
+type TabKey = "detalhes" | "criterios" | "checklist" | "vinculos" | "anexos" | "auditoria"
 const TABS: { key: TabKey; label: string; icon: any; hint: string }[] = [
-    { key: "detalhes",  label: "Detalhes",   icon: "align left",           hint: "Campos do item (tipo, status, prioridade, planejamento) e descrição em markdown" },
+    { key: "detalhes",  label: "Detalhes",   icon: "align left",           hint: "Campos do item, descrição em markdown e atividade (anotações + comentários) na lateral" },
     { key: "criterios", label: "Critérios",  icon: "check circle outline", hint: "Critérios de aceite (Definition of Done)" },
     { key: "checklist", label: "Checklist",  icon: "tasks",                hint: "Sub-passos marcáveis do item" },
     { key: "vinculos",  label: "Vínculos",   icon: "linkify",              hint: "Dependências, bloqueios e relações com outros itens" },
     { key: "anexos",    label: "Anexos",     icon: "paperclip",            hint: "Arquivos, links e mídias" },
-    { key: "atividade", label: "Atividade",  icon: "comments",             hint: "Comentários e anotações (inclusive do usuario-desktop)" },
     { key: "auditoria", label: "Auditoria",  icon: "history",              hint: "Timeline técnica imutável: quem mudou o quê e quando" }
 ]
 
@@ -254,33 +255,10 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
             </div>
         </div>
 
-    // Duas colunas: a descrição (o que se lê e escreve) ocupa a coluna larga; os
-    // campos, o contexto e a entrega ficam na lateral. Em telas estreitas, empilha.
-    const detailsTab = <div className="mpm-details-scope"><div className="mpm-details">
-        <div className="mpm-details__main">
-            {item.blockedReason
-                ? <div className="mpm-error-banner"><Icon name="ban" /> Bloqueado: {item.blockedReason}</div>
-                : null}
-
-            {descBlock}
-
-            {item.children && item.children.length > 0
-                ? <div className="mpm-col">
-                    <div className="mpm-section-title"><Icon name="sitemap" /> Subtarefas ({item.children.length})</div>
-                    {item.children.map((c) =>
-                        <button key={c.id} className="mpm-subtask"
-                            title={`Abrir ${c.key} para editar`}
-                            onClick={() => openRef(c.id)}>
-                            <span className="mpm-mono mpm-muted">{c.key}</span>
-                            <StatusChip status={c.statusKey} />
-                            <span className="mpm-subtask__title">{c.title}</span>
-                            <Icon name="chevron right" className="mpm-muted" />
-                        </button>)}
-                </div>
-                : null}
-        </div>
-
-        <aside className="mpm-details__side">
+    // Faixa de campos (tipo, status, prioridade, planejamento) + contexto do
+    // ecossistema e entrega. Antes ficava na lateral; agora abre a coluna principal,
+    // compacta, logo acima da descrição — a lateral passou a ser a atividade.
+    const fieldsBlock = <div className="mpm-details__fields">
         <div className="mpm-row" style={{ justifyContent: "flex-end" }}>
             {hiddenCount > 0 || showEmptyFields
                 ? <button className="mpm-btn mpm-btn--ghost mpm-btn--sm"
@@ -393,6 +371,43 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
         <EcosystemContextSection item={item} scope={projectScope} onChanged={() => patch(async () => {})} />
 
         <SoftwareContextSection item={item} onSave={(input) => patch(() => api.items.update(item.id, input))} />
+    </div>
+
+    // Duas colunas: a descrição (o que se lê e escreve) ocupa a coluna larga; a
+    // atividade — anotações e comentários — vive fixa na lateral, sempre visível.
+    // Em telas estreitas, empilha (container-query abaixo).
+    const detailsTab = <div className="mpm-details-scope"><div className="mpm-details">
+        <div className="mpm-details__main">
+            {fieldsBlock}
+
+            {item.blockedReason
+                ? <div className="mpm-error-banner"><Icon name="ban" /> Bloqueado: {item.blockedReason}</div>
+                : null}
+
+            {descBlock}
+
+            {item.children && item.children.length > 0
+                ? <div className="mpm-col">
+                    <div className="mpm-section-title"><Icon name="sitemap" /> Subtarefas ({item.children.length})</div>
+                    {item.children.map((c) =>
+                        <button key={c.id} className="mpm-subtask"
+                            title={`Abrir ${c.key} para editar`}
+                            onClick={() => openRef(c.id)}>
+                            <span className="mpm-mono mpm-muted">{c.key}</span>
+                            <StatusChip status={c.statusKey} />
+                            <span className="mpm-subtask__title">{c.title}</span>
+                            <Icon name="chevron right" className="mpm-muted" />
+                        </button>)}
+                </div>
+                : null}
+        </div>
+
+        <aside className="mpm-details__side">
+            <div className="mpm-section-title" title="Atividade do item: anotações do ambiente desktop e comentários">
+                <Icon name="comments" /> Atividade
+            </div>
+            <ItemNotes itemId={item.id} />
+            <CommentTimeline itemId={item.id} usersById={usersById} />
         </aside>
     </div></div>
 
@@ -461,10 +476,6 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
       : tab === "checklist" ? checklistTab
       : tab === "vinculos"  ? <LinkPanel item={item} projectId={pid} onChanged={() => patch(async () => {})} />
       : tab === "anexos"    ? <AttachmentPanel itemId={item.id} />
-      : tab === "atividade" ? <div className="mpm-col mpm-gap-4">
-                                <ItemNotes itemId={item.id} />
-                                <CommentTimeline itemId={item.id} usersById={usersById} />
-                              </div>
       : <AuditTimeline projectId={pid} entityId={item.id} />
 
     // Referências clicadas DENTRO do modal (texto markdown, vínculos, subtarefas)

@@ -8,6 +8,7 @@ import useLiveReload from "../Hooks/useLiveReload"
 import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import { Project, WorkItem, User, CLARITY_STATES } from "../api/types"
 import AppShell from "../Components/AppShell"
+import PageFeedbackButton from "../Components/PageFeedbackButton"
 import WorkItemInspector from "../Components/WorkItemInspector"
 import { TypeBadge, ValueBadge, EffortBadge, AreaBadge, Loading, EmptyState, ErrorBanner } from "../Components/Primitives"
 
@@ -98,6 +99,7 @@ const InboxPage = () => {
             ]}
             title={project ? project.name : "Projeto"}
             subtitle="Ideias · captura rápida e triagem"
+            actions={<PageFeedbackButton scope="ideas" projectId={projectId} label="Todas as ideias" />}
             onInspectorClose={() => setSelected(null)}>
 
         <div className="mpm-card">

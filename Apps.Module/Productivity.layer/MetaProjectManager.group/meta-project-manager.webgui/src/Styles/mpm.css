@@ -505,7 +505,7 @@ html, body, #gui { height: 100%; margin: 0; }
 }
 .mpm-project-card__name {
     font-weight: 700; font-size: var(--mp-text-lg); color: var(--mp-ink);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    white-space: normal; overflow-wrap: anywhere;
 }
 .mpm-project-card__key { font-family: var(--mp-font-mono); font-size: var(--mp-text-xs); color: var(--mp-muted); }
 .mpm-project-card__desc {
@@ -723,7 +723,24 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-timeline__text { color: var(--mp-ink-2); font-size: var(--mp-text-sm); white-space: pre-wrap; }
 
 .mpm-attach { display: flex; align-items: center; gap: var(--mp-space-2); padding: var(--mp-space-2); border: var(--mp-border-thin); border-radius: var(--mp-radius-sm); background: var(--mp-surface-2); }
-.mpm-attach__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mp-ink-2); }
+.mpm-attach__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.mpm-attach__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mp-ink-2); }
+.mpm-attach__meta { font-size: 11px; }
+
+/* Zona de arrastar-e-soltar do painel de anexos: realça a borda enquanto o
+   usuário arrasta arquivos por cima. */
+.mpm-attach-drop { position: relative; border-radius: var(--mp-radius-sm); }
+.mpm-attach-drop.is-dragging {
+    outline: 2px dashed var(--mp-accent-blue);
+    outline-offset: 4px;
+    background: var(--mp-accent-blue-tint);
+}
+.mpm-attach-drop__hint {
+    display: flex; align-items: center; justify-content: center; gap: var(--mp-space-2);
+    padding: var(--mp-space-3); border: 1px dashed var(--mp-accent-blue);
+    border-radius: var(--mp-radius-sm); color: var(--mp-accent-blue);
+    font-size: var(--mp-text-sm); font-weight: 600;
+}
 
 /* ============================================================ */
 /* Formulários                                                  */
@@ -773,7 +790,7 @@ html, body, #gui { height: 100%; margin: 0; }
 /* Inspector de tarefa como MODAL centralizado (abrir tarefa). */
 .mpm-overlay:has(.mpm-modal--inspector) { padding-top: 8vh; }
 .mpm-modal--inspector {
-    width: min(920px, 95vw);
+    width: min(1080px, 95vw);
     height: 84vh; max-height: 84vh;
     padding: 0; overflow: hidden;
 }
@@ -1273,26 +1290,37 @@ html, body, #gui { height: 100%; margin: 0; }
     padding: var(--mp-space-3) var(--mp-space-4) 0;
     flex: 0 0 auto;
 }
+/* Abas do inspector: barra de sublinhado limpa (nada de "abas de pasta" com
+   contorno boxy). A aba ativa é a única com sublinhado em accent + texto forte;
+   as demais são texto discreto. O foco usa focus-visible (só teclado), então o
+   clique não deixa mais aquela caixa em volta da aba. */
 .mpm-tabs {
-    display: flex; gap: 2px; flex: 0 0 auto;
-    padding: var(--mp-space-3) var(--mp-space-4) 0;
+    display: flex; gap: var(--mp-space-1); flex: 0 0 auto;
+    padding: var(--mp-space-2) var(--mp-space-4) 0;
     border-bottom: var(--mp-border);
     overflow-x: auto;
 }
 .mpm-tab {
     display: inline-flex; align-items: center; gap: 6px;
-    height: 32px; padding: 0 var(--mp-space-3);
+    height: 38px; padding: 0 var(--mp-space-3);
     background: transparent; color: var(--mp-muted);
-    border: 1px solid transparent; border-bottom: none;
-    font-size: var(--mp-text-sm); font-weight: 600;
-    cursor: pointer; white-space: nowrap;
+    border: none; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; /* sublinhado encosta na borda da barra */
+    border-radius: var(--mp-radius-sm) var(--mp-radius-sm) 0 0;
+    font-size: var(--mp-text-sm); font-weight: 600; letter-spacing: 0.01em;
+    cursor: pointer; white-space: nowrap; outline: none;
+    transition: color 0.1s ease, border-color 0.1s ease, background 0.1s ease;
 }
-.mpm-tab:hover { background: var(--mp-surface-2); color: var(--mp-ink); }
+.mpm-tab:hover { color: var(--mp-ink); background: var(--mp-surface-2); }
 .mpm-tab.is-active {
-    background: var(--mp-surface); color: var(--mp-ink);
-    border-color: var(--mp-line); border-bottom: 2px solid var(--mp-accent-blue);
+    color: var(--mp-ink);
+    border-bottom-color: var(--mp-accent-blue);
+    background: transparent;
 }
-.mpm-tab .icon { margin: 0 !important; }
+.mpm-tab:focus-visible { box-shadow: inset 0 0 0 2px var(--mp-accent-blue-tint); }
+.mpm-tab .icon { margin: 0 !important; color: var(--mp-muted-2); }
+.mpm-tab:hover .icon { color: var(--mp-muted); }
+.mpm-tab.is-active .icon { color: var(--mp-accent-blue); }
 
 /* Grid compacto de campos do Resumo (2–3 colunas, não 1 campo por linha). */
 .mpm-inspector__grid {
@@ -1692,10 +1720,11 @@ html, body, #gui { height: 100%; margin: 0; }
     max-width: 98vw; max-height: 92vh;
 }
 
-/* A descrição ocupa a coluna larga; campos e contexto vão para a lateral. */
+/* A descrição ocupa a coluna larga; a atividade (anotações + comentários) vive na
+   lateral. Os campos do item viram uma faixa compacta no topo da coluna larga. */
 .mpm-details {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-columns: minmax(0, 1fr) 360px;
     gap: var(--mp-space-5);
     align-items: start;
 }
@@ -1703,11 +1732,19 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-details__side {
     display: flex; flex-direction: column; gap: var(--mp-space-4);
     min-width: 0;
-    padding-left: var(--mp-space-4);
+    padding-left: var(--mp-space-5);
     border-left: 1px solid var(--mp-line-faint);
 }
-/* Na lateral estreita, os campos empilham em vez de virar uma grade apertada. */
-.mpm-details__side .mpm-inspector__grid { grid-template-columns: 1fr; }
+
+/* Faixa de campos: grade compacta multi-coluna, separada da descrição por uma
+   linha tênue. Não é mais uma coluna estreita — abre na largura toda. */
+.mpm-details__fields {
+    display: flex; flex-direction: column; gap: var(--mp-space-3);
+    padding-bottom: var(--mp-space-4);
+    border-bottom: 1px solid var(--mp-line-faint);
+}
+/* A linha de "mostrar campos vazios" não reserva altura quando está vazia. */
+.mpm-details__fields > .mpm-row:empty { display: none; }
 
 /* Modal estreito: uma coluna só.
    O container das container-queries NÃO pode ser o elemento que rola: ao trocar

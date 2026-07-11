@@ -10,7 +10,8 @@ const FeedbackController = (params) => {
     const ListFeedback = async (p = {}) => Guard(async () => {
         await ctx.ready
         return store.ListFeedback({
-            project: p.project, status: p.status, item: p.item, entityId: p.entityId,
+            project: p.project, status: p.status, item: p.item,
+            entityType: p.entityType, entityId: p.entityId,
             since: p.since, until: p.until, limit: p.limit, offset: p.offset
         })
     })

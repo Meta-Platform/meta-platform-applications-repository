@@ -18,6 +18,12 @@ const FeedbackStore = ({ models, writeAudit, emit, store }) => {
     const CLAIM_TTL_SECONDS = 30 * 60   // 30 min: tempo de um agente trabalhar
     const STATUSES = ["open", "in-analysis", "resolved", "dismissed"]
 
+    // Feedback de ESCOPO (de tela): não é sobre um item, e sim sobre um recorte
+    // inteiro do projeto. O entityType carrega o escopo e o entityId aponta para o
+    // projeto, para o agente conseguir filtrar ("todo o planejamento", "todas as
+    // ideias"…). A mesma string é usada na GUI (PageFeedbackButton) e no MCP.
+    const PROJECT_SCOPES = ["project", "planning", "ideas", "board", "list", "backlog"]
+
     const _now = () => new Date()
 
     // Um claim vencido não vale: o feedback está de fato aberto.
@@ -82,7 +88,7 @@ const FeedbackStore = ({ models, writeAudit, emit, store }) => {
             id: NewId(),
             projectId: projectInstance.id,
             entityType,
-            entityId: entityId || (entityType === "project" ? projectInstance.id : undefined),
+            entityId: entityId || (PROJECT_SCOPES.includes(entityType) ? projectInstance.id : undefined),
             workItemId: workItem ? workItem.id : undefined,
             field, fieldLabel, screen,
             excerpt: excerpt ? String(excerpt).slice(0, 2000) : undefined,
@@ -119,11 +125,14 @@ const FeedbackStore = ({ models, writeAudit, emit, store }) => {
 
     // `status: "open"` inclui os claims vencidos (é o que um agente deve poder pegar).
     const ListFeedback = async ({
-        project, status = "open", item, entityId, since, until, limit = 50, offset = 0
+        project, status = "open", item, entityType, entityId, since, until, limit = 50, offset = 0
     } = {}) => {
         const where = {}
         if(project) where.projectId = (await store.ResolveProject(project)).id
         if(item) where.workItemId = (await store.ResolveItem(item)).id
+        // Filtra pelo ESCOPO/entidade: entityType="planning" traz só o feedback do
+        // planejamento; "work-item" traz só o de tarefas; etc.
+        if(entityType) where.entityType = entityType
         if(entityId) where.entityId = entityId
         if(since || until){
             where.createdAt = {}

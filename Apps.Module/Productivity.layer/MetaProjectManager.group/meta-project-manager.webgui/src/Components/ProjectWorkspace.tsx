@@ -11,6 +11,7 @@ import useItemFilters from "../Hooks/useItemFilters"
 import { useAppStateWriter } from "../Hooks/useAppState"
 import { Project, Board, WorkItem, User, Milestone, Sprint, PlatformEvent } from "../api/types"
 import AppShell from "./AppShell"
+import PageFeedbackButton from "./PageFeedbackButton"
 import KanbanBoard from "./KanbanBoard"
 import WorkItemList from "./WorkItemList"
 import WorkItemInspector from "./WorkItemInspector"
@@ -292,6 +293,8 @@ const ProjectWorkspace = () => {
             title={project ? project.name : "Projeto"}
             subtitle={board ? board.name : "sem board"}
             actions={<>
+                <PageFeedbackButton scope={view === "list" ? "list" : "board"} projectId={projectId}
+                    label={view === "list" ? "Toda a lista" : "Todo o board"} compact />
                 <div className="mpm-seg">
                     <button className={`mpm-seg__btn ${view === "board" ? "is-active" : ""}`} onClick={() => changeView("board")}><Icon name="columns" /> Board</button>
                     <button className={`mpm-seg__btn ${view === "list" ? "is-active" : ""}`} onClick={() => changeView("list")}><Icon name="list" /> Lista</button>

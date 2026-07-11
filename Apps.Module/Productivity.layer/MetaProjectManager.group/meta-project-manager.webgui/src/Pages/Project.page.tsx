@@ -8,11 +8,13 @@ import useLiveReload from "../Hooks/useLiveReload"
 import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import { Project, ProjectMetrics, Board, ActivityEntry, User } from "../api/types"
 import AppShell from "../Components/AppShell"
+import PageFeedbackButton from "../Components/PageFeedbackButton"
 import NewBoardModal from "../Components/NewBoardModal"
 import ConfirmActionModal from "../Components/ConfirmActionModal"
 import AuditTimeline from "../Components/AuditTimeline"
 import WorkItemInspector from "../Components/WorkItemInspector"
 import Markdown from "../Components/Markdown"
+import DescriptionEditor from "../Components/DescriptionEditor"
 import { Metric, Progress, StatusChip, Loading, ErrorBanner } from "../Components/Primitives"
 import { formatDateTime } from "../Utils/format"
 import { activityTitle, activityDetail, activityIcon, activityItemId } from "../Utils/activity"
@@ -57,6 +59,8 @@ const ProjectPage = () => {
     const [deleting, setDeleting] = useState(false)
     const [tab, setTab] = useState<OverviewTab>("resumo")
     const [moreOpen, setMoreOpen] = useState(false)
+    // Descrição do projeto: leitura por padrão, editor rico (markdown + imagem) sob demanda.
+    const [editingDesc, setEditingDesc] = useState(false)
     const [users, setUsers] = useState<User[]>([])
     // Item aberto a partir de uma referência (CFGEC-26) citada na descrição do projeto.
     const [selected, setSelected] = useState<string | null>(null)
@@ -113,6 +117,7 @@ const ProjectPage = () => {
     const headerActions = project
         ? <>
             <StatusChip status={project.status} />
+            <PageFeedbackButton scope="project" projectId={projectId} label="Projeto inteiro" />
             <button className="mpm-btn" title="Abrir o board padrão do projeto" onClick={() => openBoard(project.defaultBoardId)}>
                 <Icon name="columns" /> Abrir board
             </button>
@@ -200,9 +205,16 @@ const ProjectPage = () => {
                             <div className="mpm-panel">
                                 <div className="mpm-panel__title">
                                     <Icon name="align left" /> Descrição
+                                    <span style={{ marginLeft: "auto" }} />
+                                    {!editingDesc
+                                        ? <button className="mpm-btn mpm-btn--sm" title="Editar a descrição em markdown (aceita imagens)"
+                                            onClick={() => setEditingDesc(true)}>
+                                            <Icon name="pencil" /> Editar
+                                        </button>
+                                        : null}
                                     {/* Sugerir ao agente uma melhoria no texto do projeto.
                                         O balão abre logo abaixo do ícone. */}
-                                    <span className="mpm-iconbtn" style={{ marginLeft: "auto" }}
+                                    <span className="mpm-iconbtn"
                                         title="Feedback para o agente sobre a descrição do projeto"
                                         onClick={(e) => {
                                             const box = (e.currentTarget as HTMLElement).getBoundingClientRect()
@@ -220,13 +232,24 @@ const ProjectPage = () => {
                                         <Icon name="comment alternate outline" />
                                     </span>
                                 </div>
-                                {project.description
+                                {editingDesc
+                                    ? <div className="mpm-desc mpm-desc--inline"
+                                        {...feedbackTarget({ entityType: "project", entityId: project.id, project: project.id, field: "description", fieldLabel: "Descrição do projeto" })}>
+                                        <DescriptionEditor key={`proj-desc-${project.id}`} value={project.description || ""}
+                                            label="descrição do projeto"
+                                            onSave={(md) => api.projects.update(project.id, { description: md }).then(setProject).catch((e) => setError(e.message))}
+                                            onDone={() => setEditingDesc(false)} />
+                                    </div>
+                                    : project.description
                                     ? <div {...feedbackTarget({ entityType: "project", entityId: project.id, project: project.id, field: "description", fieldLabel: "Descrição do projeto" })}>
                                         <Markdown>{project.description}</Markdown>
                                     </div>
                                     : <div className="mpm-tabpanel-empty">
                                         <Icon name="align left" size="large" />
                                         <div>Este projeto ainda não tem descrição.</div>
+                                        <button className="mpm-btn mpm-btn--sm mpm-btn--primary" onClick={() => setEditingDesc(true)}>
+                                            <Icon name="pencil" /> Escrever descrição
+                                        </button>
                                     </div>}
                             </div>
                         </div>

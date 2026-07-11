@@ -9,6 +9,7 @@ import { ErrorBanner } from "./Primitives"
 import GetAttachmentDownloadUrl from "../Utils/GetAttachmentDownloadUrl"
 import { triggerBase64Download } from "../Utils/triggerDownload"
 import AttachmentPreview from "./AttachmentPreview"
+import { formatDateTime } from "../Utils/format"
 
 // AttachmentPanel (spec §11.1): lista anexos do item; permite adicionar link
 // ou upload (arquivo -> base64) e remover.
@@ -20,6 +21,7 @@ const AttachmentPanel = ({ itemId }: { itemId: string }) => {
     const [linkName, setLinkName] = useState("")
     const [error, setError] = useState<string | null>(null)
     const [busy, setBusy] = useState(false)
+    const [dragging, setDragging] = useState(false)
     const [preview, setPreview] = useState<{ [id: string]: boolean }>({})
 
     // apenas anexos do item (os de comentário aparecem sob o comentário)
@@ -38,20 +40,58 @@ const AttachmentPanel = ({ itemId }: { itemId: string }) => {
         } catch (e: any) { setError(e.message) } finally { setBusy(false) }
     }
 
-    const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files && e.target.files[0]
-        if (!file) return
-        const reader = new FileReader()
-        reader.onload = async () => {
-            setBusy(true); setError(null)
-            try {
+    const readBase64 = (file: File): Promise<string> =>
+        new Promise((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => {
                 const result = String(reader.result || "")
-                const base64 = result.indexOf(",") >= 0 ? result.split(",")[1] : result
-                await api.attachments.add(itemId, { name: file.name, base64 })
-                await load()
-            } catch (err: any) { setError(err.message) } finally { setBusy(false) }
+                resolve(result.indexOf(",") >= 0 ? result.split(",")[1] : result)
+            }
+            reader.onerror = () => reject(reader.error)
+            reader.readAsDataURL(file)
+        })
+
+    // Upload de um ou vários arquivos (botão ou arrastar). Sobe em sequência para
+    // um erro num arquivo não derrubar os outros.
+    const uploadFiles = async (files: File[]) => {
+        if (!files.length) return
+        setBusy(true); setError(null)
+        try {
+            for (const file of files) {
+                try {
+                    const base64 = await readBase64(file)
+                    await api.attachments.add(itemId, { name: file.name, base64 })
+                } catch (err: any) { setError(`Falha em "${file.name}": ${err.message}`) }
+            }
+            await load()
+        } finally { setBusy(false) }
+    }
+
+    const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        uploadFiles(Array.from(e.target.files || []))
+        e.target.value = ""
+    }
+
+    const onDrop = (e: React.DragEvent) => {
+        setDragging(false)
+        const files = Array.from(e.dataTransfer && e.dataTransfer.files || [])
+        if (files.length) { e.preventDefault(); uploadFiles(files) }
+    }
+    const onDragOver = (e: React.DragEvent) => {
+        if (Array.from(e.dataTransfer && e.dataTransfer.types || []).includes("Files")) {
+            e.preventDefault(); if (!dragging) setDragging(true)
         }
-        reader.readAsDataURL(file)
+    }
+    const onDragLeave = (e: React.DragEvent) => {
+        if (e.currentTarget === e.target) setDragging(false)
+    }
+
+    // Metadados legíveis: tamanho e data (o que ajuda a reconhecer o anexo).
+    const humanSize = (bytes?: number) => {
+        if (!bytes && bytes !== 0) return ""
+        if (bytes < 1024) return `${bytes} B`
+        if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+        return `${(bytes / 1024 / 1024).toFixed(1)} MB`
     }
 
     const remove = async (id: string) => {
@@ -77,9 +117,13 @@ const AttachmentPanel = ({ itemId }: { itemId: string }) => {
         }
     }
 
-    return <div className="mpm-col">
+    return <div className={`mpm-col mpm-attach-drop ${dragging ? "is-dragging" : ""}`}
+        onDrop={onDrop} onDragOver={onDragOver} onDragLeave={onDragLeave}>
         <div className="mpm-section-title"><Icon name="paperclip" /> Anexos ({items.length})</div>
         <ErrorBanner error={error} />
+        {dragging
+            ? <div className="mpm-attach-drop__hint"><Icon name="upload" /> Solte os arquivos para anexar</div>
+            : null}
         {items.map((a) => {
             const link = isLink(a)
             // arquivo só é baixável se conseguimos resolver a URL (browser, não Electron)
@@ -92,7 +136,14 @@ const AttachmentPanel = ({ itemId }: { itemId: string }) => {
             return <div key={a.id} className="mpm-col" style={{ gap: "var(--mp-space-1)" }}>
                 <div className="mpm-attach">
                     <Icon name={link ? "linkify" : "file outline"} />
-                    <span className="mpm-attach__name" title={a.name}>{a.name}</span>
+                    <div className="mpm-attach__body">
+                        <span className="mpm-attach__name" title={a.name}>{a.name}</span>
+                        {!link && (a.sizeBytes || a.createdAt)
+                            ? <span className="mpm-attach__meta mpm-muted">
+                                {[humanSize(a.sizeBytes), a.createdAt ? formatDateTime(a.createdAt) : ""].filter(Boolean).join(" · ")}
+                            </span>
+                            : null}
+                    </div>
                     {canPreview
                         ? <span className="mpm-iconbtn mpm-btn--sm" title="Pré-visualizar"
                             onClick={() => setPreview((s) => ({ ...s, [a.id]: !s[a.id] }))}>
@@ -121,9 +172,10 @@ const AttachmentPanel = ({ itemId }: { itemId: string }) => {
                     <Icon name="linkify" /> Link
                 </button>
             </div>
-            <label className="mpm-btn mpm-btn--ghost mpm-btn--sm" style={{ cursor: "pointer" }}>
-                <Icon name="upload" /> Upload arquivo
-                <input type="file" style={{ display: "none" }} onChange={onFile} />
+            <label className="mpm-btn mpm-btn--ghost mpm-btn--sm" style={{ cursor: "pointer" }}
+                title="Envie um ou vários arquivos (ou arraste-os para o painel)">
+                <Icon name="upload" /> {busy ? "Enviando…" : "Upload arquivo"}
+                <input type="file" multiple style={{ display: "none" }} onChange={onFile} disabled={busy} />
             </label>
         </div>
     </div>

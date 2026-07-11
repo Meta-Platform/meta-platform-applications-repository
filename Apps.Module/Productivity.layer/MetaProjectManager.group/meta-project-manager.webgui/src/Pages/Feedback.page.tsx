@@ -34,6 +34,12 @@ const STATUS_LABEL: Record<string, string> = {
     open: "aberto", "in-analysis": "em análise", resolved: "resolvido", dismissed: "descartado"
 }
 
+// Feedback de escopo (de tela) → rótulo legível do recorte criticado.
+const SCOPE_LABEL: Record<string, string> = {
+    project: "Projeto inteiro", planning: "Todo o planejamento", ideas: "Todas as ideias",
+    board: "Board", list: "Lista", backlog: "Backlog"
+}
+
 // Tela de consulta dos feedbacks dados aos agentes. Serve nas duas rotas:
 // /feedback (todos os projetos) e /projects/:projectId/feedback (só o projeto).
 const FeedbackPage = () => {
@@ -131,7 +137,7 @@ const FeedbackPage = () => {
                 : items.length === 0
                 ? <EmptyState icon="comment alternate outline"
                     title="Nenhum feedback aqui"
-                    hint="Clique com o botão direito num campo (título, descrição, critérios) e escolha “Feedback para o agente”." />
+                    hint="Clique com o botão direito num campo (título, descrição, critérios) e escolha “Feedback para o agente” — ou use o botão “Feedback” no topo da Visão geral, Board, Lista, Backlog, Planejamento ou Ideias para comentar o recorte inteiro." />
                 : <div className="mpm-col mpm-gap-3">
                     {items.map((f) => {
                         const proj = projectsById[f.projectId]
@@ -142,6 +148,8 @@ const FeedbackPage = () => {
                                 </span>
                                 {f.fieldLabel || f.field
                                     ? <span className="mpm-chip mpm-chip--info">{f.fieldLabel || f.field}</span>
+                                    : !f.workItemId && SCOPE_LABEL[f.entityType]
+                                    ? <span className="mpm-chip mpm-chip--info" title="Feedback sobre um recorte inteiro do projeto">{SCOPE_LABEL[f.entityType]}</span>
                                     : null}
                                 {!projectId && proj ? <span className="mpm-muted">{proj.name}</span> : null}
                                 <span className="mpm-toolbar__spacer" style={{ flex: 1 }} />

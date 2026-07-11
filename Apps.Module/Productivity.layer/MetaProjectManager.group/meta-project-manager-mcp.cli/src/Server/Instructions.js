@@ -84,6 +84,13 @@ O humano clica com o botão direito num campo da interface e escreve o que quer
 diferente. Isso vira um FEEDBACK com contexto: entidade, campo, tela e o trecho
 criticado. É a forma mais direta de saber o que ele quer.
 
+Além do feedback de ITEM, ele dá feedback de ESCOPO (de tela): sobre o projeto
+inteiro, todo o planejamento, todas as ideias, o board, a lista ou o backlog.
+Filtre com \`list_feedback scope=<project|planning|ideas|board|list|backlog>\`
+para tratar um recorte de cada vez — esse feedback é sobre o CONJUNTO, não sobre
+um item só, então costuma virar várias mudanças (reorganizar o plano, triar
+ideias, ajustar prioridades) em vez de uma edição pontual.
+
 Fluxo obrigatório, nesta ordem:
 1. \`list_feedback\` (padrão: só os abertos deste projeto);
 2. \`claim_feedback\` — **PEGUE antes de trabalhar**. O claim é EXCLUSIVO: se
