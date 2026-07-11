@@ -10,7 +10,7 @@ import { Project, WorkItem, User, CLARITY_STATES } from "../api/types"
 import AppShell from "../Components/AppShell"
 import PageFeedbackButton from "../Components/PageFeedbackButton"
 import WorkItemInspector from "../Components/WorkItemInspector"
-import { TypeBadge, ValueBadge, EffortBadge, AreaBadge, Loading, EmptyState, ErrorBanner } from "../Components/Primitives"
+import { ValueBadge, EffortBadge, AreaBadge, Loading, EmptyState, ErrorBanner } from "../Components/Primitives"
 
 // Horizontes de triagem (para onde uma ideia da inbox pode ir).
 const PROMOTE: { key: string; label: string; icon: any }[] = [
@@ -29,6 +29,9 @@ const InboxPage = () => {
     const [items, setItems] = useState<WorkItem[]>([])
     const [users, setUsers] = useState<User[]>([])
     const [draft, setDraft] = useState("")
+    // Captura enxuta: além do título, uma frase de problema/oportunidade e a origem.
+    const [problem, setProblem] = useState("")
+    const [origin, setOrigin] = useState("")
     const [busy, setBusy] = useState(false)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -63,8 +66,12 @@ const InboxPage = () => {
         if (!draft.trim() || !projectId) return
         setBusy(true); setError(null)
         try {
-            await api.items.create(projectId, { title: draft.trim(), type: "task", horizon: "inbox", clarityState: "idea" })
-            setDraft(""); await loadItems()
+            await api.items.create(projectId, {
+                title: draft.trim(), type: "task", horizon: "inbox", clarityState: "idea",
+                description: problem.trim() ? `## Problema / oportunidade\n${problem.trim()}` : undefined,
+                ideaOrigin: origin.trim() || undefined
+            })
+            setDraft(""); setProblem(""); setOrigin(""); await loadItems()
         } catch (e: any) { setError(e.message) } finally { setBusy(false) }
     }
 
@@ -98,20 +105,31 @@ const InboxPage = () => {
                 { label: "Ideias" }
             ]}
             title={project ? project.name : "Projeto"}
-            subtitle="Ideias · captura rápida e triagem"
+            subtitle="Discovery · capture ideias sem compromisso; enriqueça e triangule depois"
             actions={<PageFeedbackButton scope="ideas" projectId={projectId} label="Todas as ideias" />}
             onInspectorClose={() => setSelected(null)}>
 
-        <div className="mpm-card">
+        <div className="mpm-card mpm-idea-capture">
             <div className="mpm-row">
-                <Icon name="lightbulb outline" size="large" />
-                <input className="mpm-input" placeholder="Nova ideia... (Enter para capturar)"
+                <Icon name="lightbulb outline" size="large" className="mpm-idea-capture__ico" />
+                <input className="mpm-input" placeholder="Nova ideia — um título curto (Enter para capturar)"
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") capture() }} />
                 <button className="mpm-btn mpm-btn--primary" disabled={busy || !draft.trim()} onClick={capture}>
                     <Icon name="plus" /> Capturar
                 </button>
+            </div>
+            {/* Captura enxuta: só o essencial; o resto se enriquece depois no item. */}
+            <div className="mpm-row mpm-wrap" style={{ gap: "var(--mp-space-2)" }}>
+                <input className="mpm-input" style={{ flex: 3 }} value={problem}
+                    placeholder="Problema ou oportunidade em uma frase (opcional)"
+                    onChange={(e) => setProblem(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") capture() }} />
+                <input className="mpm-input" style={{ flex: 1, minWidth: 140 }} value={origin}
+                    placeholder="Origem (opcional)"
+                    onChange={(e) => setOrigin(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") capture() }} />
             </div>
         </div>
 
@@ -120,16 +138,20 @@ const InboxPage = () => {
         {loading
             ? <Loading />
             : items.length === 0
-                ? <EmptyState icon="inbox" title="Nenhuma ideia capturada" hint="Digite acima para capturar sua primeira ideia." />
+                ? <EmptyState icon="lightbulb outline" title="Nenhuma ideia ainda"
+                    hint="Capture uma ideia acima — sem compromisso. Você tria e enriquece depois." />
                 : <div className="mpm-col mpm-gap-4">
                     {items.map((it) =>
-                        <div key={it.id} className="mpm-card mpm-col">
+                        <div key={it.id} className="mpm-card mpm-col mpm-idea">
                             <div className="mpm-row mpm-wrap">
-                                <TypeBadge type={it.type} />
+                                <span className="mpm-badge mpm-badge--idea" title="Ideia — ainda não é trabalho comprometido">
+                                    <Icon name="lightbulb outline" style={{ margin: 0 }} /> ideia
+                                </span>
                                 <ValueBadge value={it.value} />
                                 <EffortBadge effort={it.effort} />
                                 <AreaBadge area={it.area} />
                                 <span className="mpm-mono mpm-muted">{it.key}</span>
+                                {it.ideaOrigin ? <span className="mpm-muted" style={{ fontSize: "12px" }}>de {it.ideaOrigin}</span> : null}
                                 <span style={{ fontWeight: 600, cursor: "pointer", flex: 1 }} onClick={() => setSelected(it.id)}>{it.title}</span>
                             </div>
                             <div className="mpm-row mpm-wrap">

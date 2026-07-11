@@ -581,6 +581,14 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-badge--val-low      { color: var(--mp-muted);         border-color: var(--mp-line-soft); }
 .mpm-badge--val-none     { color: var(--mp-muted-2);       border-color: var(--mp-line-faint); }
 .mpm-badge--effort       { color: var(--mp-accent-cyan);   border-color: var(--mp-accent-cyan); }
+/* Chip de IDEIA (discovery): distinto dos tipos de trabalho — âmbar + lâmpada. */
+.mpm-badge--idea { color: var(--mp-accent-yellow); border-color: var(--mp-accent-yellow); background: var(--mp-surface); text-transform: none; }
+
+/* Card de ideia: leitura de "descoberta", não de tarefa comprometida (borda
+   tracejada + faixa âmbar à esquerda). */
+.mpm-idea { border-style: dashed; border-left: 3px solid var(--mp-accent-yellow); }
+.mpm-idea-capture { border-left: 3px solid var(--mp-accent-yellow); }
+.mpm-idea-capture__ico { color: var(--mp-accent-yellow); }
 
 .mpm-badge--prio-urgent { color: var(--mp-danger);        border-color: var(--mp-danger); }
 .mpm-badge--prio-high   { color: var(--mp-accent-orange); border-color: var(--mp-accent-orange); }
