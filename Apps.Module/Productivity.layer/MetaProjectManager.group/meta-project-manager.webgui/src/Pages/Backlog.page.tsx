@@ -18,6 +18,9 @@ import {
 } from "../Components/Primitives"
 import { summarize } from "../Utils/summary"
 
+// Status terminais: um item aqui já saiu do backlog (foi concluído/arquivado).
+const DONE_STATUSES = new Set(["done", "archived", "completed"])
+
 // BacklogPage: backlog priorizado por VALOR (sort=value).
 //
 // É uma LISTA, não uma tabela: quem prioriza precisa LER o item, e as colunas de
@@ -89,6 +92,13 @@ const BacklogPage = () => {
         catch (e: any) { setError(e.message) } finally { setBusy(false) }
     }
 
+    // Backlog = trabalho POR FAZER: itens concluídos não pertencem aqui. Só
+    // aparecem se o usuário filtrar explicitamente por um status terminal.
+    const visibleItems = useMemo(
+        () => filters.status ? items : items.filter((it) => !DONE_STATUSES.has(it.statusKey)),
+        [items, filters.status]
+    )
+
     const inspector = selected
         ? <WorkItemInspector itemId={selected} projectId={projectId} users={users}
             onClose={() => setSelected(null)} onChanged={loadItems} />
@@ -127,10 +137,11 @@ const BacklogPage = () => {
 
         {loading
             ? <Loading />
-            : items.length === 0
-                ? <EmptyState icon="clipboard list" title="Backlog vazio" hint="Adicione itens acima ou ajuste os filtros." />
+            : visibleItems.length === 0
+                ? <EmptyState icon="clipboard list" title="Nada por fazer no backlog"
+                    hint={items.length > 0 ? "Todos os itens já foram concluídos. Ajuste os filtros para ver outros." : "Adicione itens acima ou ajuste os filtros."} />
                 : <div className="mpm-backlog">
-                    {items.map((it) => {
+                    {visibleItems.map((it) => {
                         const assignee = it.assigneeUserId ? usersById[it.assigneeUserId] : undefined
                         const milestone = it.milestoneId ? milestonesById[it.milestoneId] : undefined
                         const sprint = it.sprintId ? sprintsById[it.sprintId] : undefined

@@ -2012,13 +2012,14 @@ html, body, #gui { height: 100%; margin: 0; }
     color: var(--mp-ink);
     overflow-wrap: anywhere;
 }
-/* Fiapo da descrição: dá para priorizar sem abrir cada item. */
+/* Fiapo da descrição: 1 linha só — dá pra priorizar sem abrir, sem sobrecarregar
+   a lista. O item inteiro está a um clique. */
 .mpm-backlog__summary {
     margin: 0;
     color: var(--mp-muted);
     font-size: var(--mp-text-sm);
     line-height: 1.45;
-    display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
+    display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1;
     -webkit-box-orient: vertical; overflow: hidden;
 }
 
