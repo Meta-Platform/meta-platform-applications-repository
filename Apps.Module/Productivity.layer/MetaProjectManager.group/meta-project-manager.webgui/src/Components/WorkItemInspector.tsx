@@ -47,9 +47,10 @@ interface WorkItemInspectorProps {
 // Descrição), o que obrigava a alternar para ver contexto enquanto se escrevia.
 // A atividade (anotações + comentários) NÃO é mais uma aba: vive fixa na lateral
 // da aba "Detalhes", sempre visível ao lado da descrição.
-type TabKey = "detalhes" | "criterios" | "checklist" | "vinculos" | "anexos" | "auditoria"
+type TabKey = "detalhes" | "contexto" | "criterios" | "checklist" | "vinculos" | "anexos" | "auditoria"
 const TABS: { key: TabKey; label: string; icon: any; hint: string }[] = [
-    { key: "detalhes",  label: "Detalhes",   icon: "align left",           hint: "Campos do item, descrição em markdown e atividade (anotações + comentários) na lateral" },
+    { key: "detalhes",  label: "Detalhes",   icon: "align left",           hint: "Descrição, campos do item e atividade (anotações + comentários) na lateral" },
+    { key: "contexto",  label: "Contexto",   icon: "cubes",                hint: "Prontidão para agente, contexto do ecossistema (pacotes) e entrega (repositório/branch/commit/PR)" },
     { key: "criterios", label: "Critérios",  icon: "check circle outline", hint: "Critérios de aceite (Definition of Done)" },
     { key: "checklist", label: "Checklist",  icon: "tasks",                hint: "Sub-passos marcáveis do item" },
     { key: "vinculos",  label: "Vínculos",   icon: "linkify",              hint: "Dependências, bloqueios e relações com outros itens" },
@@ -279,13 +280,13 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
             </div>
         </div>
 
-    // Faixa de campos (tipo, status, prioridade, planejamento) + contexto do
-    // ecossistema e entrega. Antes ficava na lateral; agora abre a coluna principal,
-    // compacta, logo acima da descrição — a lateral passou a ser a atividade.
+    // Faixa de campos (tipo, status, prioridade, planejamento). Fica em "Detalhes",
+    // abaixo da descrição. Prontidão/ecossistema/entrega saíram daqui para a aba
+    // "Contexto" — eram densos e empurravam a descrição/atividade para baixo.
     const fieldsBlock = <div className="mpm-details__fields">
         <div className="mpm-row" style={{ alignItems: "center" }}>
             <div className="mpm-section-title" style={{ flex: 1, margin: 0 }}>
-                <Icon name="sliders horizontal" /> Campos e contexto
+                <Icon name="sliders horizontal" /> Campos
             </div>
             {hiddenCount > 0 || showEmptyFields
                 ? <button className="mpm-btn mpm-btn--ghost mpm-btn--sm"
@@ -394,11 +395,14 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                     onBlur={(e) => { if (e.target.value !== (item.ideaOrigin || "")) patch(() => api.items.update(item.id, { ideaOrigin: e.target.value })) }} />
             </div>)}
         </div>
+    </div>
 
+    // Aba "Contexto": prontidão do item para um agente executar, os pacotes do
+    // ecossistema que ele toca e o contexto de entrega (repositório/branch/PR).
+    // Ficavam empilhados em "Detalhes" e o usuário nem sabia para que serviam.
+    const contextTab = <div className="mpm-col" style={{ gap: "var(--mp-space-4)" }}>
         <AgentReadiness item={item} />
-
         <EcosystemContextSection item={item} scope={projectScope} onChanged={() => patch(async () => {})} />
-
         <SoftwareContextSection item={item} onSave={(input) => patch(() => api.items.update(item.id, input))} />
     </div>
 
@@ -537,6 +541,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
 
     const tabBody =
         tab === "detalhes"  ? detailsTab
+      : tab === "contexto"  ? contextTab
       : tab === "criterios" ? criteriaTab
       : tab === "checklist" ? checklistTab
       : tab === "vinculos"  ? <LinkPanel item={item} projectId={pid} onChanged={() => patch(async () => {})} />

@@ -1648,11 +1648,13 @@ html, body, #gui { height: 100%; margin: 0; }
    o bloco encolhe abaixo do próprio conteúdo, que vaza por cima das subtarefas. */
 .mpm-desc { display: flex; flex-direction: column; gap: var(--mp-space-2); flex: 0 0 auto; }
 .mpm-desc__bar { display: flex; align-items: center; gap: var(--mp-space-2); }
+/* Leitura da descrição SEM caixa: sem borda, fundo ou padding, para a descrição
+   se fundir ao layout do detalhe em vez de parecer um cartão separado. */
 .mpm-desc__read {
-    padding: var(--mp-space-4);
-    background: var(--mp-surface);
-    border: var(--mp-border-thin);
-    border-radius: var(--mp-radius-md);
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
 }
 
 /* Editor inline: altura própria, já que não ocupa mais o modal inteiro. */
