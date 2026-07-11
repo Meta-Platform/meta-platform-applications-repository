@@ -777,38 +777,20 @@ html, body, #gui { height: 100%; margin: 0; }
 /* Gestão de repositórios e fontes                              */
 /* ============================================================ */
 
-/* ---- abas ---- */
-.myd-tabs {
+/* ---- barra de ações (topo de cada tela; fixa ao rolar) ---- */
+.myd-repo__toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     display: flex;
-    gap: 2px;
-    padding: var(--mp-space-3) var(--mp-space-4) 0;
+    align-items: center;
+    gap: var(--mp-space-2);
+    padding: var(--mp-space-3) var(--mp-space-4);
     background: var(--mp-paper-2);
     border-bottom: var(--mp-border);
 }
-.myd-tab {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border: 1.5px solid var(--mp-line-soft);
-    border-bottom: none;
-    background: var(--mp-surface-2);
-    color: var(--mp-ink-2);
-    font-family: var(--mp-font-display);
-    font-weight: 800;
-    font-size: var(--mp-text-sm);
-    padding: 8px 16px;
-    border-radius: var(--mp-radius-sm) var(--mp-radius-sm) 0 0;
-    cursor: pointer;
-    margin-bottom: -1.5px;
-}
-.myd-tab:hover { background: var(--mp-surface); color: var(--mp-ink); }
-.myd-tab--active {
-    background: var(--mp-paper);
-    color: var(--mp-ink);
-    border-color: var(--mp-line-strong);
-    border-bottom: 1.5px solid var(--mp-paper);
-}
-.myd-tab .icon { margin: 0; }
+.myd-repo__toolbar-spacer { flex: 1 1 auto; }
+.myd-repo__toolbar .ui.button { margin: 0; }
 
 /* ---- painel (área rolável das abas) ---- */
 .myd-repo__panel { max-height: 58vh; overflow-y: auto; }

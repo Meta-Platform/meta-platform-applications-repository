@@ -37,8 +37,8 @@ type RegisterForm = {
 
 const EMPTY_FORM:RegisterForm = { repositoryNamespace: "", sourceType: "LOCAL_FS", localPath: "", repoName: "", repoOwner: "", fileId: "" }
 
-// Modelo unificado apresentado na aba "Repositórios": um card por namespace,
-// reunindo o estado de instalação e TODAS as suas fontes registradas.
+// Modelo unificado apresentado nas telas: um card por namespace, reunindo o
+// estado de instalação e TODAS as suas fontes registradas.
 type UnifiedRepo = {
     namespace: string
     installed: boolean
@@ -47,16 +47,23 @@ type UnifiedRepo = {
     sources: any[]
 }
 
-// Gestão de fontes e repositórios organizada em abas: "Repositórios" (lista
-// unificada por namespace, com instalar/atualizar/remover) e "Nova fonte"
-// (registro de uma nova origem para um repositório).
+// Gestão de repositórios em TRÊS telas navegáveis dentro da MESMA janela:
+//  - "update"   : tela principal, enxuta — só atualizar repositórios instalados.
+//  - "sources"  : tela detalhada — gerenciar fontes (instalar/remover/adicionar).
+//  - "register" : formulário de nova fonte (acessado a partir de "sources").
 type RepositoryManagerProps = {
     serverManagerInformation: any
     onClose: () => void
     onChanged: () => void
 }
 
-type TabKey = "repos" | "register"
+type View = "update" | "sources" | "register"
+
+const VIEW_TITLES:Record<View, string> = {
+    update:   "Atualizar Repositórios",
+    sources:  "Gerenciar Fontes",
+    register: "Nova Fonte"
+}
 
 const RepositoryManager = ({ serverManagerInformation, onClose, onChanged }:RepositoryManagerProps) => {
 
@@ -66,9 +73,10 @@ const RepositoryManager = ({ serverManagerInformation, onClose, onChanged }:Repo
     const [ error, setError ]                 = useState<string>()
     const [ busy, setBusy ]                   = useState<string>()
     const [ form, setForm ]                   = useState<RegisterForm>(EMPTY_FORM)
-    const [ tab, setTab ]                     = useState<TabKey>("repos")
+    const [ view, setView ]                   = useState<View>("update")
 
-    const _API = () => GetAPI({ apiName: "Sources", serverManagerInformation })
+    const _API     = () => GetAPI({ apiName: "Sources", serverManagerInformation })
+    const _AppsAPI = () => GetAPI({ apiName: "Applications", serverManagerInformation })
 
     const fetchAll = async () => {
         setLoading(true); setError(undefined)
@@ -101,7 +109,8 @@ const RepositoryManager = ({ serverManagerInformation, onClose, onChanged }:Repo
         return Array.from(byNamespace.values()).sort((a, b) => a.namespace.localeCompare(b.namespace))
     }, [ activeSources, sources ])
 
-    const installedCount = repositories.filter((r) => r.installed).length
+    const installedRepos = repositories.filter((r) => r.installed)
+    const installedCount = installedRepos.length
 
     const run = async (busyKey:string, fn:() => Promise<any>) => {
         setBusy(busyKey); setError(undefined)
@@ -110,11 +119,14 @@ const RepositoryManager = ({ serverManagerInformation, onClose, onChanged }:Repo
         finally { setBusy(undefined) }
     }
 
-    // Abre a aba de registro, opcionalmente pré-preenchendo o namespace.
+    // Navega para outra tela limpando erros pendentes.
+    const go = (next:View) => { setError(undefined); setView(next) }
+
+    // Abre o formulário de nova fonte, opcionalmente pré-preenchendo o namespace.
     const goRegister = (namespace?:string) => {
         setForm({ ...EMPTY_FORM, repositoryNamespace: namespace || "" })
         setError(undefined)
-        setTab("register")
+        setView("register")
     }
 
     const handleRegister = () => {
@@ -126,8 +138,52 @@ const RepositoryManager = ({ serverManagerInformation, onClose, onChanged }:Repo
             repoName: form.repoName.trim() || undefined,
             repoOwner: form.repoOwner.trim() || undefined,
             fileId: form.fileId.trim() || undefined
-        })).then(() => { setForm(EMPTY_FORM); setTab("repos") })
+        })).then(() => { setForm(EMPTY_FORM); setView("sources") })
     }
+
+    // ---------------------------------------------------------------- update
+
+    // Linha enxuta: só o essencial para atualizar um repositório instalado.
+    const renderUpdateRow = (repo:UnifiedRepo) => <div key={repo.namespace} className="myd-repo__card">
+        <div className="myd-repo__head">
+            <Icon name="cubes" className="myd-repo__ricon"/>
+            <div className="myd-mgr__info">
+                <div className="myd-mgr__name">{repo.namespace}</div>
+                <div className="myd-mgr__meta">
+                    <span className="myd-mgr__badge myd-mgr__badge--on"><Icon name="check circle"/> Instalado · {repo.appsCount} apps</span>
+                </div>
+            </div>
+            <Button size="small" loading={busy === `upd:${repo.namespace}`} disabled={!!busy}
+                onClick={() => run(`upd:${repo.namespace}`, () => _API().UpdateRepository({ repositoryNamespace: repo.namespace }))}>
+                <Icon name="refresh"/> Atualizar
+            </Button>
+        </div>
+    </div>
+
+    const renderUpdateView = () => <>
+        <div className="myd-repo__toolbar">
+            <Button primary size="small" loading={busy === "update-all"} disabled={!!busy || installedCount === 0}
+                onClick={() => run("update-all", () => _AppsAPI().UpdateAllRepositories({}))}>
+                <Icon name="refresh"/> Atualizar tudo
+            </Button>
+            <div className="myd-repo__toolbar-spacer"/>
+            <Button basic size="small" disabled={!!busy} onClick={() => go("sources")}>
+                <Icon name="database"/> Gerenciar fontes
+            </Button>
+        </div>
+        {
+            isLoading
+                ? <div className="myd-mgr__empty"><Loader active inline="centered">carregando…</Loader></div>
+                : installedCount === 0
+                    ? <div className="myd-mgr__empty">
+                        Nenhum repositório instalado.
+                        <div><Button size="small" primary onClick={() => go("sources")} style={{ marginTop: 12 }}><Icon name="database"/> Gerenciar fontes</Button></div>
+                      </div>
+                    : <div className="myd-repo__cards">{installedRepos.map(renderUpdateRow)}</div>
+        }
+    </>
+
+    // --------------------------------------------------------------- sources
 
     const renderSource = (repo:UnifiedRepo, s:any, i:number) => {
         const meta     = SOURCE_META[s.sourceType] || { icon: "feed", label: s.sourceType }
@@ -184,17 +240,31 @@ const RepositoryManager = ({ serverManagerInformation, onClose, onChanged }:Repo
         </div>
     </div>
 
-    const renderReposTab = () =>
-        isLoading
-            ? <div className="myd-mgr__empty"><Loader active inline="centered">carregando…</Loader></div>
-            : repositories.length === 0
-                ? <div className="myd-mgr__empty">
-                    Nenhum repositório ou fonte.
-                    <div><Button size="small" primary onClick={() => goRegister()} style={{ marginTop: 12 }}><Icon name="plus"/> Registrar fonte</Button></div>
-                  </div>
-                : <div className="myd-repo__cards">{repositories.map(renderRepo)}</div>
+    const renderSourcesView = () => <>
+        <div className="myd-repo__toolbar">
+            <Button basic size="small" disabled={!!busy} onClick={() => go("update")}>
+                <Icon name="arrow left"/> Voltar
+            </Button>
+            <div className="myd-repo__toolbar-spacer"/>
+            <Button size="small" disabled={!!busy} onClick={() => goRegister()}>
+                <Icon name="plus"/> Nova fonte
+            </Button>
+        </div>
+        {
+            isLoading
+                ? <div className="myd-mgr__empty"><Loader active inline="centered">carregando…</Loader></div>
+                : repositories.length === 0
+                    ? <div className="myd-mgr__empty">
+                        Nenhum repositório ou fonte.
+                        <div><Button size="small" primary onClick={() => goRegister()} style={{ marginTop: 12 }}><Icon name="plus"/> Registrar fonte</Button></div>
+                      </div>
+                    : <div className="myd-repo__cards">{repositories.map(renderRepo)}</div>
+        }
+    </>
 
-    const renderRegisterTab = () => <div className="myd-repo__form">
+    // -------------------------------------------------------------- register
+
+    const renderRegisterForm = () => <div className="myd-repo__form">
         <label className="myd-repo__field-label">Repositório</label>
         <Input placeholder="Namespace do repositório (ex.: MinhaRepo)" value={form.repositoryNamespace}
             onChange={(_e, { value }) => setForm({ ...form, repositoryNamespace: value })} fluid/>
@@ -228,7 +298,7 @@ const RepositoryManager = ({ serverManagerInformation, onClose, onChanged }:Repo
             </>
         }
         <div className="myd-repo__form-actions">
-            <Button basic disabled={!!busy} onClick={() => setTab("repos")}><Icon name="arrow left"/> Voltar</Button>
+            <Button basic disabled={!!busy} onClick={() => go("sources")}><Icon name="arrow left"/> Voltar</Button>
             <Button primary loading={busy === "register"} disabled={!!busy} onClick={handleRegister}>
                 <Icon name="plus"/> Registrar fonte
             </Button>
@@ -236,28 +306,19 @@ const RepositoryManager = ({ serverManagerInformation, onClose, onChanged }:Repo
     </div>
 
     return <div className="myd-modal-scrim">
-        <Window title="Repositórios e fontes" width={680} onClose={onClose} className="myd-mgr"
+        <Window title={VIEW_TITLES[view]} width={680} onClose={onClose} className="myd-mgr"
             footer={<>
-                <span className="myd-mgr__summary">{repositories.length} repositórios · {installedCount} instalados</span>
-                <Button onClick={fetchAll} disabled={isLoading}><Icon name="refresh"/> Recarregar</Button>
+                <span className="myd-mgr__summary">{installedCount} de {repositories.length} instalados</span>
+                <Button onClick={fetchAll} disabled={isLoading || !!busy}><Icon name="refresh"/> Recarregar</Button>
                 <Button primary onClick={onClose}>Fechar</Button>
             </>}>
-
-            <div className="myd-tabs" role="tablist">
-                <button role="tab" aria-selected={tab === "repos"} className={`myd-tab ${tab === "repos" ? "myd-tab--active" : ""}`}
-                    onClick={() => setTab("repos")}>
-                    <Icon name="cubes"/> Repositórios
-                </button>
-                <button role="tab" aria-selected={tab === "register"} className={`myd-tab ${tab === "register" ? "myd-tab--active" : ""}`}
-                    onClick={() => goRegister(tab === "register" ? form.repositoryNamespace : undefined)}>
-                    <Icon name="plus"/> Nova fonte
-                </button>
-            </div>
 
             { error && <div className="myd-mgr__error"><Icon name="warning sign"/> {error}</div> }
 
             <div className="myd-repo__panel">
-                { tab === "repos" ? renderReposTab() : renderRegisterTab() }
+                { view === "update"   && renderUpdateView() }
+                { view === "sources"  && renderSourcesView() }
+                { view === "register" && renderRegisterForm() }
             </div>
         </Window>
     </div>

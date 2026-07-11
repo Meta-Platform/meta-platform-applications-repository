@@ -508,20 +508,6 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
         } ]
     }
 
-    // ---- atualizar todos os repositórios -----------------------------------
-    const handleUpdateAll = async () => {
-        setToast({ tone: "exec", title: "Atualizar", message: "Atualizando repositórios…", spinner: true })
-        try {
-            const response = await _GetApplicationsAPI().UpdateAllRepositories({})
-            const results = (response.data && response.data.results) || []
-            const updated = results.filter((r:any) => r.updated).length
-            setToast({ tone: "success", title: "Atualizar", message: `${updated} de ${results.length} repositórios atualizados.` })
-            fetchApplicationList()
-        } catch(e:any) {
-            setToast({ tone: "danger", title: "Falha ao atualizar", message: (typeof e === "string" ? e : e?.message) || "Falha ao atualizar." })
-        }
-    }
-
     // ---- remover (desinstalar) 1 ou N --------------------------------------
     const _UninstallOne = async (av:any) => {
         await _GetApplicationsAPI().UninstallApplication({ executableName: av.executableName })
@@ -583,7 +569,6 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
         ] : []),
         { label: "Adicionar aplicativo…", icon: "plus", onClick: () => setIsManagerOpen(true) },
         { label: "Repositórios e fontes…", icon: "cubes", onClick: () => setIsRepoManagerOpen(true) },
-        { label: "Atualizar tudo", icon: "refresh", onClick: handleUpdateAll },
         { label: "Recarregar ícones", icon: "redo", onClick: fetchApplicationList },
         {
             label: "Organizar ícones", icon: "grid layout",
