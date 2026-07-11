@@ -27,7 +27,7 @@ const WORK_ITEM_TYPES = ["epic","feature","story","task","subtask","bug","improv
 const PRIORITIES = ["none","low","medium","high","urgent"]
 const HORIZONS = ["inbox","now","next","later","maybe","archived"]
 // Espelha Config.LINK_RELATIONS do project-store.lib (valores REAIS aceitos).
-const LINK_RELATIONS = ["blocks","depends","relates","duplicates","implements","tests"]
+const LINK_RELATIONS = ["blocks","depends","relates","duplicates","implements","tests","originated_from"]
 
 const { INSTRUCTIONS } = require("./Instructions")
 
@@ -414,9 +414,20 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "convert_item",
-            description: "Converte o tipo de um item (ex.: task → story, ideia → bug). LIVRE.",
+            description: "Converte o tipo de um item NO LUGAR (ex.: task → story). LIVRE. Para transformar uma IDEIA (discovery) em trabalho preservando a ideia, use convert_idea.",
             inputSchema: Obj({ item: S.str("Item (id|key)"), type: S.enum(WORK_ITEM_TYPES, "Novo tipo") }, ["item","type"]),
             handler: (i) => store.ConvertItem(A({ item: i.item, type: i.type }))
+        },
+        {
+            name: "convert_idea",
+            description: "Converte uma IDEIA (discovery) em item de trabalho PRESERVANDO a ideia: cria o item destino a partir dela, cria o vínculo `originated_from` (novo --originated_from--> ideia) e arquiva a ideia (sai do inbox, não é apagada). Retorna { created, idea }. LIVRE.",
+            inputSchema: Obj({
+                item: S.str("Ideia (id|key)"),
+                type: S.enum(WORK_ITEM_TYPES, "Tipo do item de trabalho a criar"),
+                title: S.str("Título do novo item (padrão: o da ideia)"),
+                parent: S.str("Item pai (id|key) para hierarquia")
+            }, ["item","type"]),
+            handler: (i) => store.ConvertIdea(A({ item: i.item, type: i.type, title: i.title, parent: i.parent }))
         },
         {
             name: "reorder_item",
@@ -503,9 +514,10 @@ const BuildTools = ({ store, actor }) => {
                 commitHash: S.str("Commit"),
                 pullRequestUrl: S.str("Pull request"),
                 horizon: S.enum(HORIZONS, "Horizonte"),
-                area: S.str("Área")
+                area: S.str("Área"),
+                typeFields: { type: "object", additionalProperties: true, description: "Campos específicos do tipo (bug: severity/regression/expected/actual/repro; story: persona/need/benefit; decision/research/tech-debt…). Merge no servidor: manda só o que muda." }
             }, ["item"]),
-            handler: (i) => store.UpdateItem(A({ item: i.item, title: i.title, description: i.description, statusKey: i.status, priority: i.priority, progress: i.progress, dueDate: i.dueDate, assignee: i.assignee, repositoryUrl: i.repositoryUrl, branchName: i.branchName, commitHash: i.commitHash, pullRequestUrl: i.pullRequestUrl, horizon: i.horizon, area: i.area }))
+            handler: (i) => store.UpdateItem(A({ item: i.item, title: i.title, description: i.description, statusKey: i.status, priority: i.priority, progress: i.progress, dueDate: i.dueDate, assignee: i.assignee, repositoryUrl: i.repositoryUrl, branchName: i.branchName, commitHash: i.commitHash, pullRequestUrl: i.pullRequestUrl, horizon: i.horizon, area: i.area, typeFields: i.typeFields }))
         },
         {
             name: "set_item_status",
@@ -533,7 +545,7 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "link_item",
-            description: "Cria um vínculo entre itens. Relações aceitas (exatas): blocks, depends, relates, duplicates, implements, tests. Direção: `item` --relação--> `target` (ex.: relation=blocks significa que `item` BLOQUEIA `target`).",
+            description: "Cria um vínculo entre itens. Relações aceitas (exatas): blocks, depends, relates, duplicates, implements, tests, originated_from. Direção: `item` --relação--> `target` (ex.: relation=blocks significa que `item` BLOQUEIA `target`; originated_from = `item` originou-se de `target`).",
             inputSchema: Obj({
                 item: S.str("Item origem (id|key)"),
                 relation: S.enum(LINK_RELATIONS, "Relação (valor exato)"),
