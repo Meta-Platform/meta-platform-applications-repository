@@ -92,7 +92,8 @@ const InitializeProjectStore = (options = {}) => {
         ["creation_requests", "resultSnapshot",   "TEXT"],
         ["creation_requests", "errorSnapshot",    "TEXT"],
         ["creation_requests", "rejectionReason",  "VARCHAR(255)"],
-        ["creation_requests", "executedAt",       "DATETIME"]
+        ["creation_requests", "executedAt",       "DATETIME"],
+        ["work_items",        "typeFields",       "TEXT"]
     ]
     const MigrateAddedColumns = async () => {
         for(const [table, column, type] of ADDED_COLUMNS){

@@ -163,6 +163,10 @@ const WorkItemsStore = (ctx) => {
             "repositoryUrl", "branchName", "commitHash", "pullRequestUrl",
             "environment", "packagePath", "moduleName", "layerName", "groupName"]
         for(const key of simple) if(fields[key] !== undefined) patch[key] = fields[key]
+        // Campos por tipo: MERGE (não substitui o objeto inteiro), para um patch
+        // parcial de um campo não apagar os demais.
+        if(fields.typeFields !== undefined && fields.typeFields !== null)
+            patch.typeFields = { ...(instance.typeFields || {}), ...fields.typeFields }
         if(fields.type !== undefined){
             if(!WORK_ITEM_TYPES.includes(fields.type)) throw new DomainError("VALIDATION_ERROR", `Tipo inválido: ${fields.type}.`, { field: "type" })
             patch.type = fields.type

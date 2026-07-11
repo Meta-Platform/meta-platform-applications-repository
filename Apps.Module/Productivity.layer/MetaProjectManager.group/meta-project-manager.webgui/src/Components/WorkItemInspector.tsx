@@ -26,6 +26,7 @@ import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import ConfirmActionModal from "./ConfirmActionModal"
 import { feedbackTarget } from "../Utils/feedbackTarget"
 import useFeedback from "../Hooks/useFeedback"
+import { typeFieldsFor } from "../Domain/workItemTypes"
 
 const PRIORITIES = ["none", "low", "medium", "high", "urgent"]
 
@@ -398,6 +399,35 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
     // Duas colunas: a descrição (o que se lê e escreve) ocupa a coluna larga; a
     // atividade — anotações e comentários — vive fixa na lateral, sempre visível.
     // Em telas estreitas, empilha (container-query abaixo).
+    // Campos específicos do tipo (bug/story/decision/research/tech-debt): vivem no
+    // WorkItem.typeFields; um patch por campo (o servidor faz merge).
+    const typeFieldDefs = typeFieldsFor(item.type)
+    const setTypeField = (fieldId: string, value: string) =>
+        patch(() => api.items.update(item.id, { typeFields: { [fieldId]: value } }))
+    const typeFieldsBlock = typeFieldDefs.length > 0
+        ? <div className="mpm-col"
+            {...feedbackTarget({ entityType: "work-item", entityId: item.id, item: item.key, project: pid, field: "typeFields", fieldLabel: `Campos de ${typeLabel(item.type)}` })}>
+            <div className="mpm-section-title"><Icon name="list alternate outline" /> Campos de {typeLabel(item.type)}</div>
+            {typeFieldDefs.map((f) => {
+                const val = (item.typeFields && item.typeFields[f.id]) || ""
+                const k = `tf-${item.id}-${f.id}-${item.updatedAt || ""}`
+                return <div key={f.id} className="mpm-field">
+                    <span className="mpm-field__label">{f.label}</span>
+                    {f.kind === "select"
+                        ? <select className="mpm-inline-select" value={val} onChange={(e) => setTypeField(f.id, e.target.value)}>
+                            <option value="">—</option>
+                            {(f.options || []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                        : f.kind === "textarea"
+                        ? <textarea className="mpm-textarea" defaultValue={val} key={k}
+                            onBlur={(e) => { if (e.target.value !== val) setTypeField(f.id, e.target.value) }} />
+                        : <input className="mpm-inline-select" defaultValue={val} key={k}
+                            onBlur={(e) => { if (e.target.value !== val) setTypeField(f.id, e.target.value) }} />}
+                </div>
+            })}
+        </div>
+        : null
+
     const detailsTab = <div className="mpm-details-scope"><div className="mpm-details">
         <div className="mpm-details__main">
             {fieldsBlock}
@@ -407,6 +437,8 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 : null}
 
             {descBlock}
+
+            {typeFieldsBlock}
 
             {item.children && item.children.length > 0
                 ? <div className="mpm-col">

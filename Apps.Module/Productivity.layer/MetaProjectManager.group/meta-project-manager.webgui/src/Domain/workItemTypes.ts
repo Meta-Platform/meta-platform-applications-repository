@@ -69,3 +69,50 @@ export const typeCategory = (type?: string): WorkItemCategory => workItemType(ty
 // Comparador estável por ordem de tipo (para ordenar listas/legendas por tipo).
 export const compareByTypeOrder = (a?: string, b?: string): number =>
     workItemType(a).listOrder - workItemType(b).listOrder
+
+// ── Campos específicos por tipo (MPMB-64) ────────────────────────────────────
+// Persistidos no `WorkItem.typeFields` (objeto por chave). Aqui vive só a forma
+// de apresentação — o domínio não valida campo a campo.
+export interface TypeField {
+    id: string
+    label: string
+    kind: "text" | "textarea" | "select"
+    options?: { value: string; label: string }[]
+}
+
+const opts = (...vals: string[]) => vals.map((v) => ({ value: v, label: v }))
+
+const TYPE_FIELDS: { [id: string]: TypeField[] } = {
+    bug: [
+        { id: "severity",   label: "Severidade",             kind: "select", options: opts("trivial", "menor", "maior", "crítico", "bloqueador") },
+        { id: "regression", label: "Regressão",              kind: "select", options: opts("não", "sim", "desconhecido") },
+        { id: "expected",   label: "Comportamento esperado", kind: "textarea" },
+        { id: "actual",     label: "Comportamento atual",    kind: "textarea" },
+        { id: "repro",      label: "Passos para reproduzir", kind: "textarea" }
+    ],
+    story: [
+        { id: "persona", label: "Persona / usuário", kind: "text" },
+        { id: "need",    label: "Necessidade",       kind: "textarea" },
+        { id: "benefit", label: "Valor / benefício", kind: "textarea" }
+    ],
+    decision: [
+        { id: "context",      label: "Contexto",      kind: "textarea" },
+        { id: "alternatives", label: "Alternativas",  kind: "textarea" },
+        { id: "decision",     label: "Decisão",       kind: "textarea" },
+        { id: "consequences", label: "Consequências", kind: "textarea" }
+    ],
+    research: [
+        { id: "question",       label: "Pergunta",     kind: "textarea" },
+        { id: "hypothesis",     label: "Hipótese",     kind: "textarea" },
+        { id: "method",         label: "Método",       kind: "textarea" },
+        { id: "findings",       label: "Achados",      kind: "textarea" },
+        { id: "recommendation", label: "Recomendação", kind: "textarea" }
+    ],
+    "tech-debt": [
+        { id: "impact", label: "Impacto atual",           kind: "textarea" },
+        { id: "risk",   label: "Risco de não fazer",      kind: "textarea" },
+        { id: "payoff", label: "Estratégia de pagamento", kind: "textarea" }
+    ]
+}
+
+export const typeFieldsFor = (type?: string): TypeField[] => TYPE_FIELDS[(type || "").toLowerCase()] || []

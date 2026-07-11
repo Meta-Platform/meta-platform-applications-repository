@@ -45,6 +45,8 @@ export interface UpdateItemInput extends ItemPlanningFields, SoftwareContextFiel
     priority?: string
     progress?: string
     assignee?: string
+    // Campos específicos do tipo (merge no servidor).
+    typeFields?: { [key: string]: any }
 }
 
 export interface MoveItemInput {

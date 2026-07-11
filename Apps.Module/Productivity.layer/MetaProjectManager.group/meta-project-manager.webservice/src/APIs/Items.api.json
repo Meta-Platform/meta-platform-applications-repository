@@ -393,6 +393,12 @@
                     "in": "body",
                     "type": "string",
                     "required": false
+                },
+                {
+                    "name": "typeFields",
+                    "in": "body",
+                    "type": "object",
+                    "required": false
                 }
             ]
         },

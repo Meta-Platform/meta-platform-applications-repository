@@ -89,6 +89,11 @@ const DefineModels = (sequelize) => {
         value:              { type: DataTypes.STRING },
         area:               { type: DataTypes.STRING },
         ideaOrigin:         { type: DataTypes.STRING },
+        // Campos ESPECÍFICOS DO TIPO (bug: severidade/reprodução/esperado/atual…,
+        // story: persona/valor, decision: contexto/alternativas…). Guardados como
+        // objeto por chave para não exigir uma coluna por campo. O que cada tipo
+        // mostra é definido no registro de tipos da GUI (Domain/workItemTypes).
+        typeFields:         { type: DataTypes.JSON, defaultValue: {} },
         // SoftwareContext (spec §4.4) achatado no item.
         repositoryUrl:      { type: DataTypes.STRING },
         branchName:         { type: DataTypes.STRING },

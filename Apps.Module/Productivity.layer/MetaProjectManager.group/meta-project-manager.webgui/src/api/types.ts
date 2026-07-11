@@ -150,6 +150,8 @@ export interface WorkItem {
     blockedReason?: string | null
     order: number
     labels?: string[]
+    // Campos específicos do tipo (bug/story/decision/research…), por chave.
+    typeFields?: { [key: string]: any }
     commentCount?: number
     attachmentCount?: number
     // presentes em GetItem
