@@ -264,6 +264,24 @@ const WorkItemsStore = (ctx) => {
         return data
     }
 
+    // Converte uma IDEIA (discovery) em item de trabalho, PRESERVANDO a ideia:
+    // cria o item destino a partir dela, vincula (novo --originated_from--> ideia)
+    // e arquiva a ideia (sai do inbox de descoberta, mas não é apagada).
+    const ConvertIdea = async ({ item, type = "task", title, parent, actor } = {}) => {
+        if(!WORK_ITEM_TYPES.includes(type)) throw new DomainError("VALIDATION_ERROR", `Tipo inválido: ${type}.`, { field: "type", allowed: WORK_ITEM_TYPES })
+        const idea = await ResolveItem(item)
+        const created = await CreateItem({
+            project: idea.projectId, type, title: title || idea.title,
+            description: idea.description, parent, area: idea.area, actor
+        })
+        await LinkItem({ item: created.id, relation: "originated_from", target: idea.id, actor })
+        const before = { horizon: idea.horizon }
+        await idea.update({ horizon: "archived" })
+        await writeAudit({ projectId: idea.projectId, entityType: "work-item", entityId: idea.id, action: "convert-idea", actor, metadata: { type, createdId: created.id, createdKey: created.key }, before, after: { horizon: "archived" } })
+        emit("item.updated", Serialize(idea))
+        return { created, idea: Serialize(idea) }
+    }
+
     const SetBlocked = async ({ item, reason, actor } = {}) => {
         const instance = await ResolveItem(item)
         const patch = { statusKey: "blocked", blockedReason: reason || "Bloqueado" }
@@ -380,7 +398,7 @@ const WorkItemsStore = (ctx) => {
     return {
         ResolveItem,
         CreateItem, ListItems, GetItem, UpdateItem, SetStatus, Assign,
-        MoveItem, MoveToBoard, ReorderItem, ConvertItem, SetBlocked,
+        MoveItem, MoveToBoard, ReorderItem, ConvertItem, ConvertIdea, SetBlocked,
         LinkItem, UnlinkItem, DeleteItem,
         AddChecklistItem, UpdateChecklistItem, RemoveChecklistItem,
         AddAcceptanceCriteria, UpdateAcceptanceCriteria, RemoveAcceptanceCriteria

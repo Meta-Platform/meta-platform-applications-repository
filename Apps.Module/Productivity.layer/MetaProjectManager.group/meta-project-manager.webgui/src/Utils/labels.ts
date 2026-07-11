@@ -54,7 +54,8 @@ export const valueLabel = (value?: string) => pick(VALUES, value)
 // A direção importa: "item --bloqueia--> alvo".
 const RELATIONS: Record<string, string> = {
     blocks: "bloqueia", depends: "depende de", relates: "relaciona-se com",
-    duplicates: "duplica", implements: "implementa", tests: "testa"
+    duplicates: "duplica", implements: "implementa", tests: "testa",
+    originated_from: "originou-se de"
 }
 export const relationLabel = (relation?: string) => pick(RELATIONS, relation)
 

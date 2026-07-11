@@ -18,6 +18,7 @@ const ItemsController = (params) => {
     const LinkItem = async (p = {}) => Guard(async () => { await ctx.ready; return store.LinkItem({ item: p.itemId, relation: p.relation, target: p.target, actor: Actor(p) }) })
     const UnlinkItem = async (p = {}) => Guard(async () => { await ctx.ready; return store.UnlinkItem({ item: p.itemId, relation: p.relation, target: p.target, actor: Actor(p) }) })
     const ReorderItem = async (p = {}) => Guard(async () => { await ctx.ready; return store.ReorderItem({ item: p.itemId, order: p.order, actor: Actor(p) }) })
+    const ConvertIdea = async (p = {}) => Guard(async () => { await ctx.ready; return store.ConvertIdea({ item: p.itemId, type: p.type, title: p.title, parent: p.parent, actor: Actor(p) }) })
     const DeleteItem = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "itemId"); return store.DeleteItem({ item: id, actor: { source: "api" } }) })
 
     // Checklist
@@ -42,6 +43,7 @@ const ItemsController = (params) => {
         LinkItem,
         UnlinkItem,
         ReorderItem,
+        ConvertIdea,
         DeleteItem,
         AddChecklistItem,
         UpdateChecklistItem,

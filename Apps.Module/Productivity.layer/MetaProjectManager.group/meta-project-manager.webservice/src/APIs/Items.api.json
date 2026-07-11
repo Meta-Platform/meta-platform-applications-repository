@@ -453,6 +453,37 @@
             ]
         },
         {
+            "summary": "ConvertIdea",
+            "method": "POST",
+            "path": "/items/:itemId/convert-idea",
+            "parameters": [
+                {
+                    "name": "itemId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "type",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "title",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "parent",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
             "summary": "LinkItem",
             "method": "POST",
             "path": "/items/:itemId/links",

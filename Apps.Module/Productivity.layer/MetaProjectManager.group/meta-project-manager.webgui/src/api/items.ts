@@ -97,6 +97,10 @@ const CreateItemsApi = (call: Caller) => ({
     setStatus: (itemId: string, status: string): Promise<WorkItem> =>
         call("Items", "SetItemStatus", { itemId, status }),
 
+    // Converte uma ideia em item de trabalho preservando a ideia (vínculo originated_from).
+    convertIdea: (itemId: string, type: string, input: { title?: string; parent?: string } = {}): Promise<{ created: WorkItem; idea: WorkItem }> =>
+        call("Items", "ConvertIdea", { itemId, type, ...input }),
+
     link: (itemId: string, relation: string, target: string): Promise<any> =>
         call("Items", "LinkItem", { itemId, relation, target }),
 

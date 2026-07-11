@@ -83,6 +83,18 @@ const InboxPage = () => {
         catch (e: any) { setError(e.message); loadItems() }
     }
 
+    // Converte a ideia num item de trabalho, preservando a ideia (vínculo
+    // originated_from) e tirando-a do inbox. Abre o item criado.
+    const convert = async (item: WorkItem, type: string) => {
+        setError(null)
+        setItems((prev) => prev.filter((i) => i.id !== item.id))
+        try {
+            const res = await api.items.convertIdea(item.id, type)
+            await loadItems()
+            if (res && res.created) setSelected(res.created.id)
+        } catch (e: any) { setError(e.message); loadItems() }
+    }
+
     const setClarity = async (item: WorkItem, clarityState: string) => {
         setError(null)
         setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, clarityState } : i))
@@ -167,6 +179,17 @@ const InboxPage = () => {
                                         onClick={() => promote(it, p.key)}>
                                         <Icon name={p.icon} /> {p.label}
                                     </button>)}
+                                <span className="mpm-toolbar__spacer" />
+                                <span className="mpm-field__label" title="Vira trabalho comprometido, preservando a ideia (vínculo)">Converter em</span>
+                                <select className="mpm-inline-select" value=""
+                                    onChange={(e) => { if (e.target.value) convert(it, e.target.value) }}>
+                                    <option value="">—</option>
+                                    <option value="story">história</option>
+                                    <option value="task">tarefa</option>
+                                    <option value="epic">épico</option>
+                                    <option value="research">investigação</option>
+                                    <option value="decision">decisão</option>
+                                </select>
                             </div>
                         </div>)}
                 </div>}

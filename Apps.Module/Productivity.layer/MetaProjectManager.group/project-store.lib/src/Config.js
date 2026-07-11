@@ -19,7 +19,7 @@ const WORK_ITEM_VALUES   = ["none", "low", "medium", "high", "critical"]
 // permitindo também nomes de módulo da Meta Platform).
 const AREAS              = ["GUI", "CLI", "Backend", "Database", "Agents", "Infra", "UX", "Documentation", "Automation", "Integrations"]
 
-const LINK_RELATIONS     = ["blocks", "depends", "relates", "duplicates", "implements", "tests"]
+const LINK_RELATIONS     = ["blocks", "depends", "relates", "duplicates", "implements", "tests", "originated_from"]
 
 const ATTACHMENT_TYPES   = ["file", "image", "video", "pdf", "markdown", "log", "link", "other"]
 
