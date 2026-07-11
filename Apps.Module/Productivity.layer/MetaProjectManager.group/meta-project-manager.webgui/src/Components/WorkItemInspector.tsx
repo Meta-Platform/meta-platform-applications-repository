@@ -21,6 +21,7 @@ import LinkPanel from "./LinkPanel"
 import SoftwareContextSection from "./SoftwareContextSection"
 import EcosystemContextSection from "./EcosystemContextSection"
 import DescriptionEditor from "./DescriptionEditor"
+import AgentReadiness from "./AgentReadiness"
 import Markdown from "./Markdown"
 import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import ConfirmActionModal from "./ConfirmActionModal"
@@ -390,6 +391,8 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                     onBlur={(e) => { if (e.target.value !== (item.ideaOrigin || "")) patch(() => api.items.update(item.id, { ideaOrigin: e.target.value })) }} />
             </div>)}
         </div>
+
+        <AgentReadiness item={item} />
 
         <EcosystemContextSection item={item} scope={projectScope} onChanged={() => patch(async () => {})} />
 

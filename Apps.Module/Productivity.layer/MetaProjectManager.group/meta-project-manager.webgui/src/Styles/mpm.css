@@ -806,6 +806,14 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-timeline__meta { font-size: var(--mp-text-xs); color: var(--mp-muted); display: flex; gap: var(--mp-space-2); }
 .mpm-timeline__text { color: var(--mp-ink-2); font-size: var(--mp-text-sm); white-space: pre-wrap; }
 
+/* Prontidão para agente (MPMB-67): estado + checklist do que falta. */
+.mpm-readiness { display: flex; flex-direction: column; gap: var(--mp-space-2); }
+.mpm-readiness__checks { display: flex; flex-direction: column; gap: 2px; }
+.mpm-readiness__check { display: flex; align-items: center; gap: var(--mp-space-2); font-size: var(--mp-text-sm); color: var(--mp-muted); }
+.mpm-readiness__check .icon { color: var(--mp-muted-2); margin: 0 !important; }
+.mpm-readiness__check.is-ok { color: var(--mp-ink-2); }
+.mpm-readiness__check.is-ok .icon { color: var(--mp-success); }
+
 .mpm-attach { display: flex; align-items: center; gap: var(--mp-space-2); padding: var(--mp-space-2); border: var(--mp-border-thin); border-radius: var(--mp-radius-sm); background: var(--mp-surface-2); }
 .mpm-attach__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .mpm-attach__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mp-ink-2); }
