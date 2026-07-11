@@ -81,6 +81,34 @@ const CommentAttachments = ({ itemId, commentId, attachments, onChanged }:
     </div>
 }
 
+// Modal de leitura de UM comentário, em janela grande POR CIMA do modal de tarefa
+// (z-index acima do inspector, mesmo em tela cheia). O painel de comentários vive
+// na lateral estreita do item; aqui o comentário respira — markdown largo + anexos.
+const CommentModal = ({ comment, author, itemId, attachments, onChanged, onClose }:
+    { comment: Comment; author?: User; itemId: string; attachments: Attachment[]; onChanged: () => void; onClose: () => void }) => {
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); onClose() } }
+        window.addEventListener("keydown", onKey)
+        return () => window.removeEventListener("keydown", onKey)
+    }, [onClose])
+
+    return <div className="mpm-overlay mpm-overlay--comment"
+        onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+        <div className="mpm-modal mpm-modal--comment" role="dialog" aria-modal="true">
+            <div className="mpm-modal__head">
+                <Avatar user={author} name={author ? author.displayName : "sessão"} />
+                <span style={{ flex: 1 }}>{author ? author.displayName : (comment.authorSessionId ? "agente" : "sistema")}</span>
+                <span className="mpm-muted" style={{ fontSize: 12, fontWeight: 400 }}>{formatDateTime(comment.createdAt)}</span>
+                <span className="mpm-iconbtn" data-tip="Fechar" data-tip-shortcut="Esc" onClick={onClose}><Icon name="close" /></span>
+            </div>
+            <div className="mpm-modal__body">
+                <div className="mpm-comment-full"><Markdown>{comment.body}</Markdown></div>
+                <CommentAttachments itemId={itemId} commentId={comment.id} attachments={attachments} onChanged={onChanged} />
+            </div>
+        </div>
+    </div>
+}
+
 // CommentTimeline (spec §11.1 / feature 3): histórico de comentários + anexos
 // agrupados sob cada comentário.
 const CommentTimeline = ({ itemId, usersById }: CommentTimelineProps) => {
@@ -90,6 +118,8 @@ const CommentTimeline = ({ itemId, usersById }: CommentTimelineProps) => {
     const [draft, setDraft] = useState("")
     const [error, setError] = useState<string | null>(null)
     const [busy, setBusy] = useState(false)
+    // Comentário aberto em janela grande (por cima do modal de tarefa).
+    const [expanded, setExpanded] = useState<string | null>(null)
 
     const load = () => Promise.all([api.comments.list(itemId), api.attachments.list(itemId)])
         .then(([cs, as]) => { setComments(cs || []); setAttachments(as || []) })
@@ -118,6 +148,9 @@ const CommentTimeline = ({ itemId, usersById }: CommentTimelineProps) => {
                         <div className="mpm-timeline__meta">
                             <strong>{author ? author.displayName : (c.authorSessionId ? "agente" : "sistema")}</strong>
                             <span>{formatDateTime(c.createdAt)}</span>
+                            <span style={{ flex: 1 }} />
+                            <span className="mpm-iconbtn mpm-btn--sm" data-tip="Abrir o comentário em uma janela maior"
+                                onClick={() => setExpanded(c.id)}><Icon name="expand" /></span>
                         </div>
                         <div className="mpm-timeline__text"><Markdown>{c.body}</Markdown></div>
                         <CommentAttachments itemId={itemId} commentId={c.id} attachments={attFor(c.id)} onChanged={load} />
@@ -130,6 +163,14 @@ const CommentTimeline = ({ itemId, usersById }: CommentTimelineProps) => {
         <button className="mpm-btn mpm-btn--primary mpm-btn--sm" disabled={busy} onClick={add}>
             <Icon name="send" /> Comentar
         </button>
+
+        {(() => {
+            const c = comments.find((x) => x.id === expanded)
+            if (!c) return null
+            const author = c.authorUserId ? usersById[c.authorUserId] : undefined
+            return <CommentModal comment={c} author={author} itemId={itemId}
+                attachments={attFor(c.id)} onChanged={load} onClose={() => setExpanded(null)} />
+        })()}
     </div>
 }
 
