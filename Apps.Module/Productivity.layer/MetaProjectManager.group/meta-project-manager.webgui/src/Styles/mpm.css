@@ -2058,15 +2058,16 @@ html, body, #gui { height: 100%; margin: 0; }
     border: 1px dashed var(--mp-line-faint); border-radius: var(--mp-radius-sm);
 }
 
-/* ── Comentário em janela grande, POR CIMA do modal de tarefa ────────────── */
+/* ── Comentários em janela grande, POR CIMA do modal de tarefa ───────────── */
 /* z acima do inspector em tela cheia (950) e do overlay do modal (900), abaixo
-   dos toasts (1000). Assim o comentário abre sobre a tarefa sem fechá-la. */
+   dos toasts (1000). Abre a LISTA inteira sobre a tarefa sem fechá-la. */
 .mpm-overlay--comment { z-index: 960; padding-top: 8vh; }
 .mpm-modal--comment {
     width: min(860px, 92vw);
     max-height: 84vh;
 }
 .mpm-modal--comment .mpm-modal__head { display: flex; align-items: center; gap: var(--mp-space-2); }
-.mpm-modal--comment .mpm-modal__body { overflow: auto; }
-.mpm-comment-full { font-size: var(--mp-text-md); line-height: 1.6; color: var(--mp-ink); }
-.mpm-comment-full img { max-width: 100%; height: auto; }
+.mpm-comments-modal { overflow: auto; }
+/* Na janela grande os comentários ganham corpo de leitura e imagens plenas. */
+.mpm-timeline--large .mpm-timeline__text { font-size: var(--mp-text-md); line-height: 1.6; color: var(--mp-ink); }
+.mpm-timeline--large .mpm-timeline__text img { max-width: 100%; height: auto; }

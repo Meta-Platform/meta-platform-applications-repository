@@ -81,11 +81,13 @@ const CommentAttachments = ({ itemId, commentId, attachments, onChanged }:
     </div>
 }
 
-// Modal de leitura de UM comentário, em janela grande POR CIMA do modal de tarefa
-// (z-index acima do inspector, mesmo em tela cheia). O painel de comentários vive
-// na lateral estreita do item; aqui o comentário respira — markdown largo + anexos.
-const CommentModal = ({ comment, author, itemId, attachments, onChanged, onClose }:
-    { comment: Comment; author?: User; itemId: string; attachments: Attachment[]; onChanged: () => void; onClose: () => void }) => {
+// Modal da LISTA INTEIRA de comentários, em janela grande POR CIMA do modal de
+// tarefa (z-index acima do inspector, mesmo em tela cheia). O painel vive na
+// lateral estreita do item; aqui os comentários respiram. O conteúdo (thread +
+// caixa de escrever) é o MESMO da lateral — passado como children para não
+// duplicar lógica nem estado.
+const CommentsModal = ({ count, onClose, children }:
+    { count: number; onClose: () => void; children: React.ReactNode }) => {
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); onClose() } }
         window.addEventListener("keydown", onKey)
@@ -96,15 +98,11 @@ const CommentModal = ({ comment, author, itemId, attachments, onChanged, onClose
         onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
         <div className="mpm-modal mpm-modal--comment" role="dialog" aria-modal="true">
             <div className="mpm-modal__head">
-                <Avatar user={author} name={author ? author.displayName : "sessão"} />
-                <span style={{ flex: 1 }}>{author ? author.displayName : (comment.authorSessionId ? "agente" : "sistema")}</span>
-                <span className="mpm-muted" style={{ fontSize: 12, fontWeight: 400 }}>{formatDateTime(comment.createdAt)}</span>
+                <Icon name="comments" />
+                <span style={{ flex: 1 }}>Comentários ({count})</span>
                 <span className="mpm-iconbtn" data-tip="Fechar" data-tip-shortcut="Esc" onClick={onClose}><Icon name="close" /></span>
             </div>
-            <div className="mpm-modal__body">
-                <div className="mpm-comment-full"><Markdown>{comment.body}</Markdown></div>
-                <CommentAttachments itemId={itemId} commentId={comment.id} attachments={attachments} onChanged={onChanged} />
-            </div>
+            <div className="mpm-modal__body mpm-comments-modal">{children}</div>
         </div>
     </div>
 }
@@ -118,8 +116,8 @@ const CommentTimeline = ({ itemId, usersById }: CommentTimelineProps) => {
     const [draft, setDraft] = useState("")
     const [error, setError] = useState<string | null>(null)
     const [busy, setBusy] = useState(false)
-    // Comentário aberto em janela grande (por cima do modal de tarefa).
-    const [expanded, setExpanded] = useState<string | null>(null)
+    // Lista de comentários aberta em janela grande (por cima do modal de tarefa).
+    const [expanded, setExpanded] = useState(false)
 
     const load = () => Promise.all([api.comments.list(itemId), api.attachments.list(itemId)])
         .then(([cs, as]) => { setComments(cs || []); setAttachments(as || []) })
@@ -136,41 +134,51 @@ const CommentTimeline = ({ itemId, usersById }: CommentTimelineProps) => {
         catch (e: any) { setError(e.message) } finally { setBusy(false) }
     }
 
-    return <div className="mpm-col">
-        <div className="mpm-section-title"><Icon name="comments" /> Comentários ({comments.length})</div>
-        <ErrorBanner error={error} />
-        <div className="mpm-timeline">
-            {comments.map((c) => {
-                const author = c.authorUserId ? usersById[c.authorUserId] : undefined
-                return <div key={c.id} className="mpm-timeline__item">
-                    <Avatar user={author} name={author ? author.displayName : "sessão"} />
-                    <div className="mpm-timeline__body">
-                        <div className="mpm-timeline__meta">
-                            <strong>{author ? author.displayName : (c.authorSessionId ? "agente" : "sistema")}</strong>
-                            <span>{formatDateTime(c.createdAt)}</span>
-                            <span style={{ flex: 1 }} />
-                            <span className="mpm-iconbtn mpm-btn--sm" data-tip="Abrir o comentário em uma janela maior"
-                                onClick={() => setExpanded(c.id)}><Icon name="expand" /></span>
+    // A thread completa (lista + caixa de escrever) — usada na lateral E dentro do
+    // modal grande. `large` só troca o tamanho do texto/composer.
+    const renderThread = (large: boolean) => <>
+        <div className={`mpm-timeline ${large ? "mpm-timeline--large" : ""}`}>
+            {comments.length === 0
+                ? <div className="mpm-muted" style={{ fontSize: 12 }}>Nenhum comentário ainda.</div>
+                : comments.map((c) => {
+                    const author = c.authorUserId ? usersById[c.authorUserId] : undefined
+                    return <div key={c.id} className="mpm-timeline__item">
+                        <Avatar user={author} name={author ? author.displayName : "sessão"} />
+                        <div className="mpm-timeline__body">
+                            <div className="mpm-timeline__meta">
+                                <strong>{author ? author.displayName : (c.authorSessionId ? "agente" : "sistema")}</strong>
+                                <span>{formatDateTime(c.createdAt)}</span>
+                            </div>
+                            <div className="mpm-timeline__text"><Markdown>{c.body}</Markdown></div>
+                            <CommentAttachments itemId={itemId} commentId={c.id} attachments={attFor(c.id)} onChanged={load} />
                         </div>
-                        <div className="mpm-timeline__text"><Markdown>{c.body}</Markdown></div>
-                        <CommentAttachments itemId={itemId} commentId={c.id} attachments={attFor(c.id)} onChanged={load} />
                     </div>
-                </div>
-            })}
+                })}
         </div>
         <textarea className="mpm-textarea" placeholder="Escreva um comentário (markdown)..."
+            rows={large ? 4 : undefined}
             value={draft} onChange={(e) => setDraft(e.target.value)} />
         <button className="mpm-btn mpm-btn--primary mpm-btn--sm" disabled={busy} onClick={add}>
             <Icon name="send" /> Comentar
         </button>
+    </>
 
-        {(() => {
-            const c = comments.find((x) => x.id === expanded)
-            if (!c) return null
-            const author = c.authorUserId ? usersById[c.authorUserId] : undefined
-            return <CommentModal comment={c} author={author} itemId={itemId}
-                attachments={attFor(c.id)} onChanged={load} onClose={() => setExpanded(null)} />
-        })()}
+    return <div className="mpm-col">
+        <div className="mpm-section-title">
+            <Icon name="comments" /> Comentários ({comments.length})
+            <span style={{ flex: 1 }} />
+            <span className="mpm-iconbtn mpm-btn--sm" data-tip="Abrir os comentários em uma janela maior"
+                onClick={() => setExpanded(true)}><Icon name="expand" /></span>
+        </div>
+        <ErrorBanner error={error} />
+        {renderThread(false)}
+
+        {expanded
+            ? <CommentsModal count={comments.length} onClose={() => setExpanded(false)}>
+                <ErrorBanner error={error} />
+                {renderThread(true)}
+            </CommentsModal>
+            : null}
     </div>
 }
 
