@@ -5,7 +5,7 @@ import { Icon } from "semantic-ui-react"
 import { WorkItem, User, Milestone, Sprint } from "../api/types"
 import { GroupBy } from "../Hooks/useItemFilters"
 import { TypeBadge, ValueBadge, AreaBadge, Avatar, ItemMeta } from "./Primitives"
-import { horizonLabel } from "../Utils/format"
+import { horizonLabel, formatDate } from "../Utils/format"
 
 const PRIORITIES = ["none", "low", "medium", "high", "urgent"]
 
@@ -33,8 +33,24 @@ interface TreeNode extends WorkItem { _children: TreeNode[] }
 const WorkItemList = ({ items, usersById, statusOptions, groupBy, milestones, sprints,
     selectedIds, onToggleSelect, onOpenItem, onSetStatus, onSetPriority }: WorkItemListProps) => {
     const [collapsed, setCollapsed] = useState<{ [id: string]: boolean }>({})
+    const [copiedKey, setCopiedKey] = useState<string | null>(null)
     const selectable = !!onToggleSelect
     const isSelected = (id: string) => !!selectedIds && selectedIds.indexOf(id) >= 0
+
+    // Estados críticos mostrados como ícone (não pintam a linha inteira): a
+    // severidade fica na cor do ícone + tooltip, sem transformar a lista num
+    // arco-íris. "Atrasado" usa heurística de status (não há flag de conclusão no
+    // item): prazo vencido e ainda não concluído/arquivado.
+    const now = Date.now()
+    const isOverdue = (n: WorkItem) =>
+        !!n.dueDate && n.statusKey !== "done" && n.statusKey !== "archived"
+        && new Date(n.dueDate).getTime() < now
+
+    const copyKey = (key: string) => {
+        try { if (navigator.clipboard) navigator.clipboard.writeText(key) } catch (_) { /* clipboard indisponível */ }
+        setCopiedKey(key)
+        setTimeout(() => setCopiedKey((k) => (k === key ? null : k)), 1200)
+    }
 
     const byId: { [id: string]: TreeNode } = {}
     items.forEach((i) => { byId[i.id] = { ...i, _children: [] } as TreeNode })
@@ -75,16 +91,27 @@ const WorkItemList = ({ items, usersById, statusOptions, groupBy, milestones, sp
                 {/* 2 linhas: metadados em ordem fixa + título com clamp (antes o
                     título comprimia em 3-4 linhas e as chips trocavam de ordem). */}
                 <td>
-                    <div className="mpm-itemcell" style={{ paddingLeft: depth * 18 }}>
+                    <div className={`mpm-itemcell ${depth > 0 ? "mpm-itemcell--child" : ""}`} style={{ paddingLeft: depth * 18 }}>
                         <div className="mpm-itemcell__meta">
                             {hasChildren
-                                ? <span className="mpm-tree-toggle" onClick={(e) => { e.stopPropagation(); setCollapsed((c) => ({ ...c, [node.id]: !c[node.id] })) }}>
+                                ? <span className="mpm-tree-toggle" title={isCollapsed ? "Expandir subitens" : "Recolher subitens"}
+                                    onClick={(e) => { e.stopPropagation(); setCollapsed((c) => ({ ...c, [node.id]: !c[node.id] })) }}>
                                     <Icon name={isCollapsed ? "caret right" : "caret down"} />
+                                    <span className="mpm-tree-count">{node._children.length}</span>
                                 </span>
                                 : <span className="mpm-tree-toggle" />}
-                            <span className="mpm-mono mpm-muted">{node.key}</span>
+                            <span className={`mpm-mono mpm-muted mpm-key ${copiedKey === node.key ? "is-copied" : ""}`}
+                                title="Copiar chave" onClick={(e) => { e.stopPropagation(); copyKey(node.key) }}>
+                                {node.key}<Icon name={copiedKey === node.key ? "check" : "copy outline"} className="mpm-key__ico" />
+                            </span>
                             <TypeBadge type={node.type} />
                             <AreaBadge area={node.area} />
+                            {node.blockedReason
+                                ? <span className="mpm-state mpm-state--blocked" title={`Bloqueado: ${node.blockedReason}`}><Icon name="ban" /></span>
+                                : null}
+                            {isOverdue(node)
+                                ? <span className="mpm-state mpm-state--overdue" title={`Atrasado — prazo ${formatDate(node.dueDate)}`}><Icon name="clock outline" /></span>
+                                : null}
                         </div>
                         <div className="mpm-itemcell__title" title={node.title}
                             onClick={() => onOpenItem(node.id)} style={{ cursor: "pointer" }}>{node.title}</div>

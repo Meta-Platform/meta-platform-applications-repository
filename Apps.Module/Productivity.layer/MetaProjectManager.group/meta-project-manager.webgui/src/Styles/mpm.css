@@ -1475,7 +1475,30 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-table--fixed td { overflow: hidden; }
 
 .mpm-itemcell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+/* Guia visual de hierarquia: linha tênue à esquerda de itens filhos. */
+.mpm-itemcell--child { border-left: 2px solid var(--mp-line-faint); margin-left: -2px; }
 .mpm-itemcell__meta { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; overflow: hidden; }
+
+/* Toggle de árvore com contagem de subitens. */
+.mpm-tree-toggle { display: inline-flex; align-items: center; gap: 2px; }
+.mpm-tree-count {
+    font-size: 10px; font-weight: 700; color: var(--mp-muted);
+    min-width: 12px; text-align: center; line-height: 1;
+}
+
+/* Chave copiável: o ícone de cópia só aparece no hover; vira check ao copiar. */
+.mpm-key { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; white-space: nowrap; }
+.mpm-key:hover { color: var(--mp-ink-2); }
+.mpm-key__ico { font-size: 11px; opacity: 0; transition: opacity 0.1s ease; margin: 0 !important; }
+.mpm-key:hover .mpm-key__ico { opacity: 0.7; }
+.mpm-key.is-copied { color: var(--mp-success); }
+.mpm-key.is-copied .mpm-key__ico { opacity: 1; color: var(--mp-success); }
+
+/* Indicadores de estado crítico: só o ícone colorido + tooltip (não pinta a linha). */
+.mpm-state { display: inline-flex; align-items: center; }
+.mpm-state .icon { margin: 0 !important; }
+.mpm-state--blocked { color: var(--mp-danger); }
+.mpm-state--overdue { color: var(--mp-accent-orange); }
 .mpm-itemcell__title {
     font-weight: 600; color: var(--mp-ink);
     display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
