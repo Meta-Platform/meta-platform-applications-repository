@@ -232,7 +232,7 @@ const ProjectsStore = (ctx) => {
             subtasks: items.filter((i) => i.type === "subtask").length,
             total: items.length,
             done: items.filter((i) => doneStatuses.has(i.statusKey)).length,
-            blocked: items.filter((i) => i.statusKey === "blocked" || i.blockedReason).length,
+            blocked: items.filter((i) => (i.statusKey === "blocked" || i.blockedReason) && !doneStatuses.has(i.statusKey)).length,
             inProgress: items.filter((i) => i.statusKey === "in-progress").length,
             overdue: items.filter((i) => i.dueDate && !doneStatuses.has(i.statusKey) && new Date(i.dueDate).getTime() < now).length
         }

@@ -31,7 +31,7 @@ const ReportsStore = (ctx) => {
 
     const Blocked = async ({ project } = {}) => {
         const { items } = await _projectItems(project)
-        return SerializeMany(items.filter((i) => i.statusKey === "blocked" || i.blockedReason))
+        return SerializeMany(items.filter((i) => (i.statusKey === "blocked" || i.blockedReason) && !DONE.has(i.statusKey)))
     }
 
     const Overdue = async ({ project } = {}) => {

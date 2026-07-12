@@ -194,7 +194,9 @@ const WorkItemsStore = (ctx) => {
         const instance = await ResolveItem(item)
         const doneStatuses = new Set(["done", "archived", "completed"])
         const patch = { statusKey: status }
-        if(doneStatuses.has(status)){ patch.completedAt = new Date(); patch.progress = 100 }
+        // Um item concluído não pode continuar "bloqueado": limpa o motivo residual
+        // para não aparecer em "Requer atenção" / contagem de bloqueados.
+        if(doneStatuses.has(status)){ patch.completedAt = new Date(); patch.progress = 100; patch.blockedReason = null }
         else if(instance.statusKey && doneStatuses.has(instance.statusKey)) patch.completedAt = null
         const before = { statusKey: instance.statusKey }
         await instance.update(patch)
@@ -284,11 +286,16 @@ const WorkItemsStore = (ctx) => {
 
     const SetBlocked = async ({ item, reason, actor } = {}) => {
         const instance = await ResolveItem(item)
-        const patch = { statusKey: "blocked", blockedReason: reason || "Bloqueado" }
+        // reason vazio = DESBLOQUEAR: limpa o motivo e, se estava na coluna
+        // "blocked", devolve para backlog. Com motivo, bloqueia.
+        const unblocking = !reason || !String(reason).trim()
+        const patch = unblocking
+            ? { statusKey: instance.statusKey === "blocked" ? "backlog" : instance.statusKey, blockedReason: null }
+            : { statusKey: "blocked", blockedReason: reason }
         const before = PatchDiff(instance, patch)
         await instance.update(patch)
         const data = Serialize(instance)
-        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "block", actor, metadata: { reason }, before, after: patch })
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: unblocking ? "unblock" : "block", actor, metadata: { reason: reason || null }, before, after: patch })
         emit("item.updated", data)
         return data
     }

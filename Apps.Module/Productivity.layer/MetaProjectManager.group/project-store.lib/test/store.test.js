@@ -934,3 +934,24 @@ test("colunas novas do projeto chegam a um banco antigo (ALTER TABLE idempotente
     await migrated.ConnectAndSync()
     await migrated.sequelize.close()
 })
+
+test("item concluído não continua bloqueado (limpa blockedReason + some de 'Requer atenção')", async () => {
+    const it = await store.CreateItem({ project: "meta-platform", type: "task", title: "Alvo bloqueio" })
+    const b = await store.SetBlocked({ item: it.key, reason: "aguarda X" })
+    assert.equal(b.statusKey, "blocked")
+    assert.equal(b.blockedReason, "aguarda X")
+    assert.ok((await store.Blocked({ project: "meta-platform" })).some((x) => x.id === it.id))
+    assert.ok((await store.ProjectMetrics({ project: "meta-platform" })).blocked >= 1)
+    const done = await store.SetStatus({ item: it.key, status: "done" })
+    assert.equal(done.statusKey, "done")
+    assert.equal(done.blockedReason, null)
+    assert.ok(!(await store.Blocked({ project: "meta-platform" })).some((x) => x.id === it.id))
+})
+
+test("desbloquear: SetBlocked com motivo vazio limpa e sai da coluna blocked", async () => {
+    const it = await store.CreateItem({ project: "meta-platform", type: "task", title: "Alvo desbloqueio" })
+    await store.SetBlocked({ item: it.key, reason: "trava" })
+    const un = await store.SetBlocked({ item: it.key, reason: "" })
+    assert.equal(un.blockedReason, null)
+    assert.equal(un.statusKey, "backlog")
+})
