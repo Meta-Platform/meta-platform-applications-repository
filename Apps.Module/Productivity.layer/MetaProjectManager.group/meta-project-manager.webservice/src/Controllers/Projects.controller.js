@@ -14,6 +14,8 @@ const ProjectsController = (params) => {
     const RestoreProject = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "projectId"); return store.RestoreProject({ project: id, actor: { source: "api" } }) })
     const DeleteProject = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "projectId"); return store.DeleteProject({ project: id, actor: { source: "api" } }) })
     const ProjectMetrics = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "projectId"); return store.ProjectMetrics({ project: id }) })
+    const GetProjectReport = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "projectId"); return store.GetProjectReport({ project: id }) })
+    const SetProjectReport = async (p = {}) => Guard(async () => { await ctx.ready; return store.SetProjectReport({ project: p.projectId, finalReport: p.finalReport, actor: Actor(p) }) })
 
     return {
         controllerName: "ProjectsController",
@@ -24,7 +26,9 @@ const ProjectsController = (params) => {
         ArchiveProject,
         RestoreProject,
         DeleteProject,
-        ProjectMetrics
+        ProjectMetrics,
+        GetProjectReport,
+        SetProjectReport
     }
 }
 

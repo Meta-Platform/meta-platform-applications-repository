@@ -218,6 +218,38 @@
                     "required": true
                 }
             ]
+        },
+        {
+            "summary": "GetProjectReport",
+            "method": "GET",
+            "path": "/projects/:projectId/report",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "SetProjectReport",
+            "method": "PUT",
+            "path": "/projects/:projectId/report",
+            "parameters": [
+                {
+                    "name": "projectId",
+                    "in": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "name": "finalReport",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                }
+            ]
         }
     ]
 }
