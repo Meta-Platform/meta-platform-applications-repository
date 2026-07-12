@@ -612,6 +612,18 @@ const BuildTools = ({ store, actor }) => {
             handler: (i) => store.GetProject({ project: i.project })
         },
         {
+            name: "set_project_report",
+            description: "Grava o RELATÓRIO FINAL de conclusão de um projeto: markdown com o panorama do que foi feito, com links para itens (ex.: [[CFGEC-9]]) e commits. LIVRE (não exige aprovação) — é um deliverable que o agente redige e o humano lê. Substitui o relatório anterior. Renderizado na aba 'Relatório Final' da GUI.",
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)"), finalReport: S.str("Relatório final em markdown") }, ["project", "finalReport"]),
+            handler: (i) => store.SetProjectReport(A({ project: i.project, finalReport: i.finalReport }))
+        },
+        {
+            name: "get_project_report",
+            description: "Lê o relatório final de um projeto (retorna o markdown e quando foi atualizado).",
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }, ["project"]),
+            handler: (i) => store.GetProjectReport({ project: i.project })
+        },
+        {
             name: "list_boards",
             description: "Lista os boards de um projeto (com colunas/status).",
             inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }, ["project"]),

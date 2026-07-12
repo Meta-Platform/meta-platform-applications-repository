@@ -36,6 +36,20 @@ test("delete tools existem e são gated", () => {
     assert.ok(byName("delete_project") && byName("delete_board") && byName("delete_item"))
 })
 
+test("set/get_project_report gravam e leem o relatório final (livre, sem gate)", async () => {
+    const md = "# Relatório Final\n\nPanorama. Ver [[MCP-1]] e commit `deadbee`."
+    const set = await byName("set_project_report").handler({ project: "MCP", finalReport: md })
+    // livre: retorna o projeto atualizado, não um pedido de aprovação
+    assert.equal(set.finalReport, md)
+    assert.notEqual(set.status, "pending_approval")
+    const got = await byName("get_project_report").handler({ project: "MCP" })
+    assert.equal(got.finalReport, md)
+    assert.equal(got.name, "MCP Proj")
+    // get_project também expõe o campo
+    const proj = await byName("get_project").handler({ project: "MCP" })
+    assert.equal(proj.finalReport, md)
+})
+
 test("delete_item waitApproval:false retorna approvalRequestId (não espera)", async () => {
     const it = await store.CreateItem({ project: "MCP", type: "task", title: "MCP alvo" })
     const out = await byName("delete_item").handler({ item: it.key, waitApproval: false })
