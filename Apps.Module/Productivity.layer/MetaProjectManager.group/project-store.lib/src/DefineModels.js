@@ -14,6 +14,10 @@ const DefineModels = (sequelize) => {
         // A `description` longa fica só no detalhe do projeto.
         shortDescription: { type: DataTypes.STRING },
         description:   { type: DataTypes.TEXT },
+        // Relatório final de conclusão do projeto (markdown rico, com links para
+        // itens/commits). Escrito ao encerrar o projeto; renderizado na aba
+        // "Relatório Final" da GUI.
+        finalReport:   { type: DataTypes.TEXT },
         icon:          { type: DataTypes.STRING },
         color:         { type: DataTypes.STRING },
         status:        { type: DataTypes.STRING, allowNull: false, defaultValue: "planning" },

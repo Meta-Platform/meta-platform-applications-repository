@@ -116,7 +116,7 @@ const ProjectsStore = (ctx) => {
 
     const UpdateProject = async ({ project, actor, ...fields } = {}) => {
         const instance = await ResolveProject(project)
-        const allowed = ["name", "shortDescription", "description", "icon", "color", "status", "repositoryUrl", "localPath", "defaultBoardId", "ownerUserId",
+        const allowed = ["name", "shortDescription", "description", "finalReport", "icon", "color", "status", "repositoryUrl", "localPath", "defaultBoardId", "ownerUserId",
             "contextRepository", "contextModule", "contextLayer", "contextGroup"]
         const patch = {}
         for(const key of allowed) if(fields[key] !== undefined) patch[key] = fields[key]
@@ -150,6 +150,25 @@ const ProjectsStore = (ctx) => {
         await writeAudit({ projectId: instance.id, entityType: "project", entityId: instance.id, action: "update", actor, metadata: patch, before, after: patch })
         emit("project.updated", data)
         return data
+    }
+
+    // Relatório final de conclusão do projeto (markdown). Escrita LIVRE: é um
+    // deliverable que o agente redige e o humano lê — sem gate de aprovação.
+    const SetProjectReport = async ({ project, finalReport, actor } = {}) => {
+        const instance = await ResolveProject(project)
+        if(typeof finalReport !== "string")
+            throw new DomainError("VALIDATION_ERROR", "finalReport deve ser texto (markdown).", { field: "finalReport" })
+        const before = { finalReport: instance.finalReport ? "(anterior)" : null }
+        await instance.update({ finalReport })
+        const data = Serialize(instance)
+        await writeAudit({ projectId: instance.id, entityType: "project", entityId: instance.id, action: "update", actor, metadata: { field: "finalReport", length: finalReport.length }, before, after: { finalReport: "(atualizado)" } })
+        emit("project.updated", data)
+        return data
+    }
+
+    const GetProjectReport = async ({ project } = {}) => {
+        const instance = await ResolveProject(project)
+        return { projectId: instance.id, name: instance.name, status: instance.status, finalReport: instance.finalReport || null, updatedAt: instance.updatedAt }
     }
 
     const ArchiveProject = async ({ project, actor } = {}) => {
@@ -231,6 +250,7 @@ const ProjectsStore = (ctx) => {
     return {
         ResolveProject,
         CreateProject, ListProjects, GetProject, UpdateProject,
+        SetProjectReport, GetProjectReport,
         ArchiveProject, RestoreProject, DeleteProject, ProjectMetrics,
         NextItemKey
     }

@@ -72,6 +72,7 @@ const InitializeProjectStore = (options = {}) => {
         ["projects",          "contextModule",    "VARCHAR(255)"],
         ["projects",          "contextLayer",     "VARCHAR(255)"],
         ["projects",          "contextGroup",     "VARCHAR(255)"],
+        ["projects",          "finalReport",      "TEXT"],
         ["boards",            "shortDescription", "VARCHAR(255)"],
         ["milestones",        "shortDescription", "VARCHAR(255)"],
         ["sprints",           "shortDescription", "VARCHAR(255)"],

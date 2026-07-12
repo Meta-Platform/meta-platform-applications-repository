@@ -30,6 +30,25 @@ test("slug duplicado gera CONFLICT", async () => {
     await assert.rejects(() => store.CreateProject({ name: "Meta Platform" }), (e) => e.code === "CONFLICT")
 })
 
+test("relatório final: set/get e persistência no GetProject", async () => {
+    const md = "# Relatório\n\nPanorama do que foi feito. Ver [[MP-1]] e commit `abc123`."
+    const saved = await store.SetProjectReport({ project: "meta-platform", finalReport: md, actor: { source: "cli" } })
+    assert.equal(saved.finalReport, md)
+    const rep = await store.GetProjectReport({ project: "meta-platform" })
+    assert.equal(rep.finalReport, md)
+    assert.equal(rep.name, "Meta Platform")
+    // GetProject também serializa a coluna (vem de graça).
+    const proj = await store.GetProject({ project: "meta-platform" })
+    assert.equal(proj.finalReport, md)
+    // Também gravável via UpdateProject (allowlist), sem gate.
+    const upd = await store.UpdateProject({ project: "meta-platform", finalReport: md + "\n\nAtualizado.", actor: { source: "cli" } })
+    assert.ok(upd.finalReport.endsWith("Atualizado."))
+})
+
+test("relatório final: rejeita valor não-string", async () => {
+    await assert.rejects(() => store.SetProjectReport({ project: "meta-platform", finalReport: 123 }), (e) => e.code === "VALIDATION_ERROR")
+})
+
 test("cria board com colunas padrão e vira default", async () => {
     const b = await store.CreateBoard({ project: "meta-platform", name: "Development" })
     const full = await store.GetBoard({ board: b.id })
