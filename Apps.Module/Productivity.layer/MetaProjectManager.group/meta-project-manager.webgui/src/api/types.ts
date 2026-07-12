@@ -14,6 +14,8 @@ export interface Project {
     // Descrição curta (<=240) — usada em cards, sidebar e command palette.
     shortDescription?: string
     description?: string
+    // Relatório final de conclusão (markdown). Renderizado na aba "Relatório Final".
+    finalReport?: string
     icon?: string
     color?: string
     status: ProjectStatus

@@ -19,10 +19,19 @@ export interface UpdateProjectInput {
     name?: string
     shortDescription?: string
     description?: string
+    finalReport?: string
     status?: string
     slug?: string
     icon?: string
     color?: string
+}
+
+export interface ProjectReport {
+    projectId: string
+    name: string
+    status: string
+    finalReport: string | null
+    updatedAt?: string
 }
 
 const CreateProjectsApi = (call: Caller) => ({
@@ -48,7 +57,13 @@ const CreateProjectsApi = (call: Caller) => ({
         call("Projects", "DeleteProject", { projectId }),
 
     metrics: (projectId: string): Promise<ProjectMetrics> =>
-        call("Projects", "ProjectMetrics", { projectId })
+        call("Projects", "ProjectMetrics", { projectId }),
+
+    getReport: (projectId: string): Promise<ProjectReport> =>
+        call("Projects", "GetProjectReport", { projectId }),
+
+    setReport: (projectId: string, finalReport: string): Promise<Project> =>
+        call("Projects", "SetProjectReport", { projectId, finalReport })
 })
 
 export default CreateProjectsApi

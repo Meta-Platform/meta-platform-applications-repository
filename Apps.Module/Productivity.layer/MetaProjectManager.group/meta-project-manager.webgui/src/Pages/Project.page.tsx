@@ -22,10 +22,11 @@ import downloadJson from "../Utils/downloadJson"
 import { feedbackTarget } from "../Utils/feedbackTarget"
 import useFeedback from "../Hooks/useFeedback"
 
-type OverviewTab = "resumo" | "auditoria"
+type OverviewTab = "resumo" | "relatorio" | "auditoria"
 const OVERVIEW_TABS: { key: OverviewTab; label: string; icon: any; hint: string }[] = [
-    { key: "resumo",    label: "Visão geral", icon: "home",    hint: "Descrição do projeto, boards e atividade recente" },
-    { key: "auditoria", label: "Auditoria",   icon: "history", hint: "Tudo que humanos e agentes fizeram neste projeto" }
+    { key: "resumo",    label: "Visão geral",    icon: "home",           hint: "Descrição do projeto, boards e atividade recente" },
+    { key: "relatorio", label: "Relatório Final", icon: "file alternate outline", hint: "Relatório de conclusão do projeto — panorama do que foi feito, com links" },
+    { key: "auditoria", label: "Auditoria",      icon: "history",        hint: "Tudo que humanos e agentes fizeram neste projeto" }
 ]
 
 // Só agrupa eventos consecutivos cuja FRASE é idêntica (ex.: 12 vínculos criados
@@ -63,6 +64,7 @@ const ProjectPage = () => {
     const [attention, setAttention] = useState<{ blocked: WorkItem[]; overdue: WorkItem[] }>({ blocked: [], overdue: [] })
     // Descrição do projeto: leitura por padrão, editor rico (markdown + imagem) sob demanda.
     const [editingDesc, setEditingDesc] = useState(false)
+    const [editingReport, setEditingReport] = useState(false)
     const [users, setUsers] = useState<User[]>([])
     // Item aberto a partir de uma referência (CFGEC-26) citada na descrição do projeto.
     const [selected, setSelected] = useState<string | null>(null)
@@ -370,6 +372,38 @@ const ProjectPage = () => {
                                 </div>}
                         </div>
                         </aside>
+                    </div>
+                    : null}
+
+                {tab === "relatorio"
+                    ? <div className="mpm-panel">
+                        <div className="mpm-panel__title">
+                            <Icon name="file alternate outline" /> Relatório Final
+                            {!editingReport
+                                ? <button className="mpm-btn mpm-btn--sm" style={{ marginLeft: "auto" }} onClick={() => setEditingReport(true)}>
+                                    <Icon name="pencil" /> Editar
+                                </button>
+                                : null}
+                        </div>
+                        {editingReport
+                            ? <div className="mpm-desc mpm-desc--inline"
+                                {...feedbackTarget({ entityType: "project", entityId: project.id, project: project.id, field: "finalReport", fieldLabel: "Relatório final do projeto" })}>
+                                <DescriptionEditor key={`proj-report-${project.id}`} value={project.finalReport || ""}
+                                    label="relatório final do projeto"
+                                    onSave={(md) => api.projects.update(project.id, { finalReport: md }).then(setProject).catch((e) => setError(e.message))}
+                                    onDone={() => setEditingReport(false)} />
+                            </div>
+                            : project.finalReport
+                            ? <div {...feedbackTarget({ entityType: "project", entityId: project.id, project: project.id, field: "finalReport", fieldLabel: "Relatório final do projeto" })}>
+                                <Markdown>{project.finalReport}</Markdown>
+                            </div>
+                            : <div className="mpm-tabpanel-empty">
+                                <Icon name="file alternate outline" size="large" />
+                                <div>Este projeto ainda não tem relatório final.</div>
+                                <button className="mpm-btn mpm-btn--sm mpm-btn--primary" onClick={() => setEditingReport(true)}>
+                                    <Icon name="pencil" /> Escrever relatório
+                                </button>
+                            </div>}
                     </div>
                     : null}
 
