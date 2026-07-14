@@ -7,42 +7,10 @@
         },
         "installDataDirPath": {
             "type": "string"
-        },
-        "REPOS_CONF_FILENAME_REPOS_DATA": {
-            "type": "string"
-        },
-        "REPOS_CONF_EXT_MODULE_DIR": {
-            "type": "string"
-        },
-        "REPOS_CONF_EXT_LAYER_DIR": {
-            "type": "string"
-        },
-        "REPOS_CONF_EXT_GROUP_DIR": {
-            "type": "string"
-        },
-        "REPOS_CONF_EXTLIST_PKG_TYPE": {
-            "type": "string"
-        },
-        "PKG_CONF_DIRNAME_METADATA": {
-            "type": "string"
-        },
-        "EXECUTIONDATA_CONF_DIRNAME_DEPENDENCIES": {
-            "type": "string"
-        },
-        "ECOSYSTEMDATA_CONF_FILENAME_PKG_GRAPH_DATA": {
-            "type": "string"
         }
     },
     "required": [
         "serverName",
-        "installDataDirPath",
-        "REPOS_CONF_FILENAME_REPOS_DATA",
-        "REPOS_CONF_EXT_MODULE_DIR",
-        "REPOS_CONF_EXT_LAYER_DIR",
-        "REPOS_CONF_EXT_GROUP_DIR",
-        "REPOS_CONF_EXTLIST_PKG_TYPE",
-        "PKG_CONF_DIRNAME_METADATA",
-        "EXECUTIONDATA_CONF_DIRNAME_DEPENDENCIES",
-        "ECOSYSTEMDATA_CONF_FILENAME_PKG_GRAPH_DATA"
+        "installDataDirPath"
     ]
 }
