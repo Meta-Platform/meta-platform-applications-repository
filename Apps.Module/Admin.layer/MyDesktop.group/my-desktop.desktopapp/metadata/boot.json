@@ -26,6 +26,7 @@
                 "repositoryManagerService": "@/repository-manager.service",
                 "ecosystemControlPanelService": "@/ecosystem-control-panel.service",
                 "jsonFileUtilitiesLib": "@/json-file-utilities.lib",
+                "ecosystemDefaultsHandlerLib": "@/ecosystem-defaults-handler.lib",
                 "ecosystemInstallUtilitiesLib": "@/ecosystem-install-utilities.lib",
                 "repositoryUtilitiesLib": "@/repository-utilities.lib",
                 "dependencyGraphBuilderLib": "@/dependency-graph-builder.lib",
@@ -43,7 +44,10 @@
                     {
                         "ref": "ecosystemData",
                         "package": "ecosystemControlPanelService",
-                        "factory": "Services/EcosystemDataHandler.service"
+                        "factory": "Services/EcosystemDataHandler.service",
+                        "boundLibs": {
+                            "ecosystemDefaultsHandlerLib": "ecosystemDefaultsHandlerLib"
+                        }
                     },
                     {
                         "ref": "repositoryManager",
