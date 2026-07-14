@@ -13,9 +13,6 @@
       "type": "string",
       "format": "uri"
     },
-    "RT_ENV_GENERATED_DIR_NAME": {
-      "type": "string"
-    },
     "workspaceStorageFilePath": {
       "type": "string"
     },
@@ -23,5 +20,11 @@
       "type": "string"
     }
   },
-  "required": ["port", "serverName", "serverManagerUrl", "RT_ENV_GENERATED_DIR_NAME", "workspaceStorageFilePath", "runCommandPath"]
+  "required": [
+    "port",
+    "serverName",
+    "serverManagerUrl",
+    "workspaceStorageFilePath",
+    "runCommandPath"
+  ]
 }

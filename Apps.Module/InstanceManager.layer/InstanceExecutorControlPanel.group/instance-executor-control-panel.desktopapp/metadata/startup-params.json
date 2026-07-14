@@ -1,6 +1,5 @@
 {
     "serverName": "InstanceExecutorControlPanelDesktopInstance",
-    "RT_ENV_GENERATED_DIR_NAME": ".generated_data",
     "installDataDirPath": "/home/kadisk/EcosystemData",
     "platformApplicationSocketPath": "/home/kadisk/EcosystemData/sockets/ecosystem-instance-manager.app.sock"
 }

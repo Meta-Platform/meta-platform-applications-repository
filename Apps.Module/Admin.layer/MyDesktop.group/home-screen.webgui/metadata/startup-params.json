@@ -2,6 +2,5 @@
     "port":"8891",
     "serverName":"HomeScreenWebguiInstance",
     "serverManagerUrl": "http://localhost:8891/server-manager/status",
-    "RT_ENV_GENERATED_DIR_NAME":".generated_data",
     "isWatch": true
 }

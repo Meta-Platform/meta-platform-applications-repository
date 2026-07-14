@@ -3,6 +3,5 @@
     "serverName": "RuntimeManagerWebappInstance",
     "serverManagerUrl": "http://localhost:8080/server-manager/status",
     "ECO_DIRPATH_INSTALL_DATA": "/home/kadisk/EcosystemData",
-    "RT_ENV_GENERATED_DIR_NAME": ".generated_data",
     "platformApplicationSocketPath": "/home/kadisk/EcosystemData/sockets/ecosystem-instance-manager.app.sock"
 }

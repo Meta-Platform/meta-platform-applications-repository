@@ -15,10 +15,12 @@
     },
     "apisDirPath": {
       "type": "string"
-    },
-    "RT_ENV_GENERATED_DIR_NAME": {
-      "type": "string"
     }
   },
-  "required": ["port", "serverName", "serverManagerUrl", "apisDirPath", "RT_ENV_GENERATED_DIR_NAME"]
+  "required": [
+    "port",
+    "serverName",
+    "serverManagerUrl",
+    "apisDirPath"
+  ]
 }

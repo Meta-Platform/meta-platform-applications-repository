@@ -1,6 +1,5 @@
 {
     "serverName": "MyDesktopDesktopInstance",
-    "RT_ENV_GENERATED_DIR_NAME": ".generated_data",
     "installDataDirPath": "~/EcosystemData",
     "panelStateFilePath": "~/virtual-desk-state/my-desktop-state.json",
     "ecosystemDefaultsFileRelativePath": "./config-files/ecosystem-defaults.json",

@@ -2,9 +2,15 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "serverName": { "type": "string" },
-    "apisDirPath": { "type": "string" },
-    "RT_ENV_GENERATED_DIR_NAME": { "type": "string" }
+    "serverName": {
+      "type": "string"
+    },
+    "apisDirPath": {
+      "type": "string"
+    }
   },
-  "required": ["serverName", "apisDirPath", "RT_ENV_GENERATED_DIR_NAME"]
+  "required": [
+    "serverName",
+    "apisDirPath"
+  ]
 }

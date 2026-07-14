@@ -2,7 +2,6 @@
     "port": "8894",
     "serverName": "MetaProjectManagerWebappInstance",
     "serverManagerUrl": "http://localhost:8894/server-manager/status",
-    "RT_ENV_GENERATED_DIR_NAME": ".generated_data",
     "isWatch": true,
     "MPM_DB_FILE_PATH": "~/virtual-desk-state/local-databases/meta-project-manager.sqlite",
     "MPM_ATTACHMENTS_DIR_PATH": "~/virtual-desk-state/meta-project-manager/attachments",

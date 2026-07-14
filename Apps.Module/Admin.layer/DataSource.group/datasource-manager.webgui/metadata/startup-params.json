@@ -1,6 +1,5 @@
 {
     "port":"9045",
     "serverName":"DatasourceManagerWebguiInstance",
-    "serverManagerUrl": "http://localhost:9045/server-manager/status",
-    "RT_ENV_GENERATED_DIR_NAME":".generated_data"
+    "serverManagerUrl": "http://localhost:9045/server-manager/status"
 }

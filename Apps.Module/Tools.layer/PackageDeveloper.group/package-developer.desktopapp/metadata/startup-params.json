@@ -1,6 +1,5 @@
 {
     "serverName":"PackageDeveloperDesktopInstance",
-    "RT_ENV_GENERATED_DIR_NAME":".generated_data",
     "workspaceStorageFilePath":"~/virtual-desk-state/local-databases/package-developer-workspace-store-service.sqlite",
     "runCommandPath":"/home/kadisk/EcosystemData/executables/run"
 }

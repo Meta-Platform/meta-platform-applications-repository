@@ -13,9 +13,6 @@
       "type": "string",
       "format": "uri"
     },
-    "RT_ENV_GENERATED_DIR_NAME": {
-      "type": "string"
-    },
     "isWatch": {
       "type": "boolean"
     }
@@ -23,7 +20,6 @@
   "required": [
     "port",
     "serverName",
-    "serverManagerUrl",
-    "RT_ENV_GENERATED_DIR_NAME"
+    "serverManagerUrl"
   ]
 }

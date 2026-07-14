@@ -5,9 +5,6 @@
     "serverName": {
       "type": "string"
     },
-    "RT_ENV_GENERATED_DIR_NAME": {
-      "type": "string"
-    },
     "workspaceStorageFilePath": {
       "type": "string"
     },
@@ -15,5 +12,9 @@
       "type": "string"
     }
   },
-  "required": ["serverName", "RT_ENV_GENERATED_DIR_NAME", "workspaceStorageFilePath", "runCommandPath"]
+  "required": [
+    "serverName",
+    "workspaceStorageFilePath",
+    "runCommandPath"
+  ]
 }
