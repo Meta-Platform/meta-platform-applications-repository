@@ -1,11 +1,12 @@
 {
     "params": [
-        "serverManagerUrl", 
+        "serverManagerUrl",
         "serverName",
-        "RT_ENV_GENERATED_DIR_NAME",
         "?isWatch"
     ],
-    "bound-params":[ "serverService" ],
+    "bound-params": [
+        "serverService"
+    ],
     "endpoints": [
         {
             "url": "/",
@@ -14,12 +15,11 @@
                 "entrypoint": "index.tsx",
                 "htmlTemplate": "index.html",
                 "serverEndpointStatus": "{{serverManagerUrl}}",
-                "serverName":"{{serverName}}",
-                "RT_ENV_GENERATED_DIR_NAME":"{{RT_ENV_GENERATED_DIR_NAME}}",
+                "serverName": "{{serverName}}",
                 "isWatch": "isWatch"
             },
             "bound-params": {
-                "serverService":"serverService"
+                "serverService": "serverService"
             }
         }
     ]

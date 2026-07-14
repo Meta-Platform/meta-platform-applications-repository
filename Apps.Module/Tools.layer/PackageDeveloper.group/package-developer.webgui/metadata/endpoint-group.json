@@ -1,10 +1,11 @@
 {
     "params": [
-        "serverManagerUrl", 
-        "serverName",
-        "RT_ENV_GENERATED_DIR_NAME"
+        "serverManagerUrl",
+        "serverName"
     ],
-    "bound-params":[ "serverService" ],
+    "bound-params": [
+        "serverService"
+    ],
     "endpoints": [
         {
             "url": "/",
@@ -13,11 +14,10 @@
                 "entrypoint": "index.tsx",
                 "htmlTemplate": "index.html",
                 "serverEndpointStatus": "{{serverManagerUrl}}",
-                "serverName":"{{serverName}}",
-                "RT_ENV_GENERATED_DIR_NAME":"{{RT_ENV_GENERATED_DIR_NAME}}"
+                "serverName": "{{serverName}}"
             },
             "bound-params": {
-                "serverService":"serverService"
+                "serverService": "serverService"
             }
         }
     ]
