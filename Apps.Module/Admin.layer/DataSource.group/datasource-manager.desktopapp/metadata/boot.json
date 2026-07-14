@@ -1,8 +1,7 @@
 {
-    "params" : [
+    "params": [
         "serverName",
-        "appDataDir",
-        "RT_ENV_GENERATED_DIR_NAME"
+        "appDataDir"
     ],
     "windows": [
         {
@@ -12,14 +11,13 @@
             "dependency": "@/datasource-manager.webgui",
             "params": {
                 "serverName": "{{serverName}}",
-                "RT_ENV_GENERATED_DIR_NAME": "{{RT_ENV_GENERATED_DIR_NAME}}",
                 "appDataDir": "{{appDataDir}}"
             },
             "bound-params": {
-                "datasourceWebgui":            "@/datasource-manager.webgui",
-                "datasourceGuiService":        "@/datasource-gui.service",
+                "datasourceWebgui": "@/datasource-manager.webgui",
+                "datasourceGuiService": "@/datasource-gui.service",
                 "datasourceManagerWebservice": "@/datasource-manager.webservice",
-                "datasourceManagerService":    "@/datasource-manager.service"
+                "datasourceManagerService": "@/datasource-manager.service"
             },
             "gui-host": {
                 "webgui": "datasourceWebgui",

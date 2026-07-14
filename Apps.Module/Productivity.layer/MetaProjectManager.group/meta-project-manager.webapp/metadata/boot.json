@@ -3,7 +3,6 @@
         "port",
         "serverName",
         "serverManagerUrl",
-        "RT_ENV_GENERATED_DIR_NAME",
         "isWatch",
         "MPM_DB_FILE_PATH",
         "MPM_ATTACHMENTS_DIR_PATH",
@@ -44,7 +43,6 @@
             "params": {
                 "serverManagerUrl": "{{serverManagerUrl}}",
                 "serverName": "{{serverName}}",
-                "RT_ENV_GENERATED_DIR_NAME": "{{RT_ENV_GENERATED_DIR_NAME}}",
                 "isWatch": "isWatch"
             },
             "bound-params": {

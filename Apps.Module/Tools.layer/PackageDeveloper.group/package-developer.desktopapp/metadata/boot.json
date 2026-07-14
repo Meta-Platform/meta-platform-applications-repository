@@ -1,7 +1,6 @@
 {
-    "params" : [
+    "params": [
         "serverName",
-        "RT_ENV_GENERATED_DIR_NAME",
         "workspaceStorageFilePath",
         "runCommandPath"
     ],
@@ -12,19 +11,18 @@
             "height": 800,
             "dependency": "@/package-developer.webgui",
             "params": {
-                "serverName":               "{{serverName}}",
-                "RT_ENV_GENERATED_DIR_NAME": "{{RT_ENV_GENERATED_DIR_NAME}}",
+                "serverName": "{{serverName}}",
                 "workspaceStorageFilePath": "{{workspaceStorageFilePath}}",
-                "runCommandPath":           "{{runCommandPath}}"
+                "runCommandPath": "{{runCommandPath}}"
             },
             "bound-params": {
-                "packageDeveloperWebgui":     "@/package-developer.webgui",
+                "packageDeveloperWebgui": "@/package-developer.webgui",
                 "packageDeveloperGuiService": "@/package-developer-gui.service",
                 "packageDeveloperWebservice": "@/package-developer.webservice",
-                "packageDeveloperLib":        "@/package-developer.lib",
-                "packageProcessManagerLib":   "@/package-process-manager.lib",
-                "packageToolkitLib":          "@/package-toolkit.lib",
-                "workspaceStoreLib":          "@/workspace-store.lib"
+                "packageDeveloperLib": "@/package-developer.lib",
+                "packageProcessManagerLib": "@/package-process-manager.lib",
+                "packageToolkitLib": "@/package-toolkit.lib",
+                "workspaceStoreLib": "@/workspace-store.lib"
             },
             "gui-host": {
                 "webgui": "packageDeveloperWebgui",

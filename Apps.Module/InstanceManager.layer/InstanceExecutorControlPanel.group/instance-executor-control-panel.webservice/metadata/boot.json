@@ -1,46 +1,32 @@
 {
-    "params" : [
-        "port", 
+    "params": [
+        "port",
         "serverName",
-        "PKG_CONF_DIRNAME_METADATA",
-        "REPOS_CONF_EXT_MODULE_DIR",
         "ECO_DIRPATH_INSTALL_DATA",
-        "REPOS_CONF_FILENAME_REPOS_DATA",
-        "REPOS_CONF_EXT_LAYER_DIR",
-        "REPOS_CONF_EXT_GROUP_DIR",
-        "REPOS_CONF_EXTLIST_PKG_TYPE",
-        "EXECUTIONDATA_CONF_DIRNAME_DEPENDENCIES",
-        "ECOSYSTEMDATA_CONF_FILENAME_PKG_GRAPH_DATA",
         "platformApplicationSocketPath"
     ],
     "services": [
         {
             "namespace": "@@/server-service",
             "dependency": "@/server-manager.service/services/HTTPServerService",
-            "params":{
-                "name":"{{serverName}}",
+            "params": {
+                "name": "{{serverName}}",
                 "port": "{{port}}"
             }
         },
         {
-            "namespace":"@@/repository-manager",
+            "namespace": "@@/repository-manager",
             "dependency": "@/repository-manager.service/services/RepositoryManagerService",
             "bound-params": {
-                "repositoryUtilitiesLib":"@/repository-utilities.lib",
+                "repositoryUtilitiesLib": "@/repository-utilities.lib",
                 "dependencyGraphBuilderLib": "@/dependency-graph-builder.lib"
             },
             "params": {
-                "installDataDirPath":"{{ECO_DIRPATH_INSTALL_DATA}}",
-                "REPOS_CONF_FILENAME_REPOS_DATA":"{{REPOS_CONF_FILENAME_REPOS_DATA}}",
-                "REPOS_CONF_EXT_MODULE_DIR":"{{REPOS_CONF_EXT_MODULE_DIR}}",
-                "REPOS_CONF_EXT_LAYER_DIR":"{{REPOS_CONF_EXT_LAYER_DIR}}",
-                "REPOS_CONF_EXT_GROUP_DIR":"{{REPOS_CONF_EXT_GROUP_DIR}}",
-                "REPOS_CONF_EXTLIST_PKG_TYPE":"{{REPOS_CONF_EXTLIST_PKG_TYPE}}",
-                "PKG_CONF_DIRNAME_METADATA": "{{PKG_CONF_DIRNAME_METADATA}}"
+                "installDataDirPath": "{{ECO_DIRPATH_INSTALL_DATA}}"
             }
         },
         {
-            "namespace":"@@/command-line-runtime",
+            "namespace": "@@/command-line-runtime",
             "dependency": "@/command-line-runtime.service/services/CommandLineRuntime",
             "bound-params": {
                 "instanceManagerClientLib": "@/instance-manager-client.lib"
@@ -50,7 +36,7 @@
             }
         },
         {
-            "namespace":"@@/instance-manager-runtime",
+            "namespace": "@@/instance-manager-runtime",
             "dependency": "@/instance-manager-runtime.service/services/InstanceManagerRuntimeService",
             "bound-params": {
                 "instanceManagerClientLib": "@/instance-manager-client.lib"
@@ -63,14 +49,14 @@
     "endpoints": [
         {
             "dependency": "@/server-manager.webservice/endpoint-group",
-            "bound-params":{
-               "serverServiceForController":"@@/server-service",
-               "serverService": "@@/server-service"
+            "bound-params": {
+                "serverServiceForController": "@@/server-service",
+                "serverService": "@@/server-service"
             }
         },
         {
             "dependency": "@//endpoint-group",
-            "bound-params":{
+            "bound-params": {
                 "serverService": "@@/server-service",
                 "repositoryManagerService": "@@/repository-manager",
                 "commandLineRuntimeService": "@@/command-line-runtime",

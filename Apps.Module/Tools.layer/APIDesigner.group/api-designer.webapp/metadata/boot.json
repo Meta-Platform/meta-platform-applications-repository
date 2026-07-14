@@ -1,17 +1,16 @@
 {
-    "params" : [
-        "apisDirPath", 
-        "port", 
-        "serverManagerUrl", 
-        "serverName", 
-        "RT_ENV_GENERATED_DIR_NAME"
+    "params": [
+        "apisDirPath",
+        "port",
+        "serverManagerUrl",
+        "serverName"
     ],
     "services": [
         {
             "namespace": "@@/server-service",
             "dependency": "@/server-manager.service/services/HTTPServerService",
-            "params":{
-                "name":"{{serverName}}",
+            "params": {
+                "name": "{{serverName}}",
                 "port": "{{port}}"
             }
         }
@@ -19,29 +18,28 @@
     "endpoints": [
         {
             "dependency": "@/server-manager.webservice/endpoint-group",
-            "bound-params":{
-               "serverServiceForController":"@@/server-service",
-               "serverService": "@@/server-service"
+            "bound-params": {
+                "serverServiceForController": "@@/server-service",
+                "serverService": "@@/server-service"
             }
         },
         {
             "dependency": "@/api-designer.webservice/endpoint-group",
-            "params":{
-               "apisDirPath":"{{apisDirPath}}"
+            "params": {
+                "apisDirPath": "{{apisDirPath}}"
             },
-            "bound-params":{
+            "bound-params": {
                 "serverService": "@@/server-service",
                 "apiAuthoringLib": "@/api-authoring.lib"
             }
         },
         {
             "dependency": "@/api-designer.webgui/endpoint-group",
-            "params":{
-                "serverManagerUrl":"{{serverManagerUrl}}",
-                "serverName":"{{serverName}}",
-                "RT_ENV_GENERATED_DIR_NAME":"{{RT_ENV_GENERATED_DIR_NAME}}"
+            "params": {
+                "serverManagerUrl": "{{serverManagerUrl}}",
+                "serverName": "{{serverName}}"
             },
-            "bound-params":{
+            "bound-params": {
                 "serverService": "@@/server-service"
             }
         }

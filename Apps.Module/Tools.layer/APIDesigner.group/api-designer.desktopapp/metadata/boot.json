@@ -1,8 +1,7 @@
 {
-    "params" : [
+    "params": [
         "apisDirPath",
-        "serverName",
-        "RT_ENV_GENERATED_DIR_NAME"
+        "serverName"
     ],
     "windows": [
         {
@@ -12,14 +11,13 @@
             "dependency": "@/api-designer.webgui",
             "params": {
                 "serverName": "{{serverName}}",
-                "RT_ENV_GENERATED_DIR_NAME": "{{RT_ENV_GENERATED_DIR_NAME}}",
                 "apisDir": "{{apisDirPath}}"
             },
             "bound-params": {
-                "apiDesignerWebgui":     "@/api-designer.webgui",
+                "apiDesignerWebgui": "@/api-designer.webgui",
                 "apiDesignerGuiService": "@/api-designer-gui.service",
                 "apiDesignerWebservice": "@/api-designer.webservice",
-                "apiAuthoringLib":       "@/api-authoring.lib"
+                "apiAuthoringLib": "@/api-authoring.lib"
             },
             "gui-host": {
                 "webgui": "apiDesignerWebgui",
@@ -30,7 +28,7 @@
                         "package": "apiDesignerGuiService",
                         "factory": "Services/ApiDesignerGui.service",
                         "boundLibs": {
-                            "apiAuthoringLib":       "apiAuthoringLib",
+                            "apiAuthoringLib": "apiAuthoringLib",
                             "apiDesignerWebservice": "apiDesignerWebservice"
                         }
                     }
