@@ -7,7 +7,11 @@ const InitStore = async ({ startupParams, params }) => {
     const store = InitializeProjectStore({
         storage: startupParams.MPM_DB_FILE_PATH,
         attachmentsDirPath: startupParams.MPM_ATTACHMENTS_DIR_PATH,
-        maxAttachmentBytes: startupParams.MPM_MAX_ATTACHMENT_BYTES
+        maxAttachmentBytes: startupParams.MPM_MAX_ATTACHMENT_BYTES,
+        // Este processo é o servidor MCP dos AGENTES: um projeto em "planning" fica
+        // travado para escrita (a lib recusa toda mutação com PROJECT_IN_PLANNING)
+        // até um humano tirar o projeto do planejamento. Ver AssertProjectWritable.
+        agentPlanningLock: true
     })
     await store.ConnectAndSync()
     return store

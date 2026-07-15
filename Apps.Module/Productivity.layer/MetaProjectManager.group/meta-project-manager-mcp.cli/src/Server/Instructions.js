@@ -41,8 +41,17 @@ dizendo o que mudou. Não ignore, não discuta, não peça confirmação.
   humano precisa decidir em segundos. Detalhe vai para anexo ou comentário.
 
 ## 4. O que é LIVRE e o que exige aprovação
-LIVRE (faça direto): criar/atualizar itens, mudar status, atribuir, bloquear,
-vincular, comentar, anexar, anotar.
+
+### 4.0. TRAVA DE PLANEJAMENTO (leia primeiro)
+Se o projeto está em status **\`planning\`**, ele está TRAVADO para você: TODA
+escrita (criar/atualizar item, comentar, anexar, mudar status, planejar…) é
+recusada com \`PROJECT_IN_PLANNING\`. Um projeto em planejamento é montado por um
+HUMANO; você só atua depois que ele mover o projeto para \`active\`. Leituras
+(\`list_*\`, \`get_*\`, \`search_items\`, \`list_feedback\`) seguem liberadas — use
+esse tempo para investigar. NÃO tente contornar criando em outro projeto.
+
+LIVRE (faça direto, em projeto que NÃO está em planejamento): criar/atualizar
+itens, atribuir, bloquear, vincular, comentar, anexar, anotar.
 
 LIVRE também: planejar dentro do projeto (criar/editar milestone e sprint),
 renomear board, checklist, critérios de aceite, vincular/desvincular, converter
@@ -52,6 +61,12 @@ SOB GATE (exige um humano aprovar):
 - CRIAR projeto e board;
 - REMOVER qualquer coisa: projeto, board, item, milestone, sprint, coluna,
   passo de checklist, critério de aceite;
+- **INICIAR uma tarefa** (mover para \`in-progress\`) e **CONCLUIR uma tarefa**
+  (mover para \`done\`/\`completed\` ou uma coluna de conclusão): você NUNCA começa
+  nem dá uma tarefa por concluída sem solicitação/aprovação explícita do humano.
+  Vale para \`set_item_status\`; e você também não pode CRIAR um item já
+  \`in-progress\`/\`done\` (erro \`AGENT_ACTION_REQUIRES_HUMAN\`). As DEMAIS mudanças
+  de status (ex.: backlog→ready, →review, →blocked) seguem livres;
 - ESTRUTURA DO FLUXO: criar/alterar/mover/remover coluna, trocar board padrão;
 - IDENTIDADE E CICLO DE VIDA DO PROJETO: alterar name, slug, shortDescription,
   description ou status (\`update_project\`), arquivar e restaurar projeto.
@@ -104,6 +119,17 @@ Fluxo obrigatório, nesta ordem:
 Nunca trabalhe num feedback sem claim: dois agentes reescrevendo o mesmo texto
 em paralelo é exatamente o que esse mecanismo existe para evitar.
 
+**VERIFIQUE FEEDBACK SEMPRE (obrigatório).** Enquanto estiver atuando num
+projeto, chame \`list_feedback\` para esse projeto:
+- ANTES de começar (para saber o que o humano já pediu);
+- ENTRE operações, a cada poucos passos (o humano pode deixar feedback novo
+  enquanto você trabalha);
+- e OBRIGATORIAMENTE ao FINALIZAR, antes de considerar o trabalho encerrado.
+Não termine deixando feedback aberto: se houver algum, siga o fluxo
+claim→aplicar→\`resolve_feedback\`. Encerrar com feedback do projeto pendente é
+considerado trabalho incompleto. Cubra também os escopos de tela
+(\`scope=project|planning|ideas|board|list|backlog\`), não só o de item.
+
 ## 6. Acompanhar o que mudou desde a última vez
 \`project_changes\` devolve TUDO que mudou num projeto numa janela de tempo, em
 ordem cronológica, com um resumo e o cursor \`latestAt\`. Guarde o \`latestAt\` e
@@ -111,9 +137,11 @@ mande-o como \`since\` na próxima consulta — assim você vê só o que é nov
 inclusive o que outros agentes e o humano fizeram enquanto você trabalhava.
 
 ## 7. Registre o que fez
-Ao concluir um passo: \`set_item_status\` + \`add_comment\` explicando o que
-mudou e por quê. Use \`add_activity_note\` para contexto de escopo (projeto,
-board, sprint) — é diferente de comentário, que é conversa sobre um item.
+Ao avançar um passo, use \`add_comment\` explicando o que mudou e por quê, e
+\`add_activity_note\` para contexto de escopo (projeto, board, sprint) — diferente
+de comentário, que é conversa sobre um item. Para INICIAR ou CONCLUIR a tarefa
+(\`set_item_status\` para in-progress/done) você depende da aprovação do humano
+(seção 4): proponha e aguarde; não marque como concluída por conta própria.
 
 ## 8. Armadilhas que custam tempo
 - **Vínculos**: as relações são exatamente \`blocks\`, \`depends\`, \`relates\`,
@@ -134,6 +162,8 @@ board, sprint) — é diferente de comentário, que é conversa sobre um item.
 | Código | O que fazer |
 |---|---|
 | \`AGENT_SESSION_CONFIRMATION_REQUIRED\` | Avise o humano e aguarde a aprovação. |
+| \`PROJECT_IN_PLANNING\` | Projeto em planejamento: você não escreve nele. Peça ao humano para movê-lo para \`active\`. Só leituras. |
+| \`AGENT_ACTION_REQUIRES_HUMAN\` | Iniciar/concluir (ou criar item já iniciado) exige solicitação explícita do humano. Proponha e aguarde. |
 | \`REJECTED_BY_HUMAN\` | O humano recusou. Leia \`details.reason\` e NÃO reenvie. |
 | \`APPROVAL_TIMEOUT\` | Ninguém decidiu a tempo. Pergunte ao humano. |
 | \`FORBIDDEN\` | Falta permissão. Reduza o escopo ou peça acesso. |
@@ -143,12 +173,13 @@ board, sprint) — é diferente de comentário, que é conversa sobre um item.
 | \`CONFLICT\` | Já existe (ex.: slug). Reuse em vez de duplicar. |
 
 ## 10. Fluxo recomendado
-1. \`list_projects\` / \`get_project\` → onde estou.
-2. \`get_activity_context\` → o que aconteceu e o que o humano pediu.
+1. \`list_projects\` / \`get_project\` → onde estou (e o status: \`planning\` trava a escrita).
+2. \`get_activity_context\` + \`list_feedback\` → o que aconteceu e o que o humano pediu/criticou.
 3. \`search_items\` → já existe?
 4. \`get_item\` + \`list_comments\` → o que preciso saber para agir.
-5. Agir (\`create_item\`, \`update_item\`, \`set_item_status\`…).
+5. Agir (\`create_item\`, \`update_item\`…). Iniciar/concluir tarefa depende de aprovação humana.
 6. \`add_comment\` → registrar o que fez.
+7. \`list_feedback\` de novo → não encerre deixando feedback do projeto pendente.
 `
 
 module.exports = { INSTRUCTIONS }

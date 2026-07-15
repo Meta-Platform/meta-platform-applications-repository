@@ -104,11 +104,23 @@ const DEFAULT_COLUMNS = [
     { name: "Archived",    statusKey: "archived",    color: "#475569", isDoneColumn: false }
 ]
 
+// Transições de status de tarefa que, feitas por AGENTE, exigem solicitação/
+// aprovação explícita do humano (gate no SetStatus):
+//  - INICIAR = mover para "in-progress" (começar a trabalhar na tarefa);
+//  - CONCLUIR = mover para "done"/"completed" OU para qualquer coluna marcada como
+//    isDoneColumn no board (o WorkItemsStore também consulta a coluna).
+// Board customizado: se a coluna de "em progresso" tiver outro statusKey, inclua-o
+// aqui. A conclusão por coluna isDoneColumn é detectada dinamicamente.
+const AGENT_GATED_START_STATUSES = ["in-progress"]
+const AGENT_GATED_DONE_STATUSES  = ["done", "completed"]
+
 // Limite padrão de tamanho de anexo (bytes). Configurável via startup-params.
 const DEFAULT_MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024
 
 module.exports = {
     PROJECT_STATUSES,
+    AGENT_GATED_START_STATUSES,
+    AGENT_GATED_DONE_STATUSES,
     WORK_ITEM_TYPES,
     WORK_ITEM_PRIORITIES,
     WORK_ITEM_HORIZONS,

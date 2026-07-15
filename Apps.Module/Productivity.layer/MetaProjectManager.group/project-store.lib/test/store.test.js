@@ -213,11 +213,32 @@ test("agente criar BOARD bloqueia; aprovar cria o board", async () => {
     assert.equal(result.name, "Board do Agente")
 })
 
-test("agente mexer em ITEM/STATUS é LIVRE (sem gate)", async () => {
-    const story = await store.CreateItem({ project: "MP", type: "story", title: "Item do agente", actor: AGENT })
-    assert.ok(story.key) // criou sem bloqueio
-    const upd = await store.SetStatus({ item: story.key, status: "in-progress", actor: AGENT })
-    assert.equal(upd.statusKey, "in-progress") // status livre
+test("agente: gate de iniciar/concluir tarefa (projeto ativo)", async () => {
+    // Projeto ATIVO: criar item e transições NÃO-gated (ex.: review) são livres p/ agente.
+    // (A trava de planejamento é do store do MCP — testada à parte com o flag.)
+    const active = await store.CreateProject({ name: "Ativo Agente", status: "active", keyPrefix: "AGT", actor: { source: "cli" } })
+    const story = await store.CreateItem({ project: active.id, type: "story", title: "Item do agente", actor: AGENT })
+    assert.ok(story.key)
+    const toReview = await store.SetStatus({ item: story.key, status: "review", actor: AGENT })
+    assert.equal(toReview.statusKey, "review")
+
+    // INICIAR (in-progress) e CONCLUIR (done) por agente exigem aprovação humana.
+    await assert.rejects(() => store.SetStatus({ item: story.key, status: "in-progress", actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    await assert.rejects(() => store.SetStatus({ item: story.key, status: "done", actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+
+    // Nem criar item já iniciado/concluído.
+    await assert.rejects(() => store.CreateItem({ project: active.id, type: "task", title: "Já feito", statusKey: "done", actor: AGENT }), (e) => e.code === "AGENT_ACTION_REQUIRES_HUMAN")
+
+    // Humano/CLI: iniciar/concluir seguem livres (o gate é só p/ agente).
+    const byCli = await store.SetStatus({ item: story.key, status: "in-progress", actor: { source: "cli" } })
+    assert.equal(byCli.statusKey, "in-progress")
+
+    // O gate vira pedido aprovável: aprovar EXECUTA o set-status (executor set-status:work-item).
+    await assert.rejects(() => store.SetStatus({ item: story.key, status: "done", actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", type: "work-item", actionName: "set-status" })).find((r) => r.targetId === story.id)
+    assert.ok(pend)
+    await store.ApproveCreation({ request: pend.id, actor: { actorUserId: "human-1", source: "gui" } })
+    assert.equal((await store.GetItem({ item: story.key })).statusKey, "done")
 })
 
 test("rejeitar pedido não cria nada", async () => {
@@ -546,13 +567,16 @@ test("permissão inválida é rejeitada", async () => {
 })
 
 test("auditoria grava diff antes→depois e identidade do ator", async () => {
-    const it = await store.CreateItem({ project: "MP", type: "task", title: "Diff" })
-    await store.SetStatus({ item: it.key, status: "in-progress", actor: AGENT })
-    const events = await store.ListActivity({ projectId: (await store.GetProject({ project: "MP" })).id, entityType: "work-item", entityId: it.id })
+    // Projeto ATIVO e transição NÃO-gated (review) para o agente executar de fato e
+    // a auditoria registrar sua identidade (in-progress/done passariam pelo gate).
+    const active = await store.CreateProject({ name: "Auditoria Ativo", status: "active", keyPrefix: "AUD", actor: { source: "cli" } })
+    const it = await store.CreateItem({ project: active.id, type: "task", title: "Diff" })
+    await store.SetStatus({ item: it.key, status: "review", actor: AGENT })
+    const events = await store.ListActivity({ projectId: active.id, entityType: "work-item", entityId: it.id })
     const ev = events.find((e) => e.action === "set-status")
     assert.ok(ev)
     assert.equal(ev.before.statusKey, "backlog")
-    assert.equal(ev.after.statusKey, "in-progress")
+    assert.equal(ev.after.statusKey, "review")
     assert.equal(ev.actorType, "agent")
     assert.equal(ev.provider, "claude")
     assert.equal(ev.model, "claude-sonnet-4")
@@ -1166,4 +1190,42 @@ test("export da documentação: HTML autocontido e .zip (markdown em árvore + a
     await store.ArchiveProject({ project: proj.id, actor: { source: "cli" } })
     const htmlArch = await store.ExportDocsHtml({ project: proj.id })
     assert.ok(htmlArch.html.includes("Referência"))
+})
+
+// ---- Trava de PLANEJAMENTO (store do MCP: agentPlanningLock) ----
+
+test("trava de planejamento (flag do MCP): TODA escrita em projeto 'planning' é recusada; ativo libera", async () => {
+    const TMP2 = path.join(process.env.MPM_TEST_DIR || os.tmpdir(), `mpm-plock-${process.pid}`)
+    fs.mkdirSync(TMP2, { recursive: true })
+    const DB = path.join(TMP2, "s.sqlite"), ATT = path.join(TMP2, "att")
+
+    // Store de SETUP (sem flag = humano/GUI): monta os dados em planejamento livremente.
+    const setup = InitializeProjectStore({ storage: DB, attachmentsDirPath: ATT, onEvent: () => {} })
+    await setup.ConnectAndSync()
+    const proj = await setup.CreateProject({ name: "Plan Flag", actor: { source: "cli" } }) // planning
+    assert.equal(proj.status, "planning")
+    const item = await setup.CreateItem({ project: proj.id, type: "task", title: "base" })
+    const active = await setup.CreateProject({ name: "Ativo", status: "active", actor: { source: "cli" } })
+
+    // Store do MCP (flag ligado): TODA escrita no projeto em planning é recusada,
+    // cobrindo tipos de escrita diferentes (create/update/status/comment) — a trava
+    // vive no AssertProjectWritable, no topo de toda escrita.
+    const mcp = InitializeProjectStore({ storage: DB, attachmentsDirPath: ATT, agentPlanningLock: true, onEvent: () => {} })
+    await mcp.ConnectAndSync()
+    const planning = (e) => e.code === "PROJECT_IN_PLANNING"
+    await assert.rejects(() => mcp.CreateItem({ project: proj.id, type: "task", title: "X" }), planning)
+    await assert.rejects(() => mcp.UpdateItem({ item: item.id, title: "novo" }), planning)
+    await assert.rejects(() => mcp.SetStatus({ item: item.id, status: "ready" }), planning)
+    await assert.rejects(() => mcp.AddComment({ item: item.id, body: "oi" }), planning)
+
+    // Leitura segue liberada mesmo com o flag.
+    assert.ok((await mcp.GetItem({ item: item.id })).id)
+
+    // Projeto ATIVO: o mesmo store do MCP escreve normalmente.
+    const ok = await mcp.CreateItem({ project: active.id, type: "task", title: "OK agora" })
+    assert.ok(ok.key)
+
+    // Humano (store sem flag) escreve no projeto em planning sem obstáculo.
+    const byHuman = await setup.CreateItem({ project: proj.id, type: "task", title: "humano no plano" })
+    assert.ok(byHuman.key)
 })

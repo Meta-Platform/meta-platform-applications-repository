@@ -639,7 +639,7 @@ const BuildTools = ({ store, actor }) => {
         // ───────────── Executar (itens — LIVRE, sem gate) ─────────────
         {
             name: "create_item",
-            description: "Cria um item de trabalho (epic/feature/story/task/subtask/bug/…). LIVRE (não exige aprovação). Use `parent` para hierarquia: epic → feature → story/task → subtask. ESCRITA: título curto e imperativo; descrição em markdown ORGANIZADA e RESUMIDA (seções como ## Reprodução, ## Esperado, ## Obtido). Suporta **negrito**, *itálico* e <u>sublinhado</u>.",
+            description: "Cria um item de trabalho (epic/feature/story/task/subtask/bug/…). LIVRE (não exige aprovação), EXCETO: em projeto com status `planning` toda escrita é recusada (PROJECT_IN_PLANNING), e você não pode criar um item já `in-progress`/`done` (AGENT_ACTION_REQUIRES_HUMAN — crie em backlog/ready). Use `parent` para hierarquia: epic → feature → story/task → subtask. ESCRITA: título curto e imperativo; descrição em markdown ORGANIZADA e RESUMIDA (seções como ## Reprodução, ## Esperado, ## Obtido). Suporta **negrito**, *itálico* e <u>sublinhado</u>.",
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"),
                 type: S.enum(WORK_ITEM_TYPES, "Tipo do item"),
@@ -721,7 +721,7 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "set_item_status",
-            description: "Muda o status de um item (ex.: backlog → ready → in-progress → review → done). LIVRE.",
+            description: "Muda o status de um item (ex.: backlog → ready → in-progress → review → done). A maioria das transições é LIVRE, MAS iniciar (mover para in-progress) e concluir (mover para done/completed ou coluna de conclusão) EXIGEM aprovação humana: a chamada BLOQUEIA até o humano decidir (AGENT_SESSION_CONFIRMATION_REQUIRED). Nunca comece nem dê uma tarefa por concluída sem solicitação explícita do usuário.",
             inputSchema: Obj({ item: S.str("Item (id|key)"), status: S.str("Novo status (statusKey)") }, ["item","status"]),
             handler: (i) => store.SetStatus(A({ item: i.item, status: i.status }))
         },

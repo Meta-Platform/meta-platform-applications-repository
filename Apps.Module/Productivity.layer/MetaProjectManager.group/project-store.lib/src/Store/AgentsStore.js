@@ -309,6 +309,10 @@ const AgentsStore = (ctx) => {
         "archive:project":  ({ targetId, actor }) => store.ArchiveProject({ project: targetId, actor }),
         "restore:project":  ({ targetId, actor }) => store.RestoreProject({ project: targetId, actor }),
 
+        // Iniciar/concluir tarefa: aprovada, reexecuta o SetStatus (actor sem
+        // session → não redispara o gate).
+        "set-status:work-item": ({ payload, actor }) => store.SetStatus({ item: payload.item, status: payload.status, actor }),
+
         // Estrutura do board: colunas e board padrão.
         "create:column":    ({ payload, actor }) => store.AddColumn({ ...payload, actor }),
         "update:column":    ({ payload, targetId, actor }) => store.UpdateColumn({ ...payload, column: targetId, actor }),

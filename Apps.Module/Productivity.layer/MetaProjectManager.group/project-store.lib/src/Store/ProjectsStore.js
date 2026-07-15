@@ -32,7 +32,7 @@ const _assertShortDescription = (value) => {
 }
 
 const ProjectsStore = (ctx) => {
-    const { models, writeAudit, emit, store } = ctx
+    const { models, writeAudit, emit, store, config } = ctx
     const { Project, Board, WorkItem } = models
 
     // Resolve um projeto por id, slug ou keyPrefix (case-insensitive). Lança NOT_FOUND.
@@ -65,6 +65,16 @@ const ProjectsStore = (ctx) => {
             throw new DomainError("PROJECT_ARCHIVED",
                 "Projeto arquivado é somente leitura. Restaure-o para poder editar.",
                 { projectId: instance.id })
+        // Trava de PLANEJAMENTO: no servidor MCP (config.agentPlanningLock, ligado em
+        // runtime.js) TODA escrita num projeto "planning" é recusada — este processo
+        // É o agente, então isto bloqueia todas as escritas do agente até um humano
+        // mover o projeto para outro status (ex.: active). Como AssertProjectWritable
+        // roda no topo de TODA escrita, a cobertura é completa, sem varrer call sites.
+        // Humanos (GUI/CLI/webservice) usam stores SEM o flag → planejam livremente.
+        if(instance.status === "planning" && config.agentPlanningLock)
+            throw new DomainError("PROJECT_IN_PLANNING",
+                "Projeto em planejamento: agentes não podem alterá-lo. Peça a um humano para movê-lo para 'active' antes de executar.",
+                { projectId: instance.id, status: instance.status })
         return instance
     }
 

@@ -1,7 +1,10 @@
 const { Op, literal, fn, col } = require("sequelize")
 const { NewId, Serialize, SerializeMany, PatchDiff } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
-const { WORK_ITEM_TYPES, WORK_ITEM_PRIORITIES, LINK_RELATIONS, WORK_ITEM_HORIZONS, WORK_ITEM_CLARITY, WORK_ITEM_EFFORTS, WORK_ITEM_VALUES } = require("../Config")
+const { WORK_ITEM_TYPES, WORK_ITEM_PRIORITIES, LINK_RELATIONS, WORK_ITEM_HORIZONS, WORK_ITEM_CLARITY, WORK_ITEM_EFFORTS, WORK_ITEM_VALUES, AGENT_GATED_START_STATUSES, AGENT_GATED_DONE_STATUSES } = require("../Config")
+
+const START_STATUS_SET = new Set(AGENT_GATED_START_STATUSES)
+const DONE_STATUS_SET = new Set(AGENT_GATED_DONE_STATUSES)
 
 // Valida um enum opcional (ignora undefined/null).
 const _assertEnum = (val, allowed, field) => {
@@ -12,7 +15,18 @@ const _assertEnum = (val, allowed, field) => {
 
 const WorkItemsStore = (ctx) => {
     const { models, writeAudit, emit, store } = ctx
-    const { WorkItem, WorkItemLink, WorkItemChecklistItem, WorkItemAcceptanceCriteria, Attachment, Comment } = models
+    const { WorkItem, WorkItemLink, WorkItemChecklistItem, WorkItemAcceptanceCriteria, Attachment, Comment, BoardColumn } = models
+
+    // "Concluir" = status canônico de done OU coluna marcada isDoneColumn no board do
+    // item (cobre boards customizados com nome/statusKey de conclusão próprios).
+    const _isDoneStatus = async (instance, status) => {
+        if(DONE_STATUS_SET.has(status)) return true
+        if(instance.boardId && BoardColumn){
+            const col = await BoardColumn.findOne({ where: { boardId: instance.boardId, statusKey: status } })
+            if(col && col.isDoneColumn) return true
+        }
+        return false
+    }
 
     // Contadores de anexos (nível item, sem os de comentário) e comentários por
     // item, em UMA query agrupada cada. Usado por ListItems para os cards do board/
@@ -88,6 +102,13 @@ const WorkItemsStore = (ctx) => {
 
         const projectInstance = await store.ResolveProject(project)
         await store.AssertProjectWritable({ project: projectInstance })
+        // Agente não "começa" uma tarefa pela porta dos fundos, criando-a já
+        // in-progress/done — isso exige solicitação explícita (via set_item_status,
+        // que passa pelo gate). Crie em backlog/ready.
+        if(store.IsAgentActor(actor) && statusKey && (START_STATUS_SET.has(statusKey) || DONE_STATUS_SET.has(statusKey)))
+            throw new DomainError("AGENT_ACTION_REQUIRES_HUMAN",
+                `Agente não pode criar item já em "${statusKey}". Crie em backlog/ready e use set_item_status (que exige aprovação humana) para iniciar/concluir.`,
+                { field: "statusKey", status: statusKey })
         const parentInstance = await _resolveParent(parent, projectInstance.id)
         const boardId = board ? (await store.ResolveBoard(board)).id : (parentInstance ? parentInstance.boardId : projectInstance.defaultBoardId) || undefined
         const key = await store.NextItemKey(projectInstance)
@@ -221,6 +242,27 @@ const WorkItemsStore = (ctx) => {
         if(!status) throw new DomainError("VALIDATION_ERROR", "Status é obrigatório.", { field: "status" })
         const instance = await ResolveItem(item)
         await store.AssertProjectWritable({ project: instance.projectId })
+
+        // Gate: INICIAR (mover para in-progress) ou CONCLUIR (mover para done) por
+        // AGENTE exige aprovação/solicitação explícita do humano. Não é redundante
+        // mover para o MESMO status. GateAgentAction LANÇA para agente (vira pedido
+        // pendente e bloqueia até a decisão humana); humano/CLI passam direto e o
+        // executor "set-status:work-item" reexecuta este método na aprovação.
+        if(store.IsAgentActor(actor) && status !== instance.statusKey){
+            const done = await _isDoneStatus(instance, status)
+            const start = START_STATUS_SET.has(status)
+            if(start || done){
+                await store.GateAgentAction({
+                    actionName: "set-status", type: "work-item", targetId: instance.id,
+                    projectId: instance.projectId, payload: { item: instance.id, status }, risk: "normal",
+                    reason: done
+                        ? `Concluir a tarefa ${instance.key} (mover para "${status}") por agente requer solicitação/aprovação explícita do humano.`
+                        : `Iniciar a tarefa ${instance.key} (mover para "${status}") por agente requer solicitação/aprovação explícita do humano.`,
+                    actor
+                })
+            }
+        }
+
         const doneStatuses = new Set(["done", "archived", "completed"])
         const patch = { statusKey: status }
         // Um item concluído não pode continuar "bloqueado": limpa o motivo residual
