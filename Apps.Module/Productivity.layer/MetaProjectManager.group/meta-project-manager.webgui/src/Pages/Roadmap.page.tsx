@@ -5,6 +5,7 @@ import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
 import useLiveReload from "../Hooks/useLiveReload"
+import { useReadOnly } from "../Hooks/useReadOnly"
 import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import { Project, Milestone, Sprint, WorkItem, User, HorizonBoard as HorizonBoardData } from "../api/types"
 import AppShell from "../Components/AppShell"
@@ -25,6 +26,7 @@ const EMPTY_HORIZON: HorizonBoardData = { inbox: [], now: [], next: [], later: [
 // doneItems/totalItems + itens) e gestão de milestones/sprints.
 const RoadmapPage = () => {
     const api = useApi()
+    const readOnly = useReadOnly()
     const navigate = useNavigate()
     const { projectId } = useParams<{ projectId: string }>()
 
@@ -116,20 +118,20 @@ const RoadmapPage = () => {
             title={project ? project.name : "Projeto"}
             subtitle="Planejamento · entregas, sprints e horizontes"
             actions={<>
-                <PageFeedbackButton scope="planning" projectId={projectId} label="Todo o planejamento" compact />
+                {!readOnly ? <PageFeedbackButton scope="planning" projectId={projectId} label="Todo o planejamento" compact /> : null}
                 <div className="mpm-seg">
                     <button className={`mpm-seg__btn ${mode === "date" ? "is-active" : ""}`} title="Linha do tempo das entregas, ordenada pela data-alvo" onClick={() => setMode("date")}><Icon name="calendar" /> Por data</button>
                     <button className={`mpm-seg__btn ${mode === "horizon" ? "is-active" : ""}`} title="Itens agrupados por horizonte (agora/próximo/depois/talvez)" onClick={() => setMode("horizon")}><Icon name="align left" /> Por horizonte</button>
                 </div>
-                <button className="mpm-btn" title="Sprint: janela de tempo fixa (iteração) com um objetivo" onClick={() => setSpModal({ open: true })}><Icon name="rocket" /> Novo Sprint</button>
-                <button className="mpm-btn mpm-btn--primary" title="Entrega: um alvo com data (milestone, no jargão técnico)" onClick={() => setMsModal({ open: true })}><Icon name="flag" /> Nova Entrega</button>
+                {!readOnly ? <button className="mpm-btn" title="Sprint: janela de tempo fixa (iteração) com um objetivo" onClick={() => setSpModal({ open: true })}><Icon name="rocket" /> Novo Sprint</button> : null}
+                {!readOnly ? <button className="mpm-btn mpm-btn--primary" title="Entrega: um alvo com data (milestone, no jargão técnico)" onClick={() => setMsModal({ open: true })}><Icon name="flag" /> Nova Entrega</button> : null}
             </>}
             onInspectorClose={() => setSelected(null)}>
 
         <ErrorBanner error={error} />
 
         {mode === "horizon"
-            ? <HorizonBoard data={horizonData} usersById={usersById} onOpenItem={setSelected} onMoveHorizon={moveHorizon} />
+            ? <HorizonBoard data={horizonData} usersById={usersById} onOpenItem={setSelected} onMoveHorizon={moveHorizon} readOnly={readOnly} />
             : loading
             ? <Loading />
             : <>
@@ -148,8 +150,8 @@ const RoadmapPage = () => {
                                         <strong style={{ fontSize: "var(--mp-text-lg)", flex: 1 }}>{m.name}</strong>
                                         <StatusChip status={m.status} />
                                         {m.targetDate ? <span className="mpm-chip mpm-chip--info"><Icon name="calendar" /> {formatDate(m.targetDate)}</span> : null}
-                                        <Icon name="pencil" link className="mpm-muted" onClick={() => setMsModal({ open: true, milestone: m })} />
-                                        <Icon name="trash" link className="mpm-muted" onClick={() => setPendingDelete({ kind: "milestone", id: m.id, name: m.name })} />
+                                        {!readOnly ? <Icon name="pencil" link className="mpm-muted" onClick={() => setMsModal({ open: true, milestone: m })} /> : null}
+                                        {!readOnly ? <Icon name="trash" link className="mpm-muted" onClick={() => setPendingDelete({ kind: "milestone", id: m.id, name: m.name })} /> : null}
                                     </div>
                                     <div className="mpm-row">
                                         <div style={{ flex: 1 }}><Progress value={progress} /></div>
@@ -194,8 +196,8 @@ const RoadmapPage = () => {
                                         <td className="mpm-muted">{formatDate(s.startDate)}{s.endDate ? ` → ${formatDate(s.endDate)}` : ""}</td>
                                         <td style={{ minWidth: 120 }}><Progress value={progress} /><span className="mpm-mono mpm-muted">{progress}%</span></td>
                                         <td><span className="mpm-row">
-                                            <Icon name="pencil" link className="mpm-muted" onClick={() => setSpModal({ open: true, sprint: s })} />
-                                            <Icon name="trash" link className="mpm-muted" onClick={() => setPendingDelete({ kind: "sprint", id: s.id, name: s.name })} />
+                                            {!readOnly ? <Icon name="pencil" link className="mpm-muted" onClick={() => setSpModal({ open: true, sprint: s })} /> : null}
+                                            {!readOnly ? <Icon name="trash" link className="mpm-muted" onClick={() => setPendingDelete({ kind: "sprint", id: s.id, name: s.name })} /> : null}
                                         </span></td>
                                     </tr>
                                 })}

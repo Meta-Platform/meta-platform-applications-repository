@@ -83,6 +83,8 @@ const FeedbackStore = ({ models, writeAudit, emit, store }) => {
             entityId = workItem.id
         }
         const projectInstance = await store.ResolveProject(project || (workItem && workItem.projectId))
+        // Feedback pede a um agente para MEXER no projeto — sem sentido no arquivado.
+        await store.AssertProjectWritable({ project: projectInstance })
 
         const row = await AgentFeedback.create({
             id: NewId(),
@@ -174,6 +176,17 @@ const FeedbackStore = ({ models, writeAudit, emit, store }) => {
         const now = _now()
         const expiresAt = new Date(now.getTime() + Number(ttlSeconds) * 1000)
 
+        // Quem pode pegar/renovar: aberto, claim vencido, OU o PRÓPRIO dono
+        // renovando um claim vivo (estender o prazo numa tarefa longa). Sem a
+        // terceira cláusula, renovar o próprio item devolvia CONFLICT dizendo que
+        // "outro agente" o detinha, mesmo sendo o mesmo agente.
+        const claimable = [
+            { status: "open" },
+            { status: "in-analysis", claimExpiresAt: { [Op.lt]: now } }
+        ]
+        if(identity.sessionId)
+            claimable.push({ status: "in-analysis", claimedBySessionId: identity.sessionId })
+
         const [affected] = await AgentFeedback.update(
             {
                 status: "in-analysis",
@@ -186,14 +199,12 @@ const FeedbackStore = ({ models, writeAudit, emit, store }) => {
             {
                 where: {
                     id: row.id,
-                    [Op.or]: [
-                        { status: "open" },
-                        { status: "in-analysis", claimExpiresAt: { [Op.lt]: now } }
-                    ]
+                    [Op.or]: claimable
                 }
             }
         )
         if(affected === 0){
+            // Agora só chega aqui quem NÃO é o dono: o claim vivo é de outro agente.
             const fresh = await ResolveFeedbackRow(feedback)
             throw new DomainError("CONFLICT",
                 "Feedback já está sendo tratado por outro agente.",

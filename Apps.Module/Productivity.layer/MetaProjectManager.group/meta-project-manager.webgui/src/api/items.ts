@@ -11,6 +11,12 @@ export interface ItemPlanningFields {
     value?: string
     area?: string
     ideaOrigin?: string
+    // Cronograma: datas e estimativa (null limpa o campo). Strings no fio; o
+    // servidor coage para DATE/FLOAT/INTEGER.
+    startDate?: string | null
+    dueDate?: string | null
+    estimatePoints?: string | null
+    estimateMinutes?: string | null
 }
 
 export interface CreateItemInput extends ItemPlanningFields {

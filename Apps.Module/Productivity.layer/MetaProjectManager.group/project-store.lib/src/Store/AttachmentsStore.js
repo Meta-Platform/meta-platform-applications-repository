@@ -37,6 +37,7 @@ const AttachmentsStore = (ctx) => {
         if(buffer.length > maxBytes)
             throw new DomainError("VALIDATION_ERROR", `Anexo excede o limite de ${maxBytes} bytes.`, { sizeBytes: buffer.length, maxBytes })
         const workItem = await store.ResolveItem(item)
+        await store.AssertProjectWritable({ project: workItem.projectId })
         const id = NewId()
         const safeName = SanitizeFileName(name)
         const finalType = type && ATTACHMENT_TYPES.includes(type) ? type : InferType(safeName, mimeType)
@@ -80,6 +81,7 @@ const AttachmentsStore = (ctx) => {
                 `URL externa inválida (esquemas aceitos: ${LINK_URL_SCHEMES.join(", ")}).`,
                 { field: "url", allowed: LINK_URL_SCHEMES, received: url })
         const workItem = await store.ResolveItem(item)
+        await store.AssertProjectWritable({ project: workItem.projectId })
         const attachment = await Attachment.create({
             id: NewId(), projectId: workItem.projectId, workItemId: workItem.id, commentId,
             type: "link", name: name || url, description, externalUrl: url,
@@ -117,6 +119,7 @@ const AttachmentsStore = (ctx) => {
     // Remove sem apagar histórico (soft delete; arquivo em disco mantido).
     const RemoveAttachment = async ({ attachment, actor } = {}) => {
         const att = await ResolveAttachment(attachment)
+        await store.AssertProjectWritable({ project: att.projectId })
         await att.update({ deletedAt: new Date() })
         await writeAudit({ projectId: att.projectId, entityType: "attachment", entityId: att.id, action: "delete", actor })
         return { id: att.id, deleted: true }

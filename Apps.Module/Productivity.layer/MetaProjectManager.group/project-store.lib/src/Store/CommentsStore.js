@@ -8,6 +8,7 @@ const CommentsStore = (ctx) => {
     const AddComment = async ({ item, body, format = "markdown", actor } = {}) => {
         if(!body) throw new DomainError("VALIDATION_ERROR", "Corpo do comentário é obrigatório.", { field: "body" })
         const workItem = await store.ResolveItem(item)
+        await store.AssertProjectWritable({ project: workItem.projectId })
         const comment = await Comment.create({
             id: NewId(),
             projectId: workItem.projectId,
@@ -31,6 +32,7 @@ const CommentsStore = (ctx) => {
     const UpdateComment = async ({ comment, body, actor } = {}) => {
         const instance = await Comment.findOne({ where: { id: comment, deletedAt: null } })
         if(!instance) throw new DomainError("NOT_FOUND", `Comentário "${comment}" não encontrado.`, { ref: comment })
+        await store.AssertProjectWritable({ project: instance.projectId })
         await instance.update({ body })
         await writeAudit({ projectId: instance.projectId, entityType: "comment", entityId: instance.id, action: "update", actor })
         return Serialize(instance)
@@ -39,6 +41,7 @@ const CommentsStore = (ctx) => {
     const DeleteComment = async ({ comment, actor } = {}) => {
         const instance = await Comment.findOne({ where: { id: comment, deletedAt: null } })
         if(!instance) throw new DomainError("NOT_FOUND", `Comentário "${comment}" não encontrado.`, { ref: comment })
+        await store.AssertProjectWritable({ project: instance.projectId })
         await instance.update({ deletedAt: new Date() })
         await writeAudit({ projectId: instance.projectId, entityType: "comment", entityId: instance.id, action: "delete", actor })
         return { id: instance.id, deleted: true }

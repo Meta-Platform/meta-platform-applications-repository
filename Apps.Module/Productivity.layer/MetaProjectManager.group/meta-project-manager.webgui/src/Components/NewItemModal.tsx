@@ -12,11 +12,14 @@ interface NewItemModalProps {
     projectId: string
     boardId?: string
     defaultStatus?: string
+    // Item já nasce sob este pai (ex.: criado numa faixa de épico do board).
+    defaultParent?: string
+    defaultParentLabel?: string
     onClose: () => void
     onCreated: (item: WorkItem) => void
 }
 
-const NewItemModal = ({ projectId, boardId, defaultStatus, onClose, onCreated }: NewItemModalProps) => {
+const NewItemModal = ({ projectId, boardId, defaultStatus, defaultParent, defaultParentLabel, onClose, onCreated }: NewItemModalProps) => {
     const api = useApi()
     const [title, setTitle] = useState("")
     const [type, setType] = useState("task")
@@ -35,7 +38,8 @@ const NewItemModal = ({ projectId, boardId, defaultStatus, onClose, onCreated }:
                 priority,
                 description: description.trim() || undefined,
                 board: boardId,
-                status: defaultStatus
+                status: defaultStatus,
+                parent: defaultParent
             })
             onCreated(item)
         } catch (e: any) { setError(e.message); setBusy(false) }
@@ -47,6 +51,11 @@ const NewItemModal = ({ projectId, boardId, defaultStatus, onClose, onCreated }:
             <button className="mpm-btn mpm-btn--primary" onClick={submit} disabled={busy || !title.trim()}>Criar</button>
         </>}>
         <ErrorBanner error={error} />
+        {defaultParent
+            ? <div className="mpm-muted" style={{ fontSize: 12, marginBottom: "var(--mp-space-2)" }}>
+                Será criado dentro de <b>{defaultParentLabel || defaultParent}</b>.
+            </div>
+            : null}
         <div className="mpm-field"><span className="mpm-field__label">Título</span>
             <input className="mpm-input" autoFocus value={title} onChange={(e) => setTitle(e.target.value)} /></div>
         <div className="mpm-row mpm-gap-4">

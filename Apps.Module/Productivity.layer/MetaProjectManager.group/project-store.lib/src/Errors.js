@@ -17,7 +17,9 @@ const HTTP_STATUS_BY_CODE = {
     NOT_FOUND: 404,
     CONFLICT: 409,
     AGENT_SESSION_CONFIRMATION_REQUIRED: 409,
-    FORBIDDEN: 403
+    FORBIDDEN: 403,
+    // Projeto arquivado é somente leitura: qualquer escrita é recusada.
+    PROJECT_ARCHIVED: 403
 }
 
 module.exports = { DomainError, HTTP_STATUS_BY_CODE }

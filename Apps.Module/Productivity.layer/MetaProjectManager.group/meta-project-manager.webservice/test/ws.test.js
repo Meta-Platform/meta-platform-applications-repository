@@ -147,10 +147,11 @@ test("milestone CRUD + roadmap + atribuição via API", async () => {
     assert.equal(sp.json.data.status, "planned")
 })
 
-test("agente criar milestone via API bloqueia (gate)", async () => {
-    const blk = await srv.request("POST", `/projects/${projectId}/milestones`, { name: "M Agente API", sessionProvider: "claude", sessionModel: "claude-sonnet-4", sessionTrace: "W-M" })
-    assert.equal(blk.json.ok, false)
-    assert.equal(blk.json.code, "AGENT_SESSION_CONFIRMATION_REQUIRED")
+// Criar milestone é planejamento reversível: livre para agentes. O gate está no delete.
+test("agente criar milestone via API é livre (sem gate)", async () => {
+    const m = await srv.request("POST", `/projects/${projectId}/milestones`, { name: "M Agente API", sessionProvider: "claude", sessionModel: "claude-sonnet-4", sessionTrace: "W-M" })
+    assert.equal(m.json.ok, true)
+    assert.equal(m.json.data.name, "M Agente API")
 })
 
 test("planejamento via API: tipo feature + horizon + filtro + horizon-board", async () => {
@@ -163,6 +164,75 @@ test("planejamento via API: tipo feature + horizon + filtro + horizon-board", as
     assert.ok(byH.json.data.some((i) => i.id === it.json.data.id))
     const hb = await srv.request("GET", `/projects/${projectId}/horizon-board`)
     assert.ok(hb.json.data.next.length >= 1)
+})
+
+test("documentação via API: criar página/sub-página, listar, editar, mover, excluir", async () => {
+    const root = await srv.request("POST", `/projects/${projectId}/doc-pages`, { title: "Guia", body: "# Guia" })
+    assert.equal(root.json.ok, true)
+    assert.equal(root.json.data.parentId, null)
+    const sub = await srv.request("POST", `/projects/${projectId}/doc-pages`, { parentId: root.json.data.id, title: "Setup" })
+    assert.equal(sub.json.data.parentId, root.json.data.id)
+
+    const list = await srv.request("GET", `/projects/${projectId}/doc-pages`)
+    assert.ok(list.json.data.length >= 2)
+
+    const got = await srv.request("GET", `/doc-pages/${root.json.data.id}`)
+    assert.equal(got.json.data.body, "# Guia")
+
+    const upd = await srv.request("PATCH", `/doc-pages/${sub.json.data.id}`, { body: "passos", title: "Setup e instalação" })
+    assert.equal(upd.json.data.body, "passos")
+
+    const moved = await srv.request("POST", `/doc-pages/${sub.json.data.id}/move`, { parentId: "none" })
+    assert.equal(moved.json.data.parentId, null)
+
+    const del = await srv.request("DELETE", `/doc-pages/${root.json.data.id}`)
+    assert.equal(del.json.data.deleted, true)
+})
+
+test("anexos de página via API: upload/link/list, ler conteúdo base64 e remover", async () => {
+    const page = await srv.request("POST", `/projects/${projectId}/doc-pages`, { title: "Página com anexos" })
+    const pageId = page.json.data.id
+
+    // Upload (base64) — imagem SVG com MIME preservado.
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>')
+    const up = await srv.request("POST", `/doc-pages/${pageId}/attachments`, { name: "icone.svg", base64: svg.toString("base64"), mimeType: "image/svg+xml" })
+    assert.equal(up.json.ok, true)
+    assert.equal(up.json.data.docPageId, pageId)
+    assert.equal(up.json.data.type, "image")
+    const attId = up.json.data.id
+
+    // Link.
+    const link = await srv.request("POST", `/doc-pages/${pageId}/attachments`, { url: "https://example.com/spec", name: "spec" })
+    assert.equal(link.json.data.type, "link")
+
+    // List traz os dois.
+    const list = await srv.request("GET", `/doc-pages/${pageId}/attachments`)
+    assert.equal(list.json.data.length, 2)
+
+    // Conteúdo base64 (usado por preview/download no desktop).
+    const content = await srv.request("GET", `/doc-attachments/${attId}/content`)
+    assert.equal(content.json.ok, true)
+    assert.equal(Buffer.from(content.json.data.base64, "base64").toString(), svg.toString())
+
+    // Remover.
+    const del = await srv.request("DELETE", `/doc-attachments/${attId}`)
+    assert.equal(del.json.data.deleted, true)
+    const after = await srv.request("GET", `/doc-pages/${pageId}/attachments`)
+    assert.equal(after.json.data.length, 1)
+})
+
+test("export da documentação via API: HTML e .zip (base64)", async () => {
+    await srv.request("POST", `/projects/${projectId}/doc-pages`, { title: "Export API", body: "# Oi\n\ntexto" })
+    const html = await srv.request("GET", `/projects/${projectId}/docs/export/html`)
+    assert.equal(html.json.ok, true)
+    assert.match(html.json.data.filename, /\.html$/)
+    assert.ok(html.json.data.html.includes("Sumário"))
+
+    const arc = await srv.request("GET", `/projects/${projectId}/docs/export/archive`)
+    assert.equal(arc.json.ok, true)
+    assert.match(arc.json.data.filename, /\.zip$/)
+    const zip = Buffer.from(arc.json.data.base64, "base64")
+    assert.equal(zip.readUInt32LE(0), 0x04034b50)   // assinatura de zip
 })
 
 test("GUI 1-7 backend: link/unlink, reorder, contexto de software", async () => {

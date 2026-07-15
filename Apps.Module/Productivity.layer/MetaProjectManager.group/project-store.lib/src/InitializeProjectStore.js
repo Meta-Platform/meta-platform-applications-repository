@@ -8,12 +8,17 @@ const ProjectsStore   = require("./Store/ProjectsStore")
 const BoardsStore     = require("./Store/BoardsStore")
 const WorkItemsStore  = require("./Store/WorkItemsStore")
 const AttachmentsStore= require("./Store/AttachmentsStore")
+const DocAttachmentsStore = require("./Store/DocAttachmentsStore")
+const DocsExportStore = require("./Store/DocsExportStore")
 const CommentsStore   = require("./Store/CommentsStore")
 const UsersStore      = require("./Store/UsersStore")
 const AgentsStore     = require("./Store/AgentsStore")
 const ReportsStore    = require("./Store/ReportsStore")
 const AnalyticsStore  = require("./Store/AnalyticsStore")
 const PlanningStore   = require("./Store/PlanningStore")
+const DocsStore       = require("./Store/DocsStore")
+const RisksStore      = require("./Store/RisksStore")
+const PlanningDocsStore = require("./Store/PlanningDocsStore")
 const FeedbackStore   = require("./Store/FeedbackStore")
 const EcosystemStore  = require("./Store/EcosystemStore")
 const ActivityStore   = require("./Store/ActivityStore")
@@ -149,6 +154,11 @@ const InitializeProjectStore = (options = {}) => {
         ReportsStore(ctx),
         AnalyticsStore(ctx),
         PlanningStore(ctx),
+        DocsStore(ctx),
+        RisksStore(ctx),
+        PlanningDocsStore(ctx),
+        DocAttachmentsStore(ctx),
+        DocsExportStore(ctx),
         { ListActivity, GetAuditEvent, GetAppState, SetAppState },
     )
     // ActivityStore depende de resolvers (item/board/sprint/milestone/projeto) e

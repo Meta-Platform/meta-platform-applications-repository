@@ -7,18 +7,22 @@ import useApi from "../Hooks/useApi"
 import { Comment, Attachment, User } from "../api/types"
 import { Avatar, ErrorBanner } from "./Primitives"
 import Markdown from "./Markdown"
+import AttachmentPreview from "./AttachmentPreview"
 import { formatDateTime } from "../Utils/format"
+import { isImageAttachment } from "../Utils/imageMime"
 import GetAttachmentDownloadUrl from "../Utils/GetAttachmentDownloadUrl"
 
 interface CommentTimelineProps {
     itemId: string
     usersById: { [id: string]: User }
+    // Projeto arquivado: leitura de comentários/anexos, sem escrever.
+    readOnly?: boolean
 }
 
 // Anexos de um comentário (feature 3): listar + adicionar link/arquivo com o
 // commentId, e abrir/baixar/remover.
-const CommentAttachments = ({ itemId, commentId, attachments, onChanged }:
-    { itemId: string; commentId: string; attachments: Attachment[]; onChanged: () => void }) => {
+const CommentAttachments = ({ itemId, commentId, attachments, onChanged, readOnly }:
+    { itemId: string; commentId: string; attachments: Attachment[]; onChanged: () => void; readOnly?: boolean }) => {
     const api = useApi()
     const serverManagerInformation = useSelector((state: any) => state.HTTPServerManager)
     const [linkUrl, setLinkUrl] = useState("")
@@ -47,7 +51,7 @@ const CommentAttachments = ({ itemId, commentId, attachments, onChanged }:
             try {
                 const result = String(reader.result || "")
                 const base64 = result.indexOf(",") >= 0 ? result.split(",")[1] : result
-                await api.attachments.add(itemId, { name: file.name, base64, commentId }); onChanged()
+                await api.attachments.add(itemId, { name: file.name, base64, mimeType: file.type || undefined, commentId }); onChanged()
             } catch (err: any) { setError(err.message) }
         }
         reader.readAsDataURL(file)
@@ -59,14 +63,27 @@ const CommentAttachments = ({ itemId, commentId, attachments, onChanged }:
 
     return <div className="mpm-col" style={{ gap: "2px", marginTop: "4px" }}>
         <ErrorBanner error={error} />
-        {attachments.map((a) =>
-            <div key={a.id} className="mpm-attach" style={{ padding: "4px 8px" }}>
-                <Icon name={isLink(a) ? "linkify" : "file outline"} />
-                <span className="mpm-attach__name" title={a.name}>{a.name}</span>
-                <span className="mpm-iconbtn mpm-btn--sm" data-tip={isLink(a) ? "Abrir o link" : "Baixar o arquivo"} onClick={() => openAtt(a)}><Icon name={isLink(a) ? "external" : "download"} /></span>
-                <span className="mpm-iconbtn mpm-btn--sm" data-tip="Remover o anexo" onClick={() => remove(a.id)}><Icon name="trash" /></span>
-            </div>)}
-        {open
+        {attachments.map((a) => {
+            const link = isLink(a)
+            // Imagem (ícone/screenshot) aparece inline no comentário — é o que
+            // permite revisar o que o agente entregou e dar feedback.
+            const showImg = isImageAttachment(a) && (link ? !!a.externalUrl : true)
+            return <div key={a.id} className="mpm-col" style={{ gap: "2px" }}>
+                <div className="mpm-attach" style={{ padding: "4px 8px" }}>
+                    <Icon name={link ? "linkify" : (isImageAttachment(a) ? "image outline" : "file outline")} />
+                    <span className="mpm-attach__name" title={a.name}>{a.name}</span>
+                    <span className="mpm-iconbtn mpm-btn--sm" data-tip={link ? "Abrir o link" : "Baixar o arquivo"} onClick={() => openAtt(a)}><Icon name={link ? "external" : "download"} /></span>
+                    {!readOnly
+                        ? <span className="mpm-iconbtn mpm-btn--sm" data-tip="Remover o anexo" onClick={() => remove(a.id)}><Icon name="trash" /></span>
+                        : null}
+                </div>
+                {showImg
+                    ? <AttachmentPreview attachment={a} isLink={link} maxHeight={240}
+                        downloadUrl={link ? undefined : GetAttachmentDownloadUrl(serverManagerInformation, a.id)} />
+                    : null}
+            </div>
+        })}
+        {readOnly ? null : open
             ? <div className="mpm-row">
                 <input className="mpm-input" placeholder="https://... (link)" value={linkUrl}
                     onChange={(e) => setLinkUrl(e.target.value)} />
@@ -109,7 +126,7 @@ const CommentsModal = ({ count, onClose, children }:
 
 // CommentTimeline (spec §11.1 / feature 3): histórico de comentários + anexos
 // agrupados sob cada comentário.
-const CommentTimeline = ({ itemId, usersById }: CommentTimelineProps) => {
+const CommentTimeline = ({ itemId, usersById, readOnly }: CommentTimelineProps) => {
     const api = useApi()
     const [comments, setComments] = useState<Comment[]>([])
     const [attachments, setAttachments] = useState<Attachment[]>([])
@@ -150,17 +167,21 @@ const CommentTimeline = ({ itemId, usersById }: CommentTimelineProps) => {
                                 <span>{formatDateTime(c.createdAt)}</span>
                             </div>
                             <div className="mpm-timeline__text"><Markdown>{c.body}</Markdown></div>
-                            <CommentAttachments itemId={itemId} commentId={c.id} attachments={attFor(c.id)} onChanged={load} />
+                            <CommentAttachments itemId={itemId} commentId={c.id} attachments={attFor(c.id)} onChanged={load} readOnly={readOnly} />
                         </div>
                     </div>
                 })}
         </div>
-        <textarea className="mpm-textarea" placeholder="Escreva um comentário (markdown)..."
-            rows={large ? 4 : undefined}
-            value={draft} onChange={(e) => setDraft(e.target.value)} />
-        <button className="mpm-btn mpm-btn--primary mpm-btn--sm" disabled={busy} onClick={add}>
-            <Icon name="send" /> Comentar
-        </button>
+        {readOnly
+            ? null
+            : <>
+                <textarea className="mpm-textarea" placeholder="Escreva um comentário (markdown)..."
+                    rows={large ? 4 : undefined}
+                    value={draft} onChange={(e) => setDraft(e.target.value)} />
+                <button className="mpm-btn mpm-btn--primary mpm-btn--sm" disabled={busy} onClick={add}>
+                    <Icon name="send" /> Comentar
+                </button>
+            </>}
     </>
 
     return <div className="mpm-col">

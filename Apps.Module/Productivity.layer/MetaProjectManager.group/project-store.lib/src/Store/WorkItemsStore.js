@@ -1,4 +1,4 @@
-const { Op, literal } = require("sequelize")
+const { Op, literal, fn, col } = require("sequelize")
 const { NewId, Serialize, SerializeMany, PatchDiff } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
 const { WORK_ITEM_TYPES, WORK_ITEM_PRIORITIES, LINK_RELATIONS, WORK_ITEM_HORIZONS, WORK_ITEM_CLARITY, WORK_ITEM_EFFORTS, WORK_ITEM_VALUES } = require("../Config")
@@ -12,7 +12,26 @@ const _assertEnum = (val, allowed, field) => {
 
 const WorkItemsStore = (ctx) => {
     const { models, writeAudit, emit, store } = ctx
-    const { WorkItem, WorkItemLink, WorkItemChecklistItem, WorkItemAcceptanceCriteria } = models
+    const { WorkItem, WorkItemLink, WorkItemChecklistItem, WorkItemAcceptanceCriteria, Attachment, Comment } = models
+
+    // Contadores de anexos (nível item, sem os de comentário) e comentários por
+    // item, em UMA query agrupada cada. Usado por ListItems para os cards do board/
+    // lista mostrarem o clipe com o número de anexos sem precisar abrir o item.
+    const _countsByItem = async (ids) => {
+        const att = {}, com = {}
+        if(ids.length === 0) return { att, com }
+        const attRows = await Attachment.findAll({
+            where: { workItemId: { [Op.in]: ids }, deletedAt: null, commentId: null },
+            attributes: ["workItemId", [fn("COUNT", col("id")), "n"]], group: ["workItemId"], raw: true
+        })
+        attRows.forEach((r) => { att[r.workItemId] = Number(r.n) })
+        const comRows = await Comment.findAll({
+            where: { workItemId: { [Op.in]: ids }, deletedAt: null },
+            attributes: ["workItemId", [fn("COUNT", col("id")), "n"]], group: ["workItemId"], raw: true
+        })
+        comRows.forEach((r) => { com[r.workItemId] = Number(r.n) })
+        return { att, com }
+    }
 
     // Resolve item por id ou key (ex.: MPM-42, case-insensitive).
     const ResolveItem = async (ref) => {
@@ -68,6 +87,7 @@ const WorkItemsStore = (ctx) => {
         _assertEnum(value, WORK_ITEM_VALUES, "value")
 
         const projectInstance = await store.ResolveProject(project)
+        await store.AssertProjectWritable({ project: projectInstance })
         const parentInstance = await _resolveParent(parent, projectInstance.id)
         const boardId = board ? (await store.ResolveBoard(board)).id : (parentInstance ? parentInstance.boardId : projectInstance.defaultBoardId) || undefined
         const key = await store.NextItemKey(projectInstance)
@@ -131,7 +151,11 @@ const WorkItemsStore = (ctx) => {
             : sort === "value" ? [[literal("CASE value WHEN 'critical' THEN 5 WHEN 'high' THEN 4 WHEN 'medium' THEN 3 WHEN 'low' THEN 2 ELSE 1 END"), "DESC"]]
             : [["order", "ASC"]]
         const rows = await WorkItem.findAll({ where, order, limit: Number(limit), offset: Number(offset) })
-        return SerializeMany(rows)
+        const list = SerializeMany(rows)
+        // Contadores para os cards (clipe de anexos, balão de comentários).
+        const { att, com } = await _countsByItem(list.map((i) => i.id))
+        list.forEach((i) => { i.attachmentCount = att[i.id] || 0; i.commentCount = com[i.id] || 0 })
+        return list
     }
 
     const GetItem = async ({ item } = {}) => {
@@ -144,18 +168,22 @@ const WorkItemsStore = (ctx) => {
             // Onde se mexe: os pacotes do ecossistema que este item toca.
             store.ListItemPackages({ item: instance.id })
         ])
+        const { att, com } = await _countsByItem([instance.id])
         return {
             ...Serialize(instance),
             checklist: SerializeMany(checklist),
             acceptanceCriteria: SerializeMany(acceptanceCriteria),
             links: SerializeMany(links),
             children: SerializeMany(children),
-            packages
+            packages,
+            attachmentCount: att[instance.id] || 0,
+            commentCount: com[instance.id] || 0
         }
     }
 
     const UpdateItem = async ({ item, actor, ...fields } = {}) => {
         const instance = await ResolveItem(item)
+        await store.AssertProjectWritable({ project: instance.projectId })
         const patch = {}
         const simple = ["title", "description", "statusKey", "priority", "progress", "dueDate", "startDate", "blockedReason",
             "estimatePoints", "estimateMinutes", "milestoneId", "sprintId",
@@ -192,6 +220,7 @@ const WorkItemsStore = (ctx) => {
     const SetStatus = async ({ item, status, actor } = {}) => {
         if(!status) throw new DomainError("VALIDATION_ERROR", "Status é obrigatório.", { field: "status" })
         const instance = await ResolveItem(item)
+        await store.AssertProjectWritable({ project: instance.projectId })
         const doneStatuses = new Set(["done", "archived", "completed"])
         const patch = { statusKey: status }
         // Um item concluído não pode continuar "bloqueado": limpa o motivo residual
@@ -208,6 +237,7 @@ const WorkItemsStore = (ctx) => {
 
     const Assign = async ({ item, user, actor } = {}) => {
         const instance = await ResolveItem(item)
+        await store.AssertProjectWritable({ project: instance.projectId })
         const assigneeUserId = await _resolveUserId(user)
         const before = { assigneeUserId: instance.assigneeUserId }
         await instance.update({ assigneeUserId })
@@ -219,6 +249,7 @@ const WorkItemsStore = (ctx) => {
 
     const MoveItem = async ({ item, parent, actor } = {}) => {
         const instance = await ResolveItem(item)
+        await store.AssertProjectWritable({ project: instance.projectId })
         let parentId = null
         if(parent && parent !== "none"){
             const parentInstance = await _resolveParent(parent, instance.projectId)
@@ -237,6 +268,7 @@ const WorkItemsStore = (ctx) => {
 
     const MoveToBoard = async ({ item, board, status, actor } = {}) => {
         const instance = await ResolveItem(item)
+        await store.AssertProjectWritable({ project: instance.projectId })
         const boardInstance = await store.ResolveBoard(board)
         const patch = { boardId: boardInstance.id }
         if(status) patch.statusKey = status
@@ -250,6 +282,7 @@ const WorkItemsStore = (ctx) => {
 
     const ReorderItem = async ({ item, order, actor } = {}) => {
         const instance = await ResolveItem(item)
+        await store.AssertProjectWritable({ project: instance.projectId })
         await instance.update({ order: Number(order) })
         emit("item.updated", Serialize(instance))
         return Serialize(instance)
@@ -258,6 +291,7 @@ const WorkItemsStore = (ctx) => {
     const ConvertItem = async ({ item, type, actor } = {}) => {
         if(!WORK_ITEM_TYPES.includes(type)) throw new DomainError("VALIDATION_ERROR", `Tipo inválido: ${type}.`, { field: "type", allowed: WORK_ITEM_TYPES })
         const instance = await ResolveItem(item)
+        await store.AssertProjectWritable({ project: instance.projectId })
         const before = { type: instance.type }
         await instance.update({ type })
         const data = Serialize(instance)
@@ -272,6 +306,7 @@ const WorkItemsStore = (ctx) => {
     const ConvertIdea = async ({ item, type = "task", title, parent, actor } = {}) => {
         if(!WORK_ITEM_TYPES.includes(type)) throw new DomainError("VALIDATION_ERROR", `Tipo inválido: ${type}.`, { field: "type", allowed: WORK_ITEM_TYPES })
         const idea = await ResolveItem(item)
+        await store.AssertProjectWritable({ project: idea.projectId })
         const created = await CreateItem({
             project: idea.projectId, type, title: title || idea.title,
             description: idea.description, parent, area: idea.area, actor
@@ -286,6 +321,7 @@ const WorkItemsStore = (ctx) => {
 
     const SetBlocked = async ({ item, reason, actor } = {}) => {
         const instance = await ResolveItem(item)
+        await store.AssertProjectWritable({ project: instance.projectId })
         // reason vazio = DESBLOQUEAR: limpa o motivo e, se estava na coluna
         // "blocked", devolve para backlog. Com motivo, bloqueia.
         const unblocking = !reason || !String(reason).trim()
@@ -304,6 +340,7 @@ const WorkItemsStore = (ctx) => {
         if(!LINK_RELATIONS.includes(relation))
             throw new DomainError("VALIDATION_ERROR", `Relação inválida: ${relation}.`, { field: "relation", allowed: LINK_RELATIONS })
         const src = await ResolveItem(item)
+        await store.AssertProjectWritable({ project: src.projectId })
         const tgt = await ResolveItem(target)
         const existing = await WorkItemLink.findOne({ where: { sourceItemId: src.id, relation, targetItemId: tgt.id } })
         if(existing) return Serialize(existing)
@@ -316,6 +353,7 @@ const WorkItemsStore = (ctx) => {
 
     const UnlinkItem = async ({ item, relation, target, actor } = {}) => {
         const src = await ResolveItem(item)
+        await store.AssertProjectWritable({ project: src.projectId })
         const tgt = await ResolveItem(target)
         const count = await WorkItemLink.destroy({ where: { sourceItemId: src.id, relation, targetItemId: tgt.id } })
         await writeAudit({ projectId: src.projectId, entityType: "work-item-link", entityId: `${src.id}:${tgt.id}`, action: "delete", actor, metadata: { relation } })
@@ -324,6 +362,7 @@ const WorkItemsStore = (ctx) => {
 
     const DeleteItem = async ({ item, actor } = {}) => {
         const instance = await ResolveItem(item)
+        await store.AssertProjectWritable({ project: instance.projectId })
 
         // Gate: remoção por agente exige aprovação humana (pedido destrutivo pendente).
         if(store.IsAgentActor(actor)){
@@ -346,6 +385,7 @@ const WorkItemsStore = (ctx) => {
     // -------- Checklist --------
     const AddChecklistItem = async ({ item, text, actor } = {}) => {
         const instance = await ResolveItem(item)
+        await store.AssertProjectWritable({ project: instance.projectId })
         const order = await WorkItemChecklistItem.count({ where: { workItemId: instance.id } })
         const row = await WorkItemChecklistItem.create({ id: NewId(), workItemId: instance.id, text, order })
         emit("item.updated", { id: instance.id })
@@ -354,6 +394,8 @@ const WorkItemsStore = (ctx) => {
     const UpdateChecklistItem = async ({ checklistItem, text, done } = {}) => {
         const row = await WorkItemChecklistItem.findOne({ where: { id: checklistItem } })
         if(!row) throw new DomainError("NOT_FOUND", "Item de checklist não encontrado.", { ref: checklistItem })
+        const owner = await ResolveItem(row.workItemId)
+        await store.AssertProjectWritable({ project: owner.projectId })
         const patch = {}
         if(text !== undefined) patch.text = text
         if(done !== undefined) patch.done = done
@@ -364,6 +406,7 @@ const WorkItemsStore = (ctx) => {
         const row = await WorkItemChecklistItem.findOne({ where: { id: checklistItem } })
         if(!row) throw new DomainError("NOT_FOUND", "Item de checklist não encontrado.", { ref: checklistItem })
         const owner = await ResolveItem(row.workItemId)
+        await store.AssertProjectWritable({ project: owner.projectId })
         await store.GateAgentAction({
             actionName: "delete", type: "checklist-item", targetId: row.id, projectId: owner.projectId,
             risk: "destructive", reason: "Remover item de checklist por agente requer aprovação humana.", actor
@@ -376,6 +419,7 @@ const WorkItemsStore = (ctx) => {
     // -------- Critérios de aceite --------
     const AddAcceptanceCriteria = async ({ item, text } = {}) => {
         const instance = await ResolveItem(item)
+        await store.AssertProjectWritable({ project: instance.projectId })
         const order = await WorkItemAcceptanceCriteria.count({ where: { workItemId: instance.id } })
         const row = await WorkItemAcceptanceCriteria.create({ id: NewId(), workItemId: instance.id, text, order })
         return Serialize(row)
@@ -383,6 +427,8 @@ const WorkItemsStore = (ctx) => {
     const UpdateAcceptanceCriteria = async ({ criteria, text, met } = {}) => {
         const row = await WorkItemAcceptanceCriteria.findOne({ where: { id: criteria } })
         if(!row) throw new DomainError("NOT_FOUND", "Critério não encontrado.", { ref: criteria })
+        const owner = await ResolveItem(row.workItemId)
+        await store.AssertProjectWritable({ project: owner.projectId })
         const patch = {}
         if(text !== undefined) patch.text = text
         if(met !== undefined) patch.met = met
@@ -393,6 +439,7 @@ const WorkItemsStore = (ctx) => {
         const row = await WorkItemAcceptanceCriteria.findOne({ where: { id: criteria } })
         if(!row) throw new DomainError("NOT_FOUND", "Critério não encontrado.", { ref: criteria })
         const owner = await ResolveItem(row.workItemId)
+        await store.AssertProjectWritable({ project: owner.projectId })
         await store.GateAgentAction({
             actionName: "delete", type: "acceptance-criteria", targetId: row.id, projectId: owner.projectId,
             risk: "destructive", reason: "Remover critério de aceite por agente requer aprovação humana.", actor

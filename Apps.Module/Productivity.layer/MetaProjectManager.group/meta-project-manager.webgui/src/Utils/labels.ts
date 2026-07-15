@@ -45,6 +45,27 @@ const EFFORTS: Record<string, string> = {
 }
 export const effortLabel = (effort?: string) => (effort ? (EFFORTS[effort.toLowerCase()] || effort.toUpperCase()) : "")
 
+// ── Registro de riscos ───────────────────────────────────────────────────────
+// Probabilidade e impacto (escala 3×3) e o nível derivado (produto).
+const RISK_SCALE: Record<string, string> = { low: "baixo", medium: "médio", high: "alto" }
+export const riskScaleLabel = (v?: string) => pick(RISK_SCALE, v)
+
+const RISK_STATUSES: Record<string, string> = {
+    open: "aberto", mitigating: "mitigando", accepted: "aceito", closed: "encerrado", occurred: "ocorreu"
+}
+export const riskStatusLabel = (s?: string) => pick(RISK_STATUSES, s)
+
+const RISK_LEVELS: Record<string, string> = {
+    low: "baixo", moderate: "moderado", high: "alto", critical: "crítico"
+}
+export const riskLevelLabel = (l?: string | null) => pick(RISK_LEVELS, l || undefined)
+
+// ── Documento de planejamento ────────────────────────────────────────────────
+const PLANNING_DOC_STATUSES: Record<string, string> = {
+    draft: "rascunho", review: "em revisão", approved: "aprovado", archived: "arquivado"
+}
+export const planningDocStatusLabel = (s?: string) => pick(PLANNING_DOC_STATUSES, s)
+
 const VALUES: Record<string, string> = {
     none: "nenhum", low: "baixo", medium: "médio", high: "alto", critical: "crítico"
 }

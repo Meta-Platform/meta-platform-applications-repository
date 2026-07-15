@@ -555,12 +555,24 @@ html, body, #gui { height: 100%; margin: 0; }
     font-family: var(--mp-font-mono);
     font-size: var(--mp-text-xs);
     font-weight: 700;
+    /* line-height:1 iguala a caixa do texto à do ícone → centram no mesmo eixo
+       (sem isso o texto herda um line-height maior e o ícone parece "subir"). */
+    line-height: 1;
     border: 1px solid var(--mp-line);
     border-radius: var(--mp-radius-sm);
     background: var(--mp-surface-2);
     color: var(--mp-ink-2);
     text-transform: uppercase;
     letter-spacing: 0.02em;
+}
+/* Ícone do badge (Semantic UI): o glyph do icon-font fica ~1px acima do centro
+   óptico das MAIÚSCULAS; alinha a caixa ao texto e dá um nudge de sub-pixel. */
+.mpm-badge > .icon {
+    margin: 0 !important;
+    height: 1em;
+    line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+    position: relative; top: 1px;
 }
 .mpm-badge--type-epic    { color: var(--mp-accent-violet); border-color: var(--mp-accent-violet); }
 .mpm-badge--type-story   { color: var(--mp-accent-blue);   border-color: var(--mp-accent-blue); }
@@ -675,19 +687,40 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-kcol__add { margin: 0 var(--mp-space-3) var(--mp-space-3); }
 
 .mpm-witem {
+    position: relative;
     background: var(--mp-surface);
     border: var(--mp-border);
-    border-radius: var(--mp-radius-sm);
+    border-radius: var(--mp-radius-md);
     box-shadow: var(--mp-shadow-1);
     padding: var(--mp-space-3);
+    padding-left: calc(var(--mp-space-3) + 3px);   /* espaço p/ o acento de prioridade */
     display: flex; flex-direction: column; gap: var(--mp-space-2);
     cursor: pointer;
+    transition: box-shadow .12s ease, transform .12s ease, border-color .12s ease;
 }
-.mpm-witem:hover { box-shadow: var(--mp-shadow-2); }
+.mpm-witem:hover {
+    box-shadow: var(--mp-shadow-2);
+    border-color: var(--mp-line-strong);
+    transform: translateY(-1px);
+}
 .mpm-witem.is-dragging { opacity: 0.4; }
-.mpm-witem__top { display: flex; align-items: center; gap: var(--mp-space-2); }
+/* Acento lateral por prioridade: urgente/alta saltam à vista no quadro. */
+.mpm-witem::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    border-radius: var(--mp-radius-md) 0 0 var(--mp-radius-md);
+    background: transparent;
+}
+.mpm-witem[data-priority="urgent"]::before   { background: var(--mp-danger); }
+.mpm-witem[data-priority="critical"]::before { background: var(--mp-danger); }
+.mpm-witem[data-priority="high"]::before      { background: var(--mp-warning); }
+.mpm-witem[data-priority="medium"]::before    { background: var(--mp-line-strong); }
+.mpm-witem__top { display: flex; align-items: center; gap: var(--mp-space-2); flex-wrap: wrap; }
 .mpm-witem__key { font-family: var(--mp-font-mono); font-size: var(--mp-text-xs); color: var(--mp-muted); margin-left: auto; }
-.mpm-witem__title { font-weight: 600; color: var(--mp-ink); line-height: var(--mp-line-sm); }
+.mpm-witem__title {
+    font-weight: 600; color: var(--mp-ink); line-height: var(--mp-line-sm);
+    /* Título ocupa até 3 linhas e trunca — cards ficam da mesma altura visual. */
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
 .mpm-witem__meta { display: flex; align-items: center; gap: var(--mp-space-3); color: var(--mp-muted); font-size: var(--mp-text-xs); }
 .mpm-witem__meta .icon { margin: 0 4px 0 0 !important; }
 .mpm-witem__blocked { color: var(--mp-danger); font-weight: 700; }
@@ -920,6 +953,16 @@ html, body, #gui { height: 100%; margin: 0; }
     border-left: none;
     background: transparent;
     border-radius: var(--mp-radius-md);
+}
+/* Tela cheia: precisa VENCER a regra acima (que zera o fundo p/ transparente) —
+   senão o board e a caixa redimensionada do modal aparecem atrás e o layout
+   parece "quebrado". Especificidade maior + cobre a viewport inteira, opaco. */
+.mpm-modal--inspector .mpm-inspector.is-fullscreen {
+    position: fixed; inset: 0;
+    width: auto; height: auto;
+    background: var(--mp-surface);
+    border-left: none; border-radius: 0;
+    z-index: 950;
 }
 
 .mpm-cmd { z-index: var(--mp-z-palette); }
@@ -1442,6 +1485,15 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-tab .icon { margin: 0 !important; color: var(--mp-muted-2); }
 .mpm-tab:hover .icon { color: var(--mp-muted); }
 .mpm-tab.is-active .icon { color: var(--mp-accent-blue); }
+/* Contagem do conteúdo da aba (Vínculos 2, Anexos 3, Checklist…). */
+.mpm-tab__count {
+    min-width: 16px; height: 16px; padding: 0 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; line-height: 1;
+    color: var(--mp-muted); background: var(--mp-surface-2, var(--mp-paper-2));
+    border: 1px solid var(--mp-line); border-radius: 8px;
+}
+.mpm-tab.is-active .mpm-tab__count { color: var(--mp-accent-blue); border-color: var(--mp-accent-blue); }
 
 /* Grid compacto de campos do Resumo (2–3 colunas, não 1 campo por linha). */
 .mpm-inspector__grid {
@@ -2071,3 +2123,290 @@ html, body, #gui { height: 100%; margin: 0; }
 /* Na janela grande os comentários ganham corpo de leitura e imagens plenas. */
 .mpm-timeline--large .mpm-timeline__text { font-size: var(--mp-text-md); line-height: 1.6; color: var(--mp-ink); }
 .mpm-timeline--large .mpm-timeline__text img { max-width: 100%; height: auto; }
+
+/* ─── Projeto arquivado (somente leitura) ─────────────────────────────────────
+   Sinaliza forte que a tela é de consulta: faixa âmbar no header e um selo ao
+   lado do título. A garantia de imutabilidade é do backend; isto é o aviso. */
+.mpm-header.is-archived {
+    border-top: 3px solid var(--mp-warning);
+    background: var(--mp-warning-tint);
+}
+.mpm-header.is-archived .mpm-header__title-row { border-top: 1px dashed var(--mp-warning); }
+.mpm-archived-flag {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-left: var(--mp-space-3);
+    padding: 2px var(--mp-space-2);
+    font-family: var(--mp-font-ui, inherit);
+    font-size: var(--mp-text-xs); font-weight: 700;
+    letter-spacing: 0.02em; text-transform: uppercase;
+    vertical-align: middle;
+    color: var(--mp-warning);
+    background: var(--mp-surface);
+    border: 1px solid var(--mp-warning); border-radius: var(--mp-radius-sm);
+    white-space: nowrap;
+}
+.mpm-archived-flag .icon { margin: 0 !important; }
+
+/* Aviso no topo da área de Arquivados. */
+.mpm-archive-note {
+    display: flex; align-items: flex-start; gap: var(--mp-space-2);
+    border-left: 3px solid var(--mp-warning);
+    color: var(--mp-ink);
+}
+.mpm-archive-note .icon { color: var(--mp-warning); margin: 2px 0 0 0 !important; }
+
+/* Card de projeto arquivado: discreto, com traço âmbar à esquerda. */
+.mpm-project-card--archived { border-left: 3px solid var(--mp-warning); }
+
+/* ─── Documentação do projeto (wiki em árvore) ───────────────────────────────── */
+/* Classes PRÓPRIAS (mpm-wiki*) para NÃO colidir com .mpm-docs do Manual/Guia IA,
+   que usa layout inverso (conteúdo largo + sumário estreito). */
+.mpm-wiki {
+    display: grid;
+    grid-template-columns: minmax(220px, 300px) 1fr;
+    gap: var(--mp-space-4);
+    align-items: start;
+    min-width: 0;
+}
+.mpm-wiki__tree {
+    background: var(--mp-surface);
+    border: var(--mp-border);
+    border-radius: var(--mp-radius-md);
+    overflow: hidden;
+    position: sticky; top: var(--mp-space-2);
+    max-height: calc(100vh - 160px);
+    display: flex; flex-direction: column;
+}
+.mpm-wiki__tree-head {
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    padding: var(--mp-space-2) var(--mp-space-3);
+    border-bottom: var(--mp-border);
+}
+.mpm-doctree { overflow: auto; padding: var(--mp-space-1) 0; }
+.mpm-doctree__row {
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 8px 4px 6px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    user-select: none;
+}
+.mpm-doctree__row:hover { background: var(--mp-surface-2, rgba(127,127,127,0.08)); }
+.mpm-doctree__row.is-active { background: var(--mp-accent-blue-tint, rgba(56,120,255,0.12)); border-left-color: var(--mp-accent-blue); }
+.mpm-doctree__row.is-dragging { opacity: 0.5; }
+.mpm-doctree__caret { width: 16px; flex: 0 0 auto; text-align: center; color: var(--mp-muted); }
+.mpm-doctree__caret--leaf { font-size: 10px; }
+.mpm-doctree__title {
+    flex: 1; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: var(--mp-text-sm, 13px);
+}
+.mpm-doctree__actions { display: none; gap: 2px; flex: 0 0 auto; }
+.mpm-doctree__row:hover .mpm-doctree__actions { display: flex; }
+
+.mpm-wiki__content { min-width: 0; }
+.mpm-docpage__crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 12px; margin-bottom: var(--mp-space-2); }
+.mpm-docpage__crumb-current { font-weight: 600; color: var(--mp-ink); }
+.mpm-docpage__head { display: flex; align-items: center; gap: var(--mp-space-2); margin-bottom: var(--mp-space-3); }
+.mpm-docpage__title { margin: 0; flex: 1; font-size: var(--mp-text-xl, 20px); }
+.mpm-docpage__title-input { flex: 1; font-size: var(--mp-text-lg); font-weight: 700; }
+.mpm-docpage__toolbar { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; }
+
+/* Anexos de arquivo da página: separados do corpo por uma linha, como um rodapé
+   do documento. */
+.mpm-docpage__attachments {
+    margin-top: var(--mp-space-4);
+    padding-top: var(--mp-space-3);
+    border-top: var(--mp-border-thin);
+}
+
+/* Menu "Exportar" da documentação (dropdown ancorado no botão do header). */
+.mpm-export__backdrop { position: fixed; inset: 0; z-index: 40; }
+.mpm-export__menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 41; min-width: 220px; }
+
+/* Preview de imagem de anexo: fundo xadrez revela a transparência de ícones
+   (PNG/SVG). A imagem em si vem via data URI (SVG isolado em <img>, seguro). */
+.mpm-attach__preview--img {
+    display: inline-block;
+    max-width: 100%;
+    padding: 6px;
+    border-radius: var(--mp-radius-sm);
+    background-color: #fff;
+    background-image:
+        linear-gradient(45deg, rgba(0,0,0,0.06) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(0,0,0,0.06) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(0,0,0,0.06) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(0,0,0,0.06) 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+/* Contenção robusta: SVG sem tamanho definido não pode explodir (teto de altura
+   mesmo se a prop maxHeight não vier). object-fit mantém a proporção. */
+.mpm-attach__preview--img img {
+    display: block;
+    max-width: 100%;
+    max-height: 60vh;
+    width: auto; height: auto;
+    object-fit: contain;
+}
+
+/* ─── Board em swimlanes (faixas por épico) ──────────────────────────────────── */
+/* UM ÚNICO grid: as colunas (tracks) são compartilhadas por TODAS as faixas, então
+   alinham sempre. Cada faixa = 1 cabeçalho (span total) + N células. Colunas mais
+   estreitas e cards compactos p/ caber mais no board. */
+.mpm-swim {
+    display: grid;
+    /* grid-template-columns vem inline (repeat(N, var(--mpm-swim-col))) */
+    --mpm-swim-col: 248px;
+    justify-content: start;      /* tracks fixos alinhados à esquerda */
+    overflow-x: auto;            /* rola quando as colunas excedem a largura */
+    border: var(--mp-border); border-radius: var(--mp-radius-md);
+    background: var(--mp-surface);
+    padding-bottom: 2px;
+}
+/* Cabeçalho de status: fixo no topo ao rolar. */
+.mpm-swim__col {
+    position: sticky; top: 0; z-index: 3;
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    padding: var(--mp-space-2) var(--mp-space-3);
+    background: var(--mp-surface-2, var(--mp-paper-2));
+    border-bottom: var(--mp-border);
+    border-right: 1px solid var(--mp-line-faint);
+    font-weight: 700; font-size: var(--mp-text-xs); text-transform: uppercase;
+    letter-spacing: 0.03em; color: var(--mp-ink-2);
+}
+.mpm-swim__col:last-child { border-right: none; }
+.mpm-swim__col-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Faixa do épico: barra full-width com destaque (acento violeta) + progresso. */
+.mpm-swim__lanehead {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    padding: var(--mp-space-2) var(--mp-space-3);
+    border-top: var(--mp-border);
+    border-left: 3px solid var(--mp-accent-violet);
+    background: var(--mp-paper-2);
+    cursor: pointer;
+    position: sticky; left: 0;   /* acompanha o scroll horizontal */
+}
+.mpm-swim__lanehead.is-noepic { border-left-color: var(--mp-line-strong); }
+.mpm-swim__lanehead:hover { background: var(--mp-surface-2, var(--mp-paper-2)); }
+.mpm-swim__lanecaret { color: var(--mp-muted); margin: 0 !important; }
+.mpm-swim__epicbadge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 1px 6px; border-radius: var(--mp-radius-sm);
+    font-family: var(--mp-font-mono); font-size: var(--mp-text-xs); font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.02em;
+    color: var(--mp-accent-violet); border: 1px solid var(--mp-accent-violet);
+}
+.mpm-swim__epicbadge .icon { margin: 0 !important; }
+.mpm-swim__lanetitle {
+    flex: 1; min-width: 120px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700;
+}
+/* Barra de progresso da faixa (concluídos/total do épico). */
+.mpm-swim__progress { display: flex; align-items: center; gap: var(--mp-space-2); flex: 0 0 auto; }
+.mpm-swim__progress-bar {
+    width: 120px; height: 6px; border-radius: 3px;
+    background: var(--mp-line-faint); overflow: hidden;
+}
+.mpm-swim__progress-bar > span { display: block; height: 100%; background: var(--mp-accent-violet); }
+.mpm-swim__progress-num { font-size: var(--mp-text-xs); color: var(--mp-muted); }
+.mpm-swim__laneopen { flex: 0 0 auto; }
+
+/* Célula (faixa × status): coluna de cards compactos, com guia vertical. */
+.mpm-swim__cell {
+    display: flex; flex-direction: column; gap: var(--mp-space-2);
+    padding: var(--mp-space-2);
+    min-height: 40px;
+    border-top: var(--mp-border);
+    border-right: 1px solid var(--mp-line-faint);
+}
+.mpm-swim__cell.is-dragover {
+    outline: 2px dashed var(--mp-accent-blue); outline-offset: -2px;
+    background: var(--mp-accent-blue-tint, rgba(56,120,255,0.08));
+}
+.mpm-swim__add {
+    display: flex; align-items: center; justify-content: center;
+    padding: 3px; border: 1px dashed var(--mp-line); border-radius: var(--mp-radius-sm);
+    background: transparent; color: var(--mp-muted); cursor: pointer;
+    opacity: 0; transition: opacity .1s;
+}
+.mpm-swim__cell:hover .mpm-swim__add { opacity: 1; }
+.mpm-swim__add:hover { color: var(--mp-ink); border-color: var(--mp-line-strong); }
+.mpm-swim__add .icon { margin: 0 !important; }
+
+/* Cards COMPACTOS na visão por épico (mais itens à vista). */
+.mpm-swim .mpm-witem {
+    padding: 6px 8px; padding-left: calc(8px + 3px);
+    gap: 4px; border-radius: var(--mp-radius-sm);
+}
+.mpm-swim .mpm-witem__top { gap: 4px; }
+.mpm-swim .mpm-witem__title { -webkit-line-clamp: 2; font-size: var(--mp-text-sm); }
+
+/* ─── Densidade no BOARD (swimlanes e plano) ─────────────────────────────────── */
+/* Comfortable = base. Compacta aperta; ampla folga. Vem depois do bloco .mpm-swim
+   p/ vencer o empate de especificidade com `.mpm-swim .mpm-witem`. */
+.mpm-density--compact .mpm-witem { padding: 5px 7px; padding-left: 10px; gap: 3px; }
+.mpm-density--compact .mpm-witem__title { -webkit-line-clamp: 1; font-size: var(--mp-text-sm); }
+.mpm-density--compact .mpm-swim__cell { padding: 4px; gap: 4px; }
+
+.mpm-density--wide .mpm-witem { padding: var(--mp-space-3); padding-left: calc(var(--mp-space-3) + 3px); gap: var(--mp-space-2); }
+.mpm-density--wide .mpm-witem__title { -webkit-line-clamp: 4; font-size: var(--mp-text-md, 15px); }
+.mpm-density--wide .mpm-swim .mpm-witem__title { -webkit-line-clamp: 3; }
+.mpm-density--wide .mpm-swim__cell { padding: var(--mp-space-3); gap: var(--mp-space-3); }
+
+/* ─── Caret de colapsar a faixa (e alinhamento de ícones em rótulos) ──────────── */
+.mpm-swim__lanecaret {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; line-height: 1;
+    border-radius: var(--mp-radius-sm);
+    font-size: 13px; color: var(--mp-ink-2);
+    flex: 0 0 auto;
+}
+.mpm-swim__lanehead:hover .mpm-swim__lanecaret { background: var(--mp-line-faint); color: var(--mp-ink); }
+/* Ícones em títulos/rótulos com texto em caixa alta: mesma correção do badge —
+   line-height 1 + caixa centralizada — para o glyph não "subir". */
+.mpm-section-title > .icon,
+.mpm-kcol__head > .icon,
+.mpm-swim__col > .icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 1em; line-height: 1; margin: 0 !important; position: relative; top: 0.5px;
+}
+
+/* ─── Lista (WorkItemList): Info na coluna Item, épico em destaque ────────────── */
+/* Título + contadores (Info) na MESMA linha, dentro da coluna Item. */
+.mpm-itemcell__title-row { display: flex; align-items: center; gap: var(--mp-space-3); }
+.mpm-itemcell__title-row .mpm-itemcell__title { flex: 1 1 auto; min-width: 0; }
+.mpm-itemcell__title-row .mpm-witem__meta { flex: 0 0 auto; margin-left: auto; white-space: nowrap; }
+
+/* Épico: linha de DESTAQUE (separa seções, fundo, título maior, acento violeta). */
+.mpm-table__row--clickable.is-epic > td {
+    background: var(--mp-surface-2, var(--mp-paper-2));
+    border-top: 2px solid var(--mp-line-strong);
+}
+.mpm-table__row--clickable.is-epic:hover > td { background: var(--mp-surface-2, var(--mp-paper-2)); filter: brightness(0.98); }
+.mpm-table__row--clickable.is-epic > td:first-child { border-left: 3px solid var(--mp-accent-violet); }
+.mpm-table__row--clickable.is-epic .mpm-itemcell__title {
+    font-size: var(--mp-text-md, 15px); font-weight: 800; color: var(--mp-ink);
+    -webkit-line-clamp: 1; line-clamp: 1;
+}
+.mpm-table__row--clickable.is-epic .mpm-tree-count { color: var(--mp-accent-violet); }
+
+/* Cabeçalho da coluna Item + botão colapsar/expandir tudo. */
+.mpm-th-item { display: inline-flex; align-items: center; gap: 8px; }
+.mpm-th-collapse { color: var(--mp-muted); }
+.mpm-th-collapse:hover { color: var(--mp-ink); }
+
+/* Alinhamento de ícones na lista (caret, cópia, badges-info): caixa centralizada
+   + line-height 1 para o glyph não subir. */
+.mpm-itemcell .icon,
+.mpm-witem__meta .icon,
+.mpm-tree-toggle .icon,
+.mpm-state .icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 1em; line-height: 1; position: relative; top: 0.5px;
+}
+
+/* Polimento geral da tabela: linhas mais respiradas e hover claro. */
+.mpm-table td { padding-top: 7px; padding-bottom: 7px; }
+.mpm-table__row--clickable:hover > td { background: var(--mp-surface-2, rgba(127,127,127,0.05)); }

@@ -29,6 +29,7 @@ const PlanningStore = (ctx) => {
         if(!name) throw new DomainError("VALIDATION_ERROR", "Nome do milestone é obrigatório.", { field: "name" })
         if(!MILESTONE_STATUSES.includes(status)) throw new DomainError("VALIDATION_ERROR", `Status inválido: ${status}.`, { field: "status", allowed: MILESTONE_STATUSES })
         const projectInstance = await store.ResolveProject(project)
+        await store.AssertProjectWritable({ project: projectInstance })
 
         // Criar milestone é planejamento reversível: LIVRE para agentes (o gate está no delete).
 
@@ -55,6 +56,7 @@ const PlanningStore = (ctx) => {
 
     const UpdateMilestone = async ({ milestone, actor, ...fields } = {}) => {
         const m = await ResolveMilestone(milestone)
+        await store.AssertProjectWritable({ project: m.projectId })
         const patch = {}
         for(const k of ["name", "shortDescription", "description", "targetDate", "status", "order"]) if(fields[k] !== undefined) patch[k] = fields[k]
         if(patch.status && !MILESTONE_STATUSES.includes(patch.status)) throw new DomainError("VALIDATION_ERROR", `Status inválido: ${patch.status}.`, { field: "status", allowed: MILESTONE_STATUSES })
@@ -68,6 +70,7 @@ const PlanningStore = (ctx) => {
 
     const DeleteMilestone = async ({ milestone, actor } = {}) => {
         const m = await ResolveMilestone(milestone)
+        await store.AssertProjectWritable({ project: m.projectId })
         await store.GateAgentAction({
             actionName: "delete", type: "milestone", targetId: m.id, projectId: m.projectId,
             risk: "destructive", reason: "Remoção de entrega (milestone) por agente requer aprovação humana.", actor
@@ -107,6 +110,7 @@ const PlanningStore = (ctx) => {
         if(!name) throw new DomainError("VALIDATION_ERROR", "Nome do sprint é obrigatório.", { field: "name" })
         if(!SPRINT_STATUSES.includes(status)) throw new DomainError("VALIDATION_ERROR", `Status inválido: ${status}.`, { field: "status", allowed: SPRINT_STATUSES })
         const projectInstance = await store.ResolveProject(project)
+        await store.AssertProjectWritable({ project: projectInstance })
 
         // Criar sprint é planejamento reversível: LIVRE para agentes (o gate está no delete).
 
@@ -133,6 +137,7 @@ const PlanningStore = (ctx) => {
 
     const UpdateSprint = async ({ sprint, actor, ...fields } = {}) => {
         const s = await ResolveSprint(sprint)
+        await store.AssertProjectWritable({ project: s.projectId })
         const patch = {}
         for(const k of ["name", "shortDescription", "goal", "startDate", "endDate", "status", "order"]) if(fields[k] !== undefined) patch[k] = fields[k]
         if(patch.status && !SPRINT_STATUSES.includes(patch.status)) throw new DomainError("VALIDATION_ERROR", `Status inválido: ${patch.status}.`, { field: "status", allowed: SPRINT_STATUSES })
@@ -146,6 +151,7 @@ const PlanningStore = (ctx) => {
 
     const DeleteSprint = async ({ sprint, actor } = {}) => {
         const s = await ResolveSprint(sprint)
+        await store.AssertProjectWritable({ project: s.projectId })
         await store.GateAgentAction({
             actionName: "delete", type: "sprint", targetId: s.id, projectId: s.projectId,
             risk: "destructive", reason: "Remoção de sprint por agente requer aprovação humana.", actor
@@ -160,6 +166,7 @@ const PlanningStore = (ctx) => {
     // Atribui/limpa milestone e sprint de um item (ref null/"none" para limpar).
     const AssignItemPlanning = async ({ item, milestone, sprint, actor } = {}) => {
         const workItem = await store.ResolveItem(item)
+        await store.AssertProjectWritable({ project: workItem.projectId })
         const patch = {}
         if(milestone !== undefined) patch.milestoneId = (milestone && milestone !== "none") ? (await ResolveMilestone(milestone)).id : null
         if(sprint !== undefined) patch.sprintId = (sprint && sprint !== "none") ? (await ResolveSprint(sprint)).id : null

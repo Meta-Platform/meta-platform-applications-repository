@@ -200,6 +200,7 @@ const EcosystemStore = ({ models, writeAudit, emit, store, config }) => {
 
     const AddItemPackage = async ({ item, package: reference, role = "touched", note, actor } = {}) => {
         const instance = await store.ResolveItem(item)
+        await store.AssertProjectWritable({ project: instance.projectId })
         const pkg = await _resolvePackage(reference)
 
         const existing = await WorkItemPackage.findOne({ where: { workItemId: instance.id, ref: pkg.ref } })
@@ -233,6 +234,7 @@ const EcosystemStore = ({ models, writeAudit, emit, store, config }) => {
 
     const RemoveItemPackage = async ({ item, package: reference, actor } = {}) => {
         const instance = await store.ResolveItem(item)
+        await store.AssertProjectWritable({ project: instance.projectId })
         const row = await WorkItemPackage.findOne({
             where: { workItemId: instance.id, [Op.or]: [{ ref: reference }, { id: reference }, { packageName: reference }] }
         })
@@ -249,6 +251,7 @@ const EcosystemStore = ({ models, writeAudit, emit, store, config }) => {
     // Substitui o conjunto inteiro: é como a GUI salva a seção de contexto.
     const SetItemPackages = async ({ item, packages = [], actor } = {}) => {
         const instance = await store.ResolveItem(item)
+        await store.AssertProjectWritable({ project: instance.projectId })
         const wanted = packages.map((entry) =>
             typeof entry === "string" ? { package: entry, role: "touched" } : entry)
 

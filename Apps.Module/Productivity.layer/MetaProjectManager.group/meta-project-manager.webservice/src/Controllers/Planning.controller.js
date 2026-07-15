@@ -2,7 +2,9 @@ const { GetContext } = require("../AppContext")
 const { Guard, idOf, Actor } = require("../Utils/respond")
 
 // Controller Planning — milestones, sprints e roadmap sobre @/project-store.lib.
-// Criar milestone/sprint por agente (Actor inline) dispara o gate de criação.
+// Criar milestone/sprint por agente é LIVRE (reversível); APAGAR por agente
+// dispara o gate destrutivo. Por isso o delete também usa Actor(arg): sem ele o
+// ator viraria { source: "api" } fixo e o gate nunca reconheceria a sessão.
 const PlanningController = (params) => {
     const ctx = GetContext(params)
     const { store } = ctx
@@ -12,7 +14,7 @@ const PlanningController = (params) => {
     const CreateMilestone = async (p = {}) => Guard(async () => { await ctx.ready; return store.CreateMilestone({ project: p.projectId, name: p.name, description: p.description, targetDate: p.targetDate, status: p.status, actor: Actor(p) }) })
     const GetMilestone = async (arg) => Guard(async () => { await ctx.ready; return store.GetMilestone({ milestone: idOf(arg, "milestoneId") }) })
     const UpdateMilestone = async (p = {}) => Guard(async () => { await ctx.ready; return store.UpdateMilestone({ milestone: p.milestoneId, name: p.name, description: p.description, targetDate: p.targetDate, status: p.status, actor: Actor(p) }) })
-    const DeleteMilestone = async (arg) => Guard(async () => { await ctx.ready; return store.DeleteMilestone({ milestone: idOf(arg, "milestoneId"), actor: { source: "api" } }) })
+    const DeleteMilestone = async (arg) => Guard(async () => { await ctx.ready; return store.DeleteMilestone({ milestone: idOf(arg, "milestoneId"), actor: Actor(arg) }) })
     const Roadmap = async (arg) => Guard(async () => { await ctx.ready; return store.Roadmap({ project: idOf(arg, "projectId") }) })
     const RoadmapByHorizon = async (arg) => Guard(async () => { await ctx.ready; return store.RoadmapByHorizon({ project: idOf(arg, "projectId") }) })
 
@@ -21,7 +23,7 @@ const PlanningController = (params) => {
     const CreateSprint = async (p = {}) => Guard(async () => { await ctx.ready; return store.CreateSprint({ project: p.projectId, name: p.name, goal: p.goal, startDate: p.startDate, endDate: p.endDate, status: p.status, actor: Actor(p) }) })
     const GetSprint = async (arg) => Guard(async () => { await ctx.ready; return store.GetSprint({ sprint: idOf(arg, "sprintId") }) })
     const UpdateSprint = async (p = {}) => Guard(async () => { await ctx.ready; return store.UpdateSprint({ sprint: p.sprintId, name: p.name, goal: p.goal, startDate: p.startDate, endDate: p.endDate, status: p.status, actor: Actor(p) }) })
-    const DeleteSprint = async (arg) => Guard(async () => { await ctx.ready; return store.DeleteSprint({ sprint: idOf(arg, "sprintId"), actor: { source: "api" } }) })
+    const DeleteSprint = async (arg) => Guard(async () => { await ctx.ready; return store.DeleteSprint({ sprint: idOf(arg, "sprintId"), actor: Actor(arg) }) })
 
     // Atribuição de milestone/sprint a um item.
     const AssignItemPlanning = async (p = {}) => Guard(async () => { await ctx.ready; return store.AssignItemPlanning({ item: p.itemId, milestone: p.milestone, sprint: p.sprint, actor: Actor(p) }) })

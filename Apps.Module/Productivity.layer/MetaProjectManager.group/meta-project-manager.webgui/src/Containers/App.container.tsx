@@ -13,6 +13,7 @@ import { ToastProvider } from "../Hooks/useToasts"
 import { ApprovalQueueProvider } from "../Hooks/useApprovalQueue"
 import AgentActivityToasts from "../Components/AgentActivityToasts"
 import { FeedbackProvider } from "../Hooks/useFeedback"
+import { ReadOnlyProvider } from "../Hooks/useReadOnly"
 
 const fetchHTTPServersRunning = async () => {
     // Electron GUI-host: não há servidor HTTP — o transporte é IPC (window.metaGui).
@@ -74,21 +75,23 @@ const AppContainer = ({
 	// lado e não pode sumir porque o usuário navegou.
 	return HTTPServerManager.list_web_servers_running.length > 0 
 		? <HashRouter>
-				<EventsProvider>
-					<ToastProvider>
-						<ApprovalQueueProvider>
-							<FeedbackProvider>
-								<AgentActivityToasts/>
-								<Routes>
-								{
-									GetRouteObject(routesConfig, mapper)
-									.map(({ path, exact, element }:any, key) => <Route key={key}{...{ path, element }}/>)
-								}
-								</Routes>
-							</FeedbackProvider>
-						</ApprovalQueueProvider>
-					</ToastProvider>
-				</EventsProvider>
+				<ReadOnlyProvider>
+					<EventsProvider>
+						<ToastProvider>
+							<ApprovalQueueProvider>
+								<FeedbackProvider>
+									<AgentActivityToasts/>
+									<Routes>
+									{
+										GetRouteObject(routesConfig, mapper)
+										.map(({ path, exact, element }:any, key) => <Route key={key}{...{ path, element }}/>)
+									}
+									</Routes>
+								</FeedbackProvider>
+							</ApprovalQueueProvider>
+						</ToastProvider>
+					</EventsProvider>
+				</ReadOnlyProvider>
 			</HashRouter>
 		: <Dimmer active>
 				<Loader>loading web services running...</Loader>

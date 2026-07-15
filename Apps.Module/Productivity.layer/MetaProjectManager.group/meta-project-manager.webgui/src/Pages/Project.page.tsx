@@ -5,6 +5,7 @@ import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
 import useLiveReload from "../Hooks/useLiveReload"
+import { useReadOnly } from "../Hooks/useReadOnly"
 import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import { Project, ProjectMetrics, Board, ActivityEntry, User, WorkItem } from "../api/types"
 import AppShell from "../Components/AppShell"
@@ -46,6 +47,7 @@ const groupActivity = (entries: ActivityEntry[], usersById: Record<string, User>
 // ProjectPage / Overview: header enxuto, PROGRESSO NO TOPO e o resto em abas.
 const ProjectPage = () => {
     const api = useApi()
+    const readOnly = useReadOnly()
     const navigate = useNavigate()
     const feedback = useFeedback()
     const { projectId } = useParams<{ projectId: string }>()
@@ -138,34 +140,38 @@ const ProjectPage = () => {
     const headerActions = project
         ? <>
             <StatusChip status={project.status} />
-            <PageFeedbackButton scope="project" projectId={projectId} label="Projeto inteiro" />
+            {!readOnly ? <PageFeedbackButton scope="project" projectId={projectId} label="Projeto inteiro" /> : null}
             <button className="mpm-btn" title="Abrir o board padrão do projeto" onClick={() => openBoard(project.defaultBoardId)}>
                 <Icon name="columns" /> Abrir board
             </button>
             <button className="mpm-btn" title="Exportar projeto (.json)" onClick={exportProject}>
                 <Icon name="download" /> Exportar
             </button>
-            <div className="mpm-more">
-                <button className="mpm-btn" title="Mais ações" onClick={() => setMoreOpen((v) => !v)}>
-                    <Icon name="ellipsis horizontal" /> Mais
-                </button>
-                {moreOpen
-                    ? <div className="mpm-more__menu" onMouseLeave={() => setMoreOpen(false)}>
-                        {project.status === "archived"
-                            ? <button className="mpm-ctxmenu__item" onClick={() => { setMoreOpen(false); restore() }}>
-                                <Icon name="undo" /> Restaurar projeto
+            {/* Arquivar/Excluir/feedback ficam FORA da consulta a um projeto arquivado.
+                Restaurar mora na área de Arquivados. */}
+            {!readOnly
+                ? <div className="mpm-more">
+                    <button className="mpm-btn" title="Mais ações" onClick={() => setMoreOpen((v) => !v)}>
+                        <Icon name="ellipsis horizontal" /> Mais
+                    </button>
+                    {moreOpen
+                        ? <div className="mpm-more__menu" onMouseLeave={() => setMoreOpen(false)}>
+                            {project.status === "archived"
+                                ? <button className="mpm-ctxmenu__item" onClick={() => { setMoreOpen(false); restore() }}>
+                                    <Icon name="undo" /> Restaurar projeto
+                                </button>
+                                : <button className="mpm-ctxmenu__item" onClick={() => { setMoreOpen(false); archive() }}>
+                                    <Icon name="archive" /> Arquivar projeto
+                                </button>}
+                            <div className="mpm-ctxmenu__sep" />
+                            <button className="mpm-ctxmenu__item mpm-ctxmenu__item--danger"
+                                onClick={() => { setMoreOpen(false); setConfirmDelete(true) }}>
+                                <Icon name="trash" /> Excluir projeto…
                             </button>
-                            : <button className="mpm-ctxmenu__item" onClick={() => { setMoreOpen(false); archive() }}>
-                                <Icon name="archive" /> Arquivar projeto
-                            </button>}
-                        <div className="mpm-ctxmenu__sep" />
-                        <button className="mpm-ctxmenu__item mpm-ctxmenu__item--danger"
-                            onClick={() => { setMoreOpen(false); setConfirmDelete(true) }}>
-                            <Icon name="trash" /> Excluir projeto…
-                        </button>
-                    </div>
-                    : null}
-            </div>
+                        </div>
+                        : null}
+                </div>
+                : null}
         </>
         : undefined
 
@@ -261,7 +267,7 @@ const ProjectPage = () => {
                                 <div className="mpm-panel__title">
                                     <Icon name="align left" /> Descrição
                                     <span style={{ marginLeft: "auto" }} />
-                                    {!editingDesc
+                                    {!editingDesc && !readOnly
                                         ? <button className="mpm-btn mpm-btn--sm" title="Editar a descrição em markdown (aceita imagens)"
                                             onClick={() => setEditingDesc(true)}>
                                             <Icon name="pencil" /> Editar
@@ -269,7 +275,8 @@ const ProjectPage = () => {
                                         : null}
                                     {/* Sugerir ao agente uma melhoria no texto do projeto.
                                         O balão abre logo abaixo do ícone. */}
-                                    <span className="mpm-iconbtn"
+                                    {!readOnly
+                                    ? <span className="mpm-iconbtn"
                                         title="Feedback para o agente sobre a descrição do projeto"
                                         onClick={(e) => {
                                             const box = (e.currentTarget as HTMLElement).getBoundingClientRect()
@@ -286,8 +293,9 @@ const ProjectPage = () => {
                                         }}>
                                         <Icon name="comment alternate outline" />
                                     </span>
+                                    : null}
                                 </div>
-                                {editingDesc
+                                {editingDesc && !readOnly
                                     ? <div className="mpm-desc mpm-desc--inline"
                                         {...feedbackTarget({ entityType: "project", entityId: project.id, project: project.id, field: "description", fieldLabel: "Descrição do projeto" })}>
                                         <DescriptionEditor key={`proj-desc-${project.id}`} value={project.description || ""}
@@ -302,9 +310,11 @@ const ProjectPage = () => {
                                     : <div className="mpm-tabpanel-empty">
                                         <Icon name="align left" size="large" />
                                         <div>Este projeto ainda não tem descrição.</div>
-                                        <button className="mpm-btn mpm-btn--sm mpm-btn--primary" onClick={() => setEditingDesc(true)}>
-                                            <Icon name="pencil" /> Escrever descrição
-                                        </button>
+                                        {!readOnly
+                                            ? <button className="mpm-btn mpm-btn--sm mpm-btn--primary" onClick={() => setEditingDesc(true)}>
+                                                <Icon name="pencil" /> Escrever descrição
+                                            </button>
+                                            : null}
                                     </div>}
                             </div>
                         </div>
@@ -313,17 +323,21 @@ const ProjectPage = () => {
                         <div className="mpm-panel">
                             <div className="mpm-panel__title">
                                 <Icon name="columns" /> Boards ({boards.length})
-                                <button className="mpm-btn mpm-btn--sm" style={{ marginLeft: "auto" }} onClick={() => setCreatingBoard(true)}>
-                                    <Icon name="plus" /> Novo Board
-                                </button>
+                                {!readOnly
+                                    ? <button className="mpm-btn mpm-btn--sm" style={{ marginLeft: "auto" }} onClick={() => setCreatingBoard(true)}>
+                                        <Icon name="plus" /> Novo Board
+                                    </button>
+                                    : null}
                             </div>
                             {boards.length === 0
                                 ? <div className="mpm-tabpanel-empty">
                                     <Icon name="columns" size="large" />
                                     <div>Nenhum board neste projeto.</div>
-                                    <button className="mpm-btn mpm-btn--sm mpm-btn--primary" onClick={() => setCreatingBoard(true)}>
-                                        <Icon name="plus" /> Criar board
-                                    </button>
+                                    {!readOnly
+                                        ? <button className="mpm-btn mpm-btn--sm mpm-btn--primary" onClick={() => setCreatingBoard(true)}>
+                                            <Icon name="plus" /> Criar board
+                                        </button>
+                                        : null}
                                 </div>
                                 : <div className="mpm-col">
                                     {boards.map((b) =>
@@ -379,13 +393,13 @@ const ProjectPage = () => {
                     ? <div className="mpm-panel">
                         <div className="mpm-panel__title">
                             <Icon name="file alternate outline" /> Relatório Final
-                            {!editingReport
+                            {!editingReport && !readOnly
                                 ? <button className="mpm-btn mpm-btn--sm" style={{ marginLeft: "auto" }} onClick={() => setEditingReport(true)}>
                                     <Icon name="pencil" /> Editar
                                 </button>
                                 : null}
                         </div>
-                        {editingReport
+                        {editingReport && !readOnly
                             ? <div className="mpm-desc mpm-desc--inline"
                                 {...feedbackTarget({ entityType: "project", entityId: project.id, project: project.id, field: "finalReport", fieldLabel: "Relatório final do projeto" })}>
                                 <DescriptionEditor key={`proj-report-${project.id}`} value={project.finalReport || ""}
@@ -400,9 +414,11 @@ const ProjectPage = () => {
                             : <div className="mpm-tabpanel-empty">
                                 <Icon name="file alternate outline" size="large" />
                                 <div>Este projeto ainda não tem relatório final.</div>
-                                <button className="mpm-btn mpm-btn--sm mpm-btn--primary" onClick={() => setEditingReport(true)}>
-                                    <Icon name="pencil" /> Escrever relatório
-                                </button>
+                                {!readOnly
+                                    ? <button className="mpm-btn mpm-btn--sm mpm-btn--primary" onClick={() => setEditingReport(true)}>
+                                        <Icon name="pencil" /> Escrever relatório
+                                    </button>
+                                    : null}
                             </div>}
                     </div>
                     : null}

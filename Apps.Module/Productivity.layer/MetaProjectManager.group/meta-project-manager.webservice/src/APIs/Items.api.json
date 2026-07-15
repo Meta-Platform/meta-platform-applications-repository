@@ -229,6 +229,30 @@
                     "in": "body",
                     "type": "string",
                     "required": false
+                },
+                {
+                    "name": "startDate",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "dueDate",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "estimatePoints",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "estimateMinutes",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
                 }
             ]
         },
@@ -282,6 +306,30 @@
                 },
                 {
                     "name": "progress",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "startDate",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "dueDate",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "estimatePoints",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "estimateMinutes",
                     "in": "body",
                     "type": "string",
                     "required": false

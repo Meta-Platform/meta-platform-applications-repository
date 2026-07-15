@@ -4,6 +4,10 @@
         "page": "HomePage"
     },
     {
+        "path": "/archive",
+        "page": "ArchivePage"
+    },
+    {
         "path": "/projects/:projectId",
         "page": "ProjectPage"
     },
@@ -30,6 +34,30 @@
     {
         "path": "/projects/:projectId/roadmap",
         "page": "RoadmapPage"
+    },
+    {
+        "path": "/projects/:projectId/gantt",
+        "page": "GanttPage"
+    },
+    {
+        "path": "/projects/:projectId/docs",
+        "page": "DocsPage"
+    },
+    {
+        "path": "/projects/:projectId/docs/:docPageId",
+        "page": "DocsPage"
+    },
+    {
+        "path": "/projects/:projectId/risks",
+        "page": "RisksPage"
+    },
+    {
+        "path": "/projects/:projectId/planning-docs",
+        "page": "PlanningDocsPage"
+    },
+    {
+        "path": "/projects/:projectId/planning-docs/:planningDocId",
+        "page": "PlanningDocsPage"
     },
     {
         "path": "/users",

@@ -22,6 +22,7 @@ const CONTROLLER_MODULES = {
     Reports:     { controller: "Controllers/Reports.controller",     api: "APIs/Reports.api.json" },
     Events:      { controller: "Controllers/Events.controller",      api: "APIs/Events.api.json" },
     Planning:    { controller: "Controllers/Planning.controller",    api: "APIs/Planning.api.json" },
+    Docs:        { controller: "Controllers/Docs.controller",        api: "APIs/Docs.api.json" },
     System:      { controller: "Controllers/System.controller",      api: "APIs/System.api.json" }
 }
 

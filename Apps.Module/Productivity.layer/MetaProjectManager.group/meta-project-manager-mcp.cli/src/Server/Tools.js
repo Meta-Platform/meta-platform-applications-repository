@@ -28,6 +28,11 @@ const PRIORITIES = ["none","low","medium","high","urgent"]
 const HORIZONS = ["inbox","now","next","later","maybe","archived"]
 // Espelha Config.LINK_RELATIONS do project-store.lib (valores REAIS aceitos).
 const LINK_RELATIONS = ["blocks","depends","relates","duplicates","implements","tests","originated_from"]
+// Registro de riscos: escala da matriz 3×3 (probabilidade/impacto) e ciclo de vida.
+const RISK_LEVELS = ["low","medium","high"]
+const RISK_STATUSES = ["open","mitigating","accepted","closed","occurred"]
+// Documento de planejamento (termo de abertura/charter): ciclo de vida.
+const PLANNING_DOC_STATUSES = ["draft","review","approved","archived"]
 
 const { INSTRUCTIONS } = require("./Instructions")
 
@@ -148,6 +153,162 @@ const BuildTools = ({ store, actor }) => {
             handler: (i) => store.CreateSprint(A({ project: i.project, name: i.name, goal: i.goal, startDate: i.startDate, endDate: i.endDate }))
         },
 
+        // ───────────── Documentação do projeto (wiki em árvore) ─────────────
+        // Páginas de markdown organizadas em árvore (parentId). Boa fonte de
+        // contexto E manutenível pelo agente. Criar/editar é LIVRE; excluir é gated.
+        {
+            name: "list_doc_pages",
+            description: "Lista as páginas de documentação do projeto (planas; monte a árvore por parentId). Não traz corpos grandes truncados — use get_doc_page para o conteúdo completo.",
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }, ["project"]),
+            handler: (i) => store.ListDocPages({ project: i.project })
+        },
+        {
+            name: "get_doc_page",
+            description: "Lê uma página de documentação (com o corpo markdown completo).",
+            inputSchema: Obj({ docPage: S.str("Id da página de documentação") }, ["docPage"]),
+            handler: (i) => store.GetDocPage({ docPage: i.docPage })
+        },
+        {
+            name: "create_doc_page",
+            description: "Cria uma página de documentação (markdown). Para uma sub-página, passe parentId. LIVRE (conteúdo reversível). Referencie itens no corpo com a key entre colchetes duplos (ex.: [[MPM-42]]).",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                parentId: S.str("Id da página-pai (omitir = página raiz)"),
+                title: S.str("Título da página"),
+                icon: S.str("Emoji opcional para o ícone da página"),
+                body: S.str("Conteúdo em markdown")
+            }, ["project","title"]),
+            handler: (i) => store.CreateDocPage(A({ project: i.project, parentId: i.parentId, title: i.title, icon: i.icon, body: i.body }))
+        },
+        {
+            name: "update_doc_page",
+            description: "Edita uma página de documentação (título/ícone/corpo). LIVRE. Para mover/reordenar na árvore use move_doc_page.",
+            inputSchema: Obj({
+                docPage: S.str("Id da página de documentação"),
+                title: S.str("Novo título"),
+                icon: S.str("Novo emoji do ícone"),
+                body: S.str("Novo corpo em markdown")
+            }, ["docPage"]),
+            handler: (i) => store.UpdateDocPage(A({ docPage: i.docPage, title: i.title, icon: i.icon, body: i.body }))
+        },
+        {
+            name: "move_doc_page",
+            description: "Move/reordena uma página na árvore de documentação: parentId muda o pai (\"none\" = raiz); order define a posição entre irmãos. LIVRE.",
+            inputSchema: Obj({
+                docPage: S.str("Id da página de documentação"),
+                parentId: S.str("Novo pai (id) ou \"none\" para raiz"),
+                order: S.num("Posição entre irmãos")
+            }, ["docPage"]),
+            handler: (i) => store.MoveDocPage(A({ docPage: i.docPage, parentId: i.parentId, order: i.order }))
+        },
+
+        // ───────────── Registro de riscos (matriz 3×3, PMBOK) ─────────────
+        // Lista plana de riscos por projeto. probabilidade × impacto (baixo/médio/
+        // alto) → nível derivado (low/moderate/high/critical) no campo `level`.
+        // Criar/editar é LIVRE; excluir é gated.
+        {
+            name: "list_risks",
+            description: "Lista os riscos do projeto (com o nível derivado da matriz probabilidade×impacto no campo `level`).",
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }, ["project"]),
+            handler: (i) => store.ListRisks({ project: i.project })
+        },
+        {
+            name: "get_risk",
+            description: "Lê um risco (descrição, mitigação, contingência, dono, marco e nível).",
+            inputSchema: Obj({ risk: S.str("Id do risco") }, ["risk"]),
+            handler: (i) => store.GetRisk({ risk: i.risk })
+        },
+        {
+            name: "create_risk",
+            description: "Registra um risco do projeto. probability/impact usam a matriz 3×3 (low/medium/high). LIVRE (reversível).",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                title: S.str("Título curto do risco"),
+                description: S.str("Descrição em markdown"),
+                probability: S.enum(RISK_LEVELS, "Probabilidade (low|medium|high)"),
+                impact: S.enum(RISK_LEVELS, "Impacto (low|medium|high)"),
+                status: S.enum(RISK_STATUSES, "Estado (open|mitigating|accepted|closed|occurred)"),
+                category: S.str("Categoria livre (técnico/prazo/custo/externo…)"),
+                mitigation: S.str("Plano de mitigação (reduzir prob./impacto)"),
+                contingency: S.str("Plano de contingência (se ocorrer)"),
+                ownerUserId: S.str("Dono do risco (id|handle)"),
+                milestoneId: S.str("Marco afetado (id|nome)")
+            }, ["project","title"]),
+            handler: (i) => store.CreateRisk(A({ project: i.project, title: i.title, description: i.description, probability: i.probability, impact: i.impact, status: i.status, category: i.category, mitigation: i.mitigation, contingency: i.contingency, ownerUserId: i.ownerUserId, milestoneId: i.milestoneId }))
+        },
+        {
+            name: "update_risk",
+            description: "Edita um risco (título/descrição/probabilidade/impacto/estado/categoria/mitigação/contingência/dono/marco). Passe \"none\" em ownerUserId/milestoneId para limpar. LIVRE.",
+            inputSchema: Obj({
+                risk: S.str("Id do risco"),
+                title: S.str("Novo título"),
+                description: S.str("Nova descrição em markdown"),
+                probability: S.enum(RISK_LEVELS, "Probabilidade (low|medium|high)"),
+                impact: S.enum(RISK_LEVELS, "Impacto (low|medium|high)"),
+                status: S.enum(RISK_STATUSES, "Estado (open|mitigating|accepted|closed|occurred)"),
+                category: S.str("Categoria livre"),
+                mitigation: S.str("Plano de mitigação"),
+                contingency: S.str("Plano de contingência"),
+                ownerUserId: S.str("Dono (id|handle) ou \"none\" para limpar"),
+                milestoneId: S.str("Marco (id|nome) ou \"none\" para limpar")
+            }, ["risk"]),
+            handler: (i) => store.UpdateRisk(A({ risk: i.risk, title: i.title, description: i.description, probability: i.probability, impact: i.impact, status: i.status, category: i.category, mitigation: i.mitigation, contingency: i.contingency, ownerUserId: i.ownerUserId, milestoneId: i.milestoneId }))
+        },
+
+        // ───────────── Documento de planejamento (charter/termo de abertura) ─────────────
+        // Seções ESTRUTURADAS (objetivo/escopo/…); distinto do wiki (doc_page). `version`
+        // sobe a cada edição. Criar/editar é LIVRE; excluir é gated.
+        {
+            name: "list_planning_docs",
+            description: "Lista os documentos de planejamento do projeto (termo de abertura/charter, com seções estruturadas).",
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }, ["project"]),
+            handler: (i) => store.ListPlanningDocs({ project: i.project })
+        },
+        {
+            name: "get_planning_doc",
+            description: "Lê um documento de planejamento (todas as seções + versão).",
+            inputSchema: Obj({ planningDoc: S.str("Id do documento de planejamento") }, ["planningDoc"]),
+            handler: (i) => store.GetPlanningDoc({ planningDoc: i.planningDoc })
+        },
+        {
+            name: "create_planning_doc",
+            description: "Cria um documento de planejamento (charter). Seções são markdown. LIVRE (reversível).",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                title: S.str("Título do documento"),
+                milestoneId: S.str("Marco (id|nome) — documento por marco (opcional)"),
+                status: S.enum(PLANNING_DOC_STATUSES, "Estado (draft|review|approved|archived)"),
+                objective: S.str("Objetivo (markdown)"),
+                scope: S.str("Escopo — o que está incluído (markdown)"),
+                outOfScope: S.str("Fora de escopo (markdown)"),
+                stakeholders: S.str("Partes interessadas (markdown)"),
+                assumptions: S.str("Premissas (markdown)"),
+                constraints: S.str("Restrições (markdown)"),
+                successCriteria: S.str("Critérios de sucesso (markdown)"),
+                deliverables: S.str("Entregas (markdown)")
+            }, ["project","title"]),
+            handler: (i) => store.CreatePlanningDoc(A({ project: i.project, title: i.title, milestoneId: i.milestoneId, status: i.status, objective: i.objective, scope: i.scope, outOfScope: i.outOfScope, stakeholders: i.stakeholders, assumptions: i.assumptions, constraints: i.constraints, successCriteria: i.successCriteria, deliverables: i.deliverables }))
+        },
+        {
+            name: "update_planning_doc",
+            description: "Edita um documento de planejamento (título/status/marco/seções). Cada edição incrementa `version`. Passe \"none\" em milestoneId para desvincular. LIVRE.",
+            inputSchema: Obj({
+                planningDoc: S.str("Id do documento de planejamento"),
+                title: S.str("Novo título"),
+                milestoneId: S.str("Marco (id|nome) ou \"none\" para desvincular"),
+                status: S.enum(PLANNING_DOC_STATUSES, "Estado (draft|review|approved|archived)"),
+                objective: S.str("Objetivo (markdown)"),
+                scope: S.str("Escopo (markdown)"),
+                outOfScope: S.str("Fora de escopo (markdown)"),
+                stakeholders: S.str("Partes interessadas (markdown)"),
+                assumptions: S.str("Premissas (markdown)"),
+                constraints: S.str("Restrições (markdown)"),
+                successCriteria: S.str("Critérios de sucesso (markdown)"),
+                deliverables: S.str("Entregas (markdown)")
+            }, ["planningDoc"]),
+            handler: (i) => store.UpdatePlanningDoc(A({ planningDoc: i.planningDoc, title: i.title, milestoneId: i.milestoneId, status: i.status, objective: i.objective, scope: i.scope, outOfScope: i.outOfScope, stakeholders: i.stakeholders, assumptions: i.assumptions, constraints: i.constraints, successCriteria: i.successCriteria, deliverables: i.deliverables }))
+        },
+
         // ───────────── Remover (SOFT delete — GATE destrutivo + espera) ─────────────
         {
             name: "delete_project",
@@ -169,6 +330,45 @@ const BuildTools = ({ store, actor }) => {
             inputSchema: DeleteSchema("item", "Item (id|key, ex.: MPM-42)"),
             handler: (i) => GatedDelete({ type: "item", ref: i.item, waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
                 run: (a) => store.DeleteItem({ item: i.item, actor: a }) })
+        },
+        {
+            name: "delete_doc_page",
+            description: DeleteDesc("uma página de documentação (e suas sub-páginas, em cascata)"),
+            inputSchema: DeleteSchema("docPage", "Id da página de documentação"),
+            handler: (i) => GatedDelete({ type: "doc-page", ref: i.docPage, waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (a) => store.DeleteDocPage({ docPage: i.docPage, actor: a }) })
+        },
+        {
+            name: "delete_risk",
+            description: DeleteDesc("um risco do registro de riscos"),
+            inputSchema: DeleteSchema("risk", "Id do risco"),
+            handler: (i) => GatedDelete({ type: "risk", ref: i.risk, waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (a) => store.DeleteRisk({ risk: i.risk, actor: a }) })
+        },
+        {
+            name: "delete_planning_doc",
+            description: DeleteDesc("um documento de planejamento"),
+            inputSchema: DeleteSchema("planningDoc", "Id do documento de planejamento"),
+            handler: (i) => GatedDelete({ type: "planning-doc", ref: i.planningDoc, waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (a) => store.DeletePlanningDoc({ planningDoc: i.planningDoc, actor: a }) })
+        },
+        {
+            name: "list_doc_page_attachments",
+            description: "Lista os anexos de ARQUIVO de uma página de documentação (imagem/PDF/log/artefato). Distinto da imagem embutida no corpo (que é data-URI no markdown).",
+            inputSchema: Obj({ docPage: S.str("Id da página de documentação") }, ["docPage"]),
+            handler: (i) => store.ListDocPageAttachments({ docPage: i.docPage })
+        },
+        {
+            name: "add_doc_page_link_attachment",
+            description: "Anexa um link a uma página de documentação. Esquemas aceitos: http, https e file:// (referência a arquivo LOCAL, sem copiar — use add_doc_page_file_attachment para guardar o arquivo). LIVRE.",
+            inputSchema: Obj({ docPage: S.str("Id da página de documentação"), url: S.str("URL"), name: S.str("Nome"), description: S.str("Descrição") }, ["docPage","url"]),
+            handler: (i) => store.AddDocPageLinkAttachment(A({ docPage: i.docPage, url: i.url, name: i.name, description: i.description }))
+        },
+        {
+            name: "add_doc_page_file_attachment",
+            description: "Anexa um arquivo LOCAL (imagem gerada, PDF, log, artefato) a uma página de documentação. O caminho deve ser acessível no host onde o servidor MCP roda. LIVRE.",
+            inputSchema: Obj({ docPage: S.str("Id da página de documentação"), filePath: S.str("Caminho do arquivo local"), name: S.str("Nome"), description: S.str("Descrição") }, ["docPage","filePath"]),
+            handler: (i) => store.AddDocPageFileAttachment(A({ docPage: i.docPage, filePath: i.filePath, name: i.name, description: i.description }))
         },
 
         // ───────────── Revisar o projeto (metadados, boards, colunas, planejamento) ─────────────
@@ -766,12 +966,12 @@ const BuildTools = ({ store, actor }) => {
         // exclusivo e tem prazo) antes de trabalhar, e feche com resolve_feedback.
         {
             name: "list_feedback",
-            description: "Lista feedbacks do humano para os agentes. Por padrão só os ABERTOS (inclui os que estavam com outro agente e cujo claim expirou). Cada feedback diz o campo/escopo, a entidade e o trecho criticado. Além do feedback de ITEM, o humano dá feedback de ESCOPO (de tela): sobre o projeto inteiro (scope=project), todo o planejamento (scope=planning), todas as ideias (scope=ideas), o board/lista/backlog — filtre por `scope` para pegar só um recorte. FLUXO: list_feedback → claim_feedback → (aplique a correção) → resolve_feedback.",
+            description: "Lista feedbacks do humano para os agentes. Por padrão só os ABERTOS (inclui os que estavam com outro agente e cujo claim expirou). Cada feedback diz o campo/escopo, a entidade e o trecho criticado. Além do feedback de ITEM, o humano dá feedback de ESCOPO (de tela): sobre o projeto inteiro (scope=project), todo o planejamento (scope=planning), todas as ideias (scope=ideas), o board/lista/backlog, ou uma PÁGINA de documentação (scope=doc-page — o entityId é o id da página; use get_doc_page para lê-la) — filtre por `scope` para pegar só um recorte. FLUXO: list_feedback → claim_feedback → (aplique a correção) → resolve_feedback.",
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"),
                 status: S.enum(["open","in-analysis","resolved","dismissed","all"], "Status (padrão: open)"),
                 item: S.str("Só os feedbacks deste item (id|key)"),
-                scope: S.enum(["work-item","project","planning","ideas","board","list","backlog"], "Escopo: só o feedback deste recorte (ex.: planning = todo o planejamento)"),
+                scope: S.enum(["work-item","project","planning","ideas","board","list","backlog","doc-page"], "Escopo: só o feedback deste recorte (ex.: planning = todo o planejamento; doc-page = uma página de documentação, com o id da página em entityId)"),
                 since: S.str("Criados a partir desta data/hora (ISO)"),
                 until: S.str("Criados até esta data/hora (ISO)"),
                 limit: S.num("Máx. de feedbacks"), offset: S.num("Deslocamento")
@@ -954,7 +1154,7 @@ const BuildTools = ({ store, actor }) => {
                     linkAttachmentSchemes: ["http", "https", "file"],
                     gatedActions: {
                         create: ["project", "board", "milestone", "sprint"],
-                        delete: ["project", "board", "item"]
+                        delete: ["project", "board", "item", "risk", "planning-doc"]
                     },
                     humanOnly: ["aprovar pedido", "rejeitar pedido", "confirmar sessão"],
                     globalActivityPermission: "activity:read:all_projects"

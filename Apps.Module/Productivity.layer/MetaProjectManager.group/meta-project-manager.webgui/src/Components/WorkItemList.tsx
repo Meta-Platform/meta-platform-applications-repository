@@ -23,6 +23,8 @@ interface WorkItemListProps {
     onOpenItem: (id: string) => void
     onSetStatus: (id: string, status: string) => void
     onSetPriority: (id: string, priority: string) => void
+    // Projeto arquivado: selects de status/prioridade viram leitura (desabilitados).
+    readOnly?: boolean
 }
 
 interface TreeNode extends WorkItem { _children: TreeNode[] }
@@ -31,7 +33,7 @@ interface TreeNode extends WorkItem { _children: TreeNode[] }
 // task→subtask) expansível com edição inline; ou agrupada por horizonte/área/
 // sprint quando groupBy != none/parent. Suporta seleção múltipla (feature 4).
 const WorkItemList = ({ items, usersById, statusOptions, groupBy, milestones, sprints,
-    selectedIds, onToggleSelect, onOpenItem, onSetStatus, onSetPriority }: WorkItemListProps) => {
+    selectedIds, onToggleSelect, onOpenItem, onSetStatus, onSetPriority, readOnly }: WorkItemListProps) => {
     const [collapsed, setCollapsed] = useState<{ [id: string]: boolean }>({})
     const [copiedKey, setCopiedKey] = useState<string | null>(null)
     const selectable = !!onToggleSelect
@@ -61,6 +63,17 @@ const WorkItemList = ({ items, usersById, statusOptions, groupBy, milestones, sp
         else roots.push(node)
     })
 
+    // Colapsar/expandir TUDO: um botão no cabeçalho da coluna Item.
+    const collapsibleIds = Object.values(byId).filter((n) => n._children.length > 0).map((n) => n.id)
+    const allCollapsed = collapsibleIds.length > 0 && collapsibleIds.every((id) => collapsed[id])
+    const toggleAll = () => {
+        if (allCollapsed) { setCollapsed({}); return }
+        const next: { [id: string]: boolean } = {}
+        collapsibleIds.forEach((id) => { next[id] = true })
+        setCollapsed(next)
+    }
+    const grouped = groupBy && ["horizon", "area", "sprint"].indexOf(groupBy) >= 0
+
     const statuses: StatusOption[] = statusOptions && statusOptions.length > 0 ? statusOptions : []
 
     const nameById = (list: any[] | undefined, id?: string | null) =>
@@ -82,7 +95,8 @@ const WorkItemList = ({ items, usersById, statusOptions, groupBy, milestones, sp
         const hasChildren = tree && node._children.length > 0
         const isCollapsed = collapsed[node.id]
         const rows: React.ReactNode[] = [
-            <tr key={node.id} data-item-id={node.id} className="mpm-table__row--clickable">
+            <tr key={node.id} data-item-id={node.id}
+                className={`mpm-table__row--clickable ${node.type === "epic" ? "is-epic" : ""} ${depth === 0 ? "is-root" : ""}`}>
                 {selectable
                     ? <td onClick={(e) => e.stopPropagation()} style={{ width: 32 }}>
                         <input type="checkbox" checked={isSelected(node.id)} onChange={() => onToggleSelect!(node.id)} />
@@ -114,26 +128,28 @@ const WorkItemList = ({ items, usersById, statusOptions, groupBy, milestones, sp
                                 ? <span className="mpm-state mpm-state--overdue" title={`Atrasado — prazo ${formatDate(node.dueDate)}`}><Icon name="clock outline" /></span>
                                 : null}
                         </div>
-                        <div className="mpm-itemcell__title" title={node.title}
-                            onClick={() => onOpenItem(node.id)} style={{ cursor: "pointer" }}>{node.title}</div>
+                        <div className="mpm-itemcell__title-row">
+                            <span className="mpm-itemcell__title" title={node.title}
+                                onClick={() => onOpenItem(node.id)} style={{ cursor: "pointer" }}>{node.title}</span>
+                            <ItemMeta item={node} />
+                        </div>
                     </div>
                 </td>
                 <td onClick={(e) => e.stopPropagation()}>
-                    <select className="mpm-inline-select" value={node.statusKey}
+                    <select className="mpm-inline-select" value={node.statusKey} disabled={readOnly}
                         onChange={(e) => onSetStatus(node.id, e.target.value)}>
                         {(statuses.length > 0 ? statuses : [{ statusKey: node.statusKey, name: node.statusKey }]).map((s) =>
                             <option key={s.statusKey} value={s.statusKey}>{s.name}</option>)}
                     </select>
                 </td>
                 <td onClick={(e) => e.stopPropagation()}>
-                    <select className="mpm-inline-select" value={node.priority}
+                    <select className="mpm-inline-select" value={node.priority} disabled={readOnly}
                         onChange={(e) => onSetPriority(node.id, e.target.value)}>
                         {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
                     </select>
                 </td>
                 <td><ValueBadge value={node.value} /></td>
                 <td><Avatar user={assignee} name={assignee ? assignee.displayName : "não atribuído"} /></td>
-                <td><ItemMeta item={node} /></td>
             </tr>
         ]
         if (hasChildren && !isCollapsed)
@@ -143,27 +159,33 @@ const WorkItemList = ({ items, usersById, statusOptions, groupBy, milestones, sp
 
     const colgroup = <colgroup>
         {selectable ? <col style={{ width: 32 }} /> : null}
-        <col style={{ width: "44%" }} />
+        <col style={{ width: "auto" }} />
         <col style={{ width: 148 }} />
         <col style={{ width: 108 }} />
         <col style={{ width: 74 }} />
         <col style={{ width: 56 }} />
-        <col style={{ width: 90 }} />
     </colgroup>
 
     const header = <thead>
         <tr>
             {selectable ? <th /> : null}
-            <th>Item</th>
+            <th>
+                <span className="mpm-th-item">
+                    Item
+                    {!grouped && collapsibleIds.length > 0
+                        ? <button className="mpm-iconbtn mpm-btn--sm mpm-th-collapse" onClick={toggleAll}
+                            data-tip={allCollapsed ? "Expandir todos" : "Recolher todos"}>
+                            <Icon name={allCollapsed ? "expand" : "compress"} />
+                        </button>
+                        : null}
+                </span>
+            </th>
             <th title="Situação no fluxo (coluna do board)">Status</th>
             <th title="Quão urgente é fazer">Prioridade</th>
             <th title="Impacto/benefício">Valor</th>
             <th title="Responsável">Resp.</th>
-            <th title="Comentários / anexos / progresso">Info</th>
         </tr>
     </thead>
-
-    const grouped = groupBy && ["horizon", "area", "sprint"].indexOf(groupBy) >= 0
 
     if (grouped) {
         // buckets de TODOS os itens pela chave de grupo (visão plana por grupo)

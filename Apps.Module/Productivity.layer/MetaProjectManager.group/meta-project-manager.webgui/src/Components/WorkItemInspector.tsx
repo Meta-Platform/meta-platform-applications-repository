@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
+import { useReadOnly } from "../Hooks/useReadOnly"
 import useEvents from "../Hooks/useEvents"
 import useResizableModal from "../Hooks/useResizableModal"
 import { auditEntriesOf } from "../Utils/agentEvents"
@@ -31,6 +32,9 @@ import { typeFieldsFor } from "../Domain/workItemTypes"
 
 const PRIORITIES = ["none", "low", "medium", "high", "urgent"]
 
+// "2026-07-15T00:00:00.000Z" -> "2026-07-15" (valor aceito por <input type="date">).
+const toDateInput = (v?: string | null) => (v ? String(v).slice(0, 10) : "")
+
 interface StatusOption { statusKey: string; name: string }
 
 interface WorkItemInspectorProps {
@@ -47,20 +51,31 @@ interface WorkItemInspectorProps {
 // Descrição), o que obrigava a alternar para ver contexto enquanto se escrevia.
 // A atividade (anotações + comentários) NÃO é mais uma aba: vive fixa na lateral
 // da aba "Detalhes", sempre visível ao lado da descrição.
-type TabKey = "detalhes" | "contexto" | "criterios" | "checklist" | "vinculos" | "anexos" | "auditoria"
+type TabKey = "detalhes" | "contexto" | "criterios" | "checklist" | "vinculos" | "anexos" | "auditoria" | "campos"
 const TABS: { key: TabKey; label: string; icon: any; hint: string }[] = [
-    { key: "detalhes",  label: "Detalhes",   icon: "align left",           hint: "Descrição, campos do item e atividade (anotações + comentários) na lateral" },
+    { key: "detalhes",  label: "Detalhes",   icon: "align left",           hint: "Descrição e atividade (anotações + comentários) na lateral" },
     { key: "contexto",  label: "Contexto",   icon: "cubes",                hint: "Prontidão para agente, contexto do ecossistema (pacotes) e entrega (repositório/branch/commit/PR)" },
     { key: "criterios", label: "Critérios",  icon: "check circle outline", hint: "Critérios de aceite (Definition of Done)" },
     { key: "checklist", label: "Checklist",  icon: "tasks",                hint: "Sub-passos marcáveis do item" },
     { key: "vinculos",  label: "Vínculos",   icon: "linkify",              hint: "Dependências, bloqueios e relações com outros itens" },
     { key: "anexos",    label: "Anexos",     icon: "paperclip",            hint: "Arquivos, links e mídias" },
-    { key: "auditoria", label: "Auditoria",  icon: "history",              hint: "Timeline técnica imutável: quem mudou o quê e quando" }
+    { key: "auditoria", label: "Auditoria",  icon: "history",              hint: "Timeline técnica imutável: quem mudou o quê e quando" },
+    { key: "campos",    label: "Campos",     icon: "sliders horizontal",   hint: "Tipo, status, prioridade, responsável, planejamento e área do item" }
 ]
+
+// Contagem exibida no rótulo da aba (só quando > 0). Vínculos/Checklist/Critérios
+// vêm no GetItem; Anexos usa attachmentCount (nível item).
+const TAB_COUNTS: Partial<Record<TabKey, (it: WorkItem) => number>> = {
+    criterios: (it) => (it.acceptanceCriteria || []).length,
+    checklist: (it) => (it.checklist || []).length,
+    vinculos:  (it) => (it.links || []).length,
+    anexos:    (it) => it.attachmentCount || 0
+}
 
 // Anotações de atividade do item (humanas / usuario-desktop). Distintas de comentários.
 const ItemNotes = ({ itemId }: { itemId: string }) => {
     const api = useApi()
+    const readOnly = useReadOnly()
     const [notes, setNotes] = useState<ActivityNote[]>([])
     const [draft, setDraft] = useState("")
     const [error, setError] = useState<string | null>(null)
@@ -79,15 +94,17 @@ const ItemNotes = ({ itemId }: { itemId: string }) => {
             <Icon name="sticky note" /> Anotações ({notes.length})
         </div>
         <ErrorBanner error={error} />
-        <div className="mpm-row" style={{ gap: "var(--mp-space-2)" }}>
-            <input className="mpm-input" style={{ flex: 1 }} value={draft}
-                placeholder="Anotar algo sobre este item…"
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") add() }} />
-            <button className="mpm-btn mpm-btn--sm mpm-btn--primary" disabled={!draft.trim()} onClick={add}>
-                <Icon name="plus" /> Anotar
-            </button>
-        </div>
+        {!readOnly
+            ? <div className="mpm-row" style={{ gap: "var(--mp-space-2)" }}>
+                <input className="mpm-input" style={{ flex: 1 }} value={draft}
+                    placeholder="Anotar algo sobre este item…"
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") add() }} />
+                <button className="mpm-btn mpm-btn--sm mpm-btn--primary" disabled={!draft.trim()} onClick={add}>
+                    <Icon name="plus" /> Anotar
+                </button>
+            </div>
+            : null}
         {notes.map((n) =>
             <div key={n.id} className="mpm-audit__note">
                 <Icon name="sticky note outline" />
@@ -104,6 +121,7 @@ const ItemNotes = ({ itemId }: { itemId: string }) => {
 // WorkItemInspector (spec §11.1 / §8.1): modal de item organizado em ABAS.
 const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, onChanged }: WorkItemInspectorProps) => {
     const api = useApi()
+    const readOnly = useReadOnly()
     const feedback = useFeedback()
     // Âncora para achar o modal e lembrar o tamanho que o usuário deu a ESTE item.
     const modalAnchor = useResizableModal(itemId)
@@ -253,7 +271,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
         field: "description", fieldLabel: "Descrição"
     })
 
-    const descBlock = editingDesc
+    const descBlock = editingDesc && !readOnly
         ? <div className="mpm-desc mpm-desc--editing mpm-desc--inline" {...descFeedback}>
             <DescriptionEditor key={`desc-${item.id}`} value={item.description || ""}
                 onSave={(md) => patch(() => api.items.update(item.id, { description: md }))}
@@ -262,10 +280,12 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
         : <div className="mpm-desc" {...descFeedback}>
             <div className="mpm-desc__bar">
                 <span className="mpm-field__label" style={{ flex: 1 }}>Descrição</span>
-                <button className="mpm-btn mpm-btn--sm" title="Editar a descrição em markdown"
-                    onClick={() => setEditingDesc(true)}>
-                    <Icon name="pencil" /> Editar
-                </button>
+                {!readOnly
+                    ? <button className="mpm-btn mpm-btn--sm" title="Editar a descrição em markdown"
+                        onClick={() => setEditingDesc(true)}>
+                        <Icon name="pencil" /> Editar
+                    </button>
+                    : null}
             </div>
             <div className="mpm-desc__read">
                 {item.description
@@ -273,9 +293,11 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                     : <div className="mpm-tabpanel-empty">
                         <Icon name="align left" size="large" />
                         <div>Este item ainda não tem descrição.</div>
-                        <button className="mpm-btn mpm-btn--sm mpm-btn--primary" onClick={() => setEditingDesc(true)}>
-                            <Icon name="pencil" /> Escrever descrição
-                        </button>
+                        {!readOnly
+                            ? <button className="mpm-btn mpm-btn--sm mpm-btn--primary" onClick={() => setEditingDesc(true)}>
+                                <Icon name="pencil" /> Escrever descrição
+                            </button>
+                            : null}
                     </div>}
             </div>
         </div>
@@ -297,6 +319,8 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 </button>
                 : null}
         </div>
+        {/* Projeto arquivado: fieldset disabled desabilita TODOS os campos de uma vez. */}
+        <fieldset disabled={readOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         <div className="mpm-inspector__grid"
             {...feedbackTarget({ entityType: "work-item", entityId: item.id, item: item.key, project: pid, fieldLabel: "Campos do item" })}>
             <div className="mpm-field">
@@ -395,6 +419,48 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                     onBlur={(e) => { if (e.target.value !== (item.ideaOrigin || "")) patch(() => api.items.update(item.id, { ideaOrigin: e.target.value })) }} />
             </div>)}
         </div>
+        {/* Cronograma: datas planejadas, progresso e estimativa. Sempre visíveis
+            (não escondidos por "optional") — é onde se preenche o plano do item. */}
+        <div className="mpm-section-title" style={{ marginTop: "var(--mp-space-4)" }}
+            {...feedbackTarget({ entityType: "work-item", entityId: item.id, item: item.key, project: pid, field: "schedule", fieldLabel: "Cronograma do item" })}>
+            <Icon name="calendar alternate outline" /> Cronograma
+        </div>
+        <div className="mpm-inspector__grid">
+            <div className="mpm-field">
+                <span className="mpm-field__label" title="Data planejada de início">Início</span>
+                <input className="mpm-inline-select" type="date" defaultValue={toDateInput(item.startDate)}
+                    key={`start-${item.id}-${item.updatedAt || ""}`}
+                    onChange={(e) => patch(() => api.items.update(item.id, { startDate: e.target.value || null }))} />
+            </div>
+            <div className="mpm-field">
+                <span className="mpm-field__label" title="Data planejada de término (prazo)">Término</span>
+                <input className="mpm-inline-select" type="date" defaultValue={toDateInput(item.dueDate)}
+                    key={`due-${item.id}-${item.updatedAt || ""}`}
+                    onChange={(e) => patch(() => api.items.update(item.id, { dueDate: e.target.value || null }))} />
+            </div>
+            <div className="mpm-field">
+                <span className="mpm-field__label" title="Percentual concluído (0–100)">Progresso %</span>
+                <input className="mpm-inline-select" type="number" min={0} max={100} step={5}
+                    defaultValue={item.progress ?? 0}
+                    key={`prog-${item.id}-${item.updatedAt || ""}`}
+                    onBlur={(e) => { const v = e.target.value === "" ? "0" : e.target.value; if (v !== String(item.progress ?? 0)) patch(() => api.items.update(item.id, { progress: v })) }} />
+            </div>
+            <div className="mpm-field">
+                <span className="mpm-field__label" title="Estimativa em pontos (story points)">Pontos</span>
+                <input className="mpm-inline-select" type="number" min={0} step={0.5}
+                    defaultValue={item.estimatePoints ?? ""}
+                    key={`pts-${item.id}-${item.updatedAt || ""}`}
+                    onBlur={(e) => { const v = e.target.value === "" ? null : e.target.value; if (String(v ?? "") !== String(item.estimatePoints ?? "")) patch(() => api.items.update(item.id, { estimatePoints: v })) }} />
+            </div>
+            <div className="mpm-field">
+                <span className="mpm-field__label" title="Estimativa em minutos de trabalho">Minutos</span>
+                <input className="mpm-inline-select" type="number" min={0} step={15}
+                    defaultValue={item.estimateMinutes ?? ""}
+                    key={`min-${item.id}-${item.updatedAt || ""}`}
+                    onBlur={(e) => { const v = e.target.value === "" ? null : e.target.value; if (String(v ?? "") !== String(item.estimateMinutes ?? "")) patch(() => api.items.update(item.id, { estimateMinutes: v })) }} />
+            </div>
+        </div>
+        </fieldset>
     </div>
 
     // Aba "Contexto": prontidão do item para um agente executar, os pacotes do
@@ -402,8 +468,8 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
     // Ficavam empilhados em "Detalhes" e o usuário nem sabia para que serviam.
     const contextTab = <div className="mpm-col" style={{ gap: "var(--mp-space-4)" }}>
         <AgentReadiness item={item} />
-        <EcosystemContextSection item={item} scope={projectScope} onChanged={() => patch(async () => {})} />
-        <SoftwareContextSection item={item} onSave={(input) => patch(() => api.items.update(item.id, input))} />
+        <EcosystemContextSection item={item} scope={projectScope} onChanged={() => patch(async () => {})} readOnly={readOnly} />
+        <SoftwareContextSection item={item} onSave={(input) => patch(() => api.items.update(item.id, input))} readOnly={readOnly} />
     </div>
 
     // Duas colunas: a descrição (o que se lê e escreve) ocupa a coluna larga; a
@@ -418,6 +484,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
         ? <div className="mpm-col"
             {...feedbackTarget({ entityType: "work-item", entityId: item.id, item: item.key, project: pid, field: "typeFields", fieldLabel: `Campos de ${typeLabel(item.type)}` })}>
             <div className="mpm-section-title"><Icon name="list alternate outline" /> Campos de {typeLabel(item.type)}</div>
+            <fieldset disabled={readOnly} className="mpm-col" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
             {typeFieldDefs.map((f) => {
                 const val = (item.typeFields && item.typeFields[f.id]) || ""
                 const k = `tf-${item.id}-${f.id}-${item.updatedAt || ""}`
@@ -435,6 +502,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                             onBlur={(e) => { if (e.target.value !== val) setTypeField(f.id, e.target.value) }} />}
                 </div>
             })}
+            </fieldset>
         </div>
         : null
 
@@ -465,10 +533,8 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                         </button>)}
                 </div>
                 : null}
-
-            {/* Campos e contexto (metadados, prontidão, ecossistema, software):
-                por último — importam para editar, mas não são o que se lê ao abrir. */}
-            {fieldsBlock}
+            {/* Os "Campos" (tipo/status/prioridade/planejamento/área) foram para a
+                aba "Campos" — Detalhes foca na descrição e na atividade. */}
         </div>
 
         <aside className="mpm-details__side">
@@ -476,7 +542,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 <Icon name="comments" /> Atividade
             </div>
             <ItemNotes itemId={item.id} />
-            <CommentTimeline itemId={item.id} usersById={usersById} />
+            <CommentTimeline itemId={item.id} usersById={usersById} readOnly={readOnly} />
         </aside>
     </div></div>
 
@@ -493,21 +559,25 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
         <div className="mpm-checklist">
             {(item.acceptanceCriteria || []).map((a) =>
                 <div key={a.id} className={`mpm-checklist__item ${a.met ? "is-done" : ""}`}>
-                    <Icon name={a.met ? "check square" : "square outline"} link
-                        onClick={() => patch(() => api.items.updateAcceptanceCriteria(a.id, { met: !a.met }))} />
+                    <Icon name={a.met ? "check square" : "square outline"} link={!readOnly}
+                        onClick={readOnly ? undefined : () => patch(() => api.items.updateAcceptanceCriteria(a.id, { met: !a.met }))} />
                     <span style={{ flex: 1 }}>{a.text}</span>
-                    <Icon name="trash" link className="mpm-muted"
-                        onClick={() => patch(() => api.items.removeAcceptanceCriteria(a.id))} />
+                    {!readOnly
+                        ? <Icon name="trash" link className="mpm-muted"
+                            onClick={() => patch(() => api.items.removeAcceptanceCriteria(a.id))} />
+                        : null}
                 </div>)}
         </div>
-        <input className="mpm-input" placeholder="Adicionar critério + Enter" value={critDraft}
-            onChange={(e) => setCritDraft(e.target.value)}
-            onKeyDown={(e) => {
-                if (e.key === "Enter" && critDraft.trim()) {
-                    const text = critDraft.trim(); setCritDraft("")
-                    patch(() => api.items.addAcceptanceCriteria(item.id, text))
-                }
-            }} />
+        {!readOnly
+            ? <input className="mpm-input" placeholder="Adicionar critério + Enter" value={critDraft}
+                onChange={(e) => setCritDraft(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter" && critDraft.trim()) {
+                        const text = critDraft.trim(); setCritDraft("")
+                        patch(() => api.items.addAcceptanceCriteria(item.id, text))
+                    }
+                }} />
+            : null}
     </div>
 
     const checklistTab = <div className="mpm-col">
@@ -522,21 +592,25 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
         <div className="mpm-checklist">
             {(item.checklist || []).map((c) =>
                 <div key={c.id} className={`mpm-checklist__item ${c.done ? "is-done" : ""}`}>
-                    <Icon name={c.done ? "check square" : "square outline"} link
-                        onClick={() => patch(() => api.items.updateChecklistItem(c.id, { done: !c.done }))} />
+                    <Icon name={c.done ? "check square" : "square outline"} link={!readOnly}
+                        onClick={readOnly ? undefined : () => patch(() => api.items.updateChecklistItem(c.id, { done: !c.done }))} />
                     <span style={{ flex: 1 }}>{c.text}</span>
-                    <Icon name="trash" link className="mpm-muted"
-                        onClick={() => patch(() => api.items.removeChecklistItem(c.id))} />
+                    {!readOnly
+                        ? <Icon name="trash" link className="mpm-muted"
+                            onClick={() => patch(() => api.items.removeChecklistItem(c.id))} />
+                        : null}
                 </div>)}
         </div>
-        <input className="mpm-input" placeholder="Adicionar item + Enter" value={checkDraft}
-            onChange={(e) => setCheckDraft(e.target.value)}
-            onKeyDown={(e) => {
-                if (e.key === "Enter" && checkDraft.trim()) {
-                    const text = checkDraft.trim(); setCheckDraft("")
-                    patch(() => api.items.addChecklistItem(item.id, text))
-                }
-            }} />
+        {!readOnly
+            ? <input className="mpm-input" placeholder="Adicionar item + Enter" value={checkDraft}
+                onChange={(e) => setCheckDraft(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter" && checkDraft.trim()) {
+                        const text = checkDraft.trim(); setCheckDraft("")
+                        patch(() => api.items.addChecklistItem(item.id, text))
+                    }
+                }} />
+            : null}
     </div>
 
     const tabBody =
@@ -544,8 +618,9 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
       : tab === "contexto"  ? contextTab
       : tab === "criterios" ? criteriaTab
       : tab === "checklist" ? checklistTab
-      : tab === "vinculos"  ? <LinkPanel item={item} projectId={pid} onChanged={() => patch(async () => {})} />
-      : tab === "anexos"    ? <AttachmentPanel itemId={item.id} />
+      : tab === "vinculos"  ? <LinkPanel item={item} projectId={pid} onChanged={() => patch(async () => {})} readOnly={readOnly} />
+      : tab === "anexos"    ? <AttachmentPanel itemId={item.id} readOnly={readOnly} />
+      : tab === "campos"    ? fieldsBlock
       : <AuditTimeline projectId={pid} entityId={item.id} />
 
     // Referências clicadas DENTRO do modal (texto markdown, vínculos, subtarefas)
@@ -565,24 +640,28 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
             <span style={{ flex: 1 }} />
             {/* Feedback sobre a TAREFA inteira (o botão direito num campo dá feedback
                 sobre aquele campo). O balão abre ao lado do botão. */}
-            <span className="mpm-iconbtn" data-tip="Enviar feedback para o agente sobre esta tarefa"
-                onClick={(e) => {
-                    const box = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                    feedback.openAt({
-                        x: box.left - 340, y: box.bottom + 6,
-                        target: {
-                            entityType: "work-item", entityId: item.id, item: item.key,
-                            project: pid, fieldLabel: `Tarefa ${item.key}`
-                        },
-                        excerpt: item.title,
-                        screen: window.location.hash || window.location.pathname
-                    })
-                }}>
-                <Icon name="comment alternate outline" />
-            </span>
+            {!readOnly
+                ? <span className="mpm-iconbtn" data-tip="Enviar feedback para o agente sobre esta tarefa"
+                    onClick={(e) => {
+                        const box = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                        feedback.openAt({
+                            x: box.left - 340, y: box.bottom + 6,
+                            target: {
+                                entityType: "work-item", entityId: item.id, item: item.key,
+                                project: pid, fieldLabel: `Tarefa ${item.key}`
+                            },
+                            excerpt: item.title,
+                            screen: window.location.hash || window.location.pathname
+                        })
+                    }}>
+                    <Icon name="comment alternate outline" />
+                </span>
+                : null}
             <span className="mpm-iconbtn" data-tip={fullscreen ? "Sair da tela cheia" : "Abrir em tela cheia"}
                 onClick={() => setFullscreen((f) => !f)}><Icon name={fullscreen ? "compress" : "expand"} /></span>
-            <span className="mpm-iconbtn" data-tip="Excluir este item" onClick={() => setConfirmDelete(true)}><Icon name="trash" /></span>
+            {!readOnly
+                ? <span className="mpm-iconbtn" data-tip="Excluir este item" onClick={() => setConfirmDelete(true)}><Icon name="trash" /></span>
+                : null}
             <span className="mpm-iconbtn" data-tip="Fechar" data-tip-shortcut="Esc" onClick={onClose}><Icon name="close" /></span>
         </div>
 
@@ -614,25 +693,31 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
 
         <div className="mpm-inspector__titlebar"
             {...feedbackTarget({ entityType: "work-item", entityId: item.id, item: item.key, project: pid, field: "title", fieldLabel: "Título" })}>
-            <input
-                className="mpm-input"
-                style={{ fontSize: "var(--mp-text-lg)", fontWeight: 700 }}
-                defaultValue={item.title}
-                key={`title-${item.id}-${item.updatedAt || ""}`}
-                onBlur={(e) => {
-                    const v = e.target.value.trim()
-                    if (v && v !== item.title) patch(() => api.items.update(item.id, { title: v }))
-                }} />
+            {readOnly
+                ? <div className="mpm-input" style={{ fontSize: "var(--mp-text-lg)", fontWeight: 700, background: "transparent", border: 0 }}>{item.title}</div>
+                : <input
+                    className="mpm-input"
+                    style={{ fontSize: "var(--mp-text-lg)", fontWeight: 700 }}
+                    defaultValue={item.title}
+                    key={`title-${item.id}-${item.updatedAt || ""}`}
+                    onBlur={(e) => {
+                        const v = e.target.value.trim()
+                        if (v && v !== item.title) patch(() => api.items.update(item.id, { title: v }))
+                    }} />}
         </div>
 
-        {/* Tabs sticky */}
+        {/* Tabs sticky. Cada aba mostra a contagem do seu conteúdo (quando > 0),
+            para o usuário saber onde há coisa sem precisar abrir. */}
         <div className="mpm-tabs" role="tablist">
-            {TABS.map((t) =>
-                <button key={t.key} role="tab" title={t.hint}
+            {TABS.map((t) => {
+                const count = TAB_COUNTS[t.key] ? TAB_COUNTS[t.key](item) : 0
+                return <button key={t.key} role="tab" title={t.hint}
                     className={`mpm-tab ${tab === t.key ? "is-active" : ""}`}
                     onClick={() => setTab(t.key)}>
                     <Icon name={t.icon} /> <span>{t.label}</span>
-                </button>)}
+                    {count > 0 ? <span className="mpm-tab__count">{count}</span> : null}
+                </button>
+            })}
         </div>
 
         <div className="mpm-inspector__body">

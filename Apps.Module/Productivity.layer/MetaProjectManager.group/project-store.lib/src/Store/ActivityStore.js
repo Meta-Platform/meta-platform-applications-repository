@@ -43,6 +43,8 @@ const ActivityStore = (ctx) => {
         if(!content) throw new DomainError("VALIDATION_ERROR", "Texto da nota é obrigatório.", { field: "text" })
 
         const scope = await _resolveScope({ project, board, sprint, milestone, item })
+        // Projeto arquivado é somente leitura (notas globais, sem projeto, seguem livres).
+        if(scope.projectId) await store.AssertProjectWritable({ project: scope.projectId })
 
         // Autoria da nota, em ordem de precedência:
         //  1) usuário humano explícito (actor.actorUserId);
@@ -116,6 +118,7 @@ const ActivityStore = (ctx) => {
     const DeleteActivityNote = async ({ note, actor } = {}) => {
         const row = await ActivityNote.findOne({ where: { id: note, deletedAt: null } })
         if(!row) throw new DomainError("NOT_FOUND", `Nota "${note}" não encontrada.`, { ref: note })
+        if(row.projectId) await store.AssertProjectWritable({ project: row.projectId })
         await row.update({ deletedAt: new Date() })
         await writeAudit({ projectId: row.projectId, entityType: "activity-note", entityId: row.id, action: "delete", actor })
         return { id: row.id, deleted: true }

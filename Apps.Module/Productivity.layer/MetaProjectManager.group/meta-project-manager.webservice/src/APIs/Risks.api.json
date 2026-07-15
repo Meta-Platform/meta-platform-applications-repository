@@ -1,0 +1,65 @@
+{
+    "name": "Risks",
+    "endpoints": [
+        {
+            "summary": "ListRisks",
+            "method": "GET",
+            "path": "/projects/:projectId/risks",
+            "parameters": [
+                { "name": "projectId", "in": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "CreateRisk",
+            "method": "POST",
+            "path": "/projects/:projectId/risks",
+            "parameters": [
+                { "name": "projectId", "in": "path", "type": "string", "required": true },
+                { "name": "title", "in": "body", "type": "string", "required": true },
+                { "name": "description", "in": "body", "type": "string", "required": false },
+                { "name": "probability", "in": "body", "type": "string", "required": false },
+                { "name": "impact", "in": "body", "type": "string", "required": false },
+                { "name": "status", "in": "body", "type": "string", "required": false },
+                { "name": "category", "in": "body", "type": "string", "required": false },
+                { "name": "mitigation", "in": "body", "type": "string", "required": false },
+                { "name": "contingency", "in": "body", "type": "string", "required": false },
+                { "name": "ownerUserId", "in": "body", "type": "string", "required": false },
+                { "name": "milestoneId", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "GetRisk",
+            "method": "GET",
+            "path": "/risks/:riskId",
+            "parameters": [
+                { "name": "riskId", "in": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "UpdateRisk",
+            "method": "PATCH",
+            "path": "/risks/:riskId",
+            "parameters": [
+                { "name": "riskId", "in": "path", "type": "string", "required": true },
+                { "name": "title", "in": "body", "type": "string", "required": false },
+                { "name": "description", "in": "body", "type": "string", "required": false },
+                { "name": "probability", "in": "body", "type": "string", "required": false },
+                { "name": "impact", "in": "body", "type": "string", "required": false },
+                { "name": "status", "in": "body", "type": "string", "required": false },
+                { "name": "category", "in": "body", "type": "string", "required": false },
+                { "name": "mitigation", "in": "body", "type": "string", "required": false },
+                { "name": "contingency", "in": "body", "type": "string", "required": false },
+                { "name": "ownerUserId", "in": "body", "type": "string", "required": false },
+                { "name": "milestoneId", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "DeleteRisk",
+            "method": "DELETE",
+            "path": "/risks/:riskId",
+            "parameters": [
+                { "name": "riskId", "in": "path", "type": "string", "required": true }
+            ]
+        }
+    ]
+}

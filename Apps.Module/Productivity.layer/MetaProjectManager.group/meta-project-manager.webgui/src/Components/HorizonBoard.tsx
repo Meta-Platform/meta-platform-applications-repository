@@ -14,16 +14,18 @@ interface HorizonBoardProps {
     onOpenItem: (id: string) => void
     // ao soltar numa coluna: chama UpdateItem com o novo horizon (unassigned -> "")
     onMoveHorizon: (itemId: string, horizon: string) => void
+    // Projeto arquivado: cards não arrastáveis (leitura).
+    readOnly?: boolean
 }
 
-const HCard = ({ item, usersById, onOpen, onDragStart, onDragEnd, dragging }:
+const HCard = ({ item, usersById, onOpen, onDragStart, onDragEnd, dragging, draggable = true }:
     { item: WorkItem; usersById: { [id: string]: User }; onOpen: (id: string) => void;
-      onDragStart: (id: string) => void; onDragEnd: () => void; dragging: boolean }) => {
+      onDragStart: (id: string) => void; onDragEnd: () => void; dragging: boolean; draggable?: boolean }) => {
     const assignee = item.assigneeUserId ? usersById[item.assigneeUserId] : undefined
     return <div className={`mpm-witem ${dragging ? "is-dragging" : ""}`}
-        draggable
-        onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", item.id); onDragStart(item.id) }}
-        onDragEnd={onDragEnd}
+        draggable={draggable}
+        onDragStart={draggable ? (e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", item.id); onDragStart(item.id) } : undefined}
+        onDragEnd={draggable ? onDragEnd : undefined}
         onClick={() => onOpen(item.id)}>
         <div className="mpm-witem__top">
             <TypeBadge type={item.type} />
@@ -46,14 +48,14 @@ const HCard = ({ item, usersById, onOpen, onDragStart, onDragEnd, dragging }:
 
 // HorizonBoard (Fase 2): roadmap por horizonte com drag-and-drop nativo entre
 // colunas; soltar chama UpdateItem com o novo horizon.
-const HorizonBoard = ({ data, usersById, onOpenItem, onMoveHorizon }: HorizonBoardProps) => {
+const HorizonBoard = ({ data, usersById, onOpenItem, onMoveHorizon, readOnly }: HorizonBoardProps) => {
     const [draggingId, setDraggingId] = useState<string | null>(null)
     const [over, setOver] = useState<string | null>(null)
 
     const itemsOf = (key: string): WorkItem[] => (data as any)[key] || []
 
     const handleDrop = (key: string) => {
-        if (draggingId) {
+        if (draggingId && !readOnly) {
             // "unassigned" limpa o horizon
             const target = key === "unassigned" ? "" : key
             onMoveHorizon(draggingId, target)
@@ -81,7 +83,8 @@ const HorizonBoard = ({ data, usersById, onOpenItem, onMoveHorizon }: HorizonBoa
                             onOpen={onOpenItem}
                             onDragStart={setDraggingId}
                             onDragEnd={() => setDraggingId(null)}
-                            dragging={draggingId === it.id} />)}
+                            dragging={draggingId === it.id}
+                            draggable={!readOnly} />)}
                 </div>
             </section>
         })}

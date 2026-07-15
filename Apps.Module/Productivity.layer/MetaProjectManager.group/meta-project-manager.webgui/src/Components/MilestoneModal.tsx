@@ -4,8 +4,11 @@ import { useState } from "react"
 import useApi from "../Hooks/useApi"
 import { Milestone } from "../api/types"
 import { Modal, ErrorBanner } from "./Primitives"
+import { statusLabel } from "../Utils/labels"
 
-const STATUSES = ["open", "completed", "closed"]
+// Status aceitos pelo backend (PlanningStore/Config.MILESTONE_STATUSES).
+// Antes o modal oferecia "open/completed/closed", que o servidor rejeita.
+const STATUSES = ["planning", "active", "released", "archived"]
 
 interface MilestoneModalProps {
     projectId: string
@@ -21,7 +24,7 @@ const MilestoneModal = ({ projectId, milestone, onClose, onSaved }: MilestoneMod
     const [name, setName] = useState(milestone ? milestone.name : "")
     const [description, setDescription] = useState(milestone ? (milestone.description || "") : "")
     const [targetDate, setTargetDate] = useState(toDateInput(milestone && milestone.targetDate))
-    const [status, setStatus] = useState(milestone ? milestone.status : "open")
+    const [status, setStatus] = useState(milestone ? milestone.status : "planning")
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -50,7 +53,7 @@ const MilestoneModal = ({ projectId, milestone, onClose, onSaved }: MilestoneMod
                 <input className="mpm-input" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} /></div>
             <div className="mpm-field" style={{ flex: 1 }}><span className="mpm-field__label">Status</span>
                 <select className="mpm-select" value={status} onChange={(e) => setStatus(e.target.value)}>
-                    {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    {STATUSES.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
                 </select></div>
         </div>
         <div className="mpm-field"><span className="mpm-field__label">Descrição</span>

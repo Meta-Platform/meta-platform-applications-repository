@@ -4,6 +4,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom"
 import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
+import { useReadOnly } from "../Hooks/useReadOnly"
 import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import useEvents from "../Hooks/useEvents"
 import { auditEntriesOf } from "../Utils/agentEvents"
@@ -13,6 +14,7 @@ import { Project, Board, WorkItem, User, Milestone, Sprint, PlatformEvent } from
 import AppShell from "./AppShell"
 import PageFeedbackButton from "./PageFeedbackButton"
 import KanbanBoard from "./KanbanBoard"
+import SwimlaneBoard from "./SwimlaneBoard"
 import WorkItemList from "./WorkItemList"
 import WorkItemInspector from "./WorkItemInspector"
 import NewItemModal from "./NewItemModal"
@@ -41,6 +43,7 @@ type ViewMode = "board" | "list"
 // fetches): só o pathname muda.
 const ProjectWorkspace = () => {
     const api = useApi()
+    const readOnly = useReadOnly()
     const navigate = useNavigate()
     const { pathname } = useLocation()
     const { projectId, boardId } = useParams<{ projectId: string; boardId?: string }>()
@@ -51,6 +54,8 @@ const ProjectWorkspace = () => {
     // Views salvas e densidade: persistidas no servidor (AppState), por projeto.
     const [savedViews, setSavedViews] = useAppState<SavedView[]>(`mpm.views:${projectId || "_"}`, [])
     const [density, setDensity] = useAppState<string>(`mpm.density:${projectId || "_"}`, "comfortable")
+    // Board em swimlanes por épico (padrão; persistido por projeto).
+    const [swimlanes, setSwimlanes] = useAppState<boolean>(`mpm.swimlanes:${projectId || "_"}`, true)
     const saveCurrentView = (name: string) => {
         const id = `v${savedViews.length + 1}-${name.toLowerCase().replace(/\s+/g, "-").slice(0, 24)}`
         setSavedViews([...savedViews.filter((v) => v.name !== name), { id, name, filters: { ...filters }, group: (group || "none") as GroupBy }])
@@ -74,6 +79,7 @@ const ProjectWorkspace = () => {
     const [feedbackItem, setFeedbackItem] = useState<WorkItem | null>(null)
     const [confirmBusy, setConfirmBusy] = useState(false)
     const [quickAddStatus, setQuickAddStatus] = useState<string | null>(null)
+    const [quickAddParent, setQuickAddParent] = useState<string | null>(null)
     const [quickAddOpen, setQuickAddOpen] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
@@ -190,7 +196,9 @@ const ProjectWorkspace = () => {
         try { await api.items.update(id, { priority }) } catch (e: any) { setError(e.message); loadItems() }
     }
 
-    const openQuickAdd = (statusKey?: string) => { setQuickAddStatus(statusKey || null); setQuickAddOpen(true) }
+    const openQuickAdd = (statusKey?: string, parentId?: string) => {
+        setQuickAddStatus(statusKey || null); setQuickAddParent(parentId || null); setQuickAddOpen(true)
+    }
 
     // Delegação: qualquer elemento com data-item-id abre o menu de contexto.
     const onContextMenu = (e: React.MouseEvent) => {
@@ -301,15 +309,24 @@ const ProjectWorkspace = () => {
             title={project ? project.name : "Projeto"}
             subtitle={board ? board.name : "sem board"}
             actions={<>
-                <PageFeedbackButton scope={view === "list" ? "list" : "board"} projectId={projectId}
-                    label={view === "list" ? "Toda a lista" : "Todo o board"} compact />
+                {!readOnly
+                    ? <PageFeedbackButton scope={view === "list" ? "list" : "board"} projectId={projectId}
+                        label={view === "list" ? "Toda a lista" : "Todo o board"} compact />
+                    : null}
                 <div className="mpm-seg">
                     <button className={`mpm-seg__btn ${view === "board" ? "is-active" : ""}`} onClick={() => changeView("board")}><Icon name="columns" /> Board</button>
                     <button className={`mpm-seg__btn ${view === "list" ? "is-active" : ""}`} onClick={() => changeView("list")}><Icon name="list" /> Lista</button>
                 </div>
+                {view === "board"
+                    ? <button className={`mpm-btn ${swimlanes ? "mpm-btn--primary" : ""}`}
+                        title={swimlanes ? "Voltar ao board plano (por status)" : "Agrupar o board em faixas por épico"}
+                        onClick={() => setSwimlanes(!swimlanes)}>
+                        <Icon name="sitemap" /> Por épico
+                    </button>
+                    : null}
                 <button className="mpm-btn" title="Exportar o projeto inteiro (.json)" onClick={exportProject}><Icon name="download" /> Exportar projeto</button>
                 {view === "board" && board ? <button className="mpm-btn" title="Exportar o board atual (.json)" onClick={exportBoard}><Icon name="table" /> Exportar board</button> : null}
-                <button className="mpm-btn mpm-btn--primary" onClick={() => openQuickAdd()}><Icon name="plus" /> Item</button>
+                {!readOnly ? <button className="mpm-btn mpm-btn--primary" onClick={() => openQuickAdd()}><Icon name="plus" /> Item</button> : null}
             </>}
             inspector={inspector}
             onInspectorClose={() => setSelected(null)}>
@@ -321,7 +338,7 @@ const ProjectWorkspace = () => {
             onSaveView={saveCurrentView} onDeleteView={deleteView}
             density={density} setDensity={setDensity} />
 
-        {selectedIds.length > 0
+        {selectedIds.length > 0 && !readOnly
             ? <BulkActionBar
                 count={selectedIds.length}
                 users={users}
@@ -346,29 +363,39 @@ const ProjectWorkspace = () => {
 
         <ErrorBanner error={error} />
 
-        <div onContextMenu={onContextMenu} className={view === "list" ? `mpm-density--${density}` : undefined}>
+        <div onContextMenu={onContextMenu} className={`mpm-density--${density}`}>
         {loading
             ? <Loading />
             : view === "board"
                 ? (board
-                    ? <KanbanBoard
+                    ? (swimlanes
+                        ? <SwimlaneBoard
+                            board={board}
+                            items={items}
+                            usersById={usersById}
+                            onOpenItem={setSelected}
+                            onMoveItem={readOnly ? undefined : moveItem}
+                            onQuickAdd={readOnly ? undefined : openQuickAdd}
+                            selectedIds={selectedIds}
+                            onToggleSelect={readOnly ? undefined : toggleSelect} />
+                        : <KanbanBoard
                         board={board}
                         items={items}
                         usersById={usersById}
                         onOpenItem={setSelected}
-                        onMoveItem={moveItem}
-                        onReorderItem={reorderItem}
-                        onQuickAdd={openQuickAdd}
-                        onAddColumn={addColumn}
-                        onRenameColumn={renameColumn}
-                        onDeleteColumn={deleteColumn}
+                        onMoveItem={readOnly ? undefined : moveItem}
+                        onReorderItem={readOnly ? undefined : reorderItem}
+                        onQuickAdd={readOnly ? undefined : openQuickAdd}
+                        onAddColumn={readOnly ? undefined : addColumn}
+                        onRenameColumn={readOnly ? undefined : renameColumn}
+                        onDeleteColumn={readOnly ? undefined : deleteColumn}
                         selectedIds={selectedIds}
-                        onToggleSelect={toggleSelect} />
+                        onToggleSelect={readOnly ? undefined : toggleSelect} />)
                     : <EmptyState icon="columns" title="Sem board" hint="Este projeto ainda não tem um board configurado." />)
                 : (items.length === 0
                     ? <EmptyState icon="list" title="Nenhum item"
-                        hint="Nenhum item corresponde aos filtros — ajuste ou crie um novo."
-                        action={<button className="mpm-btn mpm-btn--primary" onClick={() => openQuickAdd()}><Icon name="plus" /> Novo item</button>} />
+                        hint={readOnly ? "Nenhum item corresponde aos filtros." : "Nenhum item corresponde aos filtros — ajuste ou crie um novo."}
+                        action={readOnly ? undefined : <button className="mpm-btn mpm-btn--primary" onClick={() => openQuickAdd()}><Icon name="plus" /> Novo item</button>} />
                     : <WorkItemList
                         items={items}
                         usersById={usersById}
@@ -377,10 +404,11 @@ const ProjectWorkspace = () => {
                         milestones={milestones}
                         sprints={sprints}
                         selectedIds={selectedIds}
-                        onToggleSelect={toggleSelect}
+                        onToggleSelect={readOnly ? undefined : toggleSelect}
                         onOpenItem={setSelected}
                         onSetStatus={setStatus}
-                        onSetPriority={setPriority} />)}
+                        onSetPriority={setPriority}
+                        readOnly={readOnly} />)}
         </div>
 
         {/* Menu de contexto (botão direito) do item */}
@@ -391,23 +419,27 @@ const ProjectWorkspace = () => {
                 <button className="mpm-ctxmenu__item" onClick={() => { setSelected(ctxMenu.item.id); setCtxMenu(null) }}>
                     <Icon name="expand" /> Abrir item
                 </button>
-                <button className="mpm-ctxmenu__item" onClick={() => { setFeedbackItem(ctxMenu.item); setCtxMenu(null) }}>
-                    <Icon name="comment alternate" /> Feedback para agente…
-                </button>
-                <div className="mpm-ctxmenu__sep" />
-                <button className="mpm-ctxmenu__item mpm-ctxmenu__item--danger"
-                    onClick={() => {
-                        const it = ctxMenu.item; setCtxMenu(null)
-                        setConfirm({
-                            title: "Excluir item", danger: true,
-                            message: <>Excluir <strong>{it.key}</strong> — {it.title}?</>,
-                            consequences: [<>Soft delete: o item some das listagens (reversível).</>],
-                            confirmLabel: "Excluir item",
-                            run: async () => { await api.items.remove(it.id); await loadItems() }
-                        })
-                    }}>
-                    <Icon name="trash" /> Excluir item…
-                </button>
+                {!readOnly
+                    ? <>
+                        <button className="mpm-ctxmenu__item" onClick={() => { setFeedbackItem(ctxMenu.item); setCtxMenu(null) }}>
+                            <Icon name="comment alternate" /> Feedback para agente…
+                        </button>
+                        <div className="mpm-ctxmenu__sep" />
+                        <button className="mpm-ctxmenu__item mpm-ctxmenu__item--danger"
+                            onClick={() => {
+                                const it = ctxMenu.item; setCtxMenu(null)
+                                setConfirm({
+                                    title: "Excluir item", danger: true,
+                                    message: <>Excluir <strong>{it.key}</strong> — {it.title}?</>,
+                                    consequences: [<>Soft delete: o item some das listagens (reversível).</>],
+                                    confirmLabel: "Excluir item",
+                                    run: async () => { await api.items.remove(it.id); await loadItems() }
+                                })
+                            }}>
+                            <Icon name="trash" /> Excluir item…
+                        </button>
+                    </>
+                    : null}
             </div>
             : null}
 
@@ -422,6 +454,8 @@ const ProjectWorkspace = () => {
                 projectId={projectId}
                 boardId={board ? board.id : undefined}
                 defaultStatus={quickAddStatus || undefined}
+                defaultParent={quickAddParent || undefined}
+                defaultParentLabel={quickAddParent ? (items.find((i) => i.id === quickAddParent) || {} as WorkItem).key : undefined}
                 onClose={() => setQuickAddOpen(false)}
                 onCreated={() => { setQuickAddOpen(false); loadItems() }} />
             : null}

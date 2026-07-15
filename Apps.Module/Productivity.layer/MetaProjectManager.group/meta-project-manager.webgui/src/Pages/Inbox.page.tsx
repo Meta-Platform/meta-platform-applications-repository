@@ -5,6 +5,7 @@ import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
 import useLiveReload from "../Hooks/useLiveReload"
+import { useReadOnly } from "../Hooks/useReadOnly"
 import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import { Project, WorkItem, User, CLARITY_STATES } from "../api/types"
 import AppShell from "../Components/AppShell"
@@ -23,6 +24,7 @@ const PROMOTE: { key: string; label: string; icon: any }[] = [
 // InboxPage (Fase 2): captura rápida de ideias + triagem para o backlog.
 const InboxPage = () => {
     const api = useApi()
+    const readOnly = useReadOnly()
     const { projectId } = useParams<{ projectId: string }>()
 
     const [project, setProject] = useState<Project | null>(null)
@@ -118,10 +120,10 @@ const InboxPage = () => {
             ]}
             title={project ? project.name : "Projeto"}
             subtitle="Discovery · capture ideias sem compromisso; enriqueça e triangule depois"
-            actions={<PageFeedbackButton scope="ideas" projectId={projectId} label="Todas as ideias" />}
+            actions={readOnly ? undefined : <PageFeedbackButton scope="ideas" projectId={projectId} label="Todas as ideias" />}
             onInspectorClose={() => setSelected(null)}>
 
-        <div className="mpm-card mpm-idea-capture">
+        {readOnly ? null : <div className="mpm-card mpm-idea-capture">
             <div className="mpm-row">
                 <Icon name="lightbulb outline" size="large" className="mpm-idea-capture__ico" />
                 <input className="mpm-input" placeholder="Nova ideia — um título curto (Enter para capturar)"
@@ -143,7 +145,7 @@ const InboxPage = () => {
                     onChange={(e) => setOrigin(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") capture() }} />
             </div>
-        </div>
+        </div>}
 
         <ErrorBanner error={error} />
 
@@ -166,7 +168,7 @@ const InboxPage = () => {
                                 {it.ideaOrigin ? <span className="mpm-muted" style={{ fontSize: "12px" }}>de {it.ideaOrigin}</span> : null}
                                 <span style={{ fontWeight: 600, cursor: "pointer", flex: 1 }} onClick={() => setSelected(it.id)}>{it.title}</span>
                             </div>
-                            <div className="mpm-row mpm-wrap">
+                            {readOnly ? null : <div className="mpm-row mpm-wrap">
                                 <span className="mpm-field__label">Clareza</span>
                                 <select className="mpm-inline-select" value={it.clarityState || "idea"}
                                     onChange={(e) => setClarity(it, e.target.value)}>
@@ -190,7 +192,7 @@ const InboxPage = () => {
                                     <option value="research">investigação</option>
                                     <option value="decision">decisão</option>
                                 </select>
-                            </div>
+                            </div>}
                         </div>)}
                 </div>}
         </AppShell>

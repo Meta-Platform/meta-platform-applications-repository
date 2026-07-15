@@ -11,8 +11,9 @@ interface KanbanBoardProps {
     items: WorkItem[]
     usersById: { [id: string]: User }
     onOpenItem: (id: string) => void
-    // ao soltar num alvo: chama SetItemStatus com o statusKey da coluna destino
-    onMoveItem: (itemId: string, statusKey: string) => void
+    // ao soltar num alvo: chama SetItemStatus com o statusKey da coluna destino.
+    // Ausente num projeto arquivado (leitura): o quadro não aceita mover cards.
+    onMoveItem?: (itemId: string, statusKey: string) => void
     onReorderItem?: (itemId: string, order: number) => void
     onQuickAdd?: (statusKey: string) => void
     onAddColumn?: (name: string) => void
@@ -43,8 +44,11 @@ const KanbanBoard = ({ board, items, usersById, onOpenItem, onMoveItem, onReorde
     const byStatus = (statusKey: string) => items.filter((i) => i.statusKey === statusKey)
     const orphans = items.filter((i) => !knownStatuses.has(i.statusKey))
 
+    // Cards só são arrastáveis se houver como mover ou reordenar (leitura desliga).
+    const canDrag = !!onMoveItem || !!onReorderItem
+
     const handleDrop = (statusKey: string) => {
-        if (draggingId) {
+        if (draggingId && onMoveItem) {
             const it = items.find((i) => i.id === draggingId)
             if (it && it.statusKey !== statusKey) onMoveItem(draggingId, statusKey)
         }
@@ -68,7 +72,8 @@ const KanbanBoard = ({ board, items, usersById, onOpenItem, onMoveItem, onReorde
                 onDeleteColumn={onDeleteColumn}
                 selectedIds={selectedIds}
                 onToggleSelect={onToggleSelect}
-                agentActive={agentActive} />)}
+                agentActive={agentActive}
+                draggable={canDrag} />)}
         {orphans.length > 0
             ? <KanbanColumn
                 column={{ id: "__orphans__", boardId: board.id, name: "Sem coluna", statusKey: "__orphans__", order: 999, isDoneColumn: false }}
@@ -78,7 +83,8 @@ const KanbanBoard = ({ board, items, usersById, onOpenItem, onMoveItem, onReorde
                 onOpenItem={onOpenItem}
                 onDragStart={setDraggingId}
                 onDragEnd={() => setDraggingId(null)}
-                onDropItem={() => setDraggingId(null)} />
+                onDropItem={() => setDraggingId(null)}
+                draggable={canDrag} />
             : null}
         {onAddColumn
             ? <section className="mpm-kcol" style={{ background: "transparent", borderStyle: "dashed" }}>

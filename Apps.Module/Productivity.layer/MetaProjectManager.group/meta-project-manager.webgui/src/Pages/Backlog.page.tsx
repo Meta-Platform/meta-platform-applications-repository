@@ -5,6 +5,7 @@ import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
 import useLiveReload from "../Hooks/useLiveReload"
+import { useReadOnly } from "../Hooks/useReadOnly"
 import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
 import useItemFilters from "../Hooks/useItemFilters"
 import { Project, WorkItem, User, Milestone, Sprint } from "../api/types"
@@ -29,6 +30,7 @@ const DONE_STATUSES = new Set(["done", "archived", "completed"])
 // que abrir.
 const BacklogPage = () => {
     const api = useApi()
+    const readOnly = useReadOnly()
     const { projectId } = useParams<{ projectId: string }>()
     const { filters, setFilter, reset, activeCount } = useItemFilters("backlog", projectId)
 
@@ -115,10 +117,10 @@ const BacklogPage = () => {
             ]}
             title={project ? project.name : "Projeto"}
             subtitle="Backlog · priorizado por valor"
-            actions={<PageFeedbackButton scope="backlog" projectId={projectId} label="Todo o backlog" />}
+            actions={readOnly ? undefined : <PageFeedbackButton scope="backlog" projectId={projectId} label="Todo o backlog" />}
             onInspectorClose={() => setSelected(null)}>
 
-        <div className="mpm-card">
+        {readOnly ? null : <div className="mpm-card">
             <div className="mpm-row">
                 <input className="mpm-input" placeholder="Criação rápida: título do item + Enter"
                     value={draft}
@@ -128,7 +130,7 @@ const BacklogPage = () => {
                     <Icon name="plus" /> Adicionar
                 </button>
             </div>
-        </div>
+        </div>}
 
         <ItemFilterBar filters={filters} setFilter={setFilter} reset={reset} activeCount={activeCount}
             users={users} milestones={milestones} sprints={sprints} />

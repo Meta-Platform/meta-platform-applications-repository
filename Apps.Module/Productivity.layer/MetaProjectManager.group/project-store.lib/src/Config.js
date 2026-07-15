@@ -77,13 +77,21 @@ const APPROVAL_RISKS     = ["normal", "sensitive", "destructive"]
 const APPROVAL_STATUSES  = ["pending", "approved", "rejected", "failed", "expired", "cancelled"]
 
 // Tipos de alvo que um pedido de delete por agente pode carregar (soft delete).
-const APPROVAL_DELETE_TARGETS = ["project", "board", "item"]
+const APPROVAL_DELETE_TARGETS = ["project", "board", "item", "risk", "planning-doc"]
 
 const ENVIRONMENTS       = ["local", "dev", "staging", "homologation", "production"]
 
 const MILESTONE_STATUSES = ["planning", "active", "released", "archived"]
 
 const SPRINT_STATUSES    = ["planned", "active", "completed", "archived"]
+
+// Registro de riscos (matriz 3×3): probabilidade e impacto usam a MESMA escala.
+// O nível derivado (baixo→crítico) é calculado no RisksStore a partir do produto.
+const RISK_LEVELS        = ["low", "medium", "high"]
+const RISK_STATUSES      = ["open", "mitigating", "accepted", "closed", "occurred"]
+
+// Documento de planejamento (termo de abertura/charter): ciclo de vida do plano.
+const PLANNING_DOC_STATUSES = ["draft", "review", "approved", "archived"]
 
 // Colunas/status padrão de um board recém-criado (spec §4.2).
 const DEFAULT_COLUMNS = [
@@ -112,6 +120,9 @@ module.exports = {
     ATTACHMENT_TYPES,
     MILESTONE_STATUSES,
     SPRINT_STATUSES,
+    RISK_LEVELS,
+    RISK_STATUSES,
+    PLANNING_DOC_STATUSES,
     USER_TYPES,
     DESKTOP_USER_HANDLE,
     DESKTOP_USER_DISPLAYNAME,

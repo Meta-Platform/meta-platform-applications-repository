@@ -38,6 +38,7 @@ const BoardsStore = (ctx) => {
     const CreateBoard = async ({ project, name, shortDescription, description, type = "kanban", withDefaultColumns = true, setDefault, actor } = {}) => {
         if(!name) throw new DomainError("VALIDATION_ERROR", "Nome do board é obrigatório.", { field: "name" })
         const projectInstance = await store.ResolveProject(project)
+        await store.AssertProjectWritable({ project: projectInstance })
 
         // Gate: criação de board por agente exige aprovação humana (vira pedido pendente).
         if(store.IsAgentCreation(actor)){
@@ -75,6 +76,7 @@ const BoardsStore = (ctx) => {
 
     const UpdateBoard = async ({ board, actor, ...fields } = {}) => {
         const instance = await ResolveBoard(board)
+        await store.AssertProjectWritable({ project: instance.projectId })
         const patch = {}
         for(const key of ["name", "shortDescription", "description", "type"]) if(fields[key] !== undefined) patch[key] = fields[key]
         const before = PatchDiff(instance, patch)
@@ -87,6 +89,7 @@ const BoardsStore = (ctx) => {
 
     const DuplicateBoard = async ({ board, name, actor } = {}) => {
         const src = await ResolveBoard(board)
+        await store.AssertProjectWritable({ project: src.projectId })
         const copy = await Board.create({ id: NewId(), projectId: src.projectId, name: name || `${src.name} (cópia)`, description: src.description, type: src.type })
         const columns = await BoardColumn.findAll({ where: { boardId: src.id }, order: [["order", "ASC"]] })
         for(const col of columns){
@@ -100,6 +103,7 @@ const BoardsStore = (ctx) => {
 
     const DeleteBoard = async ({ board, actor } = {}) => {
         const instance = await ResolveBoard(board)
+        await store.AssertProjectWritable({ project: instance.projectId })
 
         // Gate: remoção por agente exige aprovação humana (pedido destrutivo pendente).
         if(store.IsAgentActor(actor)){
@@ -121,6 +125,7 @@ const BoardsStore = (ctx) => {
 
     const SetDefaultBoard = async ({ board, actor } = {}) => {
         const instance = await ResolveBoard(board)
+        await store.AssertProjectWritable({ project: instance.projectId })
         await store.GateAgentAction({
             actionName: "set-default", type: "board", targetId: instance.id, projectId: instance.projectId,
             reason: "Trocar o board padrão do projeto por agente requer aprovação humana.", actor
@@ -148,6 +153,7 @@ const BoardsStore = (ctx) => {
 
     const AddColumn = async ({ board, name, statusKey, color, wipLimit, isDoneColumn = false, actor } = {}) => {
         const instance = await ResolveBoard(board)
+        await store.AssertProjectWritable({ project: instance.projectId })
         if(!name) throw new DomainError("VALIDATION_ERROR", "Nome da coluna é obrigatório.", { field: "name" })
         // Coluna = etapa do fluxo por onde todo o trabalho passa: mudança estrutural.
         await store.GateAgentAction({
@@ -167,6 +173,7 @@ const BoardsStore = (ctx) => {
     const UpdateColumn = async ({ column, actor, ...fields } = {}) => {
         const instance = await BoardColumn.findOne({ where: { id: column } })
         if(!instance) throw new DomainError("NOT_FOUND", `Coluna "${column}" não encontrada.`, { ref: column })
+        await store.AssertProjectWritable({ project: await _projectIdOfColumn(instance) })
         const patch = {}
         for(const key of ["name", "statusKey", "color", "wipLimit", "isDoneColumn"]) if(fields[key] !== undefined) patch[key] = fields[key]
         await store.GateAgentAction({
@@ -181,6 +188,7 @@ const BoardsStore = (ctx) => {
     const MoveColumn = async ({ column, order, actor } = {}) => {
         const instance = await BoardColumn.findOne({ where: { id: column } })
         if(!instance) throw new DomainError("NOT_FOUND", `Coluna "${column}" não encontrada.`, { ref: column })
+        await store.AssertProjectWritable({ project: await _projectIdOfColumn(instance) })
         await store.GateAgentAction({
             actionName: "move", type: "column", targetId: instance.id, projectId: await _projectIdOfColumn(instance),
             payload: { order }, reason: "Mover coluna do board por agente requer aprovação humana.", actor
@@ -198,6 +206,7 @@ const BoardsStore = (ctx) => {
     const DeleteColumn = async ({ column, actor } = {}) => {
         const instance = await BoardColumn.findOne({ where: { id: column } })
         if(!instance) throw new DomainError("NOT_FOUND", `Coluna "${column}" não encontrada.`, { ref: column })
+        await store.AssertProjectWritable({ project: await _projectIdOfColumn(instance) })
         await store.GateAgentAction({
             actionName: "delete", type: "column", targetId: instance.id, projectId: await _projectIdOfColumn(instance),
             risk: "destructive", reason: "Remover coluna do board por agente requer aprovação humana.", actor

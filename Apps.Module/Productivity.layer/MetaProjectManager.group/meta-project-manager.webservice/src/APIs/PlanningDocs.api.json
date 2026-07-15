@@ -1,0 +1,67 @@
+{
+    "name": "PlanningDocs",
+    "endpoints": [
+        {
+            "summary": "ListPlanningDocs",
+            "method": "GET",
+            "path": "/projects/:projectId/planning-docs",
+            "parameters": [
+                { "name": "projectId", "in": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "CreatePlanningDoc",
+            "method": "POST",
+            "path": "/projects/:projectId/planning-docs",
+            "parameters": [
+                { "name": "projectId", "in": "path", "type": "string", "required": true },
+                { "name": "title", "in": "body", "type": "string", "required": true },
+                { "name": "milestoneId", "in": "body", "type": "string", "required": false },
+                { "name": "status", "in": "body", "type": "string", "required": false },
+                { "name": "objective", "in": "body", "type": "string", "required": false },
+                { "name": "scope", "in": "body", "type": "string", "required": false },
+                { "name": "outOfScope", "in": "body", "type": "string", "required": false },
+                { "name": "stakeholders", "in": "body", "type": "string", "required": false },
+                { "name": "assumptions", "in": "body", "type": "string", "required": false },
+                { "name": "constraints", "in": "body", "type": "string", "required": false },
+                { "name": "successCriteria", "in": "body", "type": "string", "required": false },
+                { "name": "deliverables", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "GetPlanningDoc",
+            "method": "GET",
+            "path": "/planning-docs/:planningDocId",
+            "parameters": [
+                { "name": "planningDocId", "in": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "UpdatePlanningDoc",
+            "method": "PATCH",
+            "path": "/planning-docs/:planningDocId",
+            "parameters": [
+                { "name": "planningDocId", "in": "path", "type": "string", "required": true },
+                { "name": "title", "in": "body", "type": "string", "required": false },
+                { "name": "milestoneId", "in": "body", "type": "string", "required": false },
+                { "name": "status", "in": "body", "type": "string", "required": false },
+                { "name": "objective", "in": "body", "type": "string", "required": false },
+                { "name": "scope", "in": "body", "type": "string", "required": false },
+                { "name": "outOfScope", "in": "body", "type": "string", "required": false },
+                { "name": "stakeholders", "in": "body", "type": "string", "required": false },
+                { "name": "assumptions", "in": "body", "type": "string", "required": false },
+                { "name": "constraints", "in": "body", "type": "string", "required": false },
+                { "name": "successCriteria", "in": "body", "type": "string", "required": false },
+                { "name": "deliverables", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "DeletePlanningDoc",
+            "method": "DELETE",
+            "path": "/planning-docs/:planningDocId",
+            "parameters": [
+                { "name": "planningDocId", "in": "path", "type": "string", "required": true }
+            ]
+        }
+    ]
+}

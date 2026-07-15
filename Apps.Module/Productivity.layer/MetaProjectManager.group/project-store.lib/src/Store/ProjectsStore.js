@@ -52,6 +52,22 @@ const ProjectsStore = (ctx) => {
         return project
     }
 
+    // Guard "projeto arquivado é imutável": chamado no topo de TODA escrita de
+    // conteúdo de um projeto (itens, boards, comentários, anexos, planejamento,
+    // pacotes, anotações, feedback). Fonte da verdade — vale para humano e agente.
+    // Exceções deliberadas: RestoreProject e DeleteProject operam sobre arquivado.
+    // Aceita um id/slug/keyPrefix de projeto OU uma instância já resolvida.
+    const AssertProjectWritable = async ({ project } = {}) => {
+        const instance = project && typeof project === "object" && project.status !== undefined
+            ? project
+            : await ResolveProject(project)
+        if(instance.status === "archived")
+            throw new DomainError("PROJECT_ARCHIVED",
+                "Projeto arquivado é somente leitura. Restaure-o para poder editar.",
+                { projectId: instance.id })
+        return instance
+    }
+
     const CreateProject = async ({
         name, slug, shortDescription, description, icon, color, status = "planning",
         keyPrefix, repositoryUrl, localPath, ownerUserId, actor
@@ -116,6 +132,8 @@ const ProjectsStore = (ctx) => {
 
     const UpdateProject = async ({ project, actor, ...fields } = {}) => {
         const instance = await ResolveProject(project)
+        // Projeto arquivado é imutável — restaurar (RestoreProject) é o caminho.
+        await AssertProjectWritable({ project: instance })
         const allowed = ["name", "shortDescription", "description", "finalReport", "icon", "color", "status", "repositoryUrl", "localPath", "defaultBoardId", "ownerUserId",
             "contextRepository", "contextModule", "contextLayer", "contextGroup"]
         const patch = {}
@@ -156,6 +174,7 @@ const ProjectsStore = (ctx) => {
     // deliverable que o agente redige e o humano lê — sem gate de aprovação.
     const SetProjectReport = async ({ project, finalReport, actor } = {}) => {
         const instance = await ResolveProject(project)
+        await AssertProjectWritable({ project: instance })
         if(typeof finalReport !== "string")
             throw new DomainError("VALIDATION_ERROR", "finalReport deve ser texto (markdown).", { field: "finalReport" })
         const before = { finalReport: instance.finalReport ? "(anterior)" : null }
@@ -248,7 +267,7 @@ const ProjectsStore = (ctx) => {
     }
 
     return {
-        ResolveProject,
+        ResolveProject, AssertProjectWritable,
         CreateProject, ListProjects, GetProject, UpdateProject,
         SetProjectReport, GetProjectReport,
         ArchiveProject, RestoreProject, DeleteProject, ProjectMetrics,

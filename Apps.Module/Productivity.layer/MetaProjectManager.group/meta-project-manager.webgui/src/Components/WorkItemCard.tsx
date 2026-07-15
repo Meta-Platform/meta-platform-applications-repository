@@ -16,20 +16,23 @@ interface WorkItemCardProps {
     agentActor?: string
     // drop de outro card sobre este (reordenar dentro da coluna)
     onDropCard?: () => void
+    // Projeto arquivado: card não arrastável (leitura).
+    draggable?: boolean
 }
 
 // WorkItemCard (spec §11.1): card de item no Kanban, com badges, drag nativo,
 // seleção (feature 4) e alvo de reorder (feature 5).
 const WorkItemCard = ({ item, usersById, onOpen, onDragStart, onDragEnd, dragging,
-    selected, onToggleSelect, agentActor, onDropCard }: WorkItemCardProps) => {
+    selected, onToggleSelect, agentActor, onDropCard, draggable = true }: WorkItemCardProps) => {
     const assignee = item.assigneeUserId ? usersById[item.assigneeUserId] : undefined
     const executing = !!agentActor
     return <div
         data-item-id={item.id}
+        data-priority={item.priority}
         className={`mpm-witem ${dragging ? "is-dragging" : ""} ${selected ? "is-selected" : ""} ${executing ? "is-executing" : ""}`}
-        draggable
-        onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", item.id); onDragStart(item.id) }}
-        onDragEnd={onDragEnd}
+        draggable={draggable}
+        onDragStart={draggable ? (e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", item.id); onDragStart(item.id) } : undefined}
+        onDragEnd={draggable ? onDragEnd : undefined}
         onDragOver={onDropCard ? (e) => { e.preventDefault(); e.stopPropagation() } : undefined}
         onDrop={onDropCard ? (e) => { e.preventDefault(); e.stopPropagation(); onDropCard() } : undefined}
         onClick={() => onOpen(item.id)}>

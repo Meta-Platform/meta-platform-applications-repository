@@ -237,9 +237,9 @@ test("get_guidance devolve instruções + restrições reais do domínio", async
     const out = await byName("get_guidance").handler({})
     assert.ok(out.instructions.includes("Meta Project Manager"))
     // as restrições precisam bater com o domínio, não ser texto solto
-    assert.deepEqual(out.constraints.linkRelations, ["blocks","depends","relates","duplicates","implements","tests"])
+    assert.deepEqual(out.constraints.linkRelations, ["blocks","depends","relates","duplicates","implements","tests","originated_from"])
     assert.equal(out.constraints.keyPrefixMaxChars, 5)
-    assert.deepEqual(out.constraints.gatedActions.delete, ["project","board","item"])
+    assert.deepEqual(out.constraints.gatedActions.delete, ["project","board","item","risk","planning-doc"])
     assert.ok(out.constraints.linkAttachmentSchemes.includes("file"))
     assert.equal(out.session.provider, "claude")
 })

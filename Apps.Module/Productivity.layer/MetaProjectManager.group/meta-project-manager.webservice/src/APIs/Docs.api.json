@@ -1,0 +1,115 @@
+{
+    "name": "Docs",
+    "endpoints": [
+        {
+            "summary": "ListDocPages",
+            "method": "GET",
+            "path": "/projects/:projectId/doc-pages",
+            "parameters": [
+                { "name": "projectId", "in": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "CreateDocPage",
+            "method": "POST",
+            "path": "/projects/:projectId/doc-pages",
+            "parameters": [
+                { "name": "projectId", "in": "path", "type": "string", "required": true },
+                { "name": "parentId", "in": "body", "type": "string", "required": false },
+                { "name": "title", "in": "body", "type": "string", "required": true },
+                { "name": "icon", "in": "body", "type": "string", "required": false },
+                { "name": "body", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "GetDocPage",
+            "method": "GET",
+            "path": "/doc-pages/:docPageId",
+            "parameters": [
+                { "name": "docPageId", "in": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "UpdateDocPage",
+            "method": "PATCH",
+            "path": "/doc-pages/:docPageId",
+            "parameters": [
+                { "name": "docPageId", "in": "path", "type": "string", "required": true },
+                { "name": "title", "in": "body", "type": "string", "required": false },
+                { "name": "icon", "in": "body", "type": "string", "required": false },
+                { "name": "body", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "MoveDocPage",
+            "method": "POST",
+            "path": "/doc-pages/:docPageId/move",
+            "parameters": [
+                { "name": "docPageId", "in": "path", "type": "string", "required": true },
+                { "name": "parentId", "in": "body", "type": "string", "required": false },
+                { "name": "order", "in": "body", "type": "number", "required": false }
+            ]
+        },
+        {
+            "summary": "DeleteDocPage",
+            "method": "DELETE",
+            "path": "/doc-pages/:docPageId",
+            "parameters": [
+                { "name": "docPageId", "in": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "ListDocPageAttachments",
+            "method": "GET",
+            "path": "/doc-pages/:docPageId/attachments",
+            "parameters": [
+                { "name": "docPageId", "in": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "AddDocPageAttachment",
+            "method": "POST",
+            "path": "/doc-pages/:docPageId/attachments",
+            "parameters": [
+                { "name": "docPageId", "in": "path", "type": "string", "required": true },
+                { "name": "name", "in": "body", "type": "string", "required": false },
+                { "name": "base64", "in": "body", "type": "string", "required": false },
+                { "name": "mimeType", "in": "body", "type": "string", "required": false },
+                { "name": "url", "in": "body", "type": "string", "required": false },
+                { "name": "description", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "DeleteDocAttachment",
+            "method": "DELETE",
+            "path": "/doc-attachments/:docAttachmentId",
+            "parameters": [
+                { "name": "docAttachmentId", "in": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "ReadDocAttachmentContent",
+            "method": "GET",
+            "path": "/doc-attachments/:docAttachmentId/content",
+            "parameters": [
+                { "name": "docAttachmentId", "in": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "ExportDocsHtml",
+            "method": "GET",
+            "path": "/projects/:projectId/docs/export/html",
+            "parameters": [
+                { "name": "projectId", "in": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "ExportDocsArchive",
+            "method": "GET",
+            "path": "/projects/:projectId/docs/export/archive",
+            "parameters": [
+                { "name": "projectId", "in": "path", "type": "string", "required": true }
+            ]
+        }
+    ]
+}

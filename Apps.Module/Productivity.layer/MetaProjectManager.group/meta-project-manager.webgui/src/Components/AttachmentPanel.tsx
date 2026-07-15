@@ -8,12 +8,13 @@ import { Attachment } from "../api/types"
 import { ErrorBanner } from "./Primitives"
 import GetAttachmentDownloadUrl from "../Utils/GetAttachmentDownloadUrl"
 import { triggerBase64Download } from "../Utils/triggerDownload"
-import AttachmentPreview from "./AttachmentPreview"
+import AttachmentPreview, { kindOf } from "./AttachmentPreview"
 import { formatDateTime } from "../Utils/format"
+import { isImageAttachment } from "../Utils/imageMime"
 
 // AttachmentPanel (spec §11.1): lista anexos do item; permite adicionar link
 // ou upload (arquivo -> base64) e remover.
-const AttachmentPanel = ({ itemId }: { itemId: string }) => {
+const AttachmentPanel = ({ itemId, readOnly }: { itemId: string; readOnly?: boolean }) => {
     const api = useApi()
     const serverManagerInformation = useSelector((state: any) => state.HTTPServerManager)
     const [items, setItems] = useState<Attachment[]>([])
@@ -60,7 +61,7 @@ const AttachmentPanel = ({ itemId }: { itemId: string }) => {
             for (const file of files) {
                 try {
                     const base64 = await readBase64(file)
-                    await api.attachments.add(itemId, { name: file.name, base64 })
+                    await api.attachments.add(itemId, { name: file.name, base64, mimeType: file.type || undefined })
                 } catch (err: any) { setError(`Falha em "${file.name}": ${err.message}`) }
             }
             await load()
@@ -118,7 +119,7 @@ const AttachmentPanel = ({ itemId }: { itemId: string }) => {
     }
 
     return <div className={`mpm-col mpm-attach-drop ${dragging ? "is-dragging" : ""}`}
-        onDrop={onDrop} onDragOver={onDragOver} onDragLeave={onDragLeave}>
+        onDrop={readOnly ? undefined : onDrop} onDragOver={readOnly ? undefined : onDragOver} onDragLeave={readOnly ? undefined : onDragLeave}>
         <div className="mpm-section-title"><Icon name="paperclip" /> Anexos ({items.length})</div>
         <ErrorBanner error={error} />
         {dragging
@@ -130,9 +131,13 @@ const AttachmentPanel = ({ itemId }: { itemId: string }) => {
             const downloadUrl = link ? undefined : GetAttachmentDownloadUrl(serverManagerInformation, a.id)
             // arquivo é sempre baixável: por URL no browser ou via IPC (base64) no Electron
             const canOpen = link ? !!a.externalUrl : true
-            // preview disponível para links (externalUrl) e arquivos com URL resolvida
-            const canPreview = link ? !!a.externalUrl : !!downloadUrl
-            const isOpen = !!preview[a.id]
+            // Preview só para tipos com renderização (imagem/pdf/texto/markdown); o
+            // conteúdo é lido por IPC quando não há URL (desktop). Links só com externalUrl.
+            const previewKind = kindOf(a, link)
+            const canPreview = link ? !!a.externalUrl : previewKind !== "none"
+            // Imagens (ícones, screenshots) abrem já expandidas — o usuário quer VER,
+            // não clicar. Os demais tipos ficam recolhidos até pedir.
+            const isOpen = a.id in preview ? preview[a.id] : isImageAttachment(a)
             return <div key={a.id} className="mpm-col" style={{ gap: "var(--mp-space-1)" }}>
                 <div className="mpm-attach">
                     <Icon name={link ? "linkify" : "file outline"} />
@@ -155,14 +160,16 @@ const AttachmentPanel = ({ itemId }: { itemId: string }) => {
                             <Icon name={link ? "external" : "download"} />
                         </span>
                         : null}
-                    <span className="mpm-iconbtn mpm-btn--sm" data-tip="Remover o anexo" onClick={() => remove(a.id)}><Icon name="trash" /></span>
+                    {!readOnly
+                        ? <span className="mpm-iconbtn mpm-btn--sm" data-tip="Remover o anexo" onClick={() => remove(a.id)}><Icon name="trash" /></span>
+                        : null}
                 </div>
                 {isOpen
-                    ? <AttachmentPreview attachment={a} downloadUrl={downloadUrl} isLink={link} />
+                    ? <AttachmentPreview attachment={a} downloadUrl={downloadUrl} isLink={link} maxHeight={420} />
                     : null}
             </div>
         })}
-        <div className="mpm-col">
+        {readOnly ? null : <div className="mpm-col">
             <input className="mpm-input" placeholder="Nome (opcional)" value={linkName}
                 onChange={(e) => setLinkName(e.target.value)} />
             <div className="mpm-row">
@@ -177,7 +184,7 @@ const AttachmentPanel = ({ itemId }: { itemId: string }) => {
                 <Icon name="upload" /> {busy ? "Enviando…" : "Upload arquivo"}
                 <input type="file" multiple style={{ display: "none" }} onChange={onFile} disabled={busy} />
             </label>
-        </div>
+        </div>}
     </div>
 }
 

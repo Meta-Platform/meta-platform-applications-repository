@@ -10,11 +10,17 @@ import useFeedback from "../Hooks/useFeedback"
 // tela; o agente lê pela fila no MCP filtrando por `scope` (list_feedback).
 //
 // O `scope` É o `entityType` gravado no feedback: a MESMA string dos dois lados.
-export type FeedbackScope = "project" | "planning" | "ideas" | "board" | "list" | "backlog"
+// "doc-page" identifica uma PÁGINA de documentação específica (entityId = id da
+// página), para o agente filtrar o feedback daquela página no MCP (list_feedback).
+export type FeedbackScope = "project" | "planning" | "ideas" | "board" | "list" | "backlog" | "doc-page"
 
 interface PageFeedbackButtonProps {
     scope: FeedbackScope
     projectId?: string
+    // A entidade criticada. Nos escopos de projeto (project/board/…) é o próprio
+    // projeto (default). Em "doc-page" passe o id da página — é o que permite ao
+    // agente pegar "o feedback DESTA página".
+    entityId?: string
     // Rótulo humano ("Todo o planejamento"): vira o fieldLabel do feedback, que é
     // o que aparece no balão, na fila (/feedback) e para o agente.
     label: string
@@ -25,7 +31,7 @@ interface PageFeedbackButtonProps {
 // Largura do balão (FeedbackPopover.WIDTH): alinhamos a borda direita ao botão.
 const POPOVER_W = 380
 
-const PageFeedbackButton = ({ scope, projectId, label, compact }: PageFeedbackButtonProps) => {
+const PageFeedbackButton = ({ scope, projectId, entityId, label, compact }: PageFeedbackButtonProps) => {
     const feedback = useFeedback()
     const location = useLocation()
     if (!projectId) return null
@@ -37,7 +43,7 @@ const PageFeedbackButton = ({ scope, projectId, label, compact }: PageFeedbackBu
             y: box.bottom + 6,
             target: {
                 entityType: scope,
-                entityId: projectId,
+                entityId: entityId || projectId,
                 project: projectId,
                 fieldLabel: label
             },

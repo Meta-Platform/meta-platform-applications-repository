@@ -2,6 +2,7 @@ import { useMemo } from "react"
 import { useSelector } from "react-redux"
 
 import { createApiClient, ApiClient } from "../api/client"
+import { useReadOnly } from "./useReadOnly"
 
 // Fornece o client tipado do Meta Project Manager às telas. O catálogo de
 // servidores em execução (HTTPServerManager) é a "serverManagerInformation"
@@ -9,7 +10,9 @@ import { createApiClient, ApiClient } from "../api/client"
 // template.
 export const useApi = (): ApiClient => {
     const HTTPServerManager = useSelector((state: any) => state.HTTPServerManager)
-    return useMemo(() => createApiClient(HTTPServerManager), [HTTPServerManager])
+    // Num projeto arquivado, o client recusa qualquer escrita (o backend também).
+    const readOnly = useReadOnly()
+    return useMemo(() => createApiClient(HTTPServerManager, { readOnly }), [HTTPServerManager, readOnly])
 }
 
 export default useApi

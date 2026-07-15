@@ -23,6 +23,9 @@ import CreateReportsApi     from "./reports"
 import CreateActivityApi    from "./activity"
 import CreateEventsApi      from "./events"
 import CreatePlanningApi    from "./planning"
+import CreateDocsApi        from "./docs"
+import CreateRisksApi       from "./risks"
+import CreatePlanningDocsApi from "./planningDocs"
 import CreateSystemApi      from "./system"
 
 export class ApiError extends Error {
@@ -49,10 +52,24 @@ const unwrap = (res: any) => {
 
 export type Caller = (apiName: string, method: string, params?: any) => Promise<any>
 
+// Métodos de ESCRITA reconhecidos pelo prefixo do nome (todos os controllers
+// seguem PascalCase). Nenhum método de LEITURA (List*/Get*/Search*/Export*/
+// Metrics/Roadmap/Flow/Changes/Status/Report) começa com estes verbos. Usado só
+// para o guard de projeto arquivado; o backend é a garantia final.
+const WRITE_METHOD = /^(Create|Update|Delete|Set|Add|Remove|Move|Reorder|Convert|Link|Unlink|Assign|Block|Unblock|Archive|Restore|Duplicate|Index|Import)/
+// Escritas que NÃO são conteúdo de projeto e seguem livres mesmo em leitura:
+// preferências locais da GUI (sidebar, densidade, views salvas, último projeto).
+// O backend também não as bloqueia — são memória da interface, não do projeto.
+const READONLY_ALLOWED = new Set(["SetAppState"])
+
 // Constrói o "caller" ligado ao catálogo de servidores em execução (redux
-// HTTPServerManager) — passado a cada módulo de recurso.
-const makeCaller = (serverManagerInformation: any): Caller =>
+// HTTPServerManager) — passado a cada módulo de recurso. Quando readOnly (projeto
+// arquivado aberto), recusa qualquer escrita ANTES da chamada, com mensagem clara
+// e sem ida ao servidor.
+const makeCaller = (serverManagerInformation: any, readOnly = false): Caller =>
     async (apiName: string, method: string, params: any = {}) => {
+        if (readOnly && WRITE_METHOD.test(method) && !READONLY_ALLOWED.has(method))
+            throw new ApiError("PROJECT_ARCHIVED", "Projeto arquivado: somente leitura. Restaure-o para poder editar.")
         const api: any = GetAPI({ apiName, serverManagerInformation })
         const fn = api && api[method]
         if (typeof fn !== "function")
@@ -60,8 +77,8 @@ const makeCaller = (serverManagerInformation: any): Caller =>
         return unwrap(await fn(params))
     }
 
-export const createApiClient = (serverManagerInformation: any) => {
-    const call = makeCaller(serverManagerInformation)
+export const createApiClient = (serverManagerInformation: any, options: { readOnly?: boolean } = {}) => {
+    const call = makeCaller(serverManagerInformation, options.readOnly)
     return {
         projects:    CreateProjectsApi(call),
         boards:      CreateBoardsApi(call),
@@ -76,6 +93,9 @@ export const createApiClient = (serverManagerInformation: any) => {
         activity:    CreateActivityApi(call),
         events:      CreateEventsApi(call),
         planning:    CreatePlanningApi(call),
+        docs:        CreateDocsApi(call),
+        risks:       CreateRisksApi(call),
+        planningDocs: CreatePlanningDocsApi(call),
         system:      CreateSystemApi(call)
     }
 }

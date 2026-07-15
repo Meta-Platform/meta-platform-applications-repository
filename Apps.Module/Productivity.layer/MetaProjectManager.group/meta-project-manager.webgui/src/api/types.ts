@@ -32,6 +32,90 @@ export interface Project {
     updatedAt?: string
 }
 
+// Página de documentação do projeto (wiki). Árvore via parentId (null = raiz).
+export interface DocPage {
+    id: ID
+    projectId: ID
+    parentId?: ID | null
+    title: string
+    icon?: string
+    body?: string
+    order: number
+    createdByUserId?: ID
+    createdBySessionId?: ID
+    createdAt?: string
+    updatedAt?: string
+}
+
+// Risco do registro de riscos (planejamento documental, matriz 3×3). `level` é
+// derivado no backend a partir de probabilidade × impacto (não é coluna).
+export type RiskLevel = "low" | "medium" | "high" | string
+export type RiskStatus = "open" | "mitigating" | "accepted" | "closed" | "occurred" | string
+export type RiskDerivedLevel = "low" | "moderate" | "high" | "critical" | null
+
+export const RISK_LEVELS: string[] = ["low", "medium", "high"]
+export const RISK_STATUSES: string[] = ["open", "mitigating", "accepted", "closed", "occurred"]
+
+export interface RiskItem {
+    id: ID
+    projectId: ID
+    title: string
+    description?: string
+    probability: RiskLevel
+    impact: RiskLevel
+    status: RiskStatus
+    category?: string
+    mitigation?: string
+    contingency?: string
+    ownerUserId?: ID | null
+    milestoneId?: ID | null
+    order: number
+    // Derivado (probabilidade × impacto) — vem do backend em List/Get.
+    level?: RiskDerivedLevel
+    createdByUserId?: ID
+    createdBySessionId?: ID
+    createdAt?: string
+    updatedAt?: string
+}
+
+// Documento de planejamento (termo de abertura/charter). Seções estruturadas
+// (markdown); `version` incrementa a cada edição.
+export type PlanningDocStatus = "draft" | "review" | "approved" | "archived" | string
+export const PLANNING_DOC_STATUSES: string[] = ["draft", "review", "approved", "archived"]
+// Seções de conteúdo (ordem de exibição na tela).
+export const PLANNING_DOC_SECTIONS: { key: string; label: string }[] = [
+    { key: "objective", label: "Objetivo" },
+    { key: "scope", label: "Escopo" },
+    { key: "outOfScope", label: "Fora de escopo" },
+    { key: "stakeholders", label: "Partes interessadas" },
+    { key: "assumptions", label: "Premissas" },
+    { key: "constraints", label: "Restrições" },
+    { key: "successCriteria", label: "Critérios de sucesso" },
+    { key: "deliverables", label: "Entregas" }
+]
+
+export interface PlanningDoc {
+    id: ID
+    projectId: ID
+    milestoneId?: ID | null
+    title: string
+    status: PlanningDocStatus
+    version: number
+    objective?: string
+    scope?: string
+    outOfScope?: string
+    stakeholders?: string
+    assumptions?: string
+    constraints?: string
+    successCriteria?: string
+    deliverables?: string
+    order: number
+    createdByUserId?: ID
+    createdBySessionId?: ID
+    createdAt?: string
+    updatedAt?: string
+}
+
 export interface ProjectMetrics {
     projectId: ID
     stories: number
@@ -148,7 +232,10 @@ export interface WorkItem {
     layerName?: string
     groupName?: string
     progress?: number
+    startDate?: string | null
     dueDate?: string | null
+    estimatePoints?: number | null
+    estimateMinutes?: number | null
     blockedReason?: string | null
     order: number
     labels?: string[]
@@ -182,7 +269,8 @@ export interface Comment {
 export interface Attachment {
     id: ID
     projectId: ID
-    workItemId: ID
+    workItemId?: ID          // anexo de item
+    docPageId?: ID           // anexo de página de documentação
     commentId?: ID | null
     type: string
     name: string

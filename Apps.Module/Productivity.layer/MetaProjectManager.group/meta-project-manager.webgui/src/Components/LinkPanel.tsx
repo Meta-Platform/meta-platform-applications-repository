@@ -14,12 +14,14 @@ interface LinkPanelProps {
     item: WorkItem
     projectId?: string
     onChanged: () => void
+    // Projeto arquivado: só leitura dos vínculos (sem adicionar/remover).
+    readOnly?: boolean
 }
 
 // LinkPanel (feature 1): cria/remove vínculos entre itens. O alvo é buscado por
 // ListItems?text= (autocomplete key+título); títulos dos vínculos existentes são
 // resolvidos por um mapa carregado do projeto.
-const LinkPanel = ({ item, projectId, onChanged }: LinkPanelProps) => {
+const LinkPanel = ({ item, projectId, onChanged, readOnly }: LinkPanelProps) => {
     const nav = useItemNavigator()
     const api = useApi()
     const [relation, setRelation] = useState("relates")
@@ -85,12 +87,14 @@ const LinkPanel = ({ item, projectId, onChanged }: LinkPanelProps) => {
                         onClick={(e) => { e.preventDefault(); nav.openItem(l.targetItemId) }}>{label}</a>
                     : <span className="mpm-mono mpm-muted">{label}</span>}
                 <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t ? t.title : ""}</span>
-                <Icon name="trash" link className="mpm-muted" title="Remover vínculo"
-                    onClick={() => remove(l.relation, l.targetItemId)} />
+                {!readOnly
+                    ? <Icon name="trash" link className="mpm-muted" title="Remover vínculo"
+                        onClick={() => remove(l.relation, l.targetItemId)} />
+                    : null}
             </div>
         })}
 
-        <div className="mpm-row">
+        {readOnly ? null : <div className="mpm-row">
             <select className="mpm-inline-select" value={relation} onChange={(e) => setRelation(e.target.value)}>
                 {RELATIONS.map((r) => <option key={r} value={r}>{relationLabel(r)}</option>)}
             </select>
@@ -109,7 +113,7 @@ const LinkPanel = ({ item, projectId, onChanged }: LinkPanelProps) => {
             <button className="mpm-btn mpm-btn--sm" disabled={busy || (!target && !query.trim())} onClick={add}>
                 <Icon name="plus" /> Vincular
             </button>
-        </div>
+        </div>}
     </div>
 }
 

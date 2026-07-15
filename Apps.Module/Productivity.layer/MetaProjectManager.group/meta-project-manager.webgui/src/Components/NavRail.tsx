@@ -11,6 +11,7 @@ import useLiveReload from "../Hooks/useLiveReload"
 // A coluna ao lado (ProjectColumn) é dedicada ao projeto atual.
 export const GLOBAL_NAV: { key: string; label: string; icon: any; to: string; hint: string }[] = [
     { key: "home",     label: "Projetos",   icon: "th large",    to: "/",         hint: "Todos os projetos — o container de tudo (produto/sistema/iniciativa)." },
+    { key: "archive",  label: "Arquivados", icon: "archive",     to: "/archive",  hint: "Projetos arquivados — navegação somente leitura, para consulta." },
     { key: "users",    label: "Usuários",   icon: "users",       to: "/users",    hint: "Pessoas e agentes de IA que colaboram nos projetos." },
     { key: "agents",   label: "Agentes",    icon: "microchip",   to: "/agents",   hint: "Sessões de agentes de IA e pedidos de aprovação pendentes." },
     { key: "feedback", label: "Feedback",   icon: "comment alternate outline", to: "/feedback", hint: "O que você pediu para os agentes corrigirem (botão direito num campo)." },

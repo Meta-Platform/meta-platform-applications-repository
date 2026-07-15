@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom"
 import { Icon } from "semantic-ui-react"
 
 import useAppState from "../Hooks/useAppState"
+import { useReadOnly } from "../Hooks/useReadOnly"
 import NavRail from "./NavRail"
 import ProjectColumn from "./ProjectColumn"
 import CommandBar from "./CommandBar"
@@ -45,6 +46,7 @@ interface AppShellProps {
 const AppShell = ({ active, activeProjectId, activeProjectName, breadcrumb, title, subtitle, actions,
     inspector, onInspectorClose, onCreateProject, children }: AppShellProps) => {
     const navigate = useNavigate()
+    const readOnly = useReadOnly()
     const { snoozedCount, resumeAll } = useApprovalQueue()
     const [cmdOpen, setCmdOpen] = useState(false)
     const [sidebar, saveSidebar] = useAppState<SidebarState>("mpm.sidebar", SIDEBAR_DEFAULT)
@@ -127,14 +129,19 @@ const AppShell = ({ active, activeProjectId, activeProjectName, breadcrumb, titl
         return () => window.removeEventListener("keydown", onKey)
     }, [inspector, onInspectorClose])
 
-    const crumbs: Crumb[] = breadcrumb && breadcrumb.length > 0
+    const baseCrumbs: Crumb[] = breadcrumb && breadcrumb.length > 0
         ? breadcrumb
         : activeProjectName
         ? [{ label: "Projetos", to: "/" }, { label: activeProjectName }]
         : [{ label: "Projetos", to: "/" }]
+    // Num projeto arquivado a trilha leva de volta à área de Arquivados, não à
+    // lista de projetos ativos (de onde ele nem é acessível).
+    const crumbs: Crumb[] = readOnly
+        ? baseCrumbs.map((c, i) => i === 0 && c.label === "Projetos" ? { label: "Arquivados", to: "/archive" } : c)
+        : baseCrumbs
 
     return <div className="mpm-app" style={{ ["--mpm-sidebar-w" as any]: `${width}px` }}>
-        <header className="mpm-header">
+        <header className={`mpm-header ${readOnly ? "is-archived" : ""}`}>
             {/* Linha 1: identidade, trilha e ferramentas globais */}
             <div className="mpm-header__top">
                 <span className="mpm-iconbtn" data-tip={`${collapsed ? "Mostrar" : "Ocultar"} o menu do projeto`} data-tip-shortcut="Ctrl+B"
@@ -179,7 +186,14 @@ const AppShell = ({ active, activeProjectId, activeProjectName, breadcrumb, titl
             {title
                 ? <div className="mpm-header__title-row">
                     <div className="mpm-header__titles">
-                        <h1 className="mpm-page-title">{title}</h1>
+                        <h1 className="mpm-page-title">
+                            {title}
+                            {readOnly
+                                ? <span className="mpm-archived-flag" title="Este projeto está arquivado — você pode navegar e consultar, mas nada pode ser alterado.">
+                                    <Icon name="archive" /> Projeto arquivado · somente leitura
+                                </span>
+                                : null}
+                        </h1>
                         {subtitle ? <div className="mpm-page-subtitle">{subtitle}</div> : null}
                     </div>
                     {actions ? <div className="mpm-header__actions">{actions}</div> : null}

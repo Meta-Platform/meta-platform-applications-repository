@@ -261,6 +261,63 @@
             "url": "/",
             "type": "controller",
             "params": {
+                "api-template": "APIs/Docs.api.json",
+                "controller": "Controllers/Docs.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Risks.api.json",
+                "controller": "Controllers/Risks.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/PlanningDocs.api.json",
+                "controller": "Controllers/PlanningDocs.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
                 "api-template": "APIs/System.api.json",
                 "controller": "Controllers/System.controller",
                 "controller-params": {

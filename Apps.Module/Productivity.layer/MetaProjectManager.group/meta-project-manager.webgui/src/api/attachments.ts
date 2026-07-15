@@ -4,6 +4,7 @@ import { Attachment } from "./types"
 export interface AddAttachmentInput {
     name?: string
     base64?: string
+    mimeType?: string    // MIME real do arquivo (ex.: image/svg+xml) — do File.type
     url?: string
     commentId?: string   // quando o anexo pertence a um comentário
 }

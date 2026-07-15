@@ -22,6 +22,8 @@ interface KanbanColumnProps {
     onToggleSelect?: (id: string) => void
     // itemId → rótulo do agente que está tocando o item AGORA (em execução)
     agentActive?: { [itemId: string]: string }
+    // false num projeto arquivado: cards não arrastáveis.
+    draggable?: boolean
 }
 
 // KanbanColumn (spec §11.1): coluna configurável; alvo de drop (HTML5 nativo).
@@ -29,7 +31,7 @@ interface KanbanColumnProps {
 // reordena (feature 5).
 const KanbanColumn = ({ column, items, usersById, draggingId,
     onOpenItem, onDragStart, onDragEnd, onDropItem, onReorder, onQuickAdd,
-    onRenameColumn, onDeleteColumn, selectedIds, onToggleSelect, agentActive }: KanbanColumnProps) => {
+    onRenameColumn, onDeleteColumn, selectedIds, onToggleSelect, agentActive, draggable = true }: KanbanColumnProps) => {
     const [over, setOver] = useState(false)
     const [editing, setEditing] = useState(false)
     const [name, setName] = useState(column.name)
@@ -91,6 +93,7 @@ const KanbanColumn = ({ column, items, usersById, draggingId,
                     selected={!!selectedIds && selectedIds.indexOf(it.id) >= 0}
                     onToggleSelect={onToggleSelect}
                     agentActor={agentActive ? agentActive[it.id] : undefined}
+                    draggable={draggable}
                     onDropCard={onReorder ? () => dropAt(index) : undefined} />)}
         </div>
         {onQuickAdd

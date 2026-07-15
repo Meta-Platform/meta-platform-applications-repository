@@ -103,6 +103,19 @@ test("anexa arquivo com hash e metadata", async () => {
     assert.equal(read.buffer.toString(), "hello mpm")
 })
 
+test("ListItems traz attachmentCount/commentCount para os cards", async () => {
+    // MP-1 recebeu um anexo no teste anterior.
+    const list = await store.ListItems({ project: "MP" })
+    const mp1 = list.find((i) => i.key === "MP-1")
+    assert.ok(mp1)
+    assert.equal(mp1.attachmentCount >= 1, true)
+    assert.equal(typeof mp1.commentCount, "number")
+    // Um item recém-criado sem anexos vem com 0 (não undefined).
+    const fresh = await store.CreateItem({ project: "MP", type: "task", title: "Sem anexos" })
+    const flist = await store.ListItems({ project: "MP" })
+    assert.equal(flist.find((i) => i.id === fresh.id).attachmentCount, 0)
+})
+
 test("cria usuário humano e usuário agente", async () => {
     const human = await store.CreateUser({ type: "human", name: "Kaio", handle: "kaio" })
     assert.equal(human.type, "human")
@@ -724,6 +737,24 @@ test("claim vencido volta para a fila e outro agente assume", async () => {
     assert.equal(retaken.claimedByProvider, "codex")
 })
 
+test("o próprio dono renova o claim vivo; outro agente ainda recebe CONFLICT", async () => {
+    const it = await store.CreateItem({ project: "MP", type: "task", title: "Renovação" })
+    const fb = await store.CreateFeedback({ item: it.key, body: "corrija", actor: { source: "gui" } })
+
+    const first = await store.ClaimFeedback({ feedback: fb.id, ttlSeconds: 60, actor: AGENT_A })
+    // renova antes de expirar: NÃO pode dar CONFLICT, e estende o prazo
+    const renewed = await store.ClaimFeedback({ feedback: fb.id, ttlSeconds: 3600, actor: AGENT_A })
+    assert.equal(renewed.status, "in-analysis")
+    assert.equal(renewed.claimedByProvider, "claude")
+    assert.ok(new Date(renewed.claimExpiresAt) > new Date(first.claimExpiresAt), "renovar deve empurrar claimExpiresAt para frente")
+
+    // enquanto o claim de A está vivo, B continua barrado
+    await assert.rejects(
+        () => store.ClaimFeedback({ feedback: fb.id, actor: AGENT_B }),
+        (e) => e.code === "CONFLICT"
+    )
+})
+
 test("resolver exige claim vivo e do próprio agente", async () => {
     const it = await store.CreateItem({ project: "MP", type: "task", title: "Resolver" })
     const fb = await store.CreateFeedback({ item: it.key, body: "corrija", actor: { source: "gui" } })
@@ -954,4 +985,185 @@ test("desbloquear: SetBlocked com motivo vazio limpa e sai da coluna blocked", a
     const un = await store.SetBlocked({ item: it.key, reason: "" })
     assert.equal(un.blockedReason, null)
     assert.equal(un.statusKey, "backlog")
+})
+
+test("documentação: árvore (páginas + sub-páginas), update, move sem ciclo, delete em cascata", async () => {
+    const proj = await store.CreateProject({ name: "Doc Wiki", actor: { source: "cli" } })
+    const raiz = await store.CreateDocPage({ project: proj.id, title: "Guia", body: "# Guia", actor: { source: "cli" } })
+    const sub = await store.CreateDocPage({ project: proj.id, parentId: raiz.id, title: "Instalação", actor: { source: "cli" } })
+    const neta = await store.CreateDocPage({ project: proj.id, parentId: sub.id, title: "Pré-requisitos", actor: { source: "cli" } })
+
+    // Lista traz todas planas; a árvore é montada por parentId.
+    const list = await store.ListDocPages({ project: proj.id })
+    assert.equal(list.length, 3)
+    assert.equal(list.filter((p) => p.parentId === raiz.id).length, 1)
+    assert.equal((await store.GetDocPage({ docPage: raiz.id })).body, "# Guia")
+
+    // Update do corpo.
+    const upd = await store.UpdateDocPage({ docPage: sub.id, body: "passos...", title: "Instalação e setup" })
+    assert.equal(upd.body, "passos...")
+    assert.equal(upd.title, "Instalação e setup")
+
+    // Move: raiz não pode virar filha de sua própria neta (ciclo).
+    await assert.rejects(() => store.MoveDocPage({ docPage: raiz.id, parentId: neta.id }), (e) => e.code === "VALIDATION_ERROR")
+    // Move válido: sub vira raiz.
+    const moved = await store.MoveDocPage({ docPage: sub.id, parentId: "none" })
+    assert.equal(moved.parentId, null)
+
+    // Delete em cascata: apagar "Instalação" leva junto "Pré-requisitos".
+    const del = await store.DeleteDocPage({ docPage: sub.id, actor: { source: "cli" } })
+    assert.equal(del.removed, 2)
+    const after = await store.ListDocPages({ project: proj.id })
+    assert.equal(after.length, 1)
+    assert.equal(after[0].id, raiz.id)
+})
+
+test("documentação em projeto arquivado é somente leitura", async () => {
+    const proj = await store.CreateProject({ name: "Doc RO", actor: { source: "cli" } })
+    const page = await store.CreateDocPage({ project: proj.id, title: "Nota", actor: { source: "cli" } })
+    await store.ArchiveProject({ project: proj.id, actor: { source: "cli" } })
+    const archived = (e) => e.code === "PROJECT_ARCHIVED"
+    await assert.rejects(() => store.CreateDocPage({ project: proj.id, title: "X" }), archived)
+    await assert.rejects(() => store.UpdateDocPage({ docPage: page.id, body: "y" }), archived)
+    await assert.rejects(() => store.MoveDocPage({ docPage: page.id, order: 2 }), archived)
+    await assert.rejects(() => store.DeleteDocPage({ docPage: page.id, actor: { source: "cli" } }), archived)
+    // Leitura segue liberada.
+    assert.equal((await store.ListDocPages({ project: proj.id })).length, 1)
+})
+
+test("projeto arquivado é somente leitura: escritas rejeitadas, leituras liberadas, restaurar reabre", async () => {
+    // Projeto próprio com um item, board e planejamento para exercitar vários stores.
+    const proj = await store.CreateProject({ name: "Arquivo RO", actor: { source: "cli" } })
+    const item = await store.CreateItem({ project: proj.id, type: "task", title: "Tarefa congelada" })
+    const board = await store.CreateBoard({ project: proj.id, name: "Board RO", actor: { source: "cli" } })
+    const ms = await store.CreateMilestone({ project: proj.id, name: "Entrega RO", actor: { source: "cli" } })
+    const crit = await store.AddAcceptanceCriteria({ item: item.id, text: "critério" })
+
+    await store.ArchiveProject({ project: proj.id, actor: { source: "cli" } })
+
+    const archived = (e) => e.code === "PROJECT_ARCHIVED"
+    // Escritas em vários stores devem falhar com PROJECT_ARCHIVED.
+    await assert.rejects(() => store.UpdateItem({ item: item.id, title: "novo" }), archived)
+    await assert.rejects(() => store.SetStatus({ item: item.id, status: "done" }), archived)
+    await assert.rejects(() => store.CreateItem({ project: proj.id, type: "task", title: "novo item" }), archived)
+    await assert.rejects(() => store.DeleteItem({ item: item.id, actor: { source: "cli" } }), archived)
+    await assert.rejects(() => store.AddComment({ item: item.id, body: "oi" }), archived)
+    await assert.rejects(() => store.AddChecklistItem({ item: item.id, text: "passo" }), archived)
+    await assert.rejects(() => store.UpdateAcceptanceCriteria({ criteria: crit.id, met: true }), archived)
+    await assert.rejects(() => store.CreateBoard({ project: proj.id, name: "Board 2", actor: { source: "cli" } }), archived)
+    await assert.rejects(() => store.AddColumn({ board: board.id, name: "Coluna", actor: { source: "cli" } }), archived)
+    await assert.rejects(() => store.UpdateMilestone({ milestone: ms.id, name: "x" }), archived)
+    await assert.rejects(() => store.UpdateProject({ project: proj.id, description: "x", actor: { source: "cli" } }), archived)
+    await assert.rejects(() => store.AddActivityNote({ project: proj.id, text: "nota" }), archived)
+    await assert.rejects(() => store.CreateFeedback({ project: proj.id, entityType: "project", body: "muda isso" }), archived)
+
+    // Leituras continuam liberadas.
+    assert.equal((await store.GetItem({ item: item.id })).id, item.id)
+    assert.ok(Array.isArray(await store.ListItems({ project: proj.id })))
+    assert.equal((await store.GetProject({ project: proj.id })).status, "archived")
+
+    // Restaurar reabre a escrita.
+    await store.RestoreProject({ project: proj.id, actor: { source: "cli" } })
+    const upd = await store.UpdateItem({ item: item.id, title: "editável de novo" })
+    assert.equal(upd.title, "editável de novo")
+})
+
+// ---- Anexos de PÁGINA de documentação (doc-page-scoped) ----
+
+test("anexo de página: upload/link/list/read, remove e cascata ao apagar a página", async () => {
+    const proj = await store.CreateProject({ name: "Docs Anexo", actor: { source: "cli" } })
+    const page = await store.CreateDocPage({ project: proj.id, title: "Página raiz", actor: { source: "cli" } })
+    const sub = await store.CreateDocPage({ project: proj.id, parentId: page.id, title: "Sub", actor: { source: "cli" } })
+
+    // Upload (buffer/base64) — imagem SVG, com MIME preservado.
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>')
+    const att = await store.AddDocPageBufferAttachment({ docPage: page.id, name: "icone.svg", base64: svg.toString("base64"), mimeType: "image/svg+xml", actor: { source: "cli" } })
+    assert.equal(att.docPageId, page.id)
+    assert.equal(att.type, "image")
+    assert.equal(att.mimeType, "image/svg+xml")
+    assert.equal(att.sizeBytes, svg.length)
+
+    // Link (http/https/file) — validação de esquema.
+    const link = await store.AddDocPageLinkAttachment({ docPage: page.id, url: "https://example.com/spec", name: "spec", actor: { source: "cli" } })
+    assert.equal(link.type, "link")
+    await assert.rejects(() => store.AddDocPageLinkAttachment({ docPage: page.id, url: "javascript:alert(1)" }), (e) => e.code === "VALIDATION_ERROR")
+
+    // List traz os dois.
+    assert.equal((await store.ListDocPageAttachments({ docPage: page.id })).length, 2)
+
+    // Read devolve o conteúdo original (não vale para link).
+    const read = await store.ReadDocPageAttachment({ attachment: att.id })
+    assert.ok(read.buffer.equals(svg))
+    await assert.rejects(() => store.ReadDocPageAttachment({ attachment: link.id }), (e) => e.code === "VALIDATION_ERROR")
+
+    // A sub-página tem o próprio anexo.
+    const subAtt = await store.AddDocPageBufferAttachment({ docPage: sub.id, name: "s.txt", base64: Buffer.from("hi").toString("base64"), actor: { source: "cli" } })
+    assert.equal((await store.ListDocPageAttachments({ docPage: sub.id })).length, 1)
+
+    // Remove único (soft delete).
+    const rm = await store.RemoveDocPageAttachment({ attachment: subAtt.id, actor: { source: "cli" } })
+    assert.equal(rm.deleted, true)
+    assert.equal((await store.ListDocPageAttachments({ docPage: sub.id })).length, 0)
+
+    // Cascata: apagar a página raiz (e subárvore) some com os anexos das duas.
+    await store.AddDocPageBufferAttachment({ docPage: sub.id, name: "s2.txt", base64: Buffer.from("yo").toString("base64"), actor: { source: "cli" } })
+    await store.DeleteDocPage({ docPage: page.id, actor: { source: "cli" } })
+    const M = store.models.DocPageAttachment
+    assert.equal(await M.count({ where: { projectId: proj.id, deletedAt: null } }), 0)
+})
+
+test("anexo de página em projeto arquivado é somente leitura", async () => {
+    const proj = await store.CreateProject({ name: "Docs Anexo RO", actor: { source: "cli" } })
+    const page = await store.CreateDocPage({ project: proj.id, title: "P", actor: { source: "cli" } })
+    const att = await store.AddDocPageBufferAttachment({ docPage: page.id, name: "a.txt", base64: Buffer.from("x").toString("base64"), actor: { source: "cli" } })
+
+    await store.ArchiveProject({ project: proj.id, actor: { source: "cli" } })
+    const archived = (e) => e.code === "PROJECT_ARCHIVED"
+    await assert.rejects(() => store.AddDocPageBufferAttachment({ docPage: page.id, name: "b.txt", base64: Buffer.from("y").toString("base64") }), archived)
+    await assert.rejects(() => store.AddDocPageLinkAttachment({ docPage: page.id, url: "https://x.dev" }), archived)
+    await assert.rejects(() => store.RemoveDocPageAttachment({ attachment: att.id, actor: { source: "cli" } }), archived)
+
+    // Leitura segue liberada.
+    assert.equal((await store.ListDocPageAttachments({ docPage: page.id })).length, 1)
+})
+
+// ---- Exportação da documentação inteira (HTML + .zip) ----
+
+test("export da documentação: HTML autocontido e .zip (markdown em árvore + anexos ligados)", async () => {
+    const proj = await store.CreateProject({ name: "Export Docs", actor: { source: "cli" } })
+    const tinyPng = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    const guia = await store.CreateDocPage({ project: proj.id, title: "Guia do Usuário", icon: "📘",
+        body: `Intro **negrito**.\n\n![diagrama](data:image/png;base64,${tinyPng})`, actor: { source: "cli" } })
+    const setup = await store.CreateDocPage({ project: proj.id, parentId: guia.id, title: "Configuração / Setup", body: "## Passos", actor: { source: "cli" } })
+    await store.CreateDocPage({ project: proj.id, title: "Referência", body: "conteúdo", actor: { source: "cli" } })
+    await store.AddDocPageBufferAttachment({ docPage: guia.id, name: "icone.svg", base64: Buffer.from("<svg/>").toString("base64"), mimeType: "image/svg+xml", actor: { source: "cli" } })
+    await store.AddDocPageLinkAttachment({ docPage: setup.id, url: "https://example.com/x", name: "ref", actor: { source: "cli" } })
+
+    // HTML: um arquivo, com sumário, imagem embutida e sem <script>.
+    const html = await store.ExportDocsHtml({ project: proj.id })
+    assert.match(html.filename, /\.html$/)
+    assert.ok(html.html.includes("Sumário"))
+    assert.ok(html.html.includes("data:image/png"))         // imagem do corpo embutida
+    assert.ok(html.html.includes("Guia do Usuário"))
+    assert.ok(!/<script/i.test(html.html))                   // scrub
+
+    // Archive: .zip válido com README + páginas em árvore + assets extraídos.
+    const arc = await store.ExportDocsArchive({ project: proj.id })
+    assert.match(arc.filename, /\.zip$/)
+    assert.equal(arc.mimeType, "application/zip")
+    const zip = Buffer.from(arc.base64, "base64")
+    // Assinatura local file header (PK\x03\x04) e end-of-central-directory (PK\x05\x06).
+    assert.equal(zip.readUInt32LE(0), 0x04034b50)
+    assert.equal(zip.readUInt32LE(zip.length - 22), 0x06054b50)
+    // O nome da imagem extraída aparece na tabela de nomes do zip.
+    const asText = zip.toString("latin1")
+    assert.ok(asText.includes("README.md"))
+    assert.ok(asText.includes(`_assets/${guia.id}/img-1.png`))
+    assert.ok(asText.includes(`_assets/${guia.id}/files/icone.svg`))
+    assert.ok(asText.includes("index.md"))                   // página com filhos
+
+    // Export continua disponível em projeto arquivado (é só leitura).
+    await store.ArchiveProject({ project: proj.id, actor: { source: "cli" } })
+    const htmlArch = await store.ExportDocsHtml({ project: proj.id })
+    assert.ok(htmlArch.html.includes("Referência"))
 })

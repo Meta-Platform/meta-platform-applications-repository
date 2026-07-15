@@ -11,6 +11,8 @@ interface EcosystemContextSectionProps {
     // Escopo do projeto: usado para sugerir os pacotes certos primeiro.
     scope?: { repository?: string; module?: string; layer?: string; group?: string }
     onChanged?: () => void
+    // Projeto arquivado: só leitura dos pacotes vinculados.
+    readOnly?: boolean
 }
 
 // "Onde eu mexo?" — a resposta na Meta Platform é um PACOTE dentro da hierarquia
@@ -24,7 +26,7 @@ const ROLE_LABEL: Record<PackageRole, string> = {
     touched: "também muda"
 }
 
-const EcosystemContextSection = ({ item, scope, onChanged }: EcosystemContextSectionProps) => {
+const EcosystemContextSection = ({ item, scope, onChanged, readOnly }: EcosystemContextSectionProps) => {
     const api = useApi()
     const [packages, setPackages] = useState<ItemPackage[]>(item.packages || [])
     const [query, setQuery] = useState("")
@@ -109,18 +111,22 @@ const EcosystemContextSection = ({ item, scope, onChanged }: EcosystemContextSec
                                 {[p.repositoryName, p.moduleName, p.layerName, p.groupName].filter(Boolean).join(" / ")}
                             </div>
                         </div>
-                        <button className={`mpm-chip ${p.role === "primary" ? "mpm-chip--info" : "mpm-chip--neutral"}`}
-                            title="Alternar entre principal e “também muda”"
-                            disabled={busy} onClick={() => toggleRole(p.ref)}>
-                            {ROLE_LABEL[p.role]}
-                        </button>
-                        <span className="mpm-iconbtn" data-tip="Desvincular este pacote do item" onClick={() => remove(p.ref)}>
-                            <Icon name="close" />
-                        </span>
+                        {readOnly
+                            ? <span className={`mpm-chip ${p.role === "primary" ? "mpm-chip--info" : "mpm-chip--neutral"}`}>{ROLE_LABEL[p.role]}</span>
+                            : <button className={`mpm-chip ${p.role === "primary" ? "mpm-chip--info" : "mpm-chip--neutral"}`}
+                                title="Alternar entre principal e “também muda”"
+                                disabled={busy} onClick={() => toggleRole(p.ref)}>
+                                {ROLE_LABEL[p.role]}
+                            </button>}
+                        {!readOnly
+                            ? <span className="mpm-iconbtn" data-tip="Desvincular este pacote do item" onClick={() => remove(p.ref)}>
+                                <Icon name="close" />
+                            </span>
+                            : null}
                     </div>)}
             </div>}
 
-        <div className="mpm-pkg-picker" ref={boxRef}>
+        {readOnly ? null : <div className="mpm-pkg-picker" ref={boxRef}>
             <div className="mpm-row">
                 <Icon name="search" className="mpm-muted" />
                 <input className="mpm-input" style={{ flex: 1 }}
@@ -146,7 +152,7 @@ const EcosystemContextSection = ({ item, scope, onChanged }: EcosystemContextSec
                             </div>)}
                 </div>
                 : null}
-        </div>
+        </div>}
     </div>
 }
 

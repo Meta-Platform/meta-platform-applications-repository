@@ -5,6 +5,7 @@ import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
 import useLiveReload from "../Hooks/useLiveReload"
+import { useReadOnlyProject } from "../Hooks/useReadOnly"
 import { Project } from "../api/types"
 import ProjectSwitcher from "./ProjectSwitcher"
 
@@ -16,6 +17,10 @@ const PROJECT_NAV: { key: string; label: string; icon: any; path: (id: string) =
     { key: "backlog",  label: "Backlog",     icon: "clipboard list", path: (id) => `/projects/${id}/backlog`, hint: "Trabalho priorizado ainda não em execução (valor/esforço/clareza)." },
     { key: "inbox",    label: "Ideias",      icon: "inbox",   path: (id) => `/projects/${id}/inbox`,   hint: "Ideias cruas anotadas rápido, para triar depois (inbox, no jargão técnico)." },
     { key: "roadmap",  label: "Planejamento", icon: "road",   path: (id) => `/projects/${id}/roadmap`, hint: "O plano no tempo: entregas (por data) e horizontes (agora/próximo/depois)." },
+    { key: "gantt",    label: "Cronograma",  icon: "chart bar", path: (id) => `/projects/${id}/gantt`, hint: "Gráfico de Gantt: barras início→término, marcos e estrutura analítica (EAP)." },
+    { key: "docs",     label: "Documentação", icon: "book",   path: (id) => `/projects/${id}/docs`,    hint: "Wiki do projeto: páginas de documentação organizadas em árvore." },
+    { key: "risks",    label: "Riscos",      icon: "warning sign", path: (id) => `/projects/${id}/risks`, hint: "Registro de riscos: matriz probabilidade×impacto, mitigação e contingência." },
+    { key: "planning-docs", label: "Planos", icon: "file alternate outline", path: (id) => `/projects/${id}/planning-docs`, hint: "Documentos de planejamento: termo de abertura/charter com seções estruturadas." },
     { key: "feedback", label: "Feedback",   icon: "comment alternate outline", path: (id) => `/projects/${id}/feedback`, hint: "Feedbacks que você deu aos agentes neste projeto." }
 ]
 
@@ -30,6 +35,9 @@ interface ProjectColumnProps {
 const ProjectColumn = ({ active, activeProjectId, onCreateProject }: ProjectColumnProps) => {
     const api = useApi()
     const navigate = useNavigate()
+    // Projeto arquivado aberto: o ListProjects normal o exclui, então mesclamos o
+    // atual no seletor para ele não aparecer vazio ("nenhum projeto").
+    const archivedProject = useReadOnlyProject()
     const [projects, setProjects] = useState<Project[]>([])
     const [inboxCount, setInboxCount] = useState(0)
 
@@ -58,12 +66,25 @@ const ProjectColumn = ({ active, activeProjectId, onCreateProject }: ProjectColu
                 .then((l) => setInboxCount((l || []).length)).catch(() => {})
     }, { always: true })
 
+    const switcherProjects = archivedProject && !projects.some((p) => p.id === archivedProject.id)
+        ? [archivedProject, ...projects]
+        : projects
+
+    // Board e Lista são telas de EXECUÇÃO: só fazem sentido num projeto ativo. Na
+    // fase de planejamento (status "planning"/"candidate") ficam ocultas — o
+    // trabalho ainda vive no Backlog e nas telas de planejamento (roadmap, cronograma,
+    // riscos, planos, docs). Enquanto o status não carregou, mostra tudo (sem flicker).
+    const activeStatus = switcherProjects.find((p) => p.id === activeProjectId)?.status
+    const planningPhase = activeStatus === "planning" || activeStatus === "candidate"
+    const EXECUTION_ONLY = new Set(["board", "list"])
+    const projectNav = PROJECT_NAV.filter((n) => !(planningPhase && EXECUTION_ONLY.has(n.key)))
+
     return <aside className="mpm-projcol">
-        <ProjectSwitcher projects={projects} activeProjectId={activeProjectId} onCreateProject={onCreateProject} />
+        <ProjectSwitcher projects={switcherProjects} activeProjectId={activeProjectId} onCreateProject={onCreateProject} />
 
         {activeProjectId
             ? <nav className="mpm-nav">
-                {PROJECT_NAV.map((n) =>
+                {projectNav.map((n) =>
                     <a key={n.key}
                         className={`mpm-nav__item ${active === n.key ? "is-active" : ""}`}
                         title={n.hint}

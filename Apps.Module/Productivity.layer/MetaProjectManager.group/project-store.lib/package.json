@@ -5,6 +5,7 @@
   "author": "Kaio Cezar <kadisk.shark@gmail.com>",
   "license": "BSD-3-Clause",
   "dependencies": {
+    "marked": "^4.3.0",
     "sequelize": "^6.37.5",
     "sqlite3": "^5.1.7"
   }

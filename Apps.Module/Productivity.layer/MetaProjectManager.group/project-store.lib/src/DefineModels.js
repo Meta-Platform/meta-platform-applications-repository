@@ -434,12 +434,105 @@ const DefineModels = (sequelize) => {
         value: { type: DataTypes.JSON, allowNull: true }
     }, { tableName: "app_state" })
 
+    // Página de documentação do projeto (wiki). Uma árvore por projeto: `parentId`
+    // aponta a página-pai (null = raiz), como WorkItem.parentId. `body` é markdown
+    // rico (imagens data-URI + referências a itens [[MP-1]]). Soft delete manual.
+    const DocPage = sequelize.define("DocPage", {
+        id:                 idField,
+        projectId:          { type: DataTypes.STRING, allowNull: false },
+        parentId:           { type: DataTypes.STRING },              // null = raiz
+        title:              { type: DataTypes.STRING, allowNull: false },
+        icon:               { type: DataTypes.STRING },              // emoji opcional
+        body:               { type: DataTypes.TEXT },                // markdown
+        order:              { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        createdByUserId:    { type: DataTypes.STRING },
+        createdBySessionId: { type: DataTypes.STRING },
+        deletedAt:          { type: DataTypes.DATE }
+    }, { tableName: "project_doc_pages", indexes: [
+        { fields: ["projectId"] }, { fields: ["parentId"] }
+    ] })
+
+    // Registro de riscos do projeto (planejamento documental, estilo PMBOK). Cada
+    // risco tem probabilidade × impacto (matriz 3×3), plano de mitigação e de
+    // contingência, dono e vínculo opcional a um marco. Tabela NOVA → o sync() a
+    // cria; não usa `parentId` (lista plana). Soft delete manual, como DocPage.
+    const RiskItem = sequelize.define("RiskItem", {
+        id:                 idField,
+        projectId:          { type: DataTypes.STRING, allowNull: false },
+        title:              { type: DataTypes.STRING, allowNull: false },
+        description:        { type: DataTypes.TEXT },                 // markdown
+        probability:        { type: DataTypes.STRING, allowNull: false, defaultValue: "medium" }, // RISK_LEVELS
+        impact:             { type: DataTypes.STRING, allowNull: false, defaultValue: "medium" }, // RISK_LEVELS
+        status:             { type: DataTypes.STRING, allowNull: false, defaultValue: "open" },   // RISK_STATUSES
+        category:           { type: DataTypes.STRING },              // técnico/prazo/custo/externo (livre)
+        mitigation:         { type: DataTypes.TEXT },                // plano para reduzir prob./impacto
+        contingency:        { type: DataTypes.TEXT },                // plano B se o risco ocorrer
+        ownerUserId:        { type: DataTypes.STRING },              // dono do risco
+        milestoneId:        { type: DataTypes.STRING },              // marco afetado (opcional)
+        order:              { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        createdByUserId:    { type: DataTypes.STRING },
+        createdBySessionId: { type: DataTypes.STRING },
+        deletedAt:          { type: DataTypes.DATE }
+    }, { tableName: "project_risk_items", indexes: [
+        { fields: ["projectId"] }, { fields: ["milestoneId"] }
+    ] })
+
+    // Documento de planejamento (termo de abertura/charter, estilo PMBOK). Seções
+    // ESTRUTURADAS (colunas), não markdown livre — é o que o distingue do DocPage
+    // (wiki). Cada seção é markdown. `version` incrementa a cada edição (o histórico
+    // detalhado fica na auditoria). Opcionalmente amarrado a um marco. Tabela NOVA →
+    // o sync() a cria. Soft delete manual.
+    const PlanningDoc = sequelize.define("PlanningDoc", {
+        id:                 idField,
+        projectId:          { type: DataTypes.STRING, allowNull: false },
+        milestoneId:        { type: DataTypes.STRING },              // marco (opcional)
+        title:              { type: DataTypes.STRING, allowNull: false },
+        status:             { type: DataTypes.STRING, allowNull: false, defaultValue: "draft" }, // PLANNING_DOC_STATUSES
+        version:            { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+        objective:          { type: DataTypes.TEXT },                // objetivo
+        scope:              { type: DataTypes.TEXT },                // escopo (incluído)
+        outOfScope:         { type: DataTypes.TEXT },                // fora de escopo
+        stakeholders:       { type: DataTypes.TEXT },                // partes interessadas
+        assumptions:        { type: DataTypes.TEXT },                // premissas
+        constraints:        { type: DataTypes.TEXT },                // restrições
+        successCriteria:    { type: DataTypes.TEXT },                // critérios de sucesso
+        deliverables:       { type: DataTypes.TEXT },                // entregas
+        order:              { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        createdByUserId:    { type: DataTypes.STRING },
+        createdBySessionId: { type: DataTypes.STRING },
+        deletedAt:          { type: DataTypes.DATE }
+    }, { tableName: "project_planning_docs", indexes: [
+        { fields: ["projectId"] }, { fields: ["milestoneId"] }
+    ] })
+
+    // Anexo de uma PÁGINA de documentação. Espelha Attachment, mas pendura em
+    // `docPageId` (uma página não é um item). Tabela NOVA → o sync() a cria; não
+    // reaproveitamos `attachments` porque lá `workItemId` é NOT NULL (a infra de
+    // migração só faz ADD COLUMN, não afrouxa nullability). Mesmo storage em disco
+    // (attachmentsDirPath/projectId/attachmentId/original-file). Soft delete manual.
+    const DocPageAttachment = sequelize.define("DocPageAttachment", {
+        id:                  idField,
+        projectId:           { type: DataTypes.STRING, allowNull: false },
+        docPageId:           { type: DataTypes.STRING, allowNull: false },
+        type:                { type: DataTypes.STRING, allowNull: false, defaultValue: "file" },
+        name:                { type: DataTypes.STRING, allowNull: false },
+        description:         { type: DataTypes.TEXT },
+        mimeType:            { type: DataTypes.STRING },
+        sizeBytes:           { type: DataTypes.INTEGER },
+        sha256:              { type: DataTypes.STRING },
+        storagePath:         { type: DataTypes.STRING },
+        externalUrl:         { type: DataTypes.STRING },
+        uploadedByUserId:    { type: DataTypes.STRING },
+        uploadedBySessionId: { type: DataTypes.STRING },
+        deletedAt:           { type: DataTypes.DATE }
+    }, { tableName: "doc_page_attachments", indexes: [{ fields: ["docPageId"] }, { fields: ["projectId"] }] })
+
     return {
         Project, Board, BoardColumn, WorkItem, WorkItemLink,
         WorkItemChecklistItem, WorkItemAcceptanceCriteria,
         Attachment, Comment, User, AgentProfile, AgentSession,
         CreationRequest, Milestone, Sprint, AuditEvent, ActivityNote, AgentFeedback,
-        EcosystemPackage, WorkItemPackage, AppState
+        EcosystemPackage, WorkItemPackage, AppState, DocPage, DocPageAttachment, RiskItem, PlanningDoc
     }
 }
 
