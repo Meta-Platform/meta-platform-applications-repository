@@ -1,3 +1,14 @@
 {
-    "taskLoaders": []
+    "taskLoaders": [
+        {
+            "objectLoaderType": "desktop-window-instance",
+            "package": "@/desktop-window-instance.taskLoader",
+            "path": "Taskloaders.Module/Loaders.layer/desktop-window-instance.taskLoader",
+            "entry": "src/DesktopWindowInstance.taskLoader",
+            "npmDependencies": {
+                "electron": "^31.7.7"
+            },
+            "injectsDeps": true
+        }
+    ]
 }

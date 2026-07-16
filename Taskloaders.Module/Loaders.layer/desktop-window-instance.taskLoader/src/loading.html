@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Carregando…</title>
+    <style>
+        /*
+         * Tela provisória exibida enquanto o webgui é compilado (webpack em
+         * runtime). Auto-contida: só CSS inline e fontes de sistema — o bundle
+         * ainda não carregou, então NÃO há acesso a tokens.css/fontes externas.
+         * Os valores abaixo espelham o design system "Meta System Retro-Brutalist
+         * UI" (tokens --mp-* do home-screen.webgui / ecosystem-control-panel.webgui).
+         */
+        :root {
+            --mp-paper:        #F6F0DE;
+            --mp-surface:      #FFF9E8;
+            --mp-ink:          #171713;
+            --mp-muted:        #73766D;
+            --mp-line-strong:  #171713;
+            --mp-line-faint:   #D7CFBA;
+            --mp-accent-blue:  #2D74C4;
+            --mp-grid-line:    rgba(23, 23, 19, 0.035);
+            --mp-shadow:       4px 4px 0 var(--mp-line-strong);
+            --mp-font-display: "Space Grotesk", "Inter", "Segoe UI", system-ui, sans-serif;
+            --mp-font-ui:      "Inter", "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+            --mp-font-mono:    "JetBrains Mono", "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --mp-paper:       #16181d;
+                --mp-surface:     #1E2128;
+                --mp-ink:         #F2EEE0;
+                --mp-muted:       #9AA0A6;
+                --mp-line-strong: #565c68;
+                --mp-line-faint:  #2C2F36;
+                --mp-accent-blue: #5B8DEF;
+                --mp-grid-line:   rgba(236, 231, 214, 0.045);
+                --mp-shadow:      4px 4px 0 #000000;
+            }
+        }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; }
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background:
+                linear-gradient(var(--mp-grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--mp-grid-line) 1px, transparent 1px),
+                var(--mp-paper);
+            background-size: 16px 16px;
+            color: var(--mp-ink);
+            font-family: var(--mp-font-ui);
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .card {
+            width: 420px;
+            max-width: calc(100vw - 48px);
+            background: var(--mp-surface);
+            border: 2px solid var(--mp-line-strong);
+            border-radius: 12px;
+            box-shadow: var(--mp-shadow);
+            padding: 28px 30px 30px;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+        .brand__mark {
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--mp-surface);
+            background: var(--mp-ink);
+            border: 2px solid var(--mp-line-strong);
+            border-radius: 8px;
+        }
+        .brand__name {
+            font-family: var(--mp-font-display);
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+        .title {
+            font-family: var(--mp-font-display);
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            margin: 0 0 6px;
+        }
+        .subtitle {
+            font-size: 13px;
+            color: var(--mp-muted);
+            line-height: 1.5;
+            margin: 0 0 22px;
+        }
+        .bar {
+            position: relative;
+            height: 20px;
+            background: var(--mp-paper);
+            border: 2px solid var(--mp-line-strong);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .bar__fill {
+            height: 100%;
+            width: 0%;
+            background: var(--mp-accent-blue);
+            border-right: 2px solid var(--mp-line-strong);
+            transition: width 0.25s ease;
+        }
+        /* Enquanto não chega nenhuma % real (build ainda não emitiu), a barra
+           mostra um movimento indeterminado para não parecer travada. */
+        .bar.is-indeterminate .bar__fill {
+            width: 34%;
+            border-right: none;
+            animation: indeterminate 1.15s ease-in-out infinite;
+        }
+        @keyframes indeterminate {
+            0%   { transform: translateX(-110%); }
+            100% { transform: translateX(320%); }
+        }
+        .status {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-top: 12px;
+            font-family: var(--mp-font-mono);
+            font-size: 12px;
+            color: var(--mp-muted);
+        }
+        .status__pct { color: var(--mp-ink); font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="brand">
+            <div class="brand__mark">◆</div>
+            <div class="brand__name">Meta Platform</div>
+        </div>
+        <h1 class="title">Preparando a interface</h1>
+        <p class="subtitle">Aguarde enquanto a aplicação é compilada. A janela abre automaticamente assim que o build termina.</p>
+
+        <div id="bar" class="bar is-indeterminate">
+            <div id="fill" class="bar__fill"></div>
+        </div>
+        <div class="status">
+            <span id="phase">Compilando…</span>
+            <span id="pct" class="status__pct"></span>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            var bar   = document.getElementById("bar")
+            var fill  = document.getElementById("fill")
+            var pct   = document.getElementById("pct")
+            var phase = document.getElementById("phase")
+
+            var Apply = function(value) {
+                var n = Math.max(0, Math.min(100, Math.round(Number(value) || 0)))
+                bar.classList.remove("is-indeterminate")
+                fill.style.width = n + "%"
+                pct.textContent = n + "%"
+                phase.textContent = n >= 100 ? "Iniciando…" : "Compilando…"
+            }
+
+            // Alimentado pelo processo principal do Electron via preload
+            // (window.buildProgress.onProgress). No caminho legado (loadURL com
+            // polling HTTP) esse evento nunca chega e a barra fica indeterminada.
+            if(window.buildProgress && typeof window.buildProgress.onProgress === "function") {
+                window.buildProgress.onProgress(Apply)
+            }
+        })()
+    </script>
+</body>
+</html>
