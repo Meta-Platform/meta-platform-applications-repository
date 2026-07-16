@@ -1,0 +1,5 @@
+{
+    "namespace": "PlatformApplicationsRepo",
+    "dependencies": ["EssentialRepo", "EcosystemCoreRepo"],
+    "supportedPackageTypes": ["desktopapp"]
+}
