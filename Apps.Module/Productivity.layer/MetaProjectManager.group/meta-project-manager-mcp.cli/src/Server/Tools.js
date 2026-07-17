@@ -44,6 +44,37 @@ const BuildTools = ({ store, actor }) => {
     // Erro de domínio para a camada MCP (formatado como { ok:false, code, ... }).
     const McpError = (code, message, details) => Object.assign(new Error(message), { code, details })
 
+    // ───────────── Envelopes de resposta (camada MCP, store/GUI intactos) ─────────────
+    //
+    // MPMX-3: mutações de item devolvem um RESUMO por padrão (não o item inteiro com
+    //   a descrição longa) — barato para confirmar em lote. `view:"full"` traz tudo.
+    // MPMX-7: junto vai `pendingFeedbackCount` do item, para o agente saber que há
+    //   feedback do humano sem uma chamada list_feedback extra a cada ciclo.
+    const ITEM_SUMMARY_FIELDS = ["key", "statusKey", "progress", "completedAt", "updatedAt"]
+    const SummarizeItem = (it) => {
+        if(!it || typeof it !== "object") return it
+        const out = {}
+        for(const f of ITEM_SUMMARY_FIELDS) if(f in it) out[f] = it[f]
+        return out
+    }
+    // Conta o feedback ABERTO deste item (escopo work-item). Nunca derruba a mutação:
+    // se a contagem falhar, volta undefined e o retorno principal segue.
+    const PendingFeedbackForItem = async (itemRef) => {
+        try {
+            const list = await store.ListFeedback({ item: itemRef, status: "open", limit: 500 })
+            return Array.isArray(list) ? list.length : undefined
+        } catch(e){ return undefined }
+    }
+    // Envelopa o retorno de uma mutação de item: view=summary (padrão) encolhe o
+    // corpo; pendingFeedbackCount evita o list_feedback extra.
+    const ItemMutationResult = async (data, view) => {
+        const body = view === "full" ? data : SummarizeItem(data)
+        const pendingFeedbackCount = data && data.id ? await PendingFeedbackForItem(data.id) : undefined
+        return { ...body, pendingFeedbackCount }
+    }
+    // Campo `view` comum às mutações de item.
+    const VIEW_FIELD = { view: S.enum(["summary", "full"], "Formato do retorno: summary (padrão) = { key, statusKey, progress, completedAt, updatedAt } + pendingFeedbackCount; full = o item inteiro.") }
+
     // Executa uma AÇÃO GATED (criar projeto/board/milestone/sprint, ou deletar).
     // O gate transforma a chamada num pedido pendente; por padrão (waitApproval)
     // a tool BLOQUEIA (polling do SQLite via WaitForApproval) até a decisão humana
@@ -423,6 +454,43 @@ const BuildTools = ({ store, actor }) => {
             })
         },
         {
+            name: "close_project",
+            description: "Encerra um projeto de forma COESA num passo: valida as pré-condições (todos os itens concluídos + relatório final preenchido) e então ARQUIVA. Se faltar algo, NÃO arquiva e retorna `CLOSE_PRECONDITION_FAILED` com o que falta (via `details.preconditions`). Passe `finalReport` para gravar o relatório no mesmo passo; `force:true` ignora itens abertos (mas nunca a falta de relatório). O arquivamento passa pelo GATE: bloqueia até um humano aprovar.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                finalReport: S.str("Relatório final em markdown a gravar antes de encerrar (opcional se já houver um)"),
+                force: S.bool("Encerrar mesmo com itens não concluídos (a falta de relatório final NUNCA é ignorada)"),
+                ...WAIT_FIELDS
+            }, ["project"]),
+            handler: async (i) => {
+                // 1. Se veio relatório, grava primeiro (livre, sem gate).
+                if(typeof i.finalReport === "string" && i.finalReport.trim())
+                    await store.SetProjectReport(A({ project: i.project, finalReport: i.finalReport }))
+                // 2. Confere as pré-condições sobre o estado atual.
+                const metrics = await store.ProjectMetrics({ project: i.project })
+                const report = await store.GetProjectReport({ project: i.project })
+                const openItems = metrics.total - metrics.done
+                const preconditions = {
+                    allItemsDone: openItems === 0,
+                    totalItems: metrics.total,
+                    openItems,
+                    hasFinalReport: !!(report.finalReport && String(report.finalReport).trim())
+                }
+                const missing = []
+                if(!preconditions.allItemsDone && !i.force) missing.push(`${openItems} item(ns) não concluído(s) (use force:true para ignorar)`)
+                if(!preconditions.hasFinalReport) missing.push("relatório final ausente (passe finalReport ou grave com set_project_report)")
+                if(missing.length)
+                    throw McpError("CLOSE_PRECONDITION_FAILED", `Não é possível encerrar o projeto: ${missing.join("; ")}.`, { preconditions })
+                // 3. Arquiva sob GATE (bloqueia até a aprovação humana).
+                const archived = await GatedAction({
+                    actionName: "archive", type: "project", ref: i.project,
+                    waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                    run: (actor) => store.ArchiveProject({ project: i.project, actor })
+                })
+                return { closed: true, preconditions, project: archived }
+            }
+        },
+        {
             name: "get_board",
             description: "Detalhe de um board, incluindo as colunas (statusKey de cada uma).",
             inputSchema: Obj({ board: S.str("Board (id)") }, ["board"]),
@@ -684,22 +752,26 @@ const BuildTools = ({ store, actor }) => {
                 milestone: S.str("Milestone (id|nome)"),
                 sprint: S.str("Sprint (id|nome)"),
                 package: S.str("Só os itens que tocam este pacote (ref|namespace|nome)"),
+                release: S.str("Só os itens deste release/tag (ex.: v0.0.29)"),
                 horizon: S.enum(HORIZONS, "Horizonte"),
                 text: S.str("Busca textual"),
                 limit: S.num("Máx. de itens"),
                 offset: S.num("Deslocamento")
             }, ["project"]),
-            handler: (i) => store.ListItems({ project: i.project, type: i.type, status: i.status, parent: i.parent, board: i.board, assignee: i.assignee, priority: i.priority, milestone: i.milestone, sprint: i.sprint, horizon: i.horizon, text: i.text, package: i.package, limit: i.limit, offset: i.offset })
+            handler: (i) => store.ListItems({ project: i.project, type: i.type, status: i.status, parent: i.parent, board: i.board, assignee: i.assignee, priority: i.priority, milestone: i.milestone, sprint: i.sprint, horizon: i.horizon, text: i.text, package: i.package, release: i.release, limit: i.limit, offset: i.offset })
         },
         {
             name: "get_item",
-            description: "Detalha um item: descrição, critérios de aceite, checklist, links, subtarefas. Leia ANTES de agir numa tarefa.",
+            description: "Detalha um item: descrição, critérios de aceite, checklist, links (navegáveis, com a key e o projeto da outra ponta), subtarefas. Traz também pendingFeedbackCount (feedback aberto do item). Leia ANTES de agir numa tarefa.",
             inputSchema: Obj({ item: S.str("Item (id|key, ex.: MPM-42)") }, ["item"]),
-            handler: (i) => store.GetItem({ item: i.item })
+            handler: async (i) => {
+                const data = await store.GetItem({ item: i.item })
+                return { ...data, pendingFeedbackCount: await PendingFeedbackForItem(data.id) }
+            }
         },
         {
             name: "update_item",
-            description: "Atualiza campos de um item. Use ao receber FEEDBACK do humano (via `list_comments`, comentários que começam com \"Feedback para o agente\"): reescreva o TÍTULO e/ou a DESCRIÇÃO conforme pedido, de forma curta, assertiva e organizada, e depois comente o que mudou.",
+            description: "Atualiza campos de um item. Use ao receber FEEDBACK do humano (via `list_comments`, comentários que começam com \"Feedback para o agente\"): reescreva o TÍTULO e/ou a DESCRIÇÃO conforme pedido, de forma curta, assertiva e organizada, e depois comente o que mudou. Ao ENTREGAR o item, registre o release em releaseTag/releaseUrl (ex.: v0.0.29). Retorna um RESUMO + pendingFeedbackCount (use view:\"full\" para o item inteiro).",
             inputSchema: Obj({
                 item: S.str("Item (id|key)"),
                 title: S.str("Título"),
@@ -713,17 +785,20 @@ const BuildTools = ({ store, actor }) => {
                 branchName: S.str("Branch"),
                 commitHash: S.str("Commit"),
                 pullRequestUrl: S.str("Pull request"),
+                releaseTag: S.str("Release/tag que entregou o item (ex.: v0.0.29)"),
+                releaseUrl: S.str("URL do release/tag"),
                 horizon: S.enum(HORIZONS, "Horizonte"),
                 area: S.str("Área"),
-                typeFields: { type: "object", additionalProperties: true, description: "Campos específicos do tipo (bug: severity/regression/expected/actual/repro; story: persona/need/benefit; decision/research/tech-debt…). Merge no servidor: manda só o que muda." }
+                typeFields: { type: "object", additionalProperties: true, description: "Campos específicos do tipo (bug: severity/regression/expected/actual/repro; story: persona/need/benefit; decision/research/tech-debt…). Merge no servidor: manda só o que muda." },
+                ...VIEW_FIELD
             }, ["item"]),
-            handler: (i) => store.UpdateItem(A({ item: i.item, title: i.title, description: i.description, statusKey: i.status, priority: i.priority, progress: i.progress, dueDate: i.dueDate, assignee: i.assignee, repositoryUrl: i.repositoryUrl, branchName: i.branchName, commitHash: i.commitHash, pullRequestUrl: i.pullRequestUrl, horizon: i.horizon, area: i.area, typeFields: i.typeFields }))
+            handler: async (i) => ItemMutationResult(await store.UpdateItem(A({ item: i.item, title: i.title, description: i.description, statusKey: i.status, priority: i.priority, progress: i.progress, dueDate: i.dueDate, assignee: i.assignee, repositoryUrl: i.repositoryUrl, branchName: i.branchName, commitHash: i.commitHash, pullRequestUrl: i.pullRequestUrl, releaseTag: i.releaseTag, releaseUrl: i.releaseUrl, horizon: i.horizon, area: i.area, typeFields: i.typeFields })), i.view)
         },
         {
             name: "set_item_status",
-            description: "Muda o status de um item (ex.: backlog → ready → in-progress → review → done). A maioria das transições é LIVRE, MAS iniciar (mover para in-progress) e concluir (mover para done/completed ou coluna de conclusão) EXIGEM aprovação humana: a chamada BLOQUEIA até o humano decidir (AGENT_SESSION_CONFIRMATION_REQUIRED). Nunca comece nem dê uma tarefa por concluída sem solicitação explícita do usuário.",
-            inputSchema: Obj({ item: S.str("Item (id|key)"), status: S.str("Novo status (statusKey)") }, ["item","status"]),
-            handler: (i) => store.SetStatus(A({ item: i.item, status: i.status }))
+            description: "Muda o status de um item (ex.: backlog → ready → in-progress → review → done). A maioria das transições é LIVRE, MAS iniciar (mover para in-progress) e concluir (mover para done/completed ou coluna de conclusão) EXIGEM aprovação humana: a chamada BLOQUEIA até o humano decidir (AGENT_SESSION_CONFIRMATION_REQUIRED). Nunca comece nem dê uma tarefa por concluída sem solicitação explícita do usuário. Retorna um RESUMO + pendingFeedbackCount (use view:\"full\" para o item inteiro).",
+            inputSchema: Obj({ item: S.str("Item (id|key)"), status: S.str("Novo status (statusKey)"), ...VIEW_FIELD }, ["item","status"]),
+            handler: async (i) => ItemMutationResult(await store.SetStatus(A({ item: i.item, status: i.status })), i.view)
         },
         {
             name: "assign_item",
@@ -745,7 +820,7 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "link_item",
-            description: "Cria um vínculo entre itens. Relações aceitas (exatas): blocks, depends, relates, duplicates, implements, tests, originated_from. Direção: `item` --relação--> `target` (ex.: relation=blocks significa que `item` BLOQUEIA `target`; originated_from = `item` originou-se de `target`).",
+            description: "Cria um vínculo entre itens, INCLUSIVE de projetos diferentes (ex.: MPTL-20 depends VDRP-39): `item` e `target` são resolvidos por key/id em todo o workspace. Relações aceitas (exatas): blocks, depends, relates, duplicates, implements, tests, originated_from. Direção: `item` --relação--> `target` (relation=depends significa que `item` DEPENDE de `target`; blocks = `item` BLOQUEIA `target`). Veja as duas pontas resolvidas (key + projeto + crossProject) em get_item.",
             inputSchema: Obj({
                 item: S.str("Item origem (id|key)"),
                 relation: S.enum(LINK_RELATIONS, "Relação (valor exato)"),
@@ -851,17 +926,33 @@ const BuildTools = ({ store, actor }) => {
         // ───────────── Descobrir / decidir (criar novo vs. atualizar existente, conflitos) ─────────────
         {
             name: "search_items",
-            description: "Busca itens por texto em TODOS os projetos (ou num só, se `project` for informado). USE ANTES de criar: para decidir se já existe algo equivalente (então ATUALIZE em vez de duplicar) e para achar itens relacionados/conflitantes entre projetos.",
+            description: "Busca itens por texto (título ou key, ex.: \"MPMX-2\") em TODOS os projetos (ou num só, se `project` for informado). USE ANTES de criar: para decidir se já existe algo equivalente (então ATUALIZE em vez de duplicar) e para achar itens relacionados entre projetos. Retorno ENXUTO por padrão (sem a descrição longa) e PAGINADO: `{ items, total, limit, offset }`. Peça campos específicos com `fields` e página com `limit`/`offset` — não baixe corpos enormes só para conferir se algo existe.",
             inputSchema: Obj({
-                text: S.str("Termo a buscar no título"),
+                text: S.str("Termo a buscar no título ou na key"),
                 project: S.str("Restringe a um projeto (id|slug|key); omita para buscar em todos"),
                 type: S.enum(WORK_ITEM_TYPES, "Filtrar por tipo"),
                 status: S.str("Filtrar por status (statusKey)"),
                 assignee: S.str("Responsável (id|handle)"),
                 area: S.str("Área"),
-                limit: S.num("Máx. de itens (padrão 50)")
+                release: S.str("Filtrar pelo release/tag do item (ex.: v0.0.29)"),
+                fields: { type: "array", items: { type: "string" }, description: "Projeção: SÓ estes campos por item (ex.: [\"key\",\"title\",\"statusKey\"]). Omitido = resumo padrão (sem a descrição)." },
+                limit: S.num("Máx. de itens por página (padrão 50)"),
+                offset: S.num("Deslocamento para paginar (padrão 0)")
             }, ["text"]),
-            handler: (i) => store.ListItems({ text: i.text, project: i.project, type: i.type, status: i.status, assignee: i.assignee, area: i.area, package: i.package, limit: i.limit || 50, sort: "created" })
+            handler: async (i) => {
+                const limit = Number(i.limit) > 0 ? Number(i.limit) : 50
+                const offset = Number(i.offset) > 0 ? Number(i.offset) : 0
+                const filters = { text: i.text, project: i.project, type: i.type, status: i.status, assignee: i.assignee, area: i.area, release: i.release }
+                const [rows, total] = await Promise.all([
+                    store.ListItems({ ...filters, limit, offset, sort: "created" }),
+                    store.CountItems(filters)
+                ])
+                // Resumo por padrão: a descrição longa é o que estourava o contexto.
+                const DEFAULT_FIELDS = ["id", "key", "title", "type", "statusKey", "priority", "projectId", "assigneeUserId", "updatedAt"]
+                const fields = Array.isArray(i.fields) && i.fields.length ? i.fields : DEFAULT_FIELDS
+                const items = rows.map((r) => { const o = {}; for(const f of fields) if(f in r) o[f] = r[f]; return o })
+                return { items, total, limit, offset, returned: items.length, hasMore: offset + items.length < total }
+            }
         },
         {
             name: "list_milestones",
@@ -1147,14 +1238,28 @@ const BuildTools = ({ store, actor }) => {
             inputSchema: Obj({}),
             handler: async () => ({
                 instructions: INSTRUCTIONS,
+                // Políticas de trabalho que TODO agente segue (não só as regras de API).
+                // Parte já é imposta por gate (iniciar/concluir tarefa); as demais são
+                // disciplina que o agente carrega sem instrução externa.
+                workflowPolicies: [
+                    "Nunca mova um item para done/completed sem aprovação humana explícita — deixe em review e proponha (imposto por gate no set_item_status).",
+                    "Nunca dê algo por entregue nem registre commit/PR/release sem autorização explícita do humano.",
+                    "Higiene de board antes de trabalhar: o item deve estar num board, com planejamento (milestone/sprint) e movido para in-progress (iniciar exige aprovação humana).",
+                    "Verifique o RESULTADO ao final (reconsulte/valide), não presuma sucesso.",
+                    "Cheque list_feedback do projeto ANTES, DURANTE e ao FINALIZAR — não encerre com feedback aberto."
+                ],
                 constraints: {
                     linkRelations: LINK_RELATIONS,
+                    crossProjectLinks: true,
                     keyPrefixMaxChars: 5,
                     shortDescriptionMaxChars: 240,
                     linkAttachmentSchemes: ["http", "https", "file"],
                     gatedActions: {
                         create: ["project", "board", "milestone", "sprint"],
-                        delete: ["project", "board", "item", "risk", "planning-doc"]
+                        delete: ["project", "board", "item", "risk", "planning-doc"],
+                        statusStart: ["in-progress"],
+                        statusDone: ["done", "completed", "coluna isDoneColumn"],
+                        archive: ["project (via archive_project/close_project)"]
                     },
                     humanOnly: ["aprovar pedido", "rejeitar pedido", "confirmar sessão"],
                     globalActivityPermission: "activity:read:all_projects"

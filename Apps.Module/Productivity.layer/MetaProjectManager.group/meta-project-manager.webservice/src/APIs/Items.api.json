@@ -413,6 +413,18 @@
                     "required": false
                 },
                 {
+                    "name": "releaseTag",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "releaseUrl",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
                     "name": "environment",
                     "in": "body",
                     "type": "string",

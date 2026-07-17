@@ -103,6 +103,10 @@ const DefineModels = (sequelize) => {
         branchName:         { type: DataTypes.STRING },
         commitHash:         { type: DataTypes.STRING },
         pullRequestUrl:     { type: DataTypes.STRING },
+        // Release/tag que ENTREGOU o item (ex.: v0.0.29) + URL do release. Fecha o
+        // elo item → commit → release; distinto de branchName/commitHash (o meio).
+        releaseTag:         { type: DataTypes.STRING },
+        releaseUrl:         { type: DataTypes.STRING },
         environment:        { type: DataTypes.STRING },
         packagePath:        { type: DataTypes.STRING },
         moduleName:         { type: DataTypes.STRING },

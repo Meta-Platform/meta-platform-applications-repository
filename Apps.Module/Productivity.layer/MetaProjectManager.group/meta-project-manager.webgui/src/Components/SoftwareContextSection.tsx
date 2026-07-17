@@ -40,6 +40,10 @@ const SoftwareContextSection = ({ item, onSave, readOnly }: SoftwareContextSecti
             {textField("Commit", "commitHash")}
         </div>
         {textField("Pull request", "pullRequestUrl", "https://...")}
+        <div className="mpm-row mpm-gap-4">
+            {textField("Release / tag", "releaseTag", "v0.0.29")}
+            {textField("Release (URL)", "releaseUrl", "https://...")}
+        </div>
         <div className="mpm-field">
             <span className="mpm-field__label">Ambiente</span>
             <select className="mpm-inline-select" value={item.environment || ""}

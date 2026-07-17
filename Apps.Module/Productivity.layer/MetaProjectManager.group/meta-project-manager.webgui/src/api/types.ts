@@ -226,6 +226,8 @@ export interface WorkItem {
     branchName?: string
     commitHash?: string
     pullRequestUrl?: string
+    releaseTag?: string
+    releaseUrl?: string
     environment?: string
     packagePath?: string
     moduleName?: string

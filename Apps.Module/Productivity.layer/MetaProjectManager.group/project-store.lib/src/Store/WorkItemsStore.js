@@ -143,7 +143,10 @@ const WorkItemsStore = (ctx) => {
         return data
     }
 
-    const ListItems = async ({ project, type, status, parent, board, assignee, text, priority, milestone, sprint, horizon, clarityState, effort, value, area, package: pkg, limit = 200, offset = 0, sort = "order" } = {}) => {
+    // Monta a cláusula WHERE de itens a partir dos filtros. Extraída para ser
+    // compartilhada por ListItems e CountItems — assim search_items devolve `total`
+    // sem baixar todas as linhas (MPMX-2).
+    const _buildItemWhere = async ({ project, type, status, parent, board, assignee, text, priority, milestone, sprint, horizon, clarityState, effort, value, area, release, package: pkg } = {}) => {
         const where = { deletedAt: null }
         // "o que está aberto no meta-project-manager.webgui?"
         if(pkg) where.id = { [Op.in]: await store.ItemIdsByPackage(pkg) }
@@ -159,6 +162,7 @@ const WorkItemsStore = (ctx) => {
         if(effort) where.effort = effort
         if(value) where.value = value
         if(area) where.area = area
+        if(release) where.releaseTag = release
         if(parent !== undefined) where.parentId = parent === null || parent === "none" ? null : (await ResolveItem(parent)).id
         if(assignee) where.assigneeUserId = await _resolveUserId(assignee)
         // Busca por texto casa TÍTULO ou KEY: quem digita "MPMB-39" está procurando
@@ -167,6 +171,12 @@ const WorkItemsStore = (ctx) => {
             { title: { [Op.like]: `%${text}%` } },
             { key:   { [Op.like]: `%${String(text).toUpperCase()}%` } }
         ]
+        return where
+    }
+
+    const ListItems = async (filters = {}) => {
+        const { limit = 200, offset = 0, sort = "order" } = filters
+        const where = await _buildItemWhere(filters)
         const order = sort === "created" ? [["createdAt", "DESC"]]
             : sort === "priority" ? [["priority", "DESC"]]
             : sort === "value" ? [[literal("CASE value WHEN 'critical' THEN 5 WHEN 'high' THEN 4 WHEN 'medium' THEN 3 WHEN 'low' THEN 2 ELSE 1 END"), "DESC"]]
@@ -179,6 +189,10 @@ const WorkItemsStore = (ctx) => {
         return list
     }
 
+    // Conta os itens que casam os MESMOS filtros de ListItems, sem baixar as linhas.
+    // Usado por search_items para paginar com `total` (MPMX-2).
+    const CountItems = async (filters = {}) => WorkItem.count({ where: await _buildItemWhere(filters) })
+
     const GetItem = async ({ item } = {}) => {
         const instance = await ResolveItem(item)
         const [checklist, acceptanceCriteria, links, children, packages] = await Promise.all([
@@ -190,11 +204,37 @@ const WorkItemsStore = (ctx) => {
             store.ListItemPackages({ item: instance.id })
         ])
         const { att, com } = await _countsByItem([instance.id])
+        // Vínculos NAVEGÁVEIS: resolve as duas pontas (key + projeto) para o agente
+        // seguir uma dependência mesmo quando ela cruza projetos (MPMX-6). Os campos
+        // originais (sourceItemId/relation/targetItemId) seguem presentes.
+        const linkIds = [...new Set(links.flatMap((l) => [l.sourceItemId, l.targetItemId]))]
+        const linkedRows = linkIds.length
+            ? await WorkItem.findAll({ where: { id: { [Op.in]: linkIds } }, attributes: ["id", "key", "title", "projectId", "statusKey"] })
+            : []
+        const linkedById = {}
+        linkedRows.forEach((r) => { linkedById[r.id] = r })
+        const serializeLink = (l) => {
+            const from = linkedById[l.sourceItemId]
+            const to = linkedById[l.targetItemId]
+            const outgoing = l.sourceItemId === instance.id
+            const other = outgoing ? to : from
+            return {
+                ...Serialize(l),
+                direction: outgoing ? "outgoing" : "incoming",
+                sourceKey: from ? from.key : null,
+                targetKey: to ? to.key : null,
+                otherKey: other ? other.key : null,
+                otherTitle: other ? other.title : null,
+                otherStatus: other ? other.statusKey : null,
+                otherProjectId: other ? other.projectId : null,
+                crossProject: !!(other && other.projectId !== instance.projectId)
+            }
+        }
         return {
             ...Serialize(instance),
             checklist: SerializeMany(checklist),
             acceptanceCriteria: SerializeMany(acceptanceCriteria),
-            links: SerializeMany(links),
+            links: links.map(serializeLink),
             children: SerializeMany(children),
             packages,
             attachmentCount: att[instance.id] || 0,
@@ -209,7 +249,7 @@ const WorkItemsStore = (ctx) => {
         const simple = ["title", "description", "statusKey", "priority", "progress", "dueDate", "startDate", "blockedReason",
             "estimatePoints", "estimateMinutes", "milestoneId", "sprintId",
             "horizon", "clarityState", "effort", "value", "area", "ideaOrigin",
-            "repositoryUrl", "branchName", "commitHash", "pullRequestUrl",
+            "repositoryUrl", "branchName", "commitHash", "pullRequestUrl", "releaseTag", "releaseUrl",
             "environment", "packagePath", "moduleName", "layerName", "groupName"]
         for(const key of simple) if(fields[key] !== undefined) patch[key] = fields[key]
         // Campos por tipo: MERGE (não substitui o objeto inteiro), para um patch
@@ -493,7 +533,7 @@ const WorkItemsStore = (ctx) => {
 
     return {
         ResolveItem,
-        CreateItem, ListItems, GetItem, UpdateItem, SetStatus, Assign,
+        CreateItem, ListItems, CountItems, GetItem, UpdateItem, SetStatus, Assign,
         MoveItem, MoveToBoard, ReorderItem, ConvertItem, ConvertIdea, SetBlocked,
         LinkItem, UnlinkItem, DeleteItem,
         AddChecklistItem, UpdateChecklistItem, RemoveChecklistItem,

@@ -142,11 +142,19 @@ Ao avançar um passo, use \`add_comment\` explicando o que mudou e por quê, e
 de comentário, que é conversa sobre um item. Para INICIAR ou CONCLUIR a tarefa
 (\`set_item_status\` para in-progress/done) você depende da aprovação do humano
 (seção 4): proponha e aguarde; não marque como concluída por conta própria.
+**VERIFIQUE O RESULTADO ao final** — reconsulte (\`get_item\`, \`project_status\`) e
+confirme que a mudança valeu; não presuma sucesso. Ao ENTREGAR, registre o
+release em \`releaseTag\`/\`releaseUrl\` do item. Para encerrar um projeto inteiro,
+use \`close_project\`: ele valida (itens concluídos + relatório final) e arquiva
+num passo só.
 
 ## 8. Armadilhas que custam tempo
 - **Vínculos**: as relações são exatamente \`blocks\`, \`depends\`, \`relates\`,
   \`duplicates\`, \`implements\`, \`tests\`. Não existe \`depends-on\` nem
-  \`relates-to\`. Direção: \`item\` --relação--> \`target\`.
+  \`relates-to\`. Direção: \`item\` --relação--> \`target\`. O vínculo pode CRUZAR
+  projetos (ex.: \`MPTL-20 depends VDRP-39\`): \`link_item\` resolve a key/id em
+  todo o workspace, e \`get_item\` devolve a outra ponta já resolvida (key,
+  projeto e \`crossProject\`).
 - **Milestone/Sprint**: criar um milestone NÃO vincula itens. Use
   \`assign_item_planning\` (ou os campos \`milestone\`/\`sprint\` de
   \`create_item\`). Sem isso o milestone fica com 0 itens.

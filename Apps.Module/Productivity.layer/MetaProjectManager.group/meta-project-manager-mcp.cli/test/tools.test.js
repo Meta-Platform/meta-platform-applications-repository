@@ -369,3 +369,93 @@ test("agente lista pacotes do catálogo e vincula vários a um item", async () =
     await byN("remove_item_package").handler({ item: it.key, package: "x.lib" })
     assert.equal((await byN("list_item_packages").handler({ item: it.key })).length, 1)
 })
+
+// ───────────── MPMX: melhorias de contrato do MCP ─────────────
+
+test("MPMX-2 search_items: envelope paginado + projeção enxuta (sem descrição)", async () => {
+    await store.CreateItem({ project: "MCP", type: "task", title: "Busca Alfa", description: "x".repeat(500) })
+    const res = await byName("search_items").handler({ text: "Busca Alfa", project: "MCP" })
+    assert.ok(Array.isArray(res.items))
+    assert.equal(typeof res.total, "number")
+    assert.equal(res.limit, 50)
+    assert.equal(res.offset, 0)
+    const hit = res.items.find((i) => i.title === "Busca Alfa")
+    assert.ok(hit)
+    assert.equal(hit.description, undefined) // resumo por padrão: sem descrição longa
+    // projeção explícita
+    const only = await byName("search_items").handler({ text: "Busca Alfa", project: "MCP", fields: ["key", "title"] })
+    const h2 = only.items.find((i) => i.title === "Busca Alfa")
+    assert.deepEqual(Object.keys(h2).sort(), ["key", "title"])
+})
+
+test("MPMX-3/7 update_item: resumo + pendingFeedbackCount (padrão); view:full traz a descrição", async () => {
+    const it = await store.CreateItem({ project: "MCP", type: "task", title: "Upd", description: "orig" })
+    const sum = await byName("update_item").handler({ item: it.key, description: "nova desc" })
+    assert.equal(sum.key, it.key)
+    assert.equal(sum.description, undefined)                 // resumo
+    assert.equal(typeof sum.pendingFeedbackCount, "number")
+    const full = await byName("update_item").handler({ item: it.key, title: "Upd2", view: "full" })
+    assert.equal(full.title, "Upd2")
+    assert.equal(full.description, "nova desc")
+    assert.equal(typeof full.pendingFeedbackCount, "number")
+})
+
+test("MPMX-7 get_item: pendingFeedbackCount reflete o feedback aberto do item", async () => {
+    const it = await store.CreateItem({ project: "MCP", type: "task", title: "Fb" })
+    const before = await byName("get_item").handler({ item: it.key })
+    assert.equal(before.pendingFeedbackCount, 0)
+    await store.CreateFeedback({ item: it.id, body: "muda isso", actor: { actorUserId: "h", source: "gui" } })
+    const after = await byName("get_item").handler({ item: it.key })
+    assert.equal(after.pendingFeedbackCount, 1)
+})
+
+test("MPMX-5 update_item grava releaseTag/releaseUrl e search_items filtra por release", async () => {
+    const it = await store.CreateItem({ project: "MCP", type: "task", title: "Rel" })
+    await byName("update_item").handler({ item: it.key, releaseTag: "v9.9.9", releaseUrl: "https://r/9" })
+    const got = await byName("get_item").handler({ item: it.key })
+    assert.equal(got.releaseTag, "v9.9.9")
+    assert.equal(got.releaseUrl, "https://r/9")
+    const res = await byName("search_items").handler({ text: "Rel", project: "MCP", release: "v9.9.9" })
+    assert.ok(res.items.some((i) => i.key === it.key))
+    assert.ok(res.total >= 1)
+})
+
+test("MPMX-6 get_item: vínculo cross-projeto navegável (otherKey + crossProject)", async () => {
+    await store.CreateProject({ name: "Other Proj", keyPrefix: "OTHP", actor: { source: "cli" } })
+    const a = await store.CreateItem({ project: "MCP", type: "task", title: "A dep" })
+    const b = await store.CreateItem({ project: "OTHP", type: "task", title: "B alvo" })
+    await byName("link_item").handler({ item: a.key, relation: "depends", target: b.key })
+    const got = await byName("get_item").handler({ item: a.key })
+    const link = got.links.find((l) => l.relation === "depends")
+    assert.ok(link)
+    assert.equal(link.otherKey, b.key)
+    assert.equal(link.direction, "outgoing")
+    assert.equal(link.crossProject, true)
+})
+
+test("MPMX-4 close_project: bloqueia sem itens concluídos e sem relatório", async () => {
+    await store.CreateProject({ name: "Close Proj", keyPrefix: "CLOSE", actor: { source: "cli" } })
+    await store.CreateItem({ project: "CLOSE", type: "task", title: "aberto" })
+    const out = await byName("close_project").handler({ project: "CLOSE" }).then((r) => ({ ok: r }), (e) => ({ err: e }))
+    assert.ok(out.err)
+    assert.equal(out.err.code, "CLOSE_PRECONDITION_FAILED")
+    assert.equal(out.err.details.preconditions.hasFinalReport, false)
+    assert.equal(out.err.details.preconditions.openItems, 1)
+})
+
+test("MPMX-4 close_project: grava relatório + force arquiva (após aprovação humana)", async () => {
+    const call = byName("close_project").handler({ project: "CLOSE", finalReport: "# Fim", force: true })
+    const req = await waitForPendingRequest({ type: "project", actionName: "archive" })
+    await store.ApproveRequest({ request: req.id, actor: { source: "cli" } })
+    const res = await call
+    assert.equal(res.closed, true)
+    assert.equal(res.project.status, "archived")
+    assert.equal(res.preconditions.hasFinalReport, true)
+})
+
+test("MPMX-1 get_guidance: expõe workflowPolicies e gate de status", async () => {
+    const g = await byName("get_guidance").handler({})
+    assert.ok(Array.isArray(g.workflowPolicies) && g.workflowPolicies.length >= 5)
+    assert.equal(g.constraints.crossProjectLinks, true)
+    assert.ok(g.constraints.gatedActions.statusDone.includes("done"))
+})
