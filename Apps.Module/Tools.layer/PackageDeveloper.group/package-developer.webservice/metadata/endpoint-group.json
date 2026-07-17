@@ -4,7 +4,8 @@
         "packageHandlerManagerService",
         "packageDeveloperLib",
         "packageToolkitLib",
-        "processManagerService"
+        "processManagerService",
+        "gitStatusManagerService"
     ],
     "endpoints": [
         {
@@ -18,7 +19,8 @@
                 "controller-params":{
                     "packageHandlerManagerService":"packageHandlerManagerService",
                     "packageDeveloperLib":"packageDeveloperLib",
-                    "packageToolkitLib":"packageToolkitLib"
+                    "packageToolkitLib":"packageToolkitLib",
+                    "gitStatusManagerService":"gitStatusManagerService"
                 },
                 "serverService":"serverService"
             }

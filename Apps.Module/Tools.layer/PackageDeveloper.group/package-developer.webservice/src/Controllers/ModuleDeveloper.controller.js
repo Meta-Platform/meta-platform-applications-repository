@@ -19,7 +19,8 @@ const ModuleDeveloperController = (params) => {
     const {
         packageHandlerManagerService,
         packageDeveloperLib,
-        packageToolkitLib
+        packageToolkitLib,
+        gitStatusManagerService
     } = params
 
     const GetPackage              = packageDeveloperLib.require("Manager.Functions/GetPackage.function")
@@ -177,6 +178,36 @@ const ModuleDeveloperController = (params) => {
             path
         }))
 
+    // Stream de status git (WS): pinta de vermelho, na árvore, tudo que está sem
+    // commitar. `repositories` é a lista (CSV) de repositórios abertos; resolve
+    // cada nome -> caminho e assina o gerenciador reativo (watcher + debounce).
+    // Envia o estado completo no início e a cada mudança em disco (sem polling).
+    const _GitStatusStream = async (ws, arg) => {
+        const raw = (arg && (arg.repositories !== undefined ? arg.repositories : arg)) || ""
+        const names = String(raw).split(",").map((s) => s.trim()).filter(Boolean)
+
+        if(!gitStatusManagerService){
+            try { ws.send(JSON.stringify({ statusByPath: {}, repositories: {} })) } catch(e) {}
+            return
+        }
+
+        // Resolve nomes -> caminhos (silenciosamente ignora os inválidos).
+        const repoList = []
+        for(const name of names){
+            try {
+                const repo = await packageHandlerManagerService.GetWorkspace({ name })
+                if(repo && repo.path) repoList.push({ name, path: repo.path })
+            } catch(e) { /* workspace inexistente */ }
+        }
+
+        const safeSend = async () => {
+            try { ws.send(JSON.stringify(await subscription.GetStatus())) } catch(e) { /* socket fechado */ }
+        }
+        const subscription = gitStatusManagerService.Subscribe(repoList, () => { safeSend() })
+        if(ws.on) ws.on("close", () => { try { subscription.dispose() } catch(e) {} })
+        safeSend()   // snapshot inicial
+    }
+
     const _GetIcon = ({packageName, workspace, ext}) => {
         try{
             const packageDevelopmentService = 
@@ -210,6 +241,7 @@ const ModuleDeveloperController = (params) => {
         CreatePackage           : _CreatePackage,
         ListPackagesByWorkspace : _ListPackagesByWorkspace,
         Status                  : _Status,
+        GitStatusStream         : _GitStatusStream,
         GetIcon                 : _GetIcon,
     }
 

@@ -24,6 +24,7 @@ const PackageDeveloperGuiService = (params) => {
     const {
         packageHandlerManagerService,
         processManagerService,
+        gitStatusManagerService,
         packageDeveloperLib,
         packageToolkitLib,
         packageDeveloperWebservice,
@@ -35,6 +36,7 @@ const PackageDeveloperGuiService = (params) => {
     const controllerParams = {
         packageHandlerManagerService,
         processManagerService,
+        gitStatusManagerService,
         packageDeveloperLib,
         packageToolkitLib
     }

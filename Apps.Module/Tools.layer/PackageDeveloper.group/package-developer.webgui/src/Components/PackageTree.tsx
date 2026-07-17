@@ -4,6 +4,7 @@ import { List, Icon, Input } from "semantic-ui-react"
 
 import PackageIcon from "./PackageIcon"
 import PackageComponentsTree from "./PackageComponentsTree"
+import { gitEntry, gitNameStyle, gitTitle, GitBadge } from "../Utils/gitDecor"
 
 // Destaque visual do nó selecionado (faixa de acento + fundo suave).
 const SELECTED_STYLE:any = {
@@ -20,12 +21,13 @@ const EditPencil = ({ onClick, title }:any) =>
 // Pacote: caret = expande a árvore de componentes (Boot/Services/Endpoints/…);
 // clique no nome = seleciona (destaca + info); duplo-clique = editar; botão direito
 // = menu de contexto. O lápis só aparece quando selecionado.
-const PackageItem = ({ workspace, pkg, selectedPackage, onSelectPackage, onSelectDetail, onEditPackage, onNodeContext }:any) => {
+const PackageItem = ({ workspace, pkg, selectedPackage, onSelectPackage, onSelectDetail, onEditPackage, onNodeContext, statusByPath }:any) => {
     const isSelected = selectedPackage
         && selectedPackage.name === pkg.name
         && selectedPackage.ext === pkg.ext
         && selectedPackage.path === pkg.path
     const [open, setOpen] = useState(false)
+    const git = gitEntry(statusByPath, pkg.path)
     return <List.Item>
         <div style={{display:"flex", alignItems:"center", padding:"4px 6px", ...(isSelected ? SELECTED_STYLE : {})}}>
             <Icon name={open ? "caret down" : "caret right"} link title="Expandir componentes"
@@ -34,11 +36,13 @@ const PackageItem = ({ workspace, pkg, selectedPackage, onSelectPackage, onSelec
             <div style={{flex:1, display:"flex", alignItems:"center", minWidth:0, cursor:"pointer"}}
                 onClick={() => onSelectPackage(pkg)}
                 onDoubleClick={() => onEditPackage(pkg)}
+                title={gitTitle(git)}
                 onContextMenu={(e:any) => onNodeContext && onNodeContext(e, "package", pkg)}>
                 <span style={{marginRight:8, flexShrink:0}}><PackageIcon workspace={workspace} name={pkg.name} ext={pkg.ext} /></span>
                 <span style={{overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>
-                    <strong>{pkg.name}</strong><span style={{opacity:0.55}}>.{pkg.ext}</span>
+                    <strong style={gitNameStyle(git)}>{pkg.name}</strong><span style={{opacity:0.55, ...gitNameStyle(git)}}>.{pkg.ext}</span>
                 </span>
+                <GitBadge entry={git} />
             </div>
             { isSelected && <EditPencil title="Editar pacote (ou duplo-clique)" onClick={() => onEditPackage(pkg)} /> }
         </div>
@@ -63,22 +67,25 @@ const PackageItem = ({ workspace, pkg, selectedPackage, onSelectPackage, onSelec
 
 // Grupo: clique = seleciona (destaca) e expande; duplo-clique = editar todos;
 // caret = expandir/recolher. Auto-expande quando contém o pacote selecionado.
-const GroupNode = ({ workspace, group, selectedGroup, selectedPackage, onSelectGroup, onEditGroup, onNodeContext, ...rest }:any) => {
+const GroupNode = ({ workspace, group, selectedGroup, selectedPackage, onSelectGroup, onEditGroup, onNodeContext, statusByPath, ...rest }:any) => {
     const containsSelected = !!selectedPackage && (group.packages || []).some((p:any) => p.path === selectedPackage.path)
     const isSelected = !!selectedGroup && selectedGroup.path === group.path
     const [open, setOpen] = useState(containsSelected || isSelected)
     useEffect(() => { if(containsSelected) setOpen(true) }, [containsSelected])
+    const git = gitEntry(statusByPath, group.path)
 
     return <List.Item>
         <div style={{display:"flex", alignItems:"center", padding:"2px 4px", ...(isSelected ? SELECTED_STYLE : {})}}>
             <List.Icon name={open ? "caret down" : "caret right"} link onClick={() => setOpen(!open)} style={{marginTop:6}} />
             <List.Content style={{flex:1, minWidth:0}}>
                 <List.Header style={{cursor:"pointer", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}
+                    title={gitTitle(git)}
                     onClick={() => { onSelectGroup && onSelectGroup(group); setOpen(true) }}
                     onDoubleClick={() => onEditGroup(group)}
                     onContextMenu={(e:any) => onNodeContext && onNodeContext(e, "group", group)}>
-                    <Icon name="folder" color="yellow" />{group.name}
+                    <Icon name="folder" color="yellow" /><span style={gitNameStyle(git)}>{group.name}</span>
                     <span style={{opacity:0.5, marginLeft:6}}>({(group.packages||[]).length})</span>
+                    <GitBadge entry={git} />
                 </List.Header>
             </List.Content>
             { isSelected && <EditPencil title="Editar grupo — todos os pacotes (ou duplo-clique)" onClick={() => onEditGroup(group)} /> }
@@ -87,7 +94,7 @@ const GroupNode = ({ workspace, group, selectedGroup, selectedPackage, onSelectG
             open && <List.List>
                 {(group.packages || []).filter(rest.match || (() => true)).map((pkg:any, key:number) =>
                     <PackageItem key={key} workspace={workspace} pkg={pkg}
-                        selectedPackage={selectedPackage} onNodeContext={onNodeContext} {...rest} />)}
+                        selectedPackage={selectedPackage} onNodeContext={onNodeContext} statusByPath={statusByPath} {...rest} />)}
             </List.List>
         }
     </List.Item>

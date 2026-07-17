@@ -1,12 +1,20 @@
 import GetRequest   from "../Utils/GetRequest.util"
 import IPCWebSocket from "../Utils/IPCWebSocket"
 //TODO Ja existe repetido
-const getURLPath = (path:string, parameters:Array<object>) => 
-parameters && parameters.length > 0
-? parameters
-    .filter((parameter:any) => (parameter.in == "path"))
-    .reduce((path:string, parameter:any) => path.replace(`:${parameter.name}`, parameter.value), path)
-: path
+const getURLPath = (path:string, parameters:Array<object>) => {
+    const withPath = parameters && parameters.length > 0
+        ? parameters
+            .filter((parameter:any) => (parameter.in == "path"))
+            .reduce((path:string, parameter:any) => path.replace(`:${parameter.name}`, parameter.value), path)
+        : path
+    // Params in:"query" viram query string (o getSocket ignorava-os, deixando o
+    // WS sem argumentos — ex.: GitStatusStream ?repositories=...).
+    const query = (parameters || [])
+        .filter((parameter:any) => parameter.in == "query" && parameter.value !== undefined)
+        .map((parameter:any) => `${encodeURIComponent(parameter.name)}=${encodeURIComponent(parameter.value)}`)
+        .join("&")
+    return query ? `${withPath}?${query}` : withPath
+}
 
 //TODO Ja existe repetido
 const getParametersWithData = (parameters:Array<any>, data:any) => {

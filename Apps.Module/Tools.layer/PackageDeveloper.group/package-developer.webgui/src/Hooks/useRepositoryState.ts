@@ -16,6 +16,10 @@ const useRepositoryState = ({ HTTPServerManager }:any) => {
     const [openRepositories, setOpenRepositories] = useState<string[]>([])
     const [activeRepository, setActiveRepository] = useState<string | undefined>()
     const [hierarchies, setHierarchies]         = useState<{[k:string]:any}>({})
+    // Status git (reativo): mapa caminho->status (nós da árvore) + resumo por repo
+    // (painel de repositórios). Alimentado por um WS que empurra o estado a cada
+    // mudança em disco — sem polling.
+    const [gitStatus, setGitStatus]             = useState<{statusByPath:any, repositories:any}>({ statusByPath:{}, repositories:{} })
 
     const loadRecents = () =>
         svc().ListRecentRepositories().then(({data}:any) => setRecents(data || []))
@@ -102,6 +106,22 @@ const useRepositoryState = ({ HTTPServerManager }:any) => {
     const getAppState = (key:string) => svc().GetAppState({ key }).then(({data}:any) => data)
     const setAppState = (key:string, value:string) => svc().SetAppState({ key, value })
 
+    // Assina o status git dos repositórios ABERTOS. Reabre o socket quando a
+    // lista muda (ou quando o servidor fica disponível). O backend empurra o
+    // estado completo no início e a cada mudança em disco.
+    const serversReady = (HTTPServerManager && HTTPServerManager.list_web_servers_running || []).length
+    useEffect(() => {
+        if(!openRepositories.length){ setGitStatus({ statusByPath:{}, repositories:{} }); return }
+        const api = svc()
+        if(!api || !api.GitStatusStream) return
+        let ws:any
+        try { ws = api.GitStatusStream({ repositories: openRepositories.join(",") }) } catch(e) { return }
+        ws.onmessage = (event:any) => {
+            try { setGitStatus(JSON.parse(event.data)) } catch(e) {}
+        }
+        return () => { try { ws && ws.close() } catch(e) {} }
+    }, [openRepositories.join(","), serversReady])
+
     // Carga inicial: recentes + restaura os repositórios abertos + o ativo.
     useEffect(() => {
         loadRecents()
@@ -125,6 +145,8 @@ const useRepositoryState = ({ HTTPServerManager }:any) => {
         openRepositories,
         activeRepository,
         hierarchy: activeRepository ? hierarchies[activeRepository] : undefined,
+        gitStatusByPath: gitStatus.statusByPath || {},
+        gitRepositories: gitStatus.repositories || {},
         openRepository,
         switchRepository,
         closeOpenRepository,

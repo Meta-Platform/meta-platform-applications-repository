@@ -64,6 +64,7 @@ const MainPage = ({ HTTPServerManager }:any) => {
 
     const {
         recents, openRepositories, activeRepository, hierarchy,
+        gitStatusByPath, gitRepositories,
         openRepository, switchRepository, closeOpenRepository, goToWelcome,
         createRepository, scaffoldRepository, createContainer, createPackage,
         renameNode, removeNode, removeRepository, getAppState, setAppState
@@ -268,6 +269,7 @@ const MainPage = ({ HTTPServerManager }:any) => {
                 <OpenRepositories
                     repos={openRepositories}
                     active={activeRepository}
+                    gitRepositories={gitRepositories}
                     onSwitch={switchRepository}
                     onClose={closeOpenRepository}
                     onAdd={() => setBrowserOpen(true)}
@@ -311,6 +313,7 @@ const MainPage = ({ HTTPServerManager }:any) => {
                     hierarchy
                     ? <RepositoryHierarchy hierarchy={hierarchy} selectedPath={selectedRef && selectedRef.path}
                         workspace={activeRepository}
+                        statusByPath={gitStatusByPath}
                         selectedPackage={selectedPackage}
                         onSelectPackage={handleSelectPackage}
                         onSelect={(sel:any) => setSelectedRef({ kind: sel.kind, path: sel.node.path })}
@@ -324,6 +327,7 @@ const MainPage = ({ HTTPServerManager }:any) => {
                 <PackageTree
                     workspace={activeRepository}
                     selected={selectedNode}
+                    statusByPath={gitStatusByPath}
                     selectedPackage={selectedPackage}
                     selectedGroup={selectedGroup}
                     onSelectPackage={handleSelectPackage}

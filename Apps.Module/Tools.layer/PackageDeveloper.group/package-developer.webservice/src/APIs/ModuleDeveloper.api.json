@@ -150,6 +150,14 @@
       "path": "/status"
     },
     {
+      "summary": "GitStatusStream",
+      "method": "WS",
+      "path": "/git-status",
+      "parameters": [
+        { "name": "repositories", "in": "query", "type": "string", "required": false }
+      ]
+    },
+    {
       "summary": "GetIcon",
       "method": "GET",
       "path": "/icon/:workspace/:packageName/:ext",

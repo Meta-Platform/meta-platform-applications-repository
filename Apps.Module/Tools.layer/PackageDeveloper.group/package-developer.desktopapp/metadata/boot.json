@@ -21,6 +21,7 @@
                 "packageDeveloperWebservice": "@/package-developer.webservice",
                 "packageDeveloperLib": "@/package-developer.lib",
                 "packageProcessManagerLib": "@/package-process-manager.lib",
+                "gitStatusManagerLib": "@/git-status.lib",
                 "packageToolkitLib": "@/package-toolkit.lib",
                 "workspaceStoreLib": "@/workspace-store.lib"
             },
@@ -42,12 +43,18 @@
                         "factory": "Services/ProcessManager.service"
                     },
                     {
+                        "ref": "gitStatusManager",
+                        "package": "gitStatusManagerLib",
+                        "factory": "Services/GitStatusManager.service"
+                    },
+                    {
                         "ref": "guiService",
                         "package": "packageDeveloperGuiService",
                         "factory": "Services/PackageDeveloperGui.service",
                         "boundServices": {
                             "packageHandlerManagerService": "packageHandlerManager",
-                            "processManagerService": "processManager"
+                            "processManagerService": "processManager",
+                            "gitStatusManagerService": "gitStatusManager"
                         },
                         "boundLibs": {
                             "packageDeveloperLib": "packageDeveloperLib",

@@ -5,6 +5,7 @@
         "bound-params": [
             "packageHandlerManagerService",
             "processManagerService",
+            "gitStatusManagerService",
             "packageDeveloperLib",
             "packageToolkitLib",
             "packageDeveloperWebservice"

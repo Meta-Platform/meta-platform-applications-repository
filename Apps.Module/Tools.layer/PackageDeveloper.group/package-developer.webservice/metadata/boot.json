@@ -30,6 +30,11 @@
             "params": {
                 "runCommandPath": "{{runCommandPath}}"
             }
+        },
+        {
+            "namespace": "@@/git-status-service",
+            "dependency": "@/git-status.lib/services/GitStatusManager",
+            "params": {}
         }
     ],
     "endpoints": [
@@ -47,7 +52,8 @@
                 "packageHandlerManagerService": "@@/package-handler-service",
                 "packageDeveloperLib":"@/package-developer.lib",
                 "packageToolkitLib":"@/package-toolkit.lib",
-                "processManagerService":"@@/package-process-service"
+                "processManagerService":"@@/package-process-service",
+                "gitStatusManagerService":"@@/git-status-service"
             }
         }
     ]
