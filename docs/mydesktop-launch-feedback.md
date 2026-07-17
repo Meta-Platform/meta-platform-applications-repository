@@ -31,7 +31,7 @@ executor-manager daemon  ── RunPackage ──► spawn `run package` (destac
   app lançado (desktop-window-instance.lib / electron-main.js)
       • janela criada        ─POST /ecosystem-manager/report-launch-progress {phase:"window-ready"}
       • build 0..100%        ─POST … {phase:"building", percentage}
-      • bundle pronto        ─POST … {phase:"ready", 100}
+      • UI renderizada       ─POST … {phase:"ready", 100}   (no did-finish-load da UI REAL)
       • (fim do processo)    → daemon emite {phase:"closed"}
       ▼
 executor-manager daemon  (EcosystemManager.LaunchProgress ingest + emissor próprio)
@@ -92,6 +92,16 @@ No store (`instance-store.lib`), `instanceId` é a identidade (UNIQUE) e
 
 ## Detalhes que evitam bugs
 
+- **`ready` = UI renderizada, não "bundle pronto".** O `electron-main.js` só
+  reporta `ready` no `did-finish-load` da UI REAL (não quando o servidor responde
+  200, nem quando o webpack termina o build — a UI ainda não montou nesses
+  instantes). Um handler com trava `loaded`/`readyReported` ignora o
+  `did-finish-load` da página provisória (`loading.html`) e recarregamentos de
+  bundle, garantindo um único `ready` no momento certo.
+- **O badge verde ("aberto") fica suprimido enquanto o app sobe.** O `DesktopIcon`
+  (e o `Dock`) só mostram o check de "em execução" quando NÃO há spinner/barra —
+  senão o polling de instâncias vivas (`ListRunning`, que marca o processo como
+  vivo assim que ele nasce) acenderia o check durante o "Iniciando…", antes da UI.
 - **O `closed` de uma instância não pode limpar a barra de outra.** O progresso
   guardado por ícone carrega o `instanceId` que o gerou; só é limpo se o
   `launchId` do `closed` bater.

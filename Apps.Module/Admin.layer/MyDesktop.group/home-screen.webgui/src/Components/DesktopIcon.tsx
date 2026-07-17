@@ -43,8 +43,11 @@ const DesktopIcon = ({
     const hasPercent  = isBuilding && typeof launch!.percentage === "number"
 
     // Uma instância → marca de "em execução". Duas ou mais → o badge passa a
-    // contar quantas janelas daquele aplicativo estão abertas.
-    const isRunning = instanceCount > 0
+    // contar quantas janelas daquele aplicativo estão abertas. Enquanto o app
+    // ainda está subindo (spinner/barra), o badge fica suprimido — o check verde
+    // só aparece quando a UI está pronta (fase "ready" ou já em regime). Sem isto,
+    // o polling de instâncias vivas acenderia o check durante o "Iniciando…".
+    const isRunning = instanceCount > 0 && !isSpinning && !isBuilding
     const hasManyInstances = instanceCount > 1
     const runningTitle = hasManyInstances ? `${instanceCount} instâncias em execução` : "Em execução"
 

@@ -29,6 +29,10 @@ const CONTROLLER_MODULES = {
     Sources: {
         controller: "Controllers/Sources.controller",
         api:        "APIs/Sources.api.json"
+    },
+    DesktopLayout: {
+        controller: "Controllers/DesktopLayout.controller",
+        api:        "APIs/DesktopLayout.api.json"
     }
 }
 

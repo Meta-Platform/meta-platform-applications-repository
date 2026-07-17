@@ -1,0 +1,67 @@
+{
+    "params": [
+        "port",
+        "serverName",
+        "ECO_DIRPATH_INSTALL_DATA",
+        "platformApplicationSocketPath"
+    ],
+    "services": [
+        {
+            "namespace": "@@/server-service",
+            "dependency": "@/server-manager.service/services/HTTPServerService",
+            "params": {
+                "name": "{{serverName}}",
+                "port": "{{port}}"
+            }
+        },
+        {
+            "namespace": "@@/repository-manager",
+            "dependency": "@/repository-manager.service/services/RepositoryManagerService",
+            "bound-params": {
+                "repositoryUtilitiesLib": "@/repository-utilities.lib",
+                "dependencyGraphBuilderLib": "@/dependency-graph-builder.lib"
+            },
+            "params": {
+                "installDataDirPath": "{{ECO_DIRPATH_INSTALL_DATA}}"
+            }
+        },
+        {
+            "namespace": "@@/command-line-runtime",
+            "dependency": "@/command-line-runtime.service/services/CommandLineRuntime",
+            "bound-params": {
+                "instanceManagerClientLib": "@/instance-manager-client.lib"
+            },
+            "params": {
+                "platformApplicationSocketPath": "{{platformApplicationSocketPath}}"
+            }
+        },
+        {
+            "namespace": "@@/instance-manager-runtime",
+            "dependency": "@/instance-manager-runtime.service/services/InstanceManagerRuntimeService",
+            "bound-params": {
+                "instanceManagerClientLib": "@/instance-manager-client.lib"
+            },
+            "params": {
+                "platformApplicationSocketPath": "{{platformApplicationSocketPath}}"
+            }
+        }
+    ],
+    "endpoints": [
+        {
+            "dependency": "@/server-manager.webservice/endpoint-group",
+            "bound-params": {
+                "serverServiceForController": "@@/server-service",
+                "serverService": "@@/server-service"
+            }
+        },
+        {
+            "dependency": "@//endpoint-group",
+            "bound-params": {
+                "serverService": "@@/server-service",
+                "repositoryManagerService": "@@/repository-manager",
+                "commandLineRuntimeService": "@@/command-line-runtime",
+                "instanceManagerRuntimeService": "@@/instance-manager-runtime"
+            }
+        }
+    ]
+}

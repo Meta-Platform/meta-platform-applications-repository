@@ -61,6 +61,32 @@ const TaskExecutorMonitorController = (params) => {
     const StopTasks = (taskIds) =>
         instanceManagerRuntimeService.StopTasks({ taskIds: Array.isArray(taskIds) ? taskIds : [taskIds] })
 
+    // Tarefas INTERNAS de uma instância. 1 param (instanceId) chega como valor
+    // direto. Para desktop, o daemon consulta o socket do processo da instância.
+    const ListInstanceTasks = (instanceId) =>
+        instanceManagerRuntimeService.ListInstanceTasks({ instanceId })
+
+    // Stream (WS) das tarefas internas de uma instância — push do daemon, sem
+    // polling. Ponte 1:1 com o stream do daemon (ele empurra a lista inteira).
+    // 1 parâmetro (instanceId) chega como valor direto.
+    const _StreamInstanceTasks = async (ws, instanceId) => {
+        let daemonWs
+        try { daemonWs = await instanceManagerRuntimeService.OpenInstanceTaskStream({ instanceId }) }
+        catch(e){ try { ws.close() } catch(_){}; return }
+
+        daemonWs.on("message", (raw) => { try { ws.send(raw.toString()) } catch(e){} })
+        daemonWs.on("close",   () => { try { ws.close() } catch(e){} })
+        daemonWs.on("error",   () => {})
+        ws.on && ws.on("close", () => { try { daemonWs.close() } catch(e){} })
+    }
+
+    // Encerra tarefas internas de uma instância. 2 params → chegam como objeto.
+    const StopInstanceTasks = ({ instanceId, taskIds } = {}) =>
+        instanceManagerRuntimeService.StopInstanceTasks({
+            instanceId,
+            taskIds: Array.isArray(taskIds) ? taskIds : [taskIds]
+        })
+
     return Object.freeze({
         controllerName : "TaskExecutorMonitorController",
         TaskList: _StreamTasks,
@@ -71,7 +97,10 @@ const TaskExecutorMonitorController = (params) => {
         GetMonitoringState,
         GetTaskTreeById,
         GetTaskInformation,
-        StopTasks
+        StopTasks,
+        ListInstanceTasks,
+        InstanceTaskStream: _StreamInstanceTasks,
+        StopInstanceTasks
     })
 }
 

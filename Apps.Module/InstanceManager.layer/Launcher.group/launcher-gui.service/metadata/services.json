@@ -1,0 +1,13 @@
+[
+    {
+        "namespace": "LauncherGuiService",
+        "path": "Services/LauncherGui.service",
+        "bound-params": [
+            "repositoryManagerService",
+            "commandLineRuntimeService",
+            "instanceManagerRuntimeService",
+            "launcherWebservice"
+        ],
+        "params": []
+    }
+]

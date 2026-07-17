@@ -26,9 +26,9 @@ const PackageName = (packagePath:string) => {
 
 const MONO:any = { fontFamily: "var(--mp-font-mono)" }
 
-const InstanceRow = ({ instance, onStop }:any) => {
+const InstanceRow = ({ instance, isSelected, onSelect, onStop }:any) => {
     const kind = KIND_META[instance.kind] || { icon: "circle", color: "grey", label: instance.kind }
-    return <Table.Row>
+    return <Table.Row active={isSelected} onClick={() => onSelect(instance)} style={{ cursor: "pointer" }}>
         <Table.Cell style={{ maxWidth: 0 }} title={instance.packagePath}>
             <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
                 <Icon name={kind.icon} style={{ color: "var(--mp-muted)", flex: "0 0 auto" }}/>
@@ -43,19 +43,22 @@ const InstanceRow = ({ instance, onStop }:any) => {
         <Table.Cell>
             <div style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "space-between" }}>
                 <StatusBadge status={instance.status}/>
-                <Button
-                    size="mini" basic color="red" icon="stop" compact
-                    title="encerrar instância"
-                    style={{ padding: "4px 6px", flex: "0 0 auto" }}
-                    onClick={() => onStop(instance)}/>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", flex: "0 0 auto" }}>
+                    <Button
+                        size="mini" basic color="red" icon="stop" compact
+                        title="encerrar instância"
+                        style={{ padding: "4px 6px" }}
+                        onClick={(e:any) => { e.stopPropagation(); onStop(instance) }}/>
+                    <Icon name="angle right" style={{ color: "var(--mp-muted-2)", margin: 0 }}/>
+                </div>
             </div>
         </Table.Cell>
     </Table.Row>
 }
 
-const InstanceTable = ({ instanceList = [], onStopInstance }:any) =>
-    <div style={{ border: "var(--mp-border-thin, 1px solid var(--mp-line))", borderRadius: "var(--mp-radius-md)", overflow: "auto", maxHeight: "34vh" }}>
-        <Table compact unstackable style={{ fontSize: ".9em", tableLayout: "fixed", width: "100%", border: "none", margin: 0 }}>
+const InstanceTable = ({ instanceList = [], selectedInstanceId, onSelectInstance, onStopInstance }:any) =>
+    <div style={{ border: "var(--mp-border-thin, 1px solid var(--mp-line))", borderRadius: "var(--mp-radius-md)", overflow: "auto", height: "100%" }}>
+        <Table compact selectable unstackable style={{ fontSize: ".9em", tableLayout: "fixed", width: "100%", border: "none", margin: 0 }}>
             <Table.Header>
                 <Table.Row>
                     <Table.HeaderCell width={6} style={{ position: "sticky", top: 0, zIndex: 1 }}>instância</Table.HeaderCell>
@@ -68,7 +71,12 @@ const InstanceTable = ({ instanceList = [], onStopInstance }:any) =>
             <Table.Body>
                 {
                     instanceList.map((instance:any) =>
-                        <InstanceRow key={instance.instanceId} instance={instance} onStop={onStopInstance}/>)
+                        <InstanceRow
+                            key={instance.instanceId}
+                            instance={instance}
+                            isSelected={instance.instanceId === selectedInstanceId}
+                            onSelect={onSelectInstance}
+                            onStop={onStopInstance}/>)
                 }
                 {
                     instanceList.length === 0 &&

@@ -1,0 +1,7 @@
+{
+    "port": "8082",
+    "serverName": "LauncherWebappInstance",
+    "serverManagerUrl": "http://localhost:8082/server-manager/status",
+    "ECO_DIRPATH_INSTALL_DATA": "/home/kadisk/EcosystemData",
+    "platformApplicationSocketPath": "/home/kadisk/EcosystemData/sockets/ecosystem-instance-manager.app.sock"
+}

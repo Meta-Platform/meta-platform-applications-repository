@@ -1,0 +1,76 @@
+{
+    "params": [
+        "serverName",
+        "installDataDirPath",
+        "platformApplicationSocketPath"
+    ],
+    "windows": [
+        {
+            "title": "Launcher",
+            "width": 1280,
+            "height": 800,
+            "dependency": "@/launcher.webgui",
+            "params": {
+                "serverName": "{{serverName}}",
+                "installDataDirPath": "{{installDataDirPath}}",
+                "ECO_DIRPATH_INSTALL_DATA": "{{installDataDirPath}}",
+                "platformApplicationSocketPath": "{{platformApplicationSocketPath}}"
+            },
+            "bound-params": {
+                "launcherWebgui": "@/launcher.webgui",
+                "launcherGuiService": "@/launcher-gui.service",
+                "launcherWebservice": "@/launcher.webservice",
+                "commandLineRuntimeService": "@/command-line-runtime.service",
+                "instanceManagerRuntimeService": "@/instance-manager-runtime.service",
+                "instanceManagerClientLib": "@/instance-manager-client.lib",
+                "repositoryManagerService": "@/repository-manager.service",
+                "repositoryUtilitiesLib": "@/repository-utilities.lib",
+                "dependencyGraphBuilderLib": "@/dependency-graph-builder.lib"
+            },
+            "gui-host": {
+                "webgui": "launcherWebgui",
+                "guiService": "guiService",
+                "serviceGraph": [
+                    {
+                        "ref": "repositoryManager",
+                        "package": "repositoryManagerService",
+                        "factory": "Services/RepositoryManager.service",
+                        "boundLibs": {
+                            "repositoryUtilitiesLib": "repositoryUtilitiesLib",
+                            "dependencyGraphBuilderLib": "dependencyGraphBuilderLib"
+                        }
+                    },
+                    {
+                        "ref": "commandLineRuntime",
+                        "package": "commandLineRuntimeService",
+                        "factory": "Services/CommandLineRuntime.service",
+                        "boundLibs": {
+                            "instanceManagerClientLib": "instanceManagerClientLib"
+                        }
+                    },
+                    {
+                        "ref": "instanceManagerRuntime",
+                        "package": "instanceManagerRuntimeService",
+                        "factory": "Services/InstanceManagerRuntime.service",
+                        "boundLibs": {
+                            "instanceManagerClientLib": "instanceManagerClientLib"
+                        }
+                    },
+                    {
+                        "ref": "guiService",
+                        "package": "launcherGuiService",
+                        "factory": "Services/LauncherGui.service",
+                        "boundServices": {
+                            "repositoryManagerService": "repositoryManager",
+                            "commandLineRuntimeService": "commandLineRuntime",
+                            "instanceManagerRuntimeService": "instanceManagerRuntime"
+                        },
+                        "boundLibs": {
+                            "launcherWebservice": "launcherWebservice"
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

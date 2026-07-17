@@ -1,0 +1,18 @@
+{
+	"name": "DesktopLayout",
+	"endpoints": [
+		{
+			"summary": "GetDesktopLayout",
+			"method": "GET",
+			"path": "/layout"
+		},
+		{
+			"summary": "SaveDesktopLayout",
+			"method": "POST",
+			"path": "/layout",
+			"parameters": [
+				{ "name": "layout", "in": "body", "type": "object", "required": true }
+			]
+		}
+	]
+}

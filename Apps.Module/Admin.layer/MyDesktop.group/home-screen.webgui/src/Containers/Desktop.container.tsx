@@ -8,13 +8,18 @@ import GetApplicationIconURL  from "../Utils/GetApplicationIconURL"
 import FormatAppName          from "../Utils/FormatAppName"
 import { GetSavedTheme, ApplyTheme, ThemeName, THEMES } from "../Utils/theme"
 import {
-    IconPositions, LoadPositions, SavePositions, EnsurePositions,
-    DefaultPosition, RowsPerColumn
+    IconPosition, IconPositions, DefaultPosition, RowsPerColumn, CELL_W, CELL_H
 } from "../Utils/IconLayout"
+import {
+    LoadLayout, SaveLayoutNow, SaveLayoutDebounced,
+    addKey, removeKey, moveKey,
+    DesktopEntry
+} from "../Utils/DesktopLayoutStore"
 
 import SystemMenuBar      from "../Components/SystemMenuBar"
 import DesktopIcon        from "../Components/DesktopIcon"
 import Dock               from "../Components/Dock"
+import AppLauncherPopover from "../Components/AppLauncherPopover"
 import WelcomeWindow      from "../Components/WelcomeWindow"
 import Window             from "../Components/Window"
 import ContextMenu, { ContextMenuItem } from "../Components/ContextMenu"
@@ -72,15 +77,25 @@ type ConfirmState = { title: string, message: string, confirmLabel: string, dang
 type ContextMenuState = { x: number, y: number, items: ContextMenuItem[] }
 type Rect = { x: number, y: number, x2: number, y2: number }
 
+type DragSource = "desktop" | "dock" | "launcher"
+type DropTarget = "desktop" | "dock"
+
 type Interaction = {
-    mode: "none" | "pending" | "dragging" | "marquee"
+    // "cross-pending"/"cross": arrasto entre superfícies (dock/launcher → área de
+    // trabalho, ou reordenar na dock) que cria/move ATALHOS (não reposiciona).
+    mode: "none" | "pending" | "dragging" | "marquee" | "cross-pending" | "cross"
     startX: number, startY: number
     startXRel: number, startYRel: number
     keys: string[]
     startPositions: IconPositions
     collapseKey?: string
     marqueeBase: string[]
+    source?: DragSource
+    crossKey?: string
 }
+
+// Ghost visual que segue o ponteiro durante um arrasto cross-surface.
+type DragGhost = { x: number, y: number, iconUrl?: string, label: string }
 
 const uniq = (arr:string[]) => Array.from(new Set(arr))
 const normalizeRect = (ax:number, ay:number, bx:number, by:number):Rect =>
@@ -95,9 +110,22 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     const [ loadError, setLoadError ]             = useState<string>()
 
     const [ selectedKeys, setSelectedKeys ]       = useState<string[]>([])
-    const [ positions, setPositions ]             = useState<IconPositions>(LoadPositions())
+    const [ positions, setPositions ]             = useState<IconPositions>({})
+    // Pertença dos atalhos (separada da instalação). desktopKeys = ícones na área
+    // de trabalho; dockKeys = itens fixados na dock (com ordem). Persistidos no
+    // backend via DesktopLayout (DesktopLayoutStore).
+    const [ desktopKeys, setDesktopKeys ]         = useState<string[]>([])
+    const [ dockKeys, setDockKeys ]               = useState<string[]>([])
+    // Keys já conhecidas pelo desktop — para só apps RECÉM-instalados ganharem
+    // ícone automático (um atalho removido de propósito não reaparece).
+    const [ seenKeys, setSeenKeys ]               = useState<string[]>([])
+    const [ layoutLoaded, setLayoutLoaded ]       = useState<boolean>(false)
     const [ surfaceHeight, setSurfaceHeight ]     = useState<number>(600)
     const [ marquee, setMarquee ]                 = useState<Rect>()
+    // Estado visual do arrasto cross-surface.
+    const [ dragGhost, setDragGhost ]             = useState<DragGhost>()
+    const [ dropTarget, setDropTarget ]           = useState<DropTarget>()
+    const [ launcherAnchor, setLauncherAnchor ]   = useState<{ x:number, y:number }>()
     // Instâncias em execução reportadas pelo daemon (polling de 5s).
     const [ runningInstances, setRunningInstances ] = useState<RunningInstance[]>([])
     // Instâncias abertas detectadas pelo STREAM de lançamento (ready → aberta,
@@ -122,11 +150,21 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     const [ contextMenu, setContextMenu ]         = useState<ContextMenuState>()
 
     const surfaceRef  = useRef<HTMLDivElement>(null)
+    const dockRef     = useRef<HTMLDivElement>(null)
     const interaction = useRef<Interaction>({ mode: "none", startX: 0, startY: 0, startXRel: 0, startYRel: 0, keys: [], startPositions: {}, marqueeBase: [] })
+    // O onUp global não recebe evento → guardamos a última posição do ponteiro.
+    const lastPointerRef  = useRef<{ x:number, y:number }>({ x: 0, y: 0 })
+    // Marca que um arrasto cross-surface de fato ocorreu, para SUPRIMIR o clique
+    // de lançamento que dispararia logo depois (dock/launcher usam onClick).
+    const crossDidDragRef = useRef<boolean>(false)
+    // Garante uma única carga do layout do backend (o effect re-roda a cada
+    // mudança em applicationList).
+    const layoutLoadStartedRef = useRef<boolean>(false)
 
     const _GetDesktopApplicationsAPI = () => GetAPI({ apiName: "DesktopApplications", serverManagerInformation })
     const _GetExecutionAPI           = () => GetAPI({ apiName: "Execution", serverManagerInformation })
     const _GetApplicationsAPI        = () => GetAPI({ apiName: "Applications", serverManagerInformation })
+    const _GetDesktopLayoutAPI       = () => GetAPI({ apiName: "DesktopLayout", serverManagerInformation })
 
     const fetchApplicationList = async () => {
         setIsLoading(true)
@@ -258,10 +296,30 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     }
 
     const appViews = applicationList.map(_BuildAppView)
+    const appViewByKey = new Map(appViews.map((a) => [ a.key, a ] as [string, any]))
+
+    // Superfície da área de trabalho derivada da pertença (filtra por keys
+    // instaladas; atalhos órfãos de app desinstalado somem até a poda). A dock é
+    // montada mais abaixo (precisa de InstancesOf): fixados + em execução.
+    const desktopViews = appViews.filter((a) => desktopKeys.includes(a.key))
 
     // refs espelho para os handlers globais (pointer) sempre verem o estado atual
-    const positionsRef = useRef(positions);   positionsRef.current = positions
-    const appViewsRef  = useRef(appViews);     appViewsRef.current = appViews
+    const positionsRef   = useRef(positions);     positionsRef.current = positions
+    const appViewsRef    = useRef(appViews);      appViewsRef.current = appViews
+    const desktopKeysRef = useRef(desktopKeys);   desktopKeysRef.current = desktopKeys
+    const dockKeysRef    = useRef(dockKeys);      dockKeysRef.current = dockKeys
+    const seenKeysRef    = useRef(seenKeys);      seenKeysRef.current = seenKeys
+
+    // Constrói o documento de layout a partir do estado atual e persiste. `seen`
+    // é opcional — quando não passado, mantém o conjunto atual.
+    const _DesktopEntries = (keys:string[], pos:IconPositions):DesktopEntry[] =>
+        keys.map((k) => ({ key: k, x: (pos[k] && pos[k].x) || 0, y: (pos[k] && pos[k].y) || 0 }))
+
+    const _PersistLayout = (keys:string[], dock:string[], pos:IconPositions, seen?:string[], debounced = false) => {
+        const payload = { desktop: _DesktopEntries(keys, pos), dock, seen: seen || seenKeysRef.current }
+        if(debounced) SaveLayoutDebounced(_GetDesktopLayoutAPI(), payload)
+        else { try { SaveLayoutNow(_GetDesktopLayoutAPI(), payload) } catch(_) {} }
+    }
 
     // Instâncias vivas = as que o daemon reporta no polling MAIS as que o stream
     // de lançamento acabou de abrir (o stream reage na hora; o polling, a cada 5s).
@@ -291,30 +349,196 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
         return () => window.removeEventListener("resize", measure)
     }, [isLoading, loadError, applicationList.length])
 
-    // garante uma posição para cada ícone (mantém salvas, gera padrão p/ novos)
+    // Carga (uma vez) do layout no backend + reconciliação com os apps
+    // instalados. Primeira vez sem arquivo → migração: semeia área de trabalho
+    // E dock com todos os apps instalados (preserva o comportamento atual). Em
+    // cargas seguintes → poda apps desinstalados e adiciona apps novos SÓ à área
+    // de trabalho (a dock é curada).
     useEffect(() => {
-        const keys = appViews.map((a) => a.key)
-        if(keys.length === 0) return
-        setPositions((prev) => {
-            const ensured = EnsurePositions(keys, { ...LoadPositions(), ...prev }, surfaceHeight)
-            SavePositions(ensured)
-            return ensured
-        })
-    }, [applicationList, surfaceHeight])
+        const installed = appViews.map((a) => a.key)
+        if(installed.length === 0) return
+        const validSet = new Set(installed)
+        const rows = RowsPerColumn(surfaceHeight)
 
-    // limpa seleção de chaves que não existem mais
+        // Aplica um layout (recém-carregado ou o estado atual) contra os apps
+        // instalados: poda desinstalados, adiciona apps RECÉM-instalados (não
+        // vistos) à área de trabalho, e mantém seen = instalados.
+        const reconcile = (
+            prevDeskKeys:string[], prevDock:string[], prevSeen:string[], basePos:IconPositions
+        ) => {
+            const deskKeys = prevDeskKeys.filter((k) => validSet.has(k))
+            const dock     = prevDock.filter((k) => validSet.has(k))
+            const pos      = { ...basePos }
+            let addedDesk  = deskKeys.slice()
+            let cursor     = addedDesk.length
+            installed.forEach((k) => {                  // recém-instalado → desktop
+                if(!prevSeen.includes(k) && !addedDesk.includes(k)){
+                    if(!pos[k]) pos[k] = DefaultPosition(cursor++, rows)
+                    addedDesk = [ ...addedDesk, k ]
+                }
+            })
+            const seen = installed.slice()              // tudo que existe agora é "visto"
+            return { deskKeys: addedDesk, dock, pos, seen }
+        }
+
+        // Já carregado: reconciliar de forma síncrona (via refs).
+        if(layoutLoaded){
+            const r = reconcile(desktopKeysRef.current, dockKeysRef.current, seenKeysRef.current, positionsRef.current)
+            const changed =
+                r.deskKeys.length !== desktopKeysRef.current.length ||
+                r.dock.length     !== dockKeysRef.current.length ||
+                r.seen.length     !== seenKeysRef.current.length
+            if(changed){
+                setDesktopKeys(r.deskKeys); setDockKeys(r.dock); setPositions(r.pos); setSeenKeys(r.seen)
+                _PersistLayout(r.deskKeys, r.dock, r.pos, r.seen)
+            }
+            return
+        }
+
+        // Primeira carga (async).
+        if(layoutLoadStartedRef.current) return
+        layoutLoadStartedRef.current = true
+        let cancelled = false
+        ;(async () => {
+            let layout:any
+            try { layout = await LoadLayout(_GetDesktopLayoutAPI()) }
+            catch(_) { layout = { initialized: false, desktop: [], dock: [], seen: [] } }
+            if(cancelled) return
+
+            if(!layout.initialized){
+                // migração inicial: tudo na área de trabalho E na dock (preserva o
+                // comportamento atual); todos passam a ser "vistos".
+                const seededPos:IconPositions = {}
+                installed.forEach((k, i) => { seededPos[k] = DefaultPosition(i, rows) })
+                setPositions(seededPos)
+                setDesktopKeys(installed)
+                setDockKeys(installed)
+                setSeenKeys(installed)
+                setLayoutLoaded(true)
+                _PersistLayout(installed, installed, seededPos, installed)
+                return
+            }
+
+            // layout salvo: reconciliar com os apps instalados
+            const savedDesk = (layout.desktop as DesktopEntry[]).filter((e) => validSet.has(e.key))
+            const basePos:IconPositions = {}
+            savedDesk.forEach((e) => { basePos[e.key] = { x: e.x, y: e.y } })
+            // seed de seen: em documentos antigos sem `seen`, considera os já
+            // presentes (desktop+dock) como vistos, para não re-adicionar tudo.
+            const priorSeen = (layout.seen && layout.seen.length)
+                ? layout.seen
+                : uniq([ ...savedDesk.map((e) => e.key), ...(layout.dock || []) ])
+            const r = reconcile(savedDesk.map((e) => e.key), layout.dock || [], priorSeen, basePos)
+
+            setPositions(r.pos)
+            setDesktopKeys(r.deskKeys)
+            setDockKeys(r.dock)
+            setSeenKeys(r.seen)
+            setLayoutLoaded(true)
+            const changed =
+                r.deskKeys.length !== layout.desktop.length ||
+                r.dock.length     !== (layout.dock || []).length ||
+                r.seen.length     !== (layout.seen || []).length
+            if(changed) _PersistLayout(r.deskKeys, r.dock, r.pos, r.seen)
+        })()
+        return () => { cancelled = true }
+    }, [applicationList, layoutLoaded])
+
+    // limpa seleção de chaves que não estão mais na área de trabalho
     useEffect(() => {
-        const keys = new Set(appViews.map((a) => a.key))
+        const keys = new Set(desktopKeys)
         setSelectedKeys((prev) => prev.filter((k) => keys.has(k)))
-    }, [applicationList])
+    }, [desktopKeys])
 
-    // ---- interação de ponteiro (drag de ícones + marquee) ------------------
+    // ---- atalhos (pertença por superfície) ---------------------------------
+    // Todas leem/gravam via refs para funcionarem também dentro dos handlers
+    // globais de ponteiro (criados uma vez).
+    const addDesktopShortcut = (key:string, pos?:IconPosition) => {
+        if(desktopKeysRef.current.includes(key)) return
+        const p = pos || DefaultPosition(desktopKeysRef.current.length, RowsPerColumn(surfaceHeight))
+        const nextPos  = { ...positionsRef.current, [key]: p }
+        const nextKeys = [ ...desktopKeysRef.current, key ]
+        setPositions(nextPos); setDesktopKeys(nextKeys)
+        _PersistLayout(nextKeys, dockKeysRef.current, nextPos)
+    }
+    const removeDesktopShortcut = (key:string) => {
+        if(!desktopKeysRef.current.includes(key)) return
+        const nextKeys = removeKey(desktopKeysRef.current, key)
+        setDesktopKeys(nextKeys)
+        setSelectedKeys((prev) => prev.filter((k) => k !== key))
+        _PersistLayout(nextKeys, dockKeysRef.current, positionsRef.current)
+    }
+    const addDockShortcut = (key:string, index?:number) => {
+        const cur  = dockKeysRef.current
+        const next = index === undefined ? addKey(cur, key) : moveKey(cur, key, index)
+        if(next === cur) return
+        setDockKeys(next)
+        _PersistLayout(desktopKeysRef.current, next, positionsRef.current)
+    }
+    const removeDockShortcut = (key:string) => {
+        if(!dockKeysRef.current.includes(key)) return
+        const next = removeKey(dockKeysRef.current, key)
+        setDockKeys(next)
+        _PersistLayout(desktopKeysRef.current, next, positionsRef.current)
+    }
+
+    // ---- hit-test / geometria do arrasto cross-surface ---------------------
+    const _HitSurface = (cx:number, cy:number):DropTarget | "launcher" | null => {
+        const el = document.elementFromPoint(cx, cy) as HTMLElement | null
+        if(!el) return null
+        if(el.closest(".myd-dock"))            return "dock"
+        if(el.closest(".myd-app-launcher"))    return "launcher"
+        if(el.closest(".myd-surface--canvas")) return "desktop"
+        return null
+    }
+    const _DropPosition = (cx:number, cy:number):IconPosition => {
+        const s = surfaceRef.current
+        if(!s) return DefaultPosition(desktopKeysRef.current.length, RowsPerColumn(surfaceHeight))
+        const rect = s.getBoundingClientRect()
+        let x = cx - rect.left + s.scrollLeft - ICON_BOX.w / 2
+        let y = cy - rect.top  + s.scrollTop  - ICON_BOX.h / 2
+        x = Math.max(0, Math.min(x, Math.max(0, s.scrollWidth  - CELL_W)))
+        y = Math.max(0, Math.min(y, Math.max(0, s.scrollHeight - CELL_H)))
+        return { x, y }
+    }
+    // Índice de inserção na dock a partir do X do ponteiro (reordenar/adicionar).
+    const _DockDropIndex = (cx:number):number => {
+        const dock = dockRef.current
+        if(!dock) return dockKeysRef.current.length
+        const items = Array.from(dock.querySelectorAll(".myd-dock__item"))
+        for(let i = 0; i < items.length; i++){
+            const r = (items[i] as HTMLElement).getBoundingClientRect()
+            if(cx < r.left + r.width / 2) return i
+        }
+        return items.length
+    }
+
+    // ---- interação de ponteiro (drag de ícones + marquee + cross-surface) --
     useEffect(() => {
         const onMove = (e:PointerEvent) => {
+            lastPointerRef.current = { x: e.clientX, y: e.clientY }
             const it = interaction.current
             if(it.mode === "none") return
             const dx = e.clientX - it.startX
             const dy = e.clientY - it.startY
+
+            // Arrasto cross-surface (origem dock/launcher): cria/reordena atalhos.
+            if(it.mode === "cross-pending") {
+                if(Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+                    it.mode = "cross"
+                    crossDidDragRef.current = true
+                    const av = appViewsRef.current.find((a) => a.key === it.crossKey)
+                    setDragGhost({ x: e.clientX, y: e.clientY, iconUrl: av && av.iconUrl, label: av ? av.label : "" })
+                    // fecha o popover p/ liberar o hit-test da área de trabalho/dock
+                    if(it.source === "launcher") setLauncherAnchor(undefined)
+                } else return
+            }
+            if(it.mode === "cross") {
+                setDragGhost((g) => g ? { ...g, x: e.clientX, y: e.clientY } : g)
+                const hit = _HitSurface(e.clientX, e.clientY)
+                setDropTarget(hit === "dock" ? "dock" : hit === "desktop" ? "desktop" : undefined)
+                return
+            }
 
             if(it.mode === "pending") {
                 if(Math.hypot(dx, dy) > DRAG_THRESHOLD) it.mode = "dragging"
@@ -328,6 +552,9 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
                     if(s) next[k] = { x: Math.max(0, s.x + dx), y: Math.max(0, s.y + dy) }
                 })
                 setPositions(next)
+                // realça a dock quando um ícone da área de trabalho passa por cima
+                const hit = _HitSurface(e.clientX, e.clientY)
+                setDropTarget(hit === "dock" ? "dock" : undefined)
             } else if(it.mode === "marquee" && surfaceRef.current) {
                 const rect = surfaceRef.current.getBoundingClientRect()
                 const curX = e.clientX - rect.left + surfaceRef.current.scrollLeft
@@ -343,10 +570,35 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
 
         const onUp = () => {
             const it = interaction.current
-            if(it.mode === "dragging") SavePositions(positionsRef.current)
-            else if(it.mode === "pending" && it.collapseKey) setSelectedKeys([it.collapseKey])
+            const { x: cx, y: cy } = lastPointerRef.current
+
+            if(it.mode === "dragging") {
+                const hit = _HitSurface(cx, cy)
+                if(hit === "dock") {
+                    // soltou ícone(s) da área de trabalho sobre a dock → fixa na
+                    // dock e mantém no desktop (reverte o movimento visual).
+                    setPositions(it.startPositions)
+                    it.keys.forEach((k) => addDockShortcut(k))
+                } else {
+                    _PersistLayout(desktopKeysRef.current, dockKeysRef.current, positionsRef.current, undefined, true)
+                }
+            } else if(it.mode === "cross") {
+                const hit = _HitSurface(cx, cy)
+                const key = it.crossKey
+                if(key) {
+                    if(hit === "desktop")    addDesktopShortcut(key, _DropPosition(cx, cy))
+                    else if(hit === "dock")  addDockShortcut(key, it.source === "dock" ? _DockDropIndex(cx) : undefined)
+                }
+            } else if(it.mode === "pending" && it.collapseKey) {
+                setSelectedKeys([it.collapseKey])
+            }
+
             if(it.mode === "marquee") setMarquee(undefined)
+            setDragGhost(undefined)
+            setDropTarget(undefined)
             it.mode = "none"
+            it.source = undefined
+            it.crossKey = undefined
         }
 
         window.addEventListener("pointermove", onMove)
@@ -396,6 +648,34 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
         }
     }
 
+    // Início de arrasto cross-surface a partir da dock ou do popover. stopPropagation
+    // evita disparar o marquee da superfície; o clique de lançamento é suprimido
+    // por crossDidDragRef quando um arrasto de fato ocorreu.
+    const _StartCrossDrag = (e:React.PointerEvent, key:string, source:DragSource) => {
+        if(e.button !== 0) return
+        e.stopPropagation()
+        crossDidDragRef.current = false
+        interaction.current = {
+            mode: "cross-pending", source, crossKey: key,
+            startX: e.clientX, startY: e.clientY, startXRel: 0, startYRel: 0,
+            keys: [ key ], startPositions: {}, marqueeBase: []
+        }
+    }
+    const onDockItemPointerDown     = (e:React.PointerEvent, av:any)  => _StartCrossDrag(e, av.key, "dock")
+    const onLauncherItemPointerDown = (e:React.PointerEvent, key:string) => _StartCrossDrag(e, key, "launcher")
+
+    // Lançamentos que precisam ignorar o clique pós-arrasto (dock/launcher).
+    const handleDockOpen = (av:any) => {
+        if(crossDidDragRef.current){ crossDidDragRef.current = false; return }
+        handleLaunch(av)
+    }
+    const handleLauncherLaunch = (key:string) => {
+        if(crossDidDragRef.current){ crossDidDragRef.current = false; return }
+        const av = appViewByKey.get(key)
+        setLauncherAnchor(undefined)
+        if(av) handleLaunch(av)
+    }
+
     // ---- tema / boas-vindas ------------------------------------------------
     const handleCloseWelcome = () => {
         setIsWelcomeOpen(false)
@@ -409,12 +689,14 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     const handleArrangeIcons = (byName:boolean) => {
         const rows = RowsPerColumn(surfaceHeight)
         const ordered = byName
-            ? [ ...appViews ].sort((a, b) => a.label.localeCompare(b.label))
-            : appViews
-        const next:IconPositions = {}
-        ordered.forEach((av, index) => { next[av.key] = DefaultPosition(index, rows) })
+            ? [ ...desktopViews ].sort((a, b) => a.label.localeCompare(b.label))
+            : desktopViews
+        const next:IconPositions = { ...positions }
+        const orderedKeys:string[] = []
+        ordered.forEach((av, index) => { next[av.key] = DefaultPosition(index, rows); orderedKeys.push(av.key) })
         setPositions(next)
-        SavePositions(next)
+        setDesktopKeys(orderedKeys)
+        _PersistLayout(orderedKeys, dockKeys, next)
     }
 
     useEffect(() => {
@@ -553,7 +835,12 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
             }
             if(selectedRef.current.length === 0) return
             if(e.key === "Enter") { e.preventDefault(); handleOpenSelection() }
-            else if(e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); handleUninstallSelection(selectedRef.current) }
+            // Delete/Backspace remove o ATALHO da área de trabalho (não desinstala);
+            // desinstalar fica só no menu de contexto.
+            else if(e.key === "Delete" || e.key === "Backspace") {
+                e.preventDefault()
+                selectedRef.current.forEach((k) => removeDesktopShortcut(k))
+            }
         }
         window.addEventListener("keydown", onKey)
         return () => window.removeEventListener("keydown", onKey)
@@ -601,34 +888,74 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
         if(!selectedKeys.includes(av.key)) { targetKeys = [ av.key ]; setSelectedKeys(targetKeys) }
         const many = targetKeys.length > 1
 
+        const onDock = dockKeys.includes(av.key)
         const items:ContextMenuItem[] = many
             ? [
                 { label: `Abrir (${targetKeys.length})`, icon: "external", onClick: handleOpenSelection },
                 { divider: true, label: "" },
-                { label: `Remover (${targetKeys.length})`, icon: "trash", danger: true, onClick: () => handleUninstallSelection(targetKeys) }
+                { label: `Remover atalhos (${targetKeys.length})`, icon: "eye slash", onClick: () => targetKeys.forEach((k) => removeDesktopShortcut(k)) },
+                { divider: true, label: "" },
+                { label: `Desinstalar (${targetKeys.length})`, icon: "trash", danger: true, onClick: () => handleUninstallSelection(targetKeys) }
             ]
             : [
                 { label: "Abrir", icon: "external", onClick: () => handleLaunch(av) },
                 ..._BuildCloseMenuItems(av),
                 { divider: true, label: "" },
-                { label: "Remover", icon: "trash", danger: true, onClick: () => handleUninstallSelection([ av.key ]) }
+                { label: "Remover atalho da área de trabalho", icon: "eye slash", onClick: () => removeDesktopShortcut(av.key) },
+                { label: onDock ? "Remover da dock" : "Fixar na dock", icon: "thumbtack", checked: onDock, onClick: () => onDock ? removeDockShortcut(av.key) : addDockShortcut(av.key) },
+                { divider: true, label: "" },
+                { label: "Desinstalar", icon: "trash", danger: true, onClick: () => handleUninstallSelection([ av.key ]) }
             ]
         setContextMenu({ x: e.clientX, y: e.clientY, items })
     }
 
     // Menu de contexto do dock (item único) — não altera a seleção da área de trabalho.
+    // Um item NÃO fixado aparece na dock só porque está em execução (estilo macOS):
+    // nesse caso a ação é "Manter na dock" (fixar); no fixado, "Remover da dock".
     const openDockMenu = (e:React.MouseEvent, av:any) => {
         e.preventDefault()
+        const onDesktop = desktopKeys.includes(av.key)
+        const pinned    = dockKeys.includes(av.key)
         setContextMenu({ x: e.clientX, y: e.clientY, items: [
             { label: "Abrir", icon: "external", onClick: () => handleLaunch(av) },
             ..._BuildCloseMenuItems(av),
             { divider: true, label: "" },
-            { label: "Remover", icon: "trash", danger: true, onClick: () => handleUninstallSelection([ av.key ]) }
+            pinned
+                ? { label: "Remover da dock", icon: "eye slash", onClick: () => removeDockShortcut(av.key) }
+                : { label: "Manter na dock", icon: "thumbtack", onClick: () => addDockShortcut(av.key) },
+            { label: "Adicionar à área de trabalho", icon: "plus", disabled: onDesktop, onClick: () => addDesktopShortcut(av.key) },
+            { divider: true, label: "" },
+            { label: "Desinstalar", icon: "trash", danger: true, onClick: () => handleUninstallSelection([ av.key ]) }
+        ] })
+    }
+
+    // Menu de contexto de um item do popover "Todos os aplicativos".
+    const openLauncherMenu = (e:React.MouseEvent, key:string) => {
+        const av = appViewByKey.get(key)
+        if(!av) return
+        const onDesktop = desktopKeys.includes(key)
+        const onDock    = dockKeys.includes(key)
+        setContextMenu({ x: e.clientX, y: e.clientY, items: [
+            { label: "Abrir", icon: "external", onClick: () => { setLauncherAnchor(undefined); handleLaunch(av) } },
+            { divider: true, label: "" },
+            { label: onDesktop ? "Remover da área de trabalho" : "Adicionar à área de trabalho", icon: "desktop", checked: onDesktop, onClick: () => onDesktop ? removeDesktopShortcut(key) : addDesktopShortcut(key) },
+            { label: onDock ? "Remover da dock" : "Adicionar à dock", icon: "thumbtack", checked: onDock, onClick: () => onDock ? removeDockShortcut(key) : addDockShortcut(key) },
+            { divider: true, label: "" },
+            { label: "Desinstalar", icon: "trash", danger: true, onClick: () => handleUninstallSelection([ key ]) }
         ] })
     }
 
     // ---- render ------------------------------------------------------------
     const rows = RowsPerColumn(surfaceHeight)
+
+    // Dock estilo macOS: primeiro os FIXADOS (ordem de dockKeys), depois os apps
+    // apenas EM EXECUÇÃO/iniciando que não estão fixados (aparecem enquanto vivos
+    // e somem ao encerrar). O separador entre os grupos é desenhado pela Dock.
+    const _isLive = (av:any) => InstancesOf(av).length > 0 || !!launchByKey[av.key]
+    const dockEntries = [
+        ...dockKeys.map((k) => appViewByKey.get(k)).filter(Boolean).map((av:any) => ({ av, pinned: true })),
+        ...appViews.filter((av) => !dockKeys.includes(av.key) && _isLive(av)).map((av:any) => ({ av, pinned: false }))
+    ]
 
     const renderSurface = () => {
         if(isLoading)
@@ -653,10 +980,11 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
                 </Window>
             </div>
 
-        return <div ref={surfaceRef} className="myd-surface myd-surface--canvas"
+        return <div ref={surfaceRef}
+            className={`myd-surface myd-surface--canvas ${dropTarget === "desktop" ? "myd-surface--drop" : ""}`}
             onPointerDown={onSurfacePointerDown} onContextMenu={openDesktopMenu}>
             {
-                appViews.map((av, index) => {
+                desktopViews.map((av, index) => {
                     const position = positions[av.key] || DefaultPosition(index, rows)
                     return <DesktopIcon
                         key={av.key}
@@ -682,17 +1010,51 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
 
     return <div className="myd-desktop">
 
-        <SystemMenuBar appCount={appViews.length} onOpenMenu={openBrandMenu}/>
+        <SystemMenuBar appCount={appViews.length} onOpenMenu={openBrandMenu} onOpenLauncher={setLauncherAnchor}/>
 
         { renderSurface() }
 
-        <Dock apps={appViews.map((av) => ({
-            key: av.key, label: av.label, iconUrl: av.iconUrl,
-            instanceCount: InstancesOf(av).length,
-            launch: launchByKey[av.key],
-            onOpen: () => handleLaunch(av),
-            onContextMenu: (e:React.MouseEvent) => openDockMenu(e, av)
-        }))}/>
+        <Dock
+            dockRef={dockRef}
+            isDropTarget={dropTarget === "dock"}
+            dropActive={interaction.current.mode === "cross" || interaction.current.mode === "dragging"}
+            apps={dockEntries.map(({ av, pinned }) => ({
+                key: av.key, label: av.label, iconUrl: av.iconUrl,
+                pinned,
+                instanceCount: InstancesOf(av).length,
+                launch: launchByKey[av.key],
+                onOpen: () => handleDockOpen(av),
+                onContextMenu: (e:React.MouseEvent) => openDockMenu(e, av),
+                onPointerDown: (e:React.PointerEvent) => onDockItemPointerDown(e, av)
+            }))}/>
+
+        {
+            launcherAnchor &&
+            <AppLauncherPopover
+                anchor={launcherAnchor}
+                apps={appViews.map((av) => ({
+                    key: av.key, label: av.label, iconUrl: av.iconUrl,
+                    onDesktop: desktopKeys.includes(av.key),
+                    onDock: dockKeys.includes(av.key),
+                    instanceCount: InstancesOf(av).length
+                }))}
+                onLaunch={handleLauncherLaunch}
+                onContextMenu={openLauncherMenu}
+                onItemPointerDown={onLauncherItemPointerDown}
+                onClose={() => setLauncherAnchor(undefined)}/>
+        }
+
+        {
+            dragGhost &&
+            <div className="myd-drag-ghost" style={{ left: dragGhost.x, top: dragGhost.y }}>
+                {
+                    dragGhost.iconUrl
+                        ? <img className="myd-drag-ghost__img" src={dragGhost.iconUrl} alt=""/>
+                        : <Icon name="desktop" className="myd-drag-ghost__glyph"/>
+                }
+                <span className="myd-drag-ghost__label">{dragGhost.label}</span>
+            </div>
+        }
 
         {
             contextMenu &&

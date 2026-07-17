@@ -87,6 +87,24 @@
                     "instanceManagerClientLib": "instanceManagerClientLib"
                 }
             }
+        },
+        {
+            "url": "/desktop-layout",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/DesktopLayout.api.json",
+                "controller": "Controllers/DesktopLayout.controller",
+                "controller-params":{
+                    "ecosystemDefaultsFileRelativePath": "{{ecosystemDefaultsFileRelativePath}}"
+                }
+            },
+            "bound-params": {
+                "serverService":"serverService",
+                "controller-params":{
+                    "ecosystemdataHandlerService":"ecosystemdataHandlerService",
+                    "jsonFileUtilitiesLib": "jsonFileUtilitiesLib"
+                }
+            }
         }
     ]
 }

@@ -9,6 +9,7 @@ import { Icon } from "semantic-ui-react"
 type SystemMenuBarProps = {
     appCount: number
     onOpenMenu: (anchor:{ x:number, y:number }) => void
+    onOpenLauncher: (anchor:{ x:number, y:number }) => void
 }
 
 const useClock = () => {
@@ -25,7 +26,7 @@ const pad = (n:number) => String(n).padStart(2, "0")
 const WEEKDAYS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"]
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 
-const SystemMenuBar = ({ appCount, onOpenMenu }:SystemMenuBarProps) => {
+const SystemMenuBar = ({ appCount, onOpenMenu, onOpenLauncher }:SystemMenuBarProps) => {
 
     const now = useClock()
     const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`
@@ -34,6 +35,12 @@ const SystemMenuBar = ({ appCount, onOpenMenu }:SystemMenuBarProps) => {
     const handleBrandClick = (e:React.MouseEvent<HTMLButtonElement>) => {
         const rect = e.currentTarget.getBoundingClientRect()
         onOpenMenu({ x: rect.left, y: rect.bottom + 4 })
+    }
+
+    const handleAppsClick = (e:React.MouseEvent<HTMLButtonElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        // ancora o popover alinhado à direita do botão, logo abaixo dele
+        onOpenLauncher({ x: rect.right, y: rect.bottom + 4 })
     }
 
     return <header className="myd-menubar">
@@ -46,9 +53,9 @@ const SystemMenuBar = ({ appCount, onOpenMenu }:SystemMenuBarProps) => {
         </div>
 
         <div className="myd-menubar__right">
-            <span className="myd-menubar__chip">
+            <button className="myd-menubar__chip" onClick={handleAppsClick} title="Todos os aplicativos" aria-haspopup="menu">
                 <Icon name="th" /> {appCount} {appCount === 1 ? "app" : "apps"}
-            </span>
+            </button>
             <span className="myd-menubar__clock">
                 <strong>{time}</strong>
                 <small>{date}</small>

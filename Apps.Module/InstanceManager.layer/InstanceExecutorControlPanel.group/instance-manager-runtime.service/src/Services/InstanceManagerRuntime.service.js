@@ -35,6 +35,11 @@ const InstanceManagerRuntimeService = (params) => {
         ListInstances: client.ListInstances,
         OpenInstanceListStream: client.OpenInstanceListStream,
 
+        // Tarefas INTERNAS de uma instância (desktop → socket do processo dela).
+        ListInstanceTasks: client.ListInstanceTasks,
+        OpenInstanceTaskStream: client.OpenInstanceTaskStream,
+        StopInstanceTasks: client.StopInstanceTasks,
+
         // Tarefas do task-executor do daemon
         ListTasks: client.ListTasks,
         GetTask: client.GetTask,

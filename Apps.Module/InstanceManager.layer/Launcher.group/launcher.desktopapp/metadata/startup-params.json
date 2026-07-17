@@ -1,0 +1,5 @@
+{
+    "serverName": "LauncherDesktopInstance",
+    "installDataDirPath": "/home/kadisk/EcosystemData",
+    "platformApplicationSocketPath": "/home/kadisk/EcosystemData/sockets/ecosystem-instance-manager.app.sock"
+}

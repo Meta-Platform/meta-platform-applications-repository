@@ -55,6 +55,18 @@
     },
     {
         "appType":"APP",
+        "executable":"launcher",
+        "packageNamespace":"Apps.Module/InstanceManager.layer/Launcher.group/launcher.webapp",
+        "supervisorSocketFileName":"launcher.sock"
+    },
+    {
+        "appType":"DESKTOP",
+        "executable":"launcher-desktop",
+        "packageNamespace":"Apps.Module/InstanceManager.layer/Launcher.group/launcher.desktopapp",
+        "supervisorSocketFileName":"launcher-desktop.sock"
+    },
+    {
+        "appType":"APP",
         "executable":"meta-project-manager",
         "packageNamespace":"Apps.Module/Productivity.layer/MetaProjectManager.group/meta-project-manager.webapp",
         "supervisorSocketFileName":"meta-project-manager.sock"

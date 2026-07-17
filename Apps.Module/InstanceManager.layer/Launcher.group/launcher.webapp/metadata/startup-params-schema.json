@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "port": {
+      "type": "string",
+      "pattern": "^[0-9]+$"
+    },
+    "serverName": {
+      "type": "string"
+    },
+    "serverManagerUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "packagePath": {
+      "type": "string"
+    },
+    "ECO_DIRPATH_INSTALL_DATA": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "port",
+    "serverName",
+    "serverManagerUrl",
+    "packagePath",
+    "ECO_DIRPATH_INSTALL_DATA"
+  ]
+}

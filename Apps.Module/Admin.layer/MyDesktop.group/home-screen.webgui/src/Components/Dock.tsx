@@ -14,9 +14,10 @@ type DockItemProps = {
     launch?: LaunchInfo
     onOpen: () => void
     onContextMenu?: (e:React.MouseEvent) => void
+    onPointerDown?: (e:React.PointerEvent) => void
 }
 
-const DockItem = ({ label, iconUrl, instanceCount = 0, launch, onOpen, onContextMenu }:DockItemProps) => {
+const DockItem = ({ label, iconUrl, instanceCount = 0, launch, onOpen, onContextMenu, onPointerDown }:DockItemProps) => {
     const [ imageFailed, setImageFailed ] = useState(false)
     const showImage = iconUrl && !imageFailed
 
@@ -37,6 +38,7 @@ const DockItem = ({ label, iconUrl, instanceCount = 0, launch, onOpen, onContext
         type="button"
         className={`myd-dock__item ${isRunning ? "myd-dock__item--running" : ""} ${isBuilding ? "myd-dock__item--building" : ""}`}
         aria-label={isRunning ? `${label} (${runLabel})` : label}
+        onPointerDown={onPointerDown}
         onClick={onOpen}
         onContextMenu={(e) => { e.preventDefault(); onContextMenu && onContextMenu(e) }}>
         <span className="myd-dock__label">{label}{ isRunning && <span className="myd-dock__label-run">• {runLabel}</span> }</span>
@@ -63,20 +65,35 @@ const DockItem = ({ label, iconUrl, instanceCount = 0, launch, onOpen, onContext
     </button>
 }
 
-// Dock inferior centralizado com os apps instalados. Clique lança a aplicação;
-// botão direito abre o menu de contexto (abrir / encerrar / remover).
+// Dock inferior centralizado com os atalhos fixados. Clique lança a aplicação;
+// botão direito abre o menu de contexto; arrastar cria/reordena atalhos.
+// `dropActive` mantém a dock visível (com um alvo de soltura) mesmo vazia,
+// enquanto um arrasto cross-surface está acontecendo — assim dá para recriar
+// atalhos numa dock esvaziada.
+type DockApp = { key:string, label:string, iconUrl?:string, pinned?:boolean, instanceCount?:number, launch?:LaunchInfo, onOpen:()=>void, onContextMenu?:(e:React.MouseEvent)=>void, onPointerDown?:(e:React.PointerEvent)=>void }
 type DockProps = {
-    apps: Array<{ key:string, label:string, iconUrl?:string, instanceCount?:number, launch?:LaunchInfo, onOpen:()=>void, onContextMenu?:(e:React.MouseEvent)=>void }>
+    apps: DockApp[]
+    dockRef?: React.Ref<HTMLDivElement>
+    isDropTarget?: boolean
+    dropActive?: boolean
 }
 
-const Dock = ({ apps }:DockProps) => {
-    if(apps.length === 0) return null
+const Dock = ({ apps, dockRef, isDropTarget, dropActive }:DockProps) => {
+    if(apps.length === 0 && !dropActive) return null
+    // Estilo macOS: separador entre os apps FIXADOS e os apps que estão ali só
+    // por estarem em execução (não fixados). Só aparece quando existem os dois.
+    const firstUnpinnedKey = apps.find((a) => a.pinned === false && apps.some((b) => b.pinned))?.key
     return <div className="myd-dock-wrap">
-        <div className="myd-dock">
+        <div ref={dockRef} className={`myd-dock ${isDropTarget ? "myd-dock--drop" : ""}`}>
             {
-                apps.map((app) =>
-                    <DockItem key={app.key} label={app.label} iconUrl={app.iconUrl}
-                        instanceCount={app.instanceCount} launch={app.launch} onOpen={app.onOpen} onContextMenu={app.onContextMenu}/>)
+                apps.length === 0
+                    ? <span className="myd-dock__placeholder">Solte aqui para fixar na dock</span>
+                    : apps.map((app) => <React.Fragment key={app.key}>
+                        { app.key === firstUnpinnedKey && <span className="myd-dock__sep" aria-hidden="true"/> }
+                        <DockItem label={app.label} iconUrl={app.iconUrl}
+                            instanceCount={app.instanceCount} launch={app.launch}
+                            onOpen={app.onOpen} onContextMenu={app.onContextMenu} onPointerDown={app.onPointerDown}/>
+                    </React.Fragment>)
             }
         </div>
     </div>

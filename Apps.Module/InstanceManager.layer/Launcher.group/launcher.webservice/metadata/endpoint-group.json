@@ -1,0 +1,53 @@
+{
+    "bound-params":[
+        "serverService",
+        "repositoryManagerService",
+        "commandLineRuntimeService",
+        "instanceManagerRuntimeService"
+    ],
+    "endpoints": [
+        {
+            "url": "/repository-manager",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/RepositoryManager.api.json",
+                "controller": "Controllers/RepositoryManager.controller"
+            },
+            "bound-params": {
+                "controller-params":{
+                    "repositoryManagerService":"repositoryManagerService"
+                },
+                "serverService":"serverService"
+            }
+        },
+        {
+            "url": "/ecosystem-manager",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/EcosystemManager.api.json",
+                "controller": "Controllers/EcosystemManager.controller"
+            },
+            "bound-params": {
+                "controller-params":{
+                    "instanceManagerRuntimeService":"instanceManagerRuntimeService",
+                    "repositoryManagerService": "repositoryManagerService"
+                },
+                "serverService":"serverService"
+            }
+        },
+        {
+            "url": "/command-line-runtime",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/CommandLineRuntime.api.json",
+                "controller": "Controllers/CommandLineRuntime.controller"
+            },
+            "bound-params": {
+                "controller-params":{
+                    "commandLineRuntimeService":"commandLineRuntimeService"
+                },
+                "serverService":"serverService"
+            }
+        }
+    ]
+}
