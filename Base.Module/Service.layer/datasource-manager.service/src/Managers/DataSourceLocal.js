@@ -86,13 +86,18 @@ const DataSourceLocalManager = (params) => {
     }
 
     // Cria uma fonte relational-database (foco SQLite) em runtime: instancia o
-    // service, persiste o arquivo e registra em memória. Retorna o GetInfo.
-    const _CreateORMSource = (sourceParams) => {
+    // service, AGUARDA a autenticação (para o status retornado ser READY/ERROR e
+    // não WAITING), persiste o arquivo e registra em memória. Retorna o GetInfo.
+    const _CreateORMSource = async (sourceParams) => {
         const full = { type: "relational-database", ...sourceParams }
         const service = ORMService(full)
         // Evita duplicar uma fonte já registrada (mesmo keystone).
         const existing = listServices.find((s) => s.GetKeystone && s.GetKeystone() === service.GetKeystone())
-        if(existing) return existing.GetInfo()
+        if(existing){
+            try { await existing.EnsureConnection() } catch(_){ /* status ERROR reflete no GetInfo */ }
+            return existing.GetInfo()
+        }
+        try { await service.EnsureConnection() } catch(_){ /* status ERROR reflete no GetInfo */ }
         _PersistSourceFile(full)
         _AddSource(service)
         return service.GetInfo()

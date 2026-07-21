@@ -28,6 +28,7 @@ const MainPage = ({HTTPServerManager}:any) => {
     const [activeTab, setActiveTab]             = useState<Tab>("data")
     const [createOpen, setCreateOpen]           = useState(false)
     const [error, setError]                     = useState<string>()
+    const [connError, setConnError]             = useState<string>()
 
     const selectedSource = sources.find((s) => s.keystone === selectedKeystone)
 
@@ -37,20 +38,25 @@ const MainPage = ({HTTPServerManager}:any) => {
         .catch((e:any) => setError(e?.message || String(e)))
     , [api])
 
+    // Ao listar tabelas, o backend autentica sob demanda (EnsureConnection);
+    // sucesso ⇒ atualiza a lista de fontes (o status/bolinha vira READY);
+    // falha ⇒ mostra o erro real (não trava em "indisponível").
     const loadTables = useCallback((keystone:string) =>
         api("RelacionalDatabaseHandler").ShowAllTableName({keystone})
-        .then(({data}:any) => setTables(data || []))
-        .catch(() => setTables([]))
-    , [api])
+        .then(({data}:any) => { setTables(data || []); setConnError(undefined); loadSources() })
+        .catch((e:any) => { setTables([]); setConnError((e?.response?.data?.message) || e?.message || "Não foi possível conectar a esta base.") })
+    , [api, loadSources])
 
     useEffect(() => { loadSources() }, [loadSources])
 
     useEffect(() => {
         setSelectedTable(undefined)
-        if(selectedKeystone && selectedSource && (selectedSource.status||"").toUpperCase() === "READY")
+        setTables([])
+        setConnError(undefined)
+        // Tenta conectar a menos que a fonte já esteja explicitamente em ERROR.
+        // WAITING é tratado otimistamente (a autenticação roda ao listar tabelas).
+        if(selectedKeystone && selectedSource && (selectedSource.status||"").toUpperCase() !== "ERROR")
             loadTables(selectedKeystone)
-        else
-            setTables([])
     }, [selectedKeystone, (selectedSource||{}).status])
 
     const handleOpenSqlite = (path:string, name:string) => {
@@ -77,11 +83,11 @@ const MainPage = ({HTTPServerManager}:any) => {
             return <Welcome onOpenSqlite={handleOpenSqlite}/>
 
         const status = (selectedSource.status || "").toUpperCase()
-        if(status !== "READY")
+        if(status === "ERROR" || connError)
             return <div className="ds-welcome"><div className="ds-welcome__card">
                 <div className="ds-welcome__icon">⚠️</div>
                 <h2>Conexão indisponível</h2>
-                <p>{selectedSource.message || "Não foi possível conectar a esta base."}</p>
+                <p>{connError || selectedSource.message || "Não foi possível conectar a esta base."}</p>
             </div></div>
 
         return <>
