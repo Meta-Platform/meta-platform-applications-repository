@@ -1,18 +1,16 @@
 
 import * as React    from "react"
-import { Container } from "semantic-ui-react"
-
-import GlobalStyle from "../Styles/Global.style"
 
 import Menu from "./Menu"
 
+// Wrapper legado (usado por telas auxiliares). O workbench principal
+// (Main.page) monta o próprio shell .ds-app e NÃO passa por aqui.
 const PageDefault = ({children}:any) =>
-    <Container fluid={true}>
-        <GlobalStyle />
-        <div>
-            <Menu/>
+    <div className="ds-app">
+        <Menu/>
+        <div style={{flex:"1 1 auto", overflow:"auto"}}>
             {children}
         </div>
-    </Container>
+    </div>
 
 export default PageDefault

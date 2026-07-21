@@ -32,36 +32,22 @@
 			"method": "POST",
 			"summary": "CreateORM",
 			"parameters": [
-				{
-					"in": "body",
-					"name": "host",
-					"type": "string",
-					"required": true
-				},
-				{
-					"in": "body",
-					"name": "dialect",
-					"type": "string",
-					"required": true
-				},
-				{
-					"in": "body",
-					"name": "dbname",
-					"type": "string",
-					"required": true
-				},
-				{
-					"in": "body",
-					"name": "user",
-					"type": "string",
-					"required": true
-				},
-				{
-					"in": "body",
-					"name": "password",
-					"type": "string",
-					"required": true
-				}
+				{ "in": "body", "name": "name",     "type": "string", "required": true },
+				{ "in": "body", "name": "dialect",  "type": "string", "required": true },
+				{ "in": "body", "name": "storage",  "type": "string", "required": false },
+				{ "in": "body", "name": "host",     "type": "string", "required": false },
+				{ "in": "body", "name": "port",     "type": "number", "required": false },
+				{ "in": "body", "name": "database", "type": "string", "required": false },
+				{ "in": "body", "name": "username", "type": "string", "required": false },
+				{ "in": "body", "name": "password", "type": "string", "required": false }
+			]
+		},
+		{
+			"path": "/data-source",
+			"method": "DELETE",
+			"summary": "RemoveSource",
+			"parameters": [
+				{ "in": "body", "name": "keystone", "type": "string", "required": true }
 			]
 		},
 		{

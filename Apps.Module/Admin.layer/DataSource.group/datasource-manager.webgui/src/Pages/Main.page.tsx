@@ -1,151 +1,145 @@
-import * as React             from "react"
-import { useEffect, useState} from "react"
-import { connect }            from "react-redux"
-import { bindActionCreators } from "redux"
-import { Grid }              from "semantic-ui-react"
+import * as React from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
+import { connect } from "react-redux"
+import { Icon } from "semantic-ui-react"
 
-//@ts-ignore
-import qs from "query-string"
-import {
-	useLocation,
-	useNavigate
-  } from "react-router-dom"
+import Api from "../Utils/Api"
 
-import GetRequestByServer from "../Utils/GetRequestByServer"
+import Topbar           from "../Components/Menu"
+import Sidebar          from "../Components/Workbench/Sidebar"
+import Welcome          from "../Components/Workbench/Welcome"
+import DataGridPanel    from "../Components/Workbench/DataGridPanel"
+import SqlConsolePanel  from "../Components/Workbench/SqlConsolePanel"
+import StructurePanel   from "../Components/Workbench/StructurePanel"
+import CreateTableModal from "../Components/Workbench/CreateTableModal"
 
-import ColumnLayout from "../Layouts/Column.layout"
-import PageDefault from "../Components/PageDefault"
+type Tab = "data" | "sql" | "structure"
 
-import QueryParamsActionsCreator    from "../Actions/QueryParams.actionsCreator"
+const stripExt = (name:string) => name.replace(/\.(sqlite|db|sqlite3|db3)$/i, "")
 
-import SourceColumn             from "../Columns/Source.column"
-import RelationalDatabaseColumn from "../Columns/RelationalDatabase.column"
-import DatastoreColumn          from "../Columns/Datastore.column"
-import FileSystemColumn         from "../Columns/FileSystem.column"
+const MainPage = ({HTTPServerManager}:any) => {
 
-const Column = Grid.Column
+    const api = useMemo(() => Api(HTTPServerManager), [HTTPServerManager])
 
-import useSourceState from "../Hooks/useSourceState"
+    const [sources, setSources]                 = useState<SourceType[]>([])
+    const [selectedKeystone, setSelectedKeystone] = useState<string>()
+    const [tables, setTables]                   = useState<string[]>([])
+    const [selectedTable, setSelectedTable]     = useState<string>()
+    const [activeTab, setActiveTab]             = useState<Tab>("data")
+    const [createOpen, setCreateOpen]           = useState(false)
+    const [error, setError]                     = useState<string>()
 
+    const selectedSource = sources.find((s) => s.keystone === selectedKeystone)
 
-const MainPage = ({
-	HTTPServerManager,
-	route,
-	SetQueryParams,
-	AddQueryParam,
-	RemoveQueryParam,
-	QueryParams
-}:any) => {
-	
-	const location = useLocation()
-  	const navigate = useNavigate()
-	const queryParams = qs.parse(location.search.substr(1))
+    const loadSources = useCallback(() =>
+        api("DataSources").ListDataSources()
+        .then(({data}:any) => setSources(data || []))
+        .catch((e:any) => setError(e?.message || String(e)))
+    , [api])
 
-	const [dataSource, setDataSource] = useState<SourceType>()
+    const loadTables = useCallback((keystone:string) =>
+        api("RelacionalDatabaseHandler").ShowAllTableName({keystone})
+        .then(({data}:any) => setTables(data || []))
+        .catch(() => setTables([]))
+    , [api])
 
-	useEffect(() => {
-		if(Object.keys(queryParams).length > 0){
-			SetQueryParams(queryParams)
-		}
-	}, [])
+    useEffect(() => { loadSources() }, [loadSources])
 
-	useEffect(() => {
-		const search = qs.stringify(QueryParams)
-		navigate({search: `?${search}`})
-	}, [QueryParams])
+    useEffect(() => {
+        setSelectedTable(undefined)
+        if(selectedKeystone && selectedSource && (selectedSource.status||"").toUpperCase() === "READY")
+            loadTables(selectedKeystone)
+        else
+            setTables([])
+    }, [selectedKeystone, (selectedSource||{}).status])
 
-	const {
-        listSource,
-        keystoneSelected,
-		setKeystoneSelected,
-		sourceSelected
-	} = useSourceState({HTTPServerManager})
+    const handleOpenSqlite = (path:string, name:string) => {
+        setError(undefined)
+        api("DataSources").CreateORM({name: stripExt(name), dialect:"sqlite", storage:path})
+        .then(({data}:any) => loadSources().then(() => setSelectedKeystone(data.keystone)))
+        .catch((e:any) => setError((e?.response?.data?.message) || e?.message || String(e)))
+    }
 
-	useEffect(() => {
-		if(QueryParams.source && QueryParams.source !== ""){
-			setKeystoneSelected(QueryParams.source)
-		}
-	},  [listSource])
+    const handleRemove = (keystone:string) => {
+        api("DataSources").RemoveSource(keystone).then(() => {
+            if(keystone === selectedKeystone) setSelectedKeystone(undefined)
+            loadSources()
+        })
+    }
 
-	useEffect(() => { 
-		if(keystoneSelected){
-			AddQueryParam("source", keystoneSelected)
-		}else if(keystoneSelected === ""){
-			RemoveQueryParam("source")
-			RemoveQueryParam("type")
-			setKeystoneSelected(undefined)
-		}
-	}, [keystoneSelected])
+    const handleSelectConnection = (keystone:string) => setSelectedKeystone(keystone || undefined)
+    const handleSelectTable = (t:string) => { setSelectedTable(t); setActiveTab("data") }
+    const handleCreated = (tableName:string) => { setCreateOpen(false); selectedKeystone && loadTables(selectedKeystone).then(() => handleSelectTable(tableName)) }
+    const handleDropped = () => { setSelectedTable(undefined); selectedKeystone && loadTables(selectedKeystone) }
 
-	useEffect(() => {
+    const renderMain = () => {
+        if(!selectedKeystone || !selectedSource)
+            return <Welcome onOpenSqlite={handleOpenSqlite}/>
 
-		if(sourceSelected && sourceSelected.type){
-			AddQueryParam("type", sourceSelected.type)
-		}
-	}, [(sourceSelected || {}).type])
+        const status = (selectedSource.status || "").toUpperCase()
+        if(status !== "READY")
+            return <div className="ds-welcome"><div className="ds-welcome__card">
+                <div className="ds-welcome__icon">⚠️</div>
+                <h2>Conexão indisponível</h2>
+                <p>{selectedSource.message || "Não foi possível conectar a esta base."}</p>
+            </div></div>
 
-	const handleSelectSource = (keystone:string) => setKeystoneSelected(keystone || "")
+        return <>
+            <div className="ds-main__head">
+                <div>
+                    <div className="ds-main__title">
+                        {selectedTable
+                            ? <><Icon name="table"/><span className="mono">{selectedTable}</span></>
+                            : <><Icon name="database"/>{selectedSource.name}</>}
+                    </div>
+                    <div className="ds-main__sub">{selectedSource.name} · sqlite</div>
+                </div>
+                <div className="ds-main__spacer"/>
+                <button className="ds-btn ds-btn--sm" onClick={()=>setCreateOpen(true)}><Icon name="plus square outline" fitted/> Nova tabela</button>
+            </div>
 
+            {selectedTable
+                ? <>
+                    <div className="ds-tabs">
+                        <button className={`ds-tab ${activeTab==="data"?"is-active":""}`} onClick={()=>setActiveTab("data")}><Icon name="table" fitted/> Dados</button>
+                        <button className={`ds-tab ${activeTab==="sql"?"is-active":""}`} onClick={()=>setActiveTab("sql")}><Icon name="terminal" fitted/> SQL</button>
+                        <button className={`ds-tab ${activeTab==="structure"?"is-active":""}`} onClick={()=>setActiveTab("structure")}><Icon name="columns" fitted/> Estrutura</button>
+                    </div>
+                    {activeTab==="data" &&
+                        <DataGridPanel api={api} keystone={selectedKeystone} tableName={selectedTable}/>}
+                    {activeTab==="sql" &&
+                        <SqlConsolePanel api={api} keystone={selectedKeystone} initialSql={`SELECT * FROM "${selectedTable}" LIMIT 100;`}/>}
+                    {activeTab==="structure" &&
+                        <StructurePanel api={api} keystone={selectedKeystone} tableName={selectedTable}
+                            onChanged={()=>selectedKeystone && loadTables(selectedKeystone)} onDropped={handleDropped}/>}
+                </>
+                : <SqlConsolePanel api={api} keystone={selectedKeystone}/>}
+        </>
+    }
 
-	useEffect(() => {
-        if(sourceSelected){
-			const {name, type} = sourceSelected
-
-			if(type){
-				AddQueryParam("type", type)
-			}
-
-			if(name){
-				setDataSource(undefined)
-				GetRequestByServer(HTTPServerManager)(process.env.SERVER_APP_NAME, "DataSources")
-				.GetDataSource({ name })
-				.then(({ data }: any) => setDataSource(data))
-			}
-			
-        }
-    }, [sourceSelected])
-
-	return <PageDefault>
-				<ColumnLayout columns="three">
-					<Column width={3}>
-						<SourceColumn
-							selected={keystoneSelected}
-							list = {listSource}
-							onSelect = {handleSelectSource}/>
-					</Column>
-					{
-						sourceSelected
-						&& dataSource 
-						&& sourceSelected.type
-						&& dataSource.status.toUpperCase() === "READY"
-						&& <Column width={13}>
-							{
-								sourceSelected.type === "relational-database"
-								&& <RelationalDatabaseColumn source={dataSource} />
-							}
-							{
-								sourceSelected.type === "datastore"
-								&& <DatastoreColumn source={dataSource}/>
-							}
-							{
-								sourceSelected.type === "fs"
-								&& <FileSystemColumn source={dataSource}/>
-							}
-						</Column>
-					}
-				</ColumnLayout>
-			</PageDefault>
+    return <div className="ds-app">
+        <Topbar/>
+        {error && <div className="ds-banner err">{error}</div>}
+        <div className="ds-body">
+            <Sidebar
+                sources            = {sources}
+                selectedKeystone   = {selectedKeystone}
+                tables             = {tables}
+                selectedTable      = {selectedTable}
+                onSelectConnection = {handleSelectConnection}
+                onSelectTable      = {handleSelectTable}
+                onOpenSqlite       = {handleOpenSqlite}
+                onRemove           = {handleRemove}/>
+            <div className="ds-main">
+                {renderMain()}
+            </div>
+        </div>
+        {selectedKeystone &&
+            <CreateTableModal api={api} keystone={selectedKeystone} open={createOpen}
+                onClose={()=>setCreateOpen(false)} onCreated={handleCreated}/>}
+    </div>
 }
 
-const mapDispatchToProps = (dispatch:any) => bindActionCreators({
-	SetQueryParams    : QueryParamsActionsCreator.SetQueryParams,
-	AddQueryParam     : QueryParamsActionsCreator.AddQueryParam,
-	RemoveQueryParam  : QueryParamsActionsCreator.RemoveQueryParam
-}, dispatch)
+const mapStateToProps = ({HTTPServerManager}:any) => ({ HTTPServerManager })
 
-const mapStateToProps = ({HTTPServerManager, QueryParams}:any) => ({
-	HTTPServerManager,
-	QueryParams
-})
-
-export default connect(mapStateToProps, mapDispatchToProps)(MainPage)
+export default connect(mapStateToProps)(MainPage)

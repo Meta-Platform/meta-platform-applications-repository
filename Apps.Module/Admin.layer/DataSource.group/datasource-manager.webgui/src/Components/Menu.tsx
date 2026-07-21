@@ -1,25 +1,32 @@
 import * as React from "react"
-import { 
-	Menu,
-	Header,
-	Image
-} from "semantic-ui-react"
-import styled from "styled-components"
+import { useState } from "react"
+import { Icon } from "semantic-ui-react"
 
+import { THEMES, ApplyTheme, GetSavedTheme, ThemeName } from "../Utils/theme"
 
+// Barra de sistema (topbar) do Datasource Manager — mesmo padrão eco-main-menu
+// dos demais apps. Marca à esquerda + seletor de tema à direita.
+const Topbar = () => {
 
-const AppsMenuItem = styled(Menu.Item)`
-	padding: 8px!important;
-`
+    const [theme, setTheme] = useState<ThemeName>(GetSavedTheme())
 
-const MainMenu = () => {
+    const handleTheme = (event:React.ChangeEvent<HTMLSelectElement>) => {
+        const value = event.target.value as ThemeName
+        setTheme(value)
+        ApplyTheme(value)
+    }
 
-    return <Menu attached="top">
-                <AppsMenuItem active>
-                    <Header>Datasource Manager</Header>
-                </AppsMenuItem>
-            </Menu>
+    return <div className="ds-topbar">
+                <div className="ds-topbar__brand">
+                    <span className="ds-logo"><Icon name="database" fitted/></span>
+                    Datasource Manager
+                </div>
+                <div className="ds-topbar__spacer"/>
+                <Icon name="paint brush" style={{opacity:.6}}/>
+                <select className="ds-input" value={theme} onChange={handleTheme} title="Tema">
+                    {THEMES.map(({key, label}) => <option key={key} value={key}>{label}</option>)}
+                </select>
+            </div>
 }
-    
 
-export default MainMenu
+export default Topbar
