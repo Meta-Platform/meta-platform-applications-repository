@@ -63,6 +63,10 @@ const LauncherContainer = ({ serverManagerInformation, QueryParams, AddQueryPara
     const [ selectedPackageKey, setSelectedPackageKey ] = useState<string>()
 
     const [ search, setSearch ] = useState("")
+    // Sem tipo específico marcado, o escopo decide o padrão da lista:
+    //   runnable (padrão) = só o que dá pra lançar (bootável); all = inclui o
+    //   encanamento (lib, webgui não-bootável…). Marcar um ext ignora o escopo.
+    const [ scope, setScope ] = useState<"runnable" | "all">("runnable")
     const [ selectedExts, setSelectedExts ] = useState<string[]>([])
     const [ runningOnly, setRunningOnly ] = useState(false)
     const [ repoFilter, setRepoFilter ] = useState<string>("")
@@ -79,6 +83,7 @@ const LauncherContainer = ({ serverManagerInformation, QueryParams, AddQueryPara
     useEffect(() => {
         if(QueryParams.repo) setRepoFilter(QueryParams.repo)
         if(QueryParams.filterValue) setSearch(QueryParams.filterValue)
+        if(QueryParams.scope === "all" || QueryParams.scope === "runnable") setScope(QueryParams.scope)
         if(QueryParams.types) setSelectedExts(String(QueryParams.types).split(",").filter(Boolean))
         fetchRepositories()
     }, [])
@@ -146,7 +151,12 @@ const LauncherContainer = ({ serverManagerInformation, QueryParams, AddQueryPara
     }
     const handleToggleExt = (ext:string) =>
         commitExts(selectedExts.includes(ext) ? selectedExts.filter((e) => e !== ext) : [ ...selectedExts, ext ])
-    const handleClearExts = () => commitExts([])
+    // Os chips de escopo limpam a seleção de tipo e fixam runnable/all.
+    const handleSetScope = (value:"runnable" | "all") => {
+        setScope(value)
+        AddQueryParam("scope", value)
+        commitExts([])
+    }
 
     // Namespaces conhecidos: união dos repositórios registrados com os que de
     // fato têm pacotes (um repositório pode estar registrado e ainda vazio).
@@ -175,8 +185,11 @@ const LauncherContainer = ({ serverManagerInformation, QueryParams, AddQueryPara
     }
     const matchesRepo    = (p:PackageInformation) => !repoFilter || p.repositoryParams.namespaceRepo === repoFilter
     const matchesRunning = (p:PackageInformation) => !runningOnly || Boolean(p.packageInService)
-    // Nenhum tipo marcado = todos os tipos (o chip "Tudo" fica ativo).
-    const matchesType    = (p:PackageInformation) => selectedExts.length === 0 || selectedExts.includes(p.repositoryParams.ext)
+    // Tipo marcado manda; sem tipo, o escopo decide (executáveis por padrão).
+    const matchesType    = (p:PackageInformation) =>
+        selectedExts.length > 0
+            ? selectedExts.includes(p.repositoryParams.ext)
+            : scope === "all" || IsBootable(p)
 
     const basePackages = useMemo(() =>
         packageList.filter((p) => matchesSearch(p) && matchesRepo(p) && matchesRunning(p)),
@@ -184,7 +197,9 @@ const LauncherContainer = ({ serverManagerInformation, QueryParams, AddQueryPara
 
     const visiblePackages = useMemo(() =>
         basePackages.filter(matchesType),
-    [basePackages, selectedExts])
+    [basePackages, selectedExts, scope])
+
+    const runnableCount = useMemo(() => basePackages.filter(IsBootable).length, [basePackages])
 
     // Chips de tipo: as extensões presentes no repositório em foco (estáveis
     // enquanto se digita a busca), com a contagem no contexto atual.
@@ -247,11 +262,18 @@ const LauncherContainer = ({ serverManagerInformation, QueryParams, AddQueryPara
                 </Button.Group>
             </>}>
                 <StatusChip
+                    icon="rocket"
+                    tone="info"
+                    count={runnableCount}
+                    label="executáveis"
+                    active={selectedExts.length === 0 && scope === "runnable"}
+                    onClick={() => handleSetScope("runnable")}/>
+                <StatusChip
                     icon="clone outline"
                     count={basePackages.length}
                     label="tudo"
-                    active={selectedExts.length === 0}
-                    onClick={handleClearExts}/>
+                    active={selectedExts.length === 0 && scope === "all"}
+                    onClick={() => handleSetScope("all")}/>
                 {
                     extChips.map(({ ext, count }) =>
                         <StatusChip
