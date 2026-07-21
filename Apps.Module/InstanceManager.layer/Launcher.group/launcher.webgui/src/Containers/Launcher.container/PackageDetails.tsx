@@ -22,7 +22,6 @@ import ParamsViewer from "../../Components/ParamsViewer"
 import CommandGroupForm from "../../Components/CommandGroupForm"
 import ExecutionTerminal, { ExecutionTerminalHandle } from "../../Components/ExecutionTerminal"
 
-import DependencyDiagram from "./DependencyDiagram"
 import PackageIcon from "./PackageIcon"
 import { PackageInformation, IsBootable, IsCommandLine } from "./PackageTree"
 
@@ -44,7 +43,6 @@ const PackageDetails = ({
 
     const [ isOriginalParams, setIsOriginalParams ] = useState(true)
     const [ newStartupParams, setNewStartupParams ] = useState()
-    const [ dependencyHierarchy, setDependencyHierarchy ] = useState()
     const [ packagePath, setPackagePath ] = useState<string>()
     const [ isBusy, setIsBusy ] = useState(false)
     const [ errorMessage, setErrorMessage ] = useState<string>()
@@ -77,10 +75,8 @@ const PackageDetails = ({
         setIsOriginalParams(true)
         setNewStartupParams(undefined)
         setErrorMessage(undefined)
-        setDependencyHierarchy(undefined)
         setPackagePath(undefined)
         setCommandStatus("idle")
-        fetchDependencyHierarchy()
         if(isCommandLine) fetchPackagePath()
     }, [
         repositoryParams.namespaceRepo,
@@ -90,13 +86,6 @@ const PackageDetails = ({
         repositoryParams.packageName,
         repositoryParams.ext
     ])
-
-    const fetchDependencyHierarchy = async () => {
-        try {
-            const response = await getRepositoryManagerAPI().GetPackageDependencyHierarchy(repositoryParams)
-            setDependencyHierarchy(response.data)
-        } catch(e){ console.log(e) }
-    }
 
     // O CommandLineRuntime executa por caminho, não por identidade de pacote.
     const fetchPackagePath = async () => {
@@ -166,13 +155,6 @@ const PackageDetails = ({
                 </div>
             </TabPane>
         })
-
-    panes.push({
-        menuItem: { key: "dependencies", content: <span><Icon name="sitemap"/> dependências</span> },
-        render: () => <TabPane>
-            { dependencyHierarchy ? <DependencyDiagram dependencyHierarchy={dependencyHierarchy}/> : <Loader active inline="centered" style={{ margin: "40px" }}/> }
-        </TabPane>
-    })
 
     // Form de execução montado a partir do command-group: escolhe-se o comando,
     // preenchem-se os parâmetros e a saída aparece no terminal logo abaixo.
@@ -282,7 +264,13 @@ const PackageDetails = ({
             </Message>
         }
 
-        <Tab menu={{ secondary: true, pointing: true }} panes={panes} style={{ marginTop: "10px" }}/>
+        {
+            panes.length > 0
+            ? <Tab menu={{ secondary: true, pointing: true }} panes={panes} style={{ marginTop: "10px" }}/>
+            : <Message size="tiny" style={{ marginTop: "10px" }}>
+                <Icon name="info circle"/> pacote não executável — é uma dependência usada por outros pacotes.
+            </Message>
+        }
     </Segment>
 }
 

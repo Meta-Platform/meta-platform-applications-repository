@@ -40,6 +40,22 @@ export const IsCommandLine = (packageInformation:PackageInformation) => {
     return Array.isArray(executables) && executables.some((item:any) => item && item.executableName)
 }
 
+// Intenção de execução do pacote — o eixo pelo qual o Launcher organiza a busca:
+//   cli      linha de comando (roda num terminal do daemon)
+//   service  serviço supervisionado sem GUI própria (service/webservice)
+//   app      aplicação lançável com janela/porta (desktopapp, webapp, webgui bootável…)
+//   other    encanamento não-lançável sozinho (lib, webgui não-bootável…)
+export type PackageCategoryType = "app" | "cli" | "service" | "other"
+
+export const PackageCategory = (packageInformation:PackageInformation):PackageCategoryType => {
+    if(IsCommandLine(packageInformation)) return "cli"
+    if(IsBootable(packageInformation)){
+        const ext = packageInformation.repositoryParams.ext
+        return (ext === "service" || ext === "webservice") ? "service" : "app"
+    }
+    return "other"
+}
+
 type TreeNodeData = {
     __packages: PackageInformation[]
     __children: { [name:string]: TreeNodeData }
