@@ -63,6 +63,14 @@ const PackageDetails = ({
     const startupParamsSchema = metadata && metadata["startup-params-schema"]
     const startupParams       = metadata && metadata["startup-params"]
 
+    // Muitos pacotes têm startup-params SEM um schema declarado. Para não esconder
+    // os parâmetros, derivamos um schema simples das chaves existentes — o form já
+    // renderiza cada campo como input, use ou não o schema declarado.
+    const effectiveStartupSchema = startupParamsSchema
+        || (startupParams && Object.keys(startupParams).length > 0
+            ? { properties: Object.keys(startupParams).reduce((acc:any, key:string) => ({ ...acc, [key]: {} }), {}) }
+            : undefined)
+
     // O metadata do pacote chega inteiro do daemon, então o command-group já está
     // aqui — o form de execução é montado sem nenhuma chamada extra.
     const commandGroup    = metadata && metadata["command-group"]
@@ -132,12 +140,18 @@ const PackageDetails = ({
 
     const panes:any[] = []
 
-    if(startupParamsSchema)
+    if(effectiveStartupSchema)
         panes.push({
             menuItem: { key: "params", content: <span><Icon name="sliders horizontal"/> startup params</span> },
             render: () => <TabPane>
+                {
+                    !startupParamsSchema &&
+                    <Message size="tiny" info style={{ marginBottom: "8px" }}>
+                        <Icon name="info circle"/> este pacote não declara <strong>startup-params-schema</strong> — exibindo os <strong>startup-params</strong> do pacote, sem validação de tipo.
+                    </Message>
+                }
                 <StartupParamsForm
-                    schema={startupParamsSchema}
+                    schema={effectiveStartupSchema}
                     params={startupParams || {}}
                     onChangeParams={handleChangeParams}/>
                 {
