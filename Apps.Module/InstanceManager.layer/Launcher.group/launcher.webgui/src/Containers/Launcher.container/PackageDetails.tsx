@@ -267,9 +267,13 @@ const PackageDetails = ({
         {
             panes.length > 0
             ? <Tab menu={{ secondary: true, pointing: true }} panes={panes} style={{ marginTop: "10px" }}/>
-            : <Message size="tiny" style={{ marginTop: "10px" }}>
-                <Icon name="info circle"/> pacote não executável — é uma dependência usada por outros pacotes.
-            </Message>
+            : isBootable
+                ? <Message info size="tiny" style={{ marginTop: "10px" }}>
+                    <Icon name="rocket"/> pronto para executar — sem parâmetros de inicialização. Clique em <strong>executar</strong>.
+                </Message>
+                : <Message size="tiny" style={{ marginTop: "10px" }}>
+                    <Icon name="info circle"/> pacote não executável — é uma dependência usada por outros pacotes.
+                </Message>
         }
     </Segment>
 }
