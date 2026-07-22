@@ -23,7 +23,7 @@ import CommandGroupForm from "../../Components/CommandGroupForm"
 import ExecutionTerminal, { ExecutionTerminalHandle } from "../../Components/ExecutionTerminal"
 
 import PackageIcon from "./PackageIcon"
-import { PackageInformation, IsBootable, IsCommandLine } from "./PackageTree"
+import { PackageInformation, IsBootable, IsCommandLine, IsRunning } from "./PackageTree"
 
 // Painel de lançamento de uma instância a partir de um pacote.
 //
@@ -50,10 +50,13 @@ const PackageDetails = ({
 
     const commandTerminalRef = useRef<ExecutionTerminalHandle>(null)
 
-    const { repositoryParams, metadata, packageInService, applicationInServiceState } = packageInformation
+    const { repositoryParams, metadata, applicationInServiceState } = packageInformation
 
     const isBootable    = IsBootable(packageInformation)
     const isCommandLine = IsCommandLine(packageInformation)
+    // O daemon mantém a task acumulada após o encerramento (status TERMINATED),
+    // então `packageInService` sozinho reportaria como "no ar" algo já morto.
+    const isRunning     = IsRunning(packageInformation)
     const status        = applicationInServiceState?.status
     const port          = applicationInServiceState?.staticParameters?.startupParams?.port
 
@@ -146,7 +149,7 @@ const PackageDetails = ({
             </TabPane>
         })
 
-    if(packageInService && applicationInServiceState?.staticParameters?.startupParams)
+    if(isRunning && applicationInServiceState?.staticParameters?.startupParams)
         panes.push({
             menuItem: { key: "running", content: <span><Icon name="play circle"/> em execução</span> },
             render: () => <TabPane>
@@ -201,9 +204,9 @@ const PackageDetails = ({
             </TabPane>
         })
 
-    const canRun  = isBootable && !packageInService && !isCommandLine
-    const canStop = isBootable && packageInService
-    const canOpen = packageInService && status === "ACTIVE" && port
+    const canRun  = isBootable && !isRunning && !isCommandLine
+    const canStop = isBootable && isRunning
+    const canOpen = isRunning && status === "ACTIVE" && port
 
     return <Segment style={{ height: "100%", overflow: "auto", margin: 0 }}>
         <EntityHeader
@@ -211,7 +214,7 @@ const PackageDetails = ({
             title={repositoryParams.packageName}
             typeLabel={repositoryParams.ext}
             subtitle={`${repositoryParams.namespaceRepo}.${repositoryParams.moduleName}.${repositoryParams.layerName}${repositoryParams.parentGroup ? `.${repositoryParams.parentGroup}` : ""}`}
-            status={packageInService ? status : undefined}
+            status={isRunning ? status : undefined}
             badges={
                 !isBootable
                 ? <Label size="tiny" basic color="grey">não executável</Label>

@@ -12,7 +12,7 @@ import QueryParamsActionsCreator from "../../Actions/QueryParams.actionsCreator"
 import PageMasthead from "../../Components/ui/PageMasthead"
 import StatusStrip, { StatusChip } from "../../Components/ui/StatusStrip"
 
-import PackageTree, { PackageInformation, PackageKey, IsBootable } from "./PackageTree"
+import PackageTree, { PackageInformation, PackageKey, IsBootable, IsRunning } from "./PackageTree"
 import PackageResults from "./PackageResults"
 import PackageDetails from "./PackageDetails"
 import RegisterRepositoryModal from "./RegisterRepository.modal"
@@ -184,7 +184,7 @@ const LauncherContainer = ({ serverManagerInformation, QueryParams, AddQueryPara
         return haystack.toLowerCase().includes(search.toLowerCase())
     }
     const matchesRepo    = (p:PackageInformation) => !repoFilter || p.repositoryParams.namespaceRepo === repoFilter
-    const matchesRunning = (p:PackageInformation) => !runningOnly || Boolean(p.packageInService)
+    const matchesRunning = (p:PackageInformation) => !runningOnly || IsRunning(p)
     // Tipo marcado manda; sem tipo, o escopo decide (executáveis por padrão).
     const matchesType    = (p:PackageInformation) =>
         selectedExts.length > 0
@@ -215,7 +215,7 @@ const LauncherContainer = ({ serverManagerInformation, QueryParams, AddQueryPara
         packageList.find((p) => PackageKey(p.repositoryParams) === selectedPackageKey),
     [packageList, selectedPackageKey])
 
-    const totalRunning = basePackages.filter((p) => p.packageInService).length
+    const totalRunning = basePackages.filter((p) => IsRunning(p)).length
 
     const repoOptions = [
         { key: "__all", text: "todos os repositórios", value: "", icon: "database" },

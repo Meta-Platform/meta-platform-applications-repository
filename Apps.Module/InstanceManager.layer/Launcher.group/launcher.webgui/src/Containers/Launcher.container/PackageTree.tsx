@@ -34,6 +34,19 @@ export const PackageKey = (repositoryParams:any) =>
 export const IsBootable = (packageInformation:PackageInformation) =>
     Boolean(packageInformation.metadata && packageInformation.metadata.boot)
 
+// Status de instância que significam "já morreu" — o daemon mantém a task
+// acumulada mesmo depois de encerrada, então `packageInService` continua true.
+// Aqui tratamos esses estados como NÃO em execução: o pacote volta a ser
+// lançável e não fica preso num "encerrar" que não tem execução ativa pra parar.
+const TERMINAL_STATUSES = [ "TERMINATED", "FINISHED", "FAILURE", "STOPPED", "ERROR" ]
+
+export const InstanceStatus = (packageInformation:PackageInformation):string | undefined =>
+    packageInformation.applicationInServiceState && packageInformation.applicationInServiceState.status
+
+export const IsRunning = (packageInformation:PackageInformation) =>
+    Boolean(packageInformation.packageInService) &&
+    !TERMINAL_STATUSES.includes(InstanceStatus(packageInformation) as string)
+
 // Um pacote é CLI quando declara executáveis no boot.json (mesma regra do daemon).
 export const IsCommandLine = (packageInformation:PackageInformation) => {
     const executables = packageInformation.metadata?.boot?.executables
@@ -91,13 +104,13 @@ const CountPackages = (node:TreeNodeData):number =>
     Object.keys(node.__children).reduce((total, name) => total + CountPackages(node.__children[name]), 0)
 
 const CountRunning = (node:TreeNodeData):number =>
-    node.__packages.filter((p) => p.packageInService).length +
+    node.__packages.filter((p) => IsRunning(p)).length +
     Object.keys(node.__children).reduce((total, name) => total + CountRunning(node.__children[name]), 0)
 
 const StatusDot = ({ packageInformation }:any) => {
-    if(!packageInformation.packageInService) return null
+    if(!IsRunning(packageInformation)) return null
     const status = packageInformation.applicationInServiceState?.status
-    const color = status === "ACTIVE" ? "green" : status === "FAILURE" ? "red" : "orange"
+    const color = status === "ACTIVE" ? "green" : "orange"
     return <Icon
         name="circle"
         size="small"

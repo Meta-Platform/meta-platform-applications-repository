@@ -9,7 +9,8 @@ import {
     PackageKey,
     PackageCategory,
     IsBootable,
-    IsCommandLine
+    IsCommandLine,
+    IsRunning
 } from "./PackageTree"
 
 // Lista plana de resultados do Launcher — o modo "achar e rodar".
@@ -33,9 +34,9 @@ const PathLabel = ({ repositoryParams }:any) => {
 }
 
 const StatusDot = ({ packageInformation }:any) => {
-    if(!packageInformation.packageInService) return null
+    if(!IsRunning(packageInformation)) return null
     const status = packageInformation.applicationInServiceState?.status
-    const color = status === "ACTIVE" ? "green" : status === "FAILURE" ? "red" : "orange"
+    const color = status === "ACTIVE" ? "green" : "orange"
     return <Icon name="circle" size="small" color={color as any} title={status} style={{ flex: "0 0 auto", margin: 0 }}/>
 }
 
@@ -45,7 +46,7 @@ const ResultRow = ({ packageInformation, isSelected, onSelect, onRun, serverMana
 
     const { packageName, ext } = packageInformation.repositoryParams
     const category = PackageCategory(packageInformation)
-    const running  = Boolean(packageInformation.packageInService)
+    const running  = IsRunning(packageInformation)
     const status   = packageInformation.applicationInServiceState?.status
     const port     = packageInformation.applicationInServiceState?.staticParameters?.startupParams?.port
 
@@ -128,8 +129,8 @@ const PackageResults = ({
 
     // Em execução primeiro (o que importa acompanhar), depois alfabético.
     const sorted = [...packageList].sort((a:PackageInformation, b:PackageInformation) => {
-        const ra = a.packageInService ? 0 : 1
-        const rb = b.packageInService ? 0 : 1
+        const ra = IsRunning(a) ? 0 : 1
+        const rb = IsRunning(b) ? 0 : 1
         if(ra !== rb) return ra - rb
         return a.repositoryParams.packageName.localeCompare(b.repositoryParams.packageName)
     })
