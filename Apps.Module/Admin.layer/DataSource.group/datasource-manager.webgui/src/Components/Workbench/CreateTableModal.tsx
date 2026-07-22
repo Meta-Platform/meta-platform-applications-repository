@@ -2,6 +2,8 @@ import * as React from "react"
 import { useState } from "react"
 import { Modal, Icon } from "semantic-ui-react"
 
+import { toast, errMessage } from "../../Utils/toast"
+
 type Props = { api:(name:string)=>any, keystone:string, open:boolean, onClose:()=>void, onCreated:(tableName:string)=>void }
 
 const TYPES = ["INTEGER","STRING","TEXT","BIGINT","FLOAT","REAL","DECIMAL","BOOLEAN","DATE","DATEONLY","JSON","BLOB","UUID"]
@@ -21,8 +23,8 @@ const CreateTableModal = ({api, keystone, open, onClose, onCreated}:Props) => {
         const cols = columns.filter((c)=>c.name.trim())
         if(!tableName.trim() || cols.length===0){ setError("Informe o nome da tabela e ao menos uma coluna."); return }
         api("RelacionalDatabaseHandler").CreateTable({keystone, tableName, columns:cols})
-        .then(()=>{ reset(); onCreated(tableName) })
-        .catch((e:any)=>setError((e?.response?.data?.message)||e?.message||String(e)))
+        .then(()=>{ toast.ok(`Tabela "${tableName}" criada`); reset(); onCreated(tableName) })
+        .catch((e:any)=>setError(errMessage(e)))
     }
 
     const reset = () => { setTableName(""); setColumns([{name:"id", type:"INTEGER", allowNull:false, primaryKey:true, autoIncrement:true}]); setError(undefined) }

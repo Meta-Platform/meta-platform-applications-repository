@@ -2,6 +2,8 @@ import * as React from "react"
 import { useEffect, useState, useCallback } from "react"
 import { Icon } from "semantic-ui-react"
 
+import { toast, errMessage } from "../../Utils/toast"
+
 type Props = { api:(name:string)=>any, keystone:string, tableName:string }
 
 type ColMeta = { name:string, type?:string, allowNull?:boolean, primaryKey?:boolean }
@@ -40,9 +42,10 @@ const DataGridPanel = ({api, keystone, tableName}:Props) => {
     const [draft, setDraft]       = useState<Record<string,string>|null>(null)
 
     const pkColumns = meta.filter((m) => m.primaryKey).map((m) => m.name)
+    const noPk = meta.length > 0 && pkColumns.length === 0
     const metaByName = (col:string) => meta.find((m) => m.name === col)
 
-    const fail = (e:any) => setError((e && e.response && e.response.data && e.response.data.message) || (e && e.message) || String(e))
+    const fail = (e:any) => setError(errMessage(e))
 
     const loadMeta = useCallback(() => {
         rdb().DescribeTable({keystone, tableName})
@@ -89,13 +92,15 @@ const DataGridPanel = ({api, keystone, tableName}:Props) => {
         setEditing(null)
         if(String(row[col] ?? "") === String(newVal ?? "")) return
         rdb().UpdateRow({keystone, tableName, values:{[col]:newVal}, where:whereForRow(row)})
-        .then(loadRows).catch(fail)
+        .then(() => { toast.ok("Linha atualizada"); loadRows() })
+        .catch((e:any) => toast.err(errMessage(e)))
     }
 
     const deleteRow = (row:any) => {
         if(!window.confirm("Excluir esta linha?")) return
         rdb().DeleteRow({keystone, tableName, where:whereForRow(row)})
-        .then(loadRows).catch(fail)
+        .then(() => { toast.ok("Linha excluída"); loadRows() })
+        .catch((e:any) => toast.err(errMessage(e)))
     }
 
     const saveDraft = () => {
@@ -105,7 +110,8 @@ const DataGridPanel = ({api, keystone, tableName}:Props) => {
             return acc
         }, {})
         rdb().InsertRow({keystone, tableName, values})
-        .then(() => { setDraft(null); loadRows() }).catch(fail)
+        .then(() => { toast.ok("Linha inserida"); setDraft(null); loadRows() })
+        .catch((e:any) => toast.err(errMessage(e)))
     }
 
     const from = total === 0 ? 0 : offset + 1
@@ -124,6 +130,7 @@ const DataGridPanel = ({api, keystone, tableName}:Props) => {
             </select>
         </div>
 
+        {noPk && <div className="ds-warnbar"><Icon name="warning sign" fitted/> Tabela sem chave primária — edição/exclusão usam a linha inteira como filtro (pode afetar linhas idênticas).</div>}
         {error && <div className="ds-banner err">{error}</div>}
         {loading && <div className="ds-loading">carregando…</div>}
 

@@ -11,6 +11,7 @@ type Props = {
     onSelectConnection : (keystone:string) => void
     onSelectTable      : (tableName:string) => void
     onOpenSqlite       : (path:string, name:string) => void
+    onReload           : () => void
     onRemove           : (keystone:string) => void
 }
 
@@ -21,11 +22,14 @@ const statusClass = (status:string) => {
     return "waiting"
 }
 
-const Sidebar = ({sources, selectedKeystone, tables, selectedTable, onSelectConnection, onSelectTable, onOpenSqlite, onRemove}:Props) =>
+const Sidebar = ({sources, selectedKeystone, tables, selectedTable, onSelectConnection, onSelectTable, onOpenSqlite, onReload, onRemove}:Props) =>
     <div className="ds-sidebar">
         <div className="ds-sidebar__head">
             <span className="ds-sidebar__title">Conexões</span>
-            <span className="ds-sidebar__title">{sources.length}</span>
+            <span style={{display:"flex", alignItems:"center", gap:6}}>
+                <button className="ds-iconbtn" title="Recarregar conexões" onClick={onReload}><Icon name="refresh" fitted/></button>
+                <span className="ds-sidebar__title">{sources.length}</span>
+            </span>
         </div>
         <div className="ds-sidebar__scroll">
             {sources.length === 0 && <div className="ds-tree__hint">Nenhuma conexão. Abra um arquivo SQLite.</div>}

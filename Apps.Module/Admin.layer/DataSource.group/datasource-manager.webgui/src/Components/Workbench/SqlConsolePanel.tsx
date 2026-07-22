@@ -3,6 +3,7 @@ import { useState } from "react"
 import { Icon } from "semantic-ui-react"
 
 import ResultGrid from "./ResultGrid"
+import { toast, errMessage } from "../../Utils/toast"
 
 type Props = { api:(name:string)=>any, keystone:string, initialSql?:string }
 
@@ -17,8 +18,8 @@ const SqlConsolePanel = ({api, keystone, initialSql}:Props) => {
         if(!sql.trim()) return
         setRunning(true); setError(undefined); setResult(null)
         api("RelacionalDatabaseHandler").RunSQL({keystone, sql})
-        .then(({data}:any) => setResult(data))
-        .catch((e:any) => setError((e?.response?.data?.message) || e?.message || String(e)))
+        .then(({data}:any) => { setResult(data); if(data.kind === "write") toast.ok("Comando executado") })
+        .catch((e:any) => { const m = errMessage(e); setError(m); toast.err(m) })
         .finally(() => setRunning(false))
     }
 

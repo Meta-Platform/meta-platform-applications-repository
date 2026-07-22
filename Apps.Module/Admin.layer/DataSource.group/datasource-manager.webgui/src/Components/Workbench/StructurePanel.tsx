@@ -2,6 +2,8 @@ import * as React from "react"
 import { useEffect, useState, useCallback } from "react"
 import { Icon } from "semantic-ui-react"
 
+import { toast, errMessage } from "../../Utils/toast"
+
 type Props = {
     api:(name:string)=>any, keystone:string, tableName:string,
     onChanged?:()=>void, onDropped?:()=>void
@@ -19,7 +21,7 @@ const StructurePanel = ({api, keystone, tableName, onChanged, onDropped}:Props) 
     const [adding, setAdding]   = useState(false)
     const [newCol, setNewCol]   = useState<any>({name:"", type:"STRING", allowNull:true, defaultValue:""})
 
-    const fail = (e:any) => setError((e?.response?.data?.message) || e?.message || String(e))
+    const fail = (e:any) => { setError(errMessage(e)); toast.err(errMessage(e)) }
 
     const load = useCallback(() => {
         setError(undefined)
@@ -32,18 +34,20 @@ const StructurePanel = ({api, keystone, tableName, onChanged, onDropped}:Props) 
     const addColumn = () => {
         if(!newCol.name.trim()) return
         rdb().AddColumn({keystone, tableName, column:newCol})
-        .then(()=>{ setAdding(false); setNewCol({name:"", type:"STRING", allowNull:true, defaultValue:""}); load(); onChanged && onChanged() })
+        .then(()=>{ toast.ok(`Coluna "${newCol.name}" adicionada`); setAdding(false); setNewCol({name:"", type:"STRING", allowNull:true, defaultValue:""}); load(); onChanged && onChanged() })
         .catch(fail)
     }
 
     const removeColumn = (name:string) => {
         if(!window.confirm(`Remover a coluna "${name}"?`)) return
-        rdb().RemoveColumn({keystone, tableName, columnName:name}).then(()=>{ load(); onChanged && onChanged() }).catch(fail)
+        rdb().RemoveColumn({keystone, tableName, columnName:name})
+        .then(()=>{ toast.ok(`Coluna "${name}" removida`); load(); onChanged && onChanged() }).catch(fail)
     }
 
     const dropTable = () => {
         if(!window.confirm(`DROPAR a tabela "${tableName}"? Esta ação é irreversível.`)) return
-        rdb().DropTable({keystone, tableName}).then(()=>{ onChanged && onChanged(); onDropped && onDropped() }).catch(fail)
+        rdb().DropTable({keystone, tableName})
+        .then(()=>{ toast.ok(`Tabela "${tableName}" removida`); onChanged && onChanged(); onDropped && onDropped() }).catch(fail)
     }
 
     return <div className="ds-tabpanel ds-struct">

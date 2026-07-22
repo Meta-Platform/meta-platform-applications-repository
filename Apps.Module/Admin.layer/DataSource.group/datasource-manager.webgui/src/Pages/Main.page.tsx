@@ -4,8 +4,10 @@ import { connect } from "react-redux"
 import { Icon } from "semantic-ui-react"
 
 import Api from "../Utils/Api"
+import { toast, errMessage } from "../Utils/toast"
 
 import Topbar           from "../Components/Menu"
+import Toasts           from "../Components/Workbench/Toasts"
 import Sidebar          from "../Components/Workbench/Sidebar"
 import Welcome          from "../Components/Workbench/Welcome"
 import DataGridPanel    from "../Components/Workbench/DataGridPanel"
@@ -62,15 +64,22 @@ const MainPage = ({HTTPServerManager}:any) => {
     const handleOpenSqlite = (path:string, name:string) => {
         setError(undefined)
         api("DataSources").CreateORM({name: stripExt(name), dialect:"sqlite", storage:path})
-        .then(({data}:any) => loadSources().then(() => setSelectedKeystone(data.keystone)))
-        .catch((e:any) => setError((e?.response?.data?.message) || e?.message || String(e)))
+        .then(({data}:any) => {
+            if((data.status || "").toUpperCase() === "ERROR")
+                toast.err(data.message || "Não foi possível conectar a esta base.")
+            else
+                toast.ok(`Conectado: ${data.name}`)
+            loadSources().then(() => setSelectedKeystone(data.keystone))
+        })
+        .catch((e:any) => { const m = errMessage(e); setError(m); toast.err(m) })
     }
 
     const handleRemove = (keystone:string) => {
-        api("DataSources").RemoveSource(keystone).then(() => {
+        api("DataSources").RemoveSource({keystone}).then(() => {
+            toast.ok("Conexão removida")
             if(keystone === selectedKeystone) setSelectedKeystone(undefined)
             loadSources()
-        })
+        }).catch((e:any) => toast.err(errMessage(e)))
     }
 
     const handleSelectConnection = (keystone:string) => setSelectedKeystone(keystone || undefined)
@@ -135,6 +144,7 @@ const MainPage = ({HTTPServerManager}:any) => {
                 onSelectConnection = {handleSelectConnection}
                 onSelectTable      = {handleSelectTable}
                 onOpenSqlite       = {handleOpenSqlite}
+                onReload           = {loadSources}
                 onRemove           = {handleRemove}/>
             <div className="ds-main">
                 {renderMain()}
@@ -143,6 +153,7 @@ const MainPage = ({HTTPServerManager}:any) => {
         {selectedKeystone &&
             <CreateTableModal api={api} keystone={selectedKeystone} open={createOpen}
                 onClose={()=>setCreateOpen(false)} onCreated={handleCreated}/>}
+        <Toasts/>
     </div>
 }
 
