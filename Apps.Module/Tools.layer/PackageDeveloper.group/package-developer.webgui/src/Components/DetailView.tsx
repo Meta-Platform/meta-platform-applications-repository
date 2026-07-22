@@ -10,13 +10,17 @@ import { Icon, Button } from "semantic-ui-react"
 // ---- Tokens (fallback embutido p/ funcionar fora do tema) ----
 const T = {
     ink:      "var(--mp-ink, #171713)",
+    ink2:     "var(--mp-ink-2, #2A2B27)",
     muted:    "var(--mp-muted, #73766D)",
     muted2:   "var(--mp-muted-2, #9A9D92)",
     line:     "var(--mp-line-faint, #D7CFBA)",
     lineSoft: "var(--mp-line-soft, #B8B3A3)",
     surface:  "var(--mp-surface, #FFF9E8)",
     surface2: "var(--mp-surface-2, #F8F1DD)",
-    codeBg:   "var(--mp-code-bg, rgba(128,128,128,0.12))",
+    // Chip de valor comum: mesma paleta do `code {}` do tema (clara e theme-aware).
+    // NÃO usar --mp-code-bg aqui: é o fundo ESCURO do editor de terminal.
+    chipBg:   "var(--mp-surface-2, #F8F1DD)",
+    chipFg:   "var(--mp-ink-2, #2A2B27)",
     refBg:    "var(--mp-accent-blue-tint, #E2ECF8)",
     refFg:    "var(--mp-accent-blue, #2D74C4)",
     tmplBg:   "var(--mp-accent-orange-tint, #F6E6D5)",
@@ -48,7 +52,7 @@ const chipBase:any = {
 const styleFor = (s:string):any =>
     isRef(s)      ? { ...chipBase, background:T.refBg,  color:T.refFg,  fontWeight:600 } :
     isTemplate(s) ? { ...chipBase, background:T.tmplBg, color:T.tmplFg } :
-                    { ...chipBase, background:T.codeBg, color:T.ink }
+                    { ...chipBase, background:T.chipBg, color:T.chipFg, border:`1px solid ${T.line}` }
 
 // Valor escalar → chip colorido (ou traço, se vazio).
 const Value = ({ v }:any) => {
