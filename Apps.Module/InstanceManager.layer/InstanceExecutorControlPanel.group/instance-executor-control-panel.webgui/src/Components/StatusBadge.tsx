@@ -29,9 +29,11 @@ export const GetStatusIcon = (status:string):any => GetStatusMeta(status).icon
 export const GetSeverityRank = (status:string):number => GetStatusMeta(status).severity
 
 // Badge de status padronizado (cor + ícone + texto). Nunca depende só de cor.
-const StatusBadge = ({ status, size = "mini", showIcon = true }:any) => {
+// `reason` (statusReason): quando presente (tipicamente em FAILURE), vira tooltip
+// nativo do badge — o motivo do término fica a um hover de distância na tabela.
+const StatusBadge = ({ status, reason, size = "mini", showIcon = true }:any) => {
     const meta = GetStatusMeta(status)
-    return <Label color={meta.color} size={size}>
+    return <Label color={meta.color} size={size} title={reason || undefined}>
         { showIcon && <Icon name={meta.icon}/> }{status}
     </Label>
 }

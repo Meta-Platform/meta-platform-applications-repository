@@ -6,6 +6,7 @@ import {
 	Header,
 	Label,
 	Button,
+	Message,
 	Tab,
 	TabPane
  } from 'semantic-ui-react'
@@ -144,6 +145,12 @@ const TaskInformationView = ({
 							</Header.Content>
 					}
 				</Header>
+				{
+					taskInformation?.statusReason &&
+					<Message negative icon="times circle" size="small"
+						header="Motivo do término"
+						content={taskInformation.statusReason} />
+				}
 				{!taskInformation && <Loader active />}
 				<Tab menu={{ secondary: true, pointing: true }} panes={panes} />
 			</Segment>

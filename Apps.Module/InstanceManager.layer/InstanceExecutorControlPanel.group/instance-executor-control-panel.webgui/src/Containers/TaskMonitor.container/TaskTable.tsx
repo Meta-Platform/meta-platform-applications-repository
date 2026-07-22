@@ -105,7 +105,7 @@ const TaskRow = ({
         </Table.Cell>
         <Table.Cell>
             <div style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "space-between" }}>
-                <StatusBadge status={task.status}/>
+                <StatusBadge status={task.status} reason={task.statusReason}/>
                 {
                     alive &&
                     <Button

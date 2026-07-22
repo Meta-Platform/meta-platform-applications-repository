@@ -2,13 +2,16 @@
 // para nome, detalhe e ícone de uma task — usada pelo monitor de processos.
 //
 // Uma task chega do daemon no formato de FormatTaskForOutput:
-//   { taskId, pTaskId, objectLoaderType, status, staticParameters }
+//   { taskId, pTaskId, objectLoaderType, status, statusReason?, staticParameters }
+// `statusReason` só vem preenchido em FAILURE: o motivo textual do término
+// (ex.: erro de listen/EADDRINUSE do serviço). É o que responde "por que terminou".
 
 export type Task = {
     taskId: number
     pTaskId?: number
     objectLoaderType: string
     status: string
+    statusReason?: string
     staticParameters?: any
 }
 
