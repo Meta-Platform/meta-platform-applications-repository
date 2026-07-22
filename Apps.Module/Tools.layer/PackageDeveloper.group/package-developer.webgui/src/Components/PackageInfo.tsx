@@ -68,7 +68,7 @@ const PackageInfo = ({ HTTPServerManager, workspace, pkg, detail, onBackDetail }
         {/* Item da árvore clicado → detalhes (substitui as abas). */}
         {
             detail
-            ? <DetailView title={detail.title} icon={detail.icon} data={detail.data} onBack={onBackDetail} />
+            ? <DetailView detail={detail} onBack={onBackDetail} />
             :
         /* README, Dependências @/ e npm como ABAS na MESMA linha (sem cards). */
             tabDefs.length > 0
