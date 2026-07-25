@@ -12,6 +12,13 @@ const POLL_INTERVAL_MS   = 800
 const REQUEST_TIMEOUT_MS = 2000
 const ASSET_POLL_INTERVAL_MS = 1200
 
+// Durante um rebuild, o servidor continua entregando o bundle do build ANTERIOR
+// (200 com conteúdo obsoleto — não 404), então a janela carrega a versão velha
+// logo no start. Nessa fase inicial não há estado de tela a preservar: a troca
+// pelo bundle recém-compilado é feita direto, sem o diálogo de confirmação.
+// Folga generosa sobre o build mais pesado observado (~40s no 3d-viewer).
+const INITIAL_REBUILD_WINDOW_MS = 120000
+
 const LOADING_PAGE = join(__dirname, "loading.html")
 const PRELOAD_SCRIPT = join(__dirname, "preload.js")
 
@@ -231,6 +238,7 @@ const CreateWindow = () => {
     let currentBundleSignature
     let ignoredBundleSignature
     let promptOpen = false
+    let loadedAt = 0
 
     // Durante o carregamento, mantém o título correto do app (não deixa a página
     // provisória exibir "Carregando…"). Depois que o front-end real carrega, ele
@@ -243,6 +251,7 @@ const CreateWindow = () => {
         if(loaded || window.isDestroyed()) return
         if(await IsServerReady(url)) {
             loaded = true
+            loadedAt = Date.now()
             currentBundleSignature = await GetBundleSignature(url)
             // "ready" NÃO é reportado aqui: servidor respondendo 200 não é o
             // mesmo que a UI renderizada. Quem reporta é o did-finish-load do
@@ -291,7 +300,18 @@ const CreateWindow = () => {
             newBundleSignature !== currentBundleSignature &&
             newBundleSignature !== ignoredBundleSignature
         ) {
-            await ConfirmReload(newBundleSignature)
+            // Logo após o start, o que está na tela veio do build ANTERIOR (o
+            // servidor entrega o bundle velho enquanto recompila) e pode nem ter
+            // renderizado — era o caso da janela em branco. Não há estado a
+            // preservar nem o que perguntar: troca direto pelo bundle novo.
+            // Passada essa fase, a tela é de uso real e a confirmação volta a
+            // valer (evita interromper o trabalho no watch mode).
+            if(Date.now() - loadedAt < INITIAL_REBUILD_WINDOW_MS) {
+                currentBundleSignature = newBundleSignature
+                if(!window.isDestroyed()) window.loadURL(url)
+            } else {
+                await ConfirmReload(newBundleSignature)
+            }
         }
 
         if(!window.isDestroyed())
