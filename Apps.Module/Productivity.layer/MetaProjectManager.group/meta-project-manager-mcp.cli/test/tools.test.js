@@ -239,7 +239,11 @@ test("get_guidance devolve instruções + restrições reais do domínio", async
     // as restrições precisam bater com o domínio, não ser texto solto
     assert.deepEqual(out.constraints.linkRelations, ["blocks","depends","relates","duplicates","implements","tests","originated_from"])
     assert.equal(out.constraints.keyPrefixMaxChars, 5)
-    assert.deepEqual(out.constraints.gatedActions.delete, ["project","board","item","risk","planning-doc"])
+    // MPMX2-6: a lista de gate é DERIVADA da política que o store aplica, não escrita à mão.
+    for(const target of ["project","board","item","risk","planning-doc","milestone","sprint","column"])
+        assert.ok(out.constraints.gatedActions.delete.includes(target), `delete de ${target} deveria ser gated`)
+    // Criar milestone/sprint é LIVRE — anunciá-los como gated foi o bug do MPMX2-6.
+    assert.deepEqual(out.constraints.gatedActions.create, ["project","board","column"])
     assert.ok(out.constraints.linkAttachmentSchemes.includes("file"))
     assert.equal(out.session.provider, "claude")
 })
@@ -361,10 +365,10 @@ test("agente lista pacotes do catálogo e vincula vários a um item", async () =
     const linked = await byN("list_item_packages").handler({ item: it.key })
     assert.equal(linked.length, 2)
 
-    // filtro: o que está aberto neste pacote?
+    // filtro: o que está aberto neste pacote? (list_items devolve envelope paginado)
     const items = await byN("list_items").handler({ project: p.id, package: "x.lib" })
-    assert.equal(items.length, 1)
-    assert.equal(items[0].key, it.key)
+    assert.equal(items.total, 1)
+    assert.equal(items.items[0].key, it.key)
 
     await byN("remove_item_package").handler({ item: it.key, package: "x.lib" })
     assert.equal((await byN("list_item_packages").handler({ item: it.key })).length, 1)
@@ -458,4 +462,188 @@ test("MPMX-1 get_guidance: expõe workflowPolicies e gate de status", async () =
     assert.ok(Array.isArray(g.workflowPolicies) && g.workflowPolicies.length >= 5)
     assert.equal(g.constraints.crossProjectLinks, true)
     assert.ok(g.constraints.gatedActions.statusDone.includes("done"))
+})
+
+// ───────────── MPMX2: escala, retorno e modelo consultável (rodada 2) ─────────────
+
+test("MPMX2-1 create_items cria em lote e isola a falha de um elemento", async () => {
+    const out = await byName("create_items").handler({
+        project: "MCP",
+        items: [
+            { project: "MCP", type: "epic", title: "Épico do lote" },
+            { project: "MCP", type: "task", title: "Tarefa do lote", acceptanceCriteria: ["critério A", "critério B"] },
+            { project: "MCP", type: "invalido", title: "Tipo que não existe" }
+        ]
+    })
+    assert.equal(out.total, 3)
+    assert.equal(out.succeeded, 2)
+    assert.equal(out.failed, 1)
+    assert.ok(out.results[0].key, "o elemento bem-sucedido devolve a key")
+    assert.equal(out.results[2].ok, false)
+    assert.equal(out.results[2].error.code, "VALIDATION_ERROR")
+    // os critérios do elemento 2 foram criados junto (sem chamada extra)
+    const criada = await byName("get_item").handler({ item: out.results[1].key })
+    assert.equal(criada.acceptanceCriteria.length, 2)
+})
+
+test("MPMX2-1 create_items monta a hierarquia no MESMO lote via @apelido", async () => {
+    const out = await byName("create_items").handler({
+        project: "MCP",
+        items: [
+            { type: "epic", title: "Épico com apelido", ref: "epico-1" },
+            { type: "feature", title: "Feature do épico", ref: "feat-1", parent: "@epico-1" },
+            { type: "task", title: "Tarefa da feature", parent: "@feat-1" },
+            { type: "task", title: "Apelido inexistente", parent: "@nao-existe" }
+        ]
+    })
+    assert.equal(out.succeeded, 3)
+    assert.equal(out.results[3].ok, false)
+    assert.equal(out.results[3].error.code, "VALIDATION_ERROR")
+
+    const epico = await byName("get_item").handler({ item: out.results[0].key })
+    const feature = await byName("get_item").handler({ item: out.results[1].key })
+    const tarefa = await byName("get_item").handler({ item: out.results[2].key })
+    assert.equal(feature.parentId, epico.id)
+    assert.equal(tarefa.parentId, feature.id)
+})
+
+test("MPMX2-1 link_items vincula em lote com resultado por elemento", async () => {
+    const criados = await byName("create_items").handler({
+        project: "MCP",
+        items: [{ type: "task", title: "Elo A" }, { type: "task", title: "Elo B" }]
+    })
+    const [a, b] = criados.results.map((r) => r.key)
+    const out = await byName("link_items").handler({
+        links: [
+            { item: a, relation: "depends", target: b },
+            { item: a, relation: "relacao-invalida", target: b }
+        ]
+    })
+    assert.equal(out.succeeded, 1)
+    assert.equal(out.results[1].ok, false)
+    const detalhe = await byName("get_item").handler({ item: a })
+    assert.equal(detalhe.links.filter((l) => l.relation === "depends").length, 1)
+})
+
+test("MPMX2-1 add_acceptance_criteria aceita vários textos numa chamada", async () => {
+    const item = await store.CreateItem({ project: "MCP", type: "task", title: "Critérios em lote" })
+    const out = await byName("add_acceptance_criteria").handler({ item: item.key, texts: ["um", "dois", "três"] })
+    assert.equal(out.succeeded, 3)
+    assert.equal((await byName("get_item").handler({ item: item.key })).acceptanceCriteria.length, 3)
+    // sem text nem texts, erro claro
+    await assert.rejects(() => byName("add_acceptance_criteria").handler({ item: item.key }), (e) => e.code === "VALIDATION_ERROR")
+})
+
+test("MPMX2-2 escritas devolvem RESUMO por padrão; view:full traz o registro inteiro", async () => {
+    const longa = "d".repeat(400)
+    const resumo = await byName("create_item").handler({ project: "MCP", type: "task", title: "Resumo padrão", description: longa })
+    assert.ok(resumo.key)
+    assert.equal(resumo.description, undefined, "a descrição enviada não volta de graça")
+
+    const cheio = await byName("create_item").handler({ project: "MCP", type: "task", title: "Completo", description: longa, view: "full" })
+    assert.equal(cheio.description, longa)
+
+    // vale também para entrega, risco, página de doc e charter
+    const m = await byName("create_milestone").handler({ project: "MCP", name: "Entrega enxuta", description: longa })
+    assert.ok(m.id && m.name && m.description === undefined)
+    const r = await byName("create_risk").handler({ project: "MCP", title: "Risco enxuto", description: longa })
+    assert.ok(r.id && r.description === undefined)
+    const d = await byName("create_doc_page").handler({ project: "MCP", title: "Página enxuta", body: longa })
+    assert.ok(d.id && d.body === undefined)
+    const c = await byName("create_planning_doc").handler({ project: "MCP", title: "Charter enxuto", objective: longa })
+    assert.ok(c.id && c.objective === undefined)
+})
+
+test("MPMX2-3/7/8 create_item grava shortDescription, labels, effort e confidence", async () => {
+    const out = await byName("create_item").handler({
+        project: "MCP", type: "task", title: "Item classificado",
+        shortDescription: "Uma linha para o card.",
+        labels: ["agente:senior", "trilha:mcp"], effort: "l", confidence: "medium", value: "high",
+        view: "full"
+    })
+    assert.equal(out.shortDescription, "Uma linha para o card.")
+    assert.deepEqual(out.labels, ["agente:senior", "trilha:mcp"])
+    assert.equal(out.effort, "l")
+    assert.equal(out.confidence, "medium")
+
+    const filtrado = await byName("list_items").handler({ project: "MCP", label: "agente:senior" })
+    assert.ok(filtrado.items.some((i) => i.key === out.key))
+
+    const vocab = await byName("list_labels").handler({ project: "MCP" })
+    assert.ok(vocab.some((l) => l.label === "trilha:mcp"))
+    const areas = await byName("list_areas").handler({ project: "MCP" })
+    assert.ok(Array.isArray(areas))
+})
+
+test("MPMX2-4 list_items devolve envelope paginado e projeta com fields", async () => {
+    const res = await byName("list_items").handler({ project: "MCP", limit: 2 })
+    assert.ok(Array.isArray(res.items))
+    assert.equal(res.limit, 2)
+    assert.equal(typeof res.total, "number")
+    assert.equal(typeof res.hasMore, "boolean")
+    assert.ok(res.items.every((i) => i.description === undefined), "a descrição longa não vem por padrão")
+
+    const projetado = await byName("list_items").handler({ project: "MCP", fields: ["key", "title"], limit: 1 })
+    assert.deepEqual(Object.keys(projetado.items[0]).sort(), ["key", "title"])
+})
+
+test("MPMX2-5 list_doc_pages não traz o corpo — só o tamanho", async () => {
+    await byName("create_doc_page").handler({ project: "MCP", title: "Página com corpo", body: "y".repeat(3000) })
+    const res = await byName("list_doc_pages").handler({ project: "MCP" })
+    assert.ok(res.items.length >= 1)
+    const alvo = res.items.find((p) => p.title === "Página com corpo")
+    assert.equal(alvo.body, undefined)
+    assert.equal(alvo.bodyLength, 3000)
+    // e o corpo continua a uma chamada de distância
+    assert.equal((await byName("get_doc_page").handler({ docPage: alvo.id })).body.length, 3000)
+})
+
+test("MPMX2-9 link_risk_item liga risco e item, e as duas pontas enxergam", async () => {
+    const item = await store.CreateItem({ project: "MCP", type: "task", title: "Mitiga o risco" })
+    const risk = await byName("create_risk").handler({ project: "MCP", title: "Risco vinculável", probability: "high", impact: "high" })
+    const link = await byName("link_risk_item").handler({ risk: risk.id, item: item.key, relation: "mitigates" })
+    assert.equal(link.relation, "mitigates")
+
+    assert.equal((await byName("get_item").handler({ item: item.key })).risks.length, 1)
+    assert.equal((await byName("get_risk").handler({ risk: risk.id })).items.length, 1)
+    assert.equal((await byName("list_risks").handler({ item: item.key })).length, 1)
+
+    await byName("unlink_risk_item").handler({ risk: risk.id, item: item.key })
+    assert.equal((await byName("get_item").handler({ item: item.key })).risks.length, 0)
+})
+
+test("MPMX2-10 link_milestones sequencia entregas e recusa ciclo", async () => {
+    const a = await byName("create_milestone").handler({ project: "MCP", name: "Fase A", shortDescription: "primeira" })
+    const b = await byName("create_milestone").handler({ project: "MCP", name: "Fase B" })
+    await byName("link_milestones").handler({ milestone: b.id, relation: "depends", target: a.id })
+    await assert.rejects(() => byName("link_milestones").handler({ milestone: a.id, relation: "depends", target: b.id }),
+        (e) => e.code === "VALIDATION_ERROR")
+
+    const lista = await byName("list_milestones").handler({ project: "MCP" })
+    const fb = lista.find((m) => m.name === "Fase B")
+    assert.deepEqual(fb.dependsOn.map((d) => d.name), ["Fase A"])
+    assert.equal(fb.dependenciesMet, false)
+    // MPMX2-14: a entrega aceita shortDescription
+    assert.equal(lista.find((m) => m.name === "Fase A").shortDescription, "primeira")
+})
+
+test("MPMX2-11 report_ready lista o desimpedido com quanto cada item destrava", async () => {
+    const p = await store.CreateProject({ name: "Pronto MCP", keyPrefix: "PRM", status: "active", actor: { source: "cli" } })
+    const base = await store.CreateItem({ project: p.id, type: "task", title: "base" })
+    const dep = await store.CreateItem({ project: p.id, type: "task", title: "dependente" })
+    await store.LinkItem({ item: dep.id, relation: "depends", target: base.id })
+
+    const res = await byName("report_ready").handler({ project: p.id })
+    const keys = res.items.map((i) => i.key)
+    assert.ok(keys.includes(base.key))
+    assert.ok(!keys.includes(dep.key))
+    assert.equal(res.items[0].unblocks, 1)
+})
+
+test("MPMX2-16 ecosystem_index_status não escreve e diz se o índice existe", async () => {
+    const status = await byName("ecosystem_index_status").handler({})
+    assert.equal(typeof status.indexed, "boolean")
+    assert.equal(typeof status.totalPackages, "number")
+    // sem repositories.json acessível, o motivo vem explicado em vez de estourar
+    assert.ok(status.declaredRepositories || status.declarationError)
 })

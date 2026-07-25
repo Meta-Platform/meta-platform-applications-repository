@@ -96,11 +96,15 @@ O guia cobre:
 
 ## Tools expostas
 
-**Planejar (gate — exige aprovação humana):** `create_project`, `create_board`,
-`create_milestone`, `create_sprint`. Retornam
+**Planejar:** `create_project` e `create_board` são **gated** (exigem aprovação
+humana) e retornam
 `{ ok:false, code:"AGENT_SESSION_CONFIRMATION_REQUIRED", details:{ pendingCreationId } }`
-— avise o humano e aguarde `mpm agent creation approve <id>`. `create_project`/`create_board`
-aceitam `shortDescription` (resumo `<=240` chars, usado em cards/listas/busca).
+— avise o humano e aguarde `mpm agent creation approve <id>`. `create_milestone` e
+`create_sprint` são **livres** (planejamento é reversível). A lista viva do que é
+gated sai de `get_guidance().constraints.gatedActions`, **derivada** de
+`Config.AGENT_GATE_POLICY` — a mesma que o store consulta ao decidir se bloqueia.
+Todas essas tools aceitam `shortDescription` (resumo `<=240` chars, usado em
+cards/listas/busca), assim como `create_item`.
 
 **Remover (gate destrutivo — SOFT delete + espera):** `delete_project`, `delete_board`,
 `delete_item`. Cada tool cria um pedido destrutivo e, por padrão (`waitApproval:true`),
@@ -114,6 +118,24 @@ pediu (provider/modelo/sessão). Não tente burlar o gate.
 **Executar (livre):** `create_item`, `add_to_inbox`, `list_items`, `get_item`,
 `update_item`, `set_item_status`, `assign_item`, `move_item_to_board`,
 `block_item`, `link_item`, `assign_item_planning`.
+
+**Em lote:** `create_items` (N itens; `ref`/`parent:"@apelido"` montam a
+hierarquia dentro do próprio lote), `link_items` (N vínculos) e
+`add_acceptance_criteria` com `texts`. Cada elemento volta como
+`{ index, ok, key | error }` — uma falha isolada não invalida o lote. `create_item`
+também aceita `acceptanceCriteria` para criar a Definition of Done junto.
+
+**Classificar (campo, não markdown):** `labels` (livres e filtráveis),
+`area` (adota a grafia já usada no projeto), `effort` (`xs…xl`, somado por
+entrega), `confidence` (`low|medium|high`) e `value`. O vocabulário em uso sai de
+`list_labels` e `list_areas`; os filtros correspondentes existem em `list_items`
+e `search_items`.
+
+**Rastrear risco e sequência:** `link_risk_item` / `unlink_risk_item` ligam um
+risco ao trabalho que o mitiga ou o dispara (`get_item` passa a mostrar os riscos,
+`get_risk` os itens); `link_milestones` / `unlink_milestones` declaram dependência
+entre entregas (`depends`/`blocks`, ciclo recusado), o que reordena o `roadmap`
+topologicamente e alimenta `dependenciesMet`.
 
 **Interagir:** `add_comment`, `list_comments`, `add_link_attachment`,
 `add_file_attachment`.
@@ -132,8 +154,21 @@ pediu (provider/modelo/sessão). Não tente burlar o gate.
 `FORBIDDEN`. Informe um `project` ou peça a permissão a um humano.
 
 **Descobrir / decidir:** `search_items` (busca em TODOS os projetos),
-`list_milestones`, `list_sprints`, `report_blocked`, `report_overdue` — para
-decidir entre criar novo e atualizar existente e ver conflitos.
+`list_milestones`, `list_sprints`, `report_blocked`, `report_overdue`,
+`report_ready` (o que está desimpedido, ordenado por quanto cada item destrava) e
+`ecosystem_index_status` (estado do catálogo de pacotes, sem escrever nada).
+
+### Contrato de retorno
+
+| Forma | Regra |
+|---|---|
+| Escrita | devolve **resumo** (id/key + o que mudou). `view:"full"` traz o registro inteiro |
+| Listagem | envelope `{ items, total, limit, offset, returned, hasMore }`, sem textos longos; `fields` projeta colunas |
+| Lote | `{ total, succeeded, failed, results:[{ index, ok, … }] }` |
+| Estouro | a resposta **degrada** (campos longos fora, lista cortada) e carrega `_truncated` explicando — a tool não falha |
+
+O teto vive em `Server/ResponseGuard.js` e vale para **toda** tool, inclusive as
+que forem adicionadas depois; os envelopes ficam em `Server/Envelopes.js`.
 
 > Aprovar/rejeitar pedidos e confirmar sessões **não** são tools MCP: são ações
 > **humanas** (na GUI ou pela CLI `mpm`) — se o agente pudesse se autoaprovar, o gate
@@ -162,5 +197,7 @@ src/
   Commands/Serve.command.js     # entry persistente (await new Promise(()=>{}))
   Server/McpStdioServer.js       # protocolo MCP stdio (JSON-RPC 2.0), zero deps
   Server/Tools.js                # catálogo de tools → métodos da store
+  Server/Envelopes.js            # projeção, resumo de escrita e execução em lote
+  Server/ResponseGuard.js        # teto de tamanho: degrada em vez de estourar
   Utils/{runtime,actor,logger}.js
 ```

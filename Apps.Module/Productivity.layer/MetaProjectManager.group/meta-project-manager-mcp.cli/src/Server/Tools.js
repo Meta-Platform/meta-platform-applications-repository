@@ -28,6 +28,13 @@ const PRIORITIES = ["none","low","medium","high","urgent"]
 const HORIZONS = ["inbox","now","next","later","maybe","archived"]
 // Espelha Config.LINK_RELATIONS do project-store.lib (valores REAIS aceitos).
 const LINK_RELATIONS = ["blocks","depends","relates","duplicates","implements","tests","originated_from"]
+// Risco ↔ item e marco ↔ marco (Config.RISK_LINK_RELATIONS / MILESTONE_LINK_RELATIONS).
+const RISK_LINK_RELATIONS = ["mitigates","triggers","relates"]
+const MILESTONE_LINK_RELATIONS = ["depends","blocks"]
+// Planejamento por item: estimativa em faixas, confiança e valor.
+const EFFORTS = ["xs","s","m","l","xl"]
+const CONFIDENCE = ["low","medium","high"]
+const VALUES = ["none","low","medium","high","critical"]
 // Registro de riscos: escala da matriz 3×3 (probabilidade/impacto) e ciclo de vida.
 const RISK_LEVELS = ["low","medium","high"]
 const RISK_STATUSES = ["open","mitigating","accepted","closed","occurred"]
@@ -35,6 +42,7 @@ const RISK_STATUSES = ["open","mitigating","accepted","closed","occurred"]
 const PLANNING_DOC_STATUSES = ["draft","review","approved","archived"]
 
 const { INSTRUCTIONS } = require("./Instructions")
+const { MutationResult, ListEnvelope, ITEM_LIST_FIELDS, RunBatch, Pick } = require("./Envelopes")
 
 const BuildTools = ({ store, actor }) => {
 
@@ -74,6 +82,42 @@ const BuildTools = ({ store, actor }) => {
     }
     // Campo `view` comum às mutações de item.
     const VIEW_FIELD = { view: S.enum(["summary", "full"], "Formato do retorno: summary (padrão) = { key, statusKey, progress, completedAt, updatedAt } + pendingFeedbackCount; full = o item inteiro.") }
+
+    // MPMX2-2: TODA escrita devolve resumo por padrão, não só as de item. Devolver
+    // o registro inteiro repete para o agente a descrição que ele mesmo acabou de
+    // mandar — em 124 criações, é o dobro do custo sem uma informação nova.
+    const Written = (entity) => (data, view) => MutationResult(data, view, entity)
+    const VIEW_FIELD_FOR = (entity, summaryHint) => ({
+        view: S.enum(["summary", "full"], `Formato do retorno: summary (padrão) = ${summaryHint}; full = o registro inteiro.`)
+    })
+
+    // MPMX2-4: projeção nas listagens, com o MESMO contrato do search_items —
+    // envelope { items, total, limit, offset } e resumo sem a descrição longa.
+    const FIELDS_FIELD = {
+        fields: { type: "array", items: { type: "string" }, description: "Projeção: SÓ estes campos por registro (ex.: [\"key\",\"title\",\"statusKey\"]). Omitido = resumo padrão (sem a descrição longa)." },
+        limit: S.num("Máx. de registros por página"),
+        offset: S.num("Deslocamento para paginar (padrão 0)")
+    }
+
+    // Criação de item usada por create_item, create_items (lote) e add_to_inbox —
+    // um caminho só, para os três aceitarem exatamente os mesmos campos.
+    // `acceptanceCriteria` entra aqui porque criar o item e a sua Definition of
+    // Done em chamadas separadas era o segundo maior gerador de round-trips.
+    const CreateItemFromInput = async (i) => {
+        const created = await store.CreateItem(A({
+            project: i.project, type: i.type, title: i.title,
+            shortDescription: i.shortDescription, description: i.description,
+            parent: i.parent, board: i.board, priority: i.priority, statusKey: i.status,
+            assignee: i.assignee, area: i.area, labels: i.labels,
+            effort: i.effort, confidence: i.confidence, value: i.value,
+            horizon: i.horizon, clarityState: i.clarityState, ideaOrigin: i.ideaOrigin,
+            milestoneId: i.milestone, sprintId: i.sprint
+        }))
+        if(Array.isArray(i.acceptanceCriteria))
+            for(const text of i.acceptanceCriteria)
+                if(text && String(text).trim()) await store.AddAcceptanceCriteria({ item: created.id, text })
+        return MutationResult(created, i.view, "item")
+    }
 
     // Executa uma AÇÃO GATED (criar projeto/board/milestone/sprint, ou deletar).
     // O gate transforma a chamada num pedido pendente; por padrão (waitApproval)
@@ -162,14 +206,16 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "create_milestone",
-            description: "Cria um milestone — na interface chamado \"Entrega\": um alvo com data. LIVRE (planejamento é reversível). Criar a entrega NÃO vincula itens: use assign_item_planning.",
+            description: "Cria um milestone — na interface chamado \"Entrega\": um alvo com data. LIVRE (planejamento é reversível). Criar a entrega NÃO vincula itens: use assign_item_planning. Para sequenciar fases, use link_milestones em vez de escrever \"depende de F1\" na descrição.",
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"),
                 name: S.str("Nome do milestone"),
+                shortDescription: S.str("Resumo de UMA linha (<=240 chars) — é o que se lê no card da entrega"),
                 description: S.str("Descrição"),
-                targetDate: S.str("Data alvo (ISO, ex.: 2026-09-01)")
+                targetDate: S.str("Data alvo (ISO, ex.: 2026-09-01)"),
+                ...VIEW_FIELD_FOR("milestone", "{ id, name, status, targetDate, updatedAt }")
             }, ["project","name"]),
-            handler: (i) => store.CreateMilestone(A({ project: i.project, name: i.name, description: i.description, targetDate: i.targetDate }))
+            handler: async (i) => Written("milestone")(await store.CreateMilestone(A({ project: i.project, name: i.name, shortDescription: i.shortDescription, description: i.description, targetDate: i.targetDate })), i.view)
         },
         {
             name: "create_sprint",
@@ -177,11 +223,34 @@ const BuildTools = ({ store, actor }) => {
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"),
                 name: S.str("Nome do sprint"),
+                shortDescription: S.str("Resumo de UMA linha (<=240 chars)"),
                 goal: S.str("Objetivo do sprint"),
                 startDate: S.str("Início (ISO)"),
-                endDate: S.str("Fim (ISO)")
+                endDate: S.str("Fim (ISO)"),
+                ...VIEW_FIELD_FOR("sprint", "{ id, name, status, startDate, endDate, updatedAt }")
             }, ["project","name"]),
-            handler: (i) => store.CreateSprint(A({ project: i.project, name: i.name, goal: i.goal, startDate: i.startDate, endDate: i.endDate }))
+            handler: async (i) => Written("sprint")(await store.CreateSprint(A({ project: i.project, name: i.name, shortDescription: i.shortDescription, goal: i.goal, startDate: i.startDate, endDate: i.endDate })), i.view)
+        },
+        {
+            name: "link_milestones",
+            description: "Declara DEPENDÊNCIA entre entregas: `relation:\"depends\"` = a entrega precisa da outra concluída antes; `\"blocks\"` = a outra precisa desta. Rejeita ciclo (VALIDATION_ERROR). Alimenta o `roadmap` (que passa a sair em ordem topológica), o `dependenciesMet` de list_milestones e a prontidão em report_ready. LIVRE.",
+            inputSchema: Obj({
+                milestone: S.str("Entrega de origem (id)"),
+                relation: S.enum(MILESTONE_LINK_RELATIONS, "depends (precisa da outra) | blocks (a outra precisa desta)"),
+                target: S.str("Outra entrega (id)"),
+                ...VIEW_FIELD_FOR("milestoneLink", "{ id, sourceMilestoneId, relation, targetMilestoneId }")
+            }, ["milestone","target"]),
+            handler: async (i) => Written("milestoneLink")(await store.LinkMilestones(A({ milestone: i.milestone, relation: i.relation, target: i.target })), i.view)
+        },
+        {
+            name: "unlink_milestones",
+            description: "Remove a dependência entre duas entregas. Sem `relation`, remove qualquer vínculo entre as duas. LIVRE.",
+            inputSchema: Obj({
+                milestone: S.str("Entrega de origem (id)"),
+                relation: S.enum(MILESTONE_LINK_RELATIONS, "Relação a remover (omitir = todas entre as duas)"),
+                target: S.str("Outra entrega (id)")
+            }, ["milestone","target"]),
+            handler: (i) => store.UnlinkMilestones(A({ milestone: i.milestone, relation: i.relation, target: i.target }))
         },
 
         // ───────────── Documentação do projeto (wiki em árvore) ─────────────
@@ -189,9 +258,25 @@ const BuildTools = ({ store, actor }) => {
         // contexto E manutenível pelo agente. Criar/editar é LIVRE; excluir é gated.
         {
             name: "list_doc_pages",
-            description: "Lista as páginas de documentação do projeto (planas; monte a árvore por parentId). Não traz corpos grandes truncados — use get_doc_page para o conteúdo completo.",
-            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }, ["project"]),
-            handler: (i) => store.ListDocPages({ project: i.project })
+            description: "Lista as páginas de documentação do projeto (planas; monte a árvore por parentId). NÃO traz o corpo markdown — só o tamanho (`bodyLength`), para você decidir o que abrir; use get_doc_page para o conteúdo. Peça o corpo explicitamente com fields:[\"id\",\"title\",\"body\"] se realmente precisar dele em lote.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                ...FIELDS_FIELD
+            }, ["project"]),
+            handler: async (i) => {
+                const limit = Number(i.limit) > 0 ? Number(i.limit) : 200
+                const offset = Number(i.offset) > 0 ? Number(i.offset) : 0
+                const all = await store.ListDocPages({ project: i.project })
+                // O `body` é markdown inteiro de cada página: 14 páginas bastaram para
+                // estourar o contexto do cliente. Some por padrão, e no lugar dele fica
+                // o tamanho — o suficiente para escolher qual página vale abrir.
+                const rows = all.slice(offset, offset + limit).map((page) => ({
+                    ...page,
+                    bodyLength: page.body ? String(page.body).length : 0
+                }))
+                const DEFAULT_FIELDS = ["id", "title", "icon", "parentId", "order", "bodyLength", "updatedAt"]
+                return ListEnvelope({ rows, total: all.length, limit, offset, fields: i.fields, defaultFields: DEFAULT_FIELDS })
+            }
         },
         {
             name: "get_doc_page",
@@ -207,9 +292,10 @@ const BuildTools = ({ store, actor }) => {
                 parentId: S.str("Id da página-pai (omitir = página raiz)"),
                 title: S.str("Título da página"),
                 icon: S.str("Emoji opcional para o ícone da página"),
-                body: S.str("Conteúdo em markdown")
+                body: S.str("Conteúdo em markdown"),
+                ...VIEW_FIELD_FOR("docPage", "{ id, title, parentId, order, updatedAt }")
             }, ["project","title"]),
-            handler: (i) => store.CreateDocPage(A({ project: i.project, parentId: i.parentId, title: i.title, icon: i.icon, body: i.body }))
+            handler: async (i) => Written("docPage")(await store.CreateDocPage(A({ project: i.project, parentId: i.parentId, title: i.title, icon: i.icon, body: i.body })), i.view)
         },
         {
             name: "update_doc_page",
@@ -218,9 +304,10 @@ const BuildTools = ({ store, actor }) => {
                 docPage: S.str("Id da página de documentação"),
                 title: S.str("Novo título"),
                 icon: S.str("Novo emoji do ícone"),
-                body: S.str("Novo corpo em markdown")
+                body: S.str("Novo corpo em markdown"),
+                ...VIEW_FIELD_FOR("docPage", "{ id, title, parentId, order, updatedAt }")
             }, ["docPage"]),
-            handler: (i) => store.UpdateDocPage(A({ docPage: i.docPage, title: i.title, icon: i.icon, body: i.body }))
+            handler: async (i) => Written("docPage")(await store.UpdateDocPage(A({ docPage: i.docPage, title: i.title, icon: i.icon, body: i.body })), i.view)
         },
         {
             name: "move_doc_page",
@@ -239,15 +326,40 @@ const BuildTools = ({ store, actor }) => {
         // Criar/editar é LIVRE; excluir é gated.
         {
             name: "list_risks",
-            description: "Lista os riscos do projeto (com o nível derivado da matriz probabilidade×impacto no campo `level`).",
-            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }, ["project"]),
-            handler: (i) => store.ListRisks({ project: i.project })
+            description: "Lista os riscos do projeto (com o nível derivado da matriz probabilidade×impacto no campo `level`). Passe `item` para ver só os riscos VINCULADOS àquele item de trabalho.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                item: S.str("Só os riscos vinculados a este item (id|key)")
+            }),
+            handler: (i) => store.ListRisks({ project: i.project, item: i.item })
         },
         {
             name: "get_risk",
-            description: "Lê um risco (descrição, mitigação, contingência, dono, marco e nível).",
+            description: "Lê um risco (descrição, mitigação, contingência, dono, marco, nível) E os itens de trabalho vinculados a ele — abrir um risco já responde se existe trabalho endereçando-o.",
             inputSchema: Obj({ risk: S.str("Id do risco") }, ["risk"]),
             handler: (i) => store.GetRisk({ risk: i.risk })
+        },
+        {
+            name: "link_risk_item",
+            description: "Vincula um RISCO a um ITEM de trabalho: `mitigates` (o item reduz o risco), `triggers` (o item pode provocá-lo) ou `relates` (contexto). Depois disso, get_item mostra o risco e get_risk mostra o trabalho — em vez de a relação viver como menção textual na descrição. Item e risco devem ser do mesmo projeto. LIVRE.",
+            inputSchema: Obj({
+                risk: S.str("Id do risco"),
+                item: S.str("Item (id|key)"),
+                relation: S.enum(RISK_LINK_RELATIONS, "mitigates (padrão) | triggers | relates"),
+                note: S.str("Por que este item e este risco se relacionam"),
+                ...VIEW_FIELD_FOR("riskLink", "{ id, riskId, workItemId, relation, itemKey, riskTitle }")
+            }, ["risk","item"]),
+            handler: async (i) => Written("riskLink")(await store.LinkRiskItem(A({ risk: i.risk, item: i.item, relation: i.relation, note: i.note })), i.view)
+        },
+        {
+            name: "unlink_risk_item",
+            description: "Remove o vínculo entre um risco e um item. Sem `relation`, remove todos os vínculos entre os dois. LIVRE.",
+            inputSchema: Obj({
+                risk: S.str("Id do risco"),
+                item: S.str("Item (id|key)"),
+                relation: S.enum(RISK_LINK_RELATIONS, "Relação a remover (omitir = todas)")
+            }, ["risk","item"]),
+            handler: (i) => store.UnlinkRiskItem(A({ risk: i.risk, item: i.item, relation: i.relation }))
         },
         {
             name: "create_risk",
@@ -263,9 +375,15 @@ const BuildTools = ({ store, actor }) => {
                 mitigation: S.str("Plano de mitigação (reduzir prob./impacto)"),
                 contingency: S.str("Plano de contingência (se ocorrer)"),
                 ownerUserId: S.str("Dono do risco (id|handle)"),
-                milestoneId: S.str("Marco afetado (id|nome)")
+                milestoneId: S.str("Marco afetado (id|nome)"),
+                item: S.str("Item de trabalho que MITIGA este risco (id|key) — cria o vínculo junto"),
+                ...VIEW_FIELD_FOR("risk", "{ id, title, status, level, updatedAt }")
             }, ["project","title"]),
-            handler: (i) => store.CreateRisk(A({ project: i.project, title: i.title, description: i.description, probability: i.probability, impact: i.impact, status: i.status, category: i.category, mitigation: i.mitigation, contingency: i.contingency, ownerUserId: i.ownerUserId, milestoneId: i.milestoneId }))
+            handler: async (i) => {
+                const risk = await store.CreateRisk(A({ project: i.project, title: i.title, description: i.description, probability: i.probability, impact: i.impact, status: i.status, category: i.category, mitigation: i.mitigation, contingency: i.contingency, ownerUserId: i.ownerUserId, milestoneId: i.milestoneId }))
+                if(i.item) await store.LinkRiskItem(A({ risk: risk.id, item: i.item, relation: "mitigates" }))
+                return Written("risk")(risk, i.view)
+            }
         },
         {
             name: "update_risk",
@@ -316,9 +434,10 @@ const BuildTools = ({ store, actor }) => {
                 assumptions: S.str("Premissas (markdown)"),
                 constraints: S.str("Restrições (markdown)"),
                 successCriteria: S.str("Critérios de sucesso (markdown)"),
-                deliverables: S.str("Entregas (markdown)")
+                deliverables: S.str("Entregas (markdown)"),
+                ...VIEW_FIELD_FOR("planningDoc", "{ id, title, status, version, updatedAt }")
             }, ["project","title"]),
-            handler: (i) => store.CreatePlanningDoc(A({ project: i.project, title: i.title, milestoneId: i.milestoneId, status: i.status, objective: i.objective, scope: i.scope, outOfScope: i.outOfScope, stakeholders: i.stakeholders, assumptions: i.assumptions, constraints: i.constraints, successCriteria: i.successCriteria, deliverables: i.deliverables }))
+            handler: async (i) => Written("planningDoc")(await store.CreatePlanningDoc(A({ project: i.project, title: i.title, milestoneId: i.milestoneId, status: i.status, objective: i.objective, scope: i.scope, outOfScope: i.outOfScope, stakeholders: i.stakeholders, assumptions: i.assumptions, constraints: i.constraints, successCriteria: i.successCriteria, deliverables: i.deliverables })), i.view)
         },
         {
             name: "update_planning_doc",
@@ -581,15 +700,17 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "update_milestone",
-            description: "Atualiza uma entrega/milestone (nome, descrição, data-alvo, status). LIVRE.",
+            description: "Atualiza uma entrega/milestone (nome, resumo, descrição, data-alvo, status). LIVRE.",
             inputSchema: Obj({
                 milestone: S.str("Milestone (id)"),
                 name: S.str("Novo nome"),
+                shortDescription: S.str("Resumo de UMA linha (<=240 chars)"),
                 description: S.str("Descrição"),
                 targetDate: S.str("Data alvo (ISO)"),
-                status: S.enum(["planning","active","released","archived"], "Status")
+                status: S.enum(["planning","active","released","archived"], "Status"),
+                ...VIEW_FIELD_FOR("milestone", "{ id, name, status, targetDate, updatedAt }")
             }, ["milestone"]),
-            handler: (i) => store.UpdateMilestone(A({ milestone: i.milestone, name: i.name, description: i.description, targetDate: i.targetDate, status: i.status }))
+            handler: async (i) => Written("milestone")(await store.UpdateMilestone(A({ milestone: i.milestone, name: i.name, shortDescription: i.shortDescription, description: i.description, targetDate: i.targetDate, status: i.status })), i.view)
         },
         {
             name: "delete_milestone",
@@ -650,9 +771,23 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "add_acceptance_criteria",
-            description: "Adiciona um critério de aceite (Definition of Done) ao item. LIVRE.",
-            inputSchema: Obj({ item: S.str("Item (id|key)"), text: S.str("Texto do critério") }, ["item","text"]),
-            handler: (i) => store.AddAcceptanceCriteria({ item: i.item, text: i.text })
+            description: "Adiciona critério(s) de aceite (Definition of Done) ao item. LIVRE. Passe `texts` para criar vários de uma vez (ou `acceptanceCriteria` já em create_item).",
+            inputSchema: Obj({
+                item: S.str("Item (id|key)"),
+                text: S.str("Texto do critério (um só)"),
+                texts: { type: "array", items: { type: "string" }, description: "Vários critérios de uma vez — resultado por elemento, como nas demais tools de lote." },
+                ...VIEW_FIELD_FOR("criteria", "{ id, workItemId, text, met }")
+            }, ["item"]),
+            handler: async (i) => {
+                if(Array.isArray(i.texts) && i.texts.length)
+                    return RunBatch(
+                        i.texts,
+                        (text) => store.AddAcceptanceCriteria({ item: i.item, text }),
+                        (criteria) => ({ id: criteria.id, text: criteria.text })
+                    )
+                if(!i.text) throw McpError("VALIDATION_ERROR", "Informe `text` (um critério) ou `texts` (vários).", { field: "text" })
+                return Written("criteria")(await store.AddAcceptanceCriteria({ item: i.item, text: i.text }), i.view)
+            }
         },
         {
             name: "update_acceptance_criteria",
@@ -707,40 +842,109 @@ const BuildTools = ({ store, actor }) => {
         // ───────────── Executar (itens — LIVRE, sem gate) ─────────────
         {
             name: "create_item",
-            description: "Cria um item de trabalho (epic/feature/story/task/subtask/bug/…). LIVRE (não exige aprovação), EXCETO: em projeto com status `planning` toda escrita é recusada (PROJECT_IN_PLANNING), e você não pode criar um item já `in-progress`/`done` (AGENT_ACTION_REQUIRES_HUMAN — crie em backlog/ready). Use `parent` para hierarquia: epic → feature → story/task → subtask. ESCRITA: título curto e imperativo; descrição em markdown ORGANIZADA e RESUMIDA (seções como ## Reprodução, ## Esperado, ## Obtido). Suporta **negrito**, *itálico* e <u>sublinhado</u>.",
+            description: "Cria um item de trabalho (epic/feature/story/task/subtask/bug/…). LIVRE (não exige aprovação), EXCETO: em projeto com status `planning` toda escrita é recusada (PROJECT_IN_PLANNING), e você não pode criar um item já `in-progress`/`done` (AGENT_ACTION_REQUIRES_HUMAN — crie em backlog/ready). Use `parent` para hierarquia: epic → feature → story/task → subtask. ESCRITA: título curto e imperativo; `shortDescription` de UMA linha (é o que o humano lê no card); descrição em markdown ORGANIZADA e RESUMIDA (seções como ## Reprodução, ## Esperado, ## Obtido). Classifique com `labels` (filtráveis) em vez de tabelas na descrição, e registre estimativa/confiança em `effort`/`confidence`. Para criar MUITOS itens, use create_items (lote). Retorna um RESUMO (use view:\"full\" para o item inteiro).",
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"),
                 type: S.enum(WORK_ITEM_TYPES, "Tipo do item"),
                 title: S.str("Título"),
+                shortDescription: S.str("Resumo de UMA linha (<=240 chars) — é o que aparece no card e no modal de aprovação. Preencha sempre."),
                 description: S.str("Descrição (markdown)"),
                 parent: S.str("Item pai (id|key) para hierarquia"),
                 board: S.str("Board (id) onde colocar"),
                 priority: S.enum(PRIORITIES, "Prioridade"),
                 status: S.str("Status inicial (statusKey)"),
                 assignee: S.str("Responsável (id|handle)"),
-                area: S.str("Área (ex.: GUI, Backend)"),
+                area: S.str("Área (ex.: GUI, Backend). Adota a grafia já usada no projeto — veja list_areas."),
+                labels: { type: "array", items: { type: "string" }, description: "Rótulos livres e FILTRÁVEIS (ex.: [\"agente:senior\",\"trilha:iam\"]). Use-os em vez de tabelas dentro da descrição; veja o vocabulário do projeto em list_labels." },
+                effort: S.enum(EFFORTS, "Estimativa em faixas: xs|s|m|l|xl (somável por entrega)"),
+                confidence: S.enum(CONFIDENCE, "Confiança na estimativa/no entendimento: low|medium|high"),
+                value: S.enum(VALUES, "Valor percebido: none|low|medium|high|critical"),
                 horizon: S.enum(HORIZONS, "Horizonte de planejamento"),
                 milestone: S.str("Milestone (id) a vincular"),
-                sprint: S.str("Sprint (id) a vincular")
+                sprint: S.str("Sprint (id) a vincular"),
+                acceptanceCriteria: { type: "array", items: { type: "string" }, description: "Critérios de aceite (Definition of Done) criados junto — evita uma chamada add_acceptance_criteria por critério." },
+                ...VIEW_FIELD_FOR("item", "{ id, key, statusKey, progress, updatedAt }")
             }, ["project","type","title"]),
-            handler: (i) => store.CreateItem(A({ project: i.project, type: i.type, title: i.title, description: i.description, parent: i.parent, board: i.board, priority: i.priority, statusKey: i.status, assignee: i.assignee, area: i.area, horizon: i.horizon, milestoneId: i.milestone, sprintId: i.sprint }))
+            handler: (i) => CreateItemFromInput(i)
+        },
+        {
+            name: "create_items",
+            description: "Cria VÁRIOS itens numa chamada só (mesmos campos de create_item por elemento). Use ao registrar um plano inteiro: 100 itens viram 1 round-trip em vez de 100. Cada elemento é criado de forma independente e o retorno traz `{ index, ok, key | error }` por elemento — uma falha isolada NÃO invalida o lote. HIERARQUIA NO MESMO LOTE: dê um `ref` ao pai (apelido livre, ex.: \"epico-1\") e aponte `parent: \"@epico-1\"` nos filhos — assim epic → feature → story vai inteiro numa chamada, sem saber as keys de antemão. Os elementos são processados na ordem enviada.",
+            inputSchema: Obj({
+                items: {
+                    type: "array",
+                    description: "Itens a criar, na ordem em que devem ser processados",
+                    items: Obj({
+                        project: S.str("Projeto (id|slug|key)"),
+                        type: S.enum(WORK_ITEM_TYPES, "Tipo do item"),
+                        title: S.str("Título"),
+                        ref: S.str("Apelido deste item DENTRO do lote (ex.: \"epico-1\"), para que os filhos o citem em parent como \"@epico-1\""),
+                        shortDescription: S.str("Resumo de UMA linha (<=240 chars)"),
+                        description: S.str("Descrição (markdown)"),
+                        parent: S.str("Item pai: id, key, ou \"@apelido\" de um item criado antes NESTE lote"),
+                        board: S.str("Board (id)"),
+                        priority: S.enum(PRIORITIES, "Prioridade"),
+                        status: S.str("Status inicial (statusKey)"),
+                        assignee: S.str("Responsável (id|handle)"),
+                        area: S.str("Área"),
+                        labels: { type: "array", items: { type: "string" }, description: "Rótulos" },
+                        effort: S.enum(EFFORTS, "Estimativa (xs|s|m|l|xl)"),
+                        confidence: S.enum(CONFIDENCE, "Confiança (low|medium|high)"),
+                        value: S.enum(VALUES, "Valor"),
+                        horizon: S.enum(HORIZONS, "Horizonte"),
+                        milestone: S.str("Milestone (id)"),
+                        sprint: S.str("Sprint (id)"),
+                        acceptanceCriteria: { type: "array", items: { type: "string" }, description: "Critérios de aceite" }
+                    }, ["project","type","title"])
+                },
+                project: S.str("Projeto padrão dos elementos que não informarem `project`")
+            }, ["items"]),
+            handler: async (i) => {
+                // Apelidos do lote: o agente não conhece as keys antes de criar, então
+                // a hierarquia se declara por "@apelido" e é resolvida aqui, na ordem.
+                const byRef = {}
+                const out = await RunBatch(
+                    i.items,
+                    async (entry) => {
+                        const parent = typeof entry.parent === "string" && entry.parent.startsWith("@")
+                            ? byRef[entry.parent.slice(1)]
+                            : entry.parent
+                        if(typeof entry.parent === "string" && entry.parent.startsWith("@") && !parent)
+                            throw McpError("VALIDATION_ERROR", `Apelido "${entry.parent}" não foi criado antes neste lote.`, { field: "parent", ref: entry.parent })
+                        const created = await CreateItemFromInput({ ...entry, parent, project: entry.project || i.project })
+                        if(entry.ref) byRef[entry.ref] = created.key
+                        return created
+                    },
+                    (created) => ({ key: created.key, id: created.id })
+                )
+                return out
+            }
         },
         {
             name: "add_to_inbox",
-            description: "Registra uma ideia crua no inbox do projeto (horizon=inbox, clarity=idea) para triagem posterior. LIVRE.",
+            description: "Registra uma ideia crua no inbox do projeto (horizon=inbox, clarity=idea) para triagem posterior. LIVRE. Preencha os campos de TRIAGEM (`value`, `effort`, `confidence`, `milestone` como fase provável, `labels`): são eles que sustentam a decisão de promover ou descartar, viajam para o item em convert_idea e permitem ordenar o inbox por `sort:\"triage\"` em list_items. Não os escreva como bloco markdown na descrição — assim não filtram nem ordenam.",
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"),
                 title: S.str("Ideia / título"),
-                description: S.str("Detalhes (markdown)"),
+                shortDescription: S.str("Resumo de UMA linha (<=240 chars)"),
+                description: S.str("Detalhes (markdown): hipótese, dependências, relação com o roadmap"),
                 type: S.enum(WORK_ITEM_TYPES, "Tipo (padrão: task)"),
                 area: S.str("Área"),
-                ideaOrigin: S.str("Origem da ideia")
+                labels: { type: "array", items: { type: "string" }, description: "Rótulos" },
+                value: S.enum(VALUES, "Valor percebido: none|low|medium|high|critical"),
+                effort: S.enum(EFFORTS, "Esforço percebido: xs|s|m|l|xl"),
+                confidence: S.enum(CONFIDENCE, "Confiança na avaliação: low|medium|high"),
+                milestone: S.str("Fase/entrega provável (milestone id), se já dá para dizer"),
+                ideaOrigin: S.str("Origem da ideia"),
+                ...VIEW_FIELD_FOR("item", "{ id, key, statusKey, progress, updatedAt }")
             }, ["project","title"]),
-            handler: (i) => store.CreateItem(A({ project: i.project, type: i.type || "task", title: i.title, description: i.description, horizon: "inbox", clarityState: "idea", area: i.area, ideaOrigin: i.ideaOrigin }))
+            handler: (i) => CreateItemFromInput({
+                ...i, type: i.type || "task", horizon: "inbox", clarityState: "idea"
+            })
         },
         {
             name: "list_items",
-            description: "Lista itens do projeto com filtros (status, tipo, responsável, prioridade, milestone, sprint, horizon, texto…).",
+            description: "Lista itens do projeto com filtros (status, tipo, responsável, prioridade, milestone, sprint, horizon, label, área, esforço, confiança, texto…). Retorno ENXUTO (sem a descrição longa) e PAGINADO: `{ items, total, limit, offset, hasMore }` — MESMO contrato do search_items. Peça campos específicos com `fields`; `sort:\"triage\"` ordena por valor e esforço (leitura de inbox/backlog).",
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"),
                 type: S.enum(WORK_ITEM_TYPES, "Filtrar por tipo"),
@@ -754,11 +958,30 @@ const BuildTools = ({ store, actor }) => {
                 package: S.str("Só os itens que tocam este pacote (ref|namespace|nome)"),
                 release: S.str("Só os itens deste release/tag (ex.: v0.0.29)"),
                 horizon: S.enum(HORIZONS, "Horizonte"),
+                label: S.str("Só os itens com ESTE rótulo (valor exato — veja list_labels)"),
+                area: S.str("Área (valor exato — veja list_areas)"),
+                effort: S.enum(EFFORTS, "Estimativa (xs|s|m|l|xl)"),
+                confidence: S.enum(CONFIDENCE, "Confiança (low|medium|high)"),
+                value: S.enum(VALUES, "Valor"),
                 text: S.str("Busca textual"),
-                limit: S.num("Máx. de itens"),
-                offset: S.num("Deslocamento")
+                sort: S.enum(["order","created","priority","value","effort","triage"], "Ordenação (padrão: order). triage = mais valor e menos esforço primeiro."),
+                ...FIELDS_FIELD
             }, ["project"]),
-            handler: (i) => store.ListItems({ project: i.project, type: i.type, status: i.status, parent: i.parent, board: i.board, assignee: i.assignee, priority: i.priority, milestone: i.milestone, sprint: i.sprint, horizon: i.horizon, text: i.text, package: i.package, release: i.release, limit: i.limit, offset: i.offset })
+            handler: async (i) => {
+                const limit = Number(i.limit) > 0 ? Number(i.limit) : 100
+                const offset = Number(i.offset) > 0 ? Number(i.offset) : 0
+                const filters = {
+                    project: i.project, type: i.type, status: i.status, parent: i.parent, board: i.board,
+                    assignee: i.assignee, priority: i.priority, milestone: i.milestone, sprint: i.sprint,
+                    horizon: i.horizon, text: i.text, package: i.package, release: i.release,
+                    label: i.label, area: i.area, effort: i.effort, confidence: i.confidence, value: i.value
+                }
+                const [rows, total] = await Promise.all([
+                    store.ListItems({ ...filters, limit, offset, sort: i.sort }),
+                    store.CountItems(filters)
+                ])
+                return ListEnvelope({ rows, total, limit, offset, fields: i.fields, defaultFields: ITEM_LIST_FIELDS })
+            }
         },
         {
             name: "get_item",
@@ -775,6 +998,7 @@ const BuildTools = ({ store, actor }) => {
             inputSchema: Obj({
                 item: S.str("Item (id|key)"),
                 title: S.str("Título"),
+                shortDescription: S.str("Resumo de UMA linha (<=240 chars) — o que o humano lê no card"),
                 description: S.str("Descrição (markdown)"),
                 status: S.str("Status (statusKey)"),
                 priority: S.enum(PRIORITIES, "Prioridade"),
@@ -788,11 +1012,15 @@ const BuildTools = ({ store, actor }) => {
                 releaseTag: S.str("Release/tag que entregou o item (ex.: v0.0.29)"),
                 releaseUrl: S.str("URL do release/tag"),
                 horizon: S.enum(HORIZONS, "Horizonte"),
-                area: S.str("Área"),
+                area: S.str("Área (adota a grafia já usada no projeto — veja list_areas)"),
+                labels: { type: "array", items: { type: "string" }, description: "Rótulos filtráveis — SUBSTITUI a lista atual (mande a lista completa que deve ficar)." },
+                effort: S.enum(EFFORTS, "Estimativa em faixas (xs|s|m|l|xl)"),
+                confidence: S.enum(CONFIDENCE, "Confiança na estimativa (low|medium|high)"),
+                value: S.enum(VALUES, "Valor percebido"),
                 typeFields: { type: "object", additionalProperties: true, description: "Campos específicos do tipo (bug: severity/regression/expected/actual/repro; story: persona/need/benefit; decision/research/tech-debt…). Merge no servidor: manda só o que muda." },
                 ...VIEW_FIELD
             }, ["item"]),
-            handler: async (i) => ItemMutationResult(await store.UpdateItem(A({ item: i.item, title: i.title, description: i.description, statusKey: i.status, priority: i.priority, progress: i.progress, dueDate: i.dueDate, assignee: i.assignee, repositoryUrl: i.repositoryUrl, branchName: i.branchName, commitHash: i.commitHash, pullRequestUrl: i.pullRequestUrl, releaseTag: i.releaseTag, releaseUrl: i.releaseUrl, horizon: i.horizon, area: i.area, typeFields: i.typeFields })), i.view)
+            handler: async (i) => ItemMutationResult(await store.UpdateItem(A({ item: i.item, title: i.title, shortDescription: i.shortDescription, description: i.description, statusKey: i.status, priority: i.priority, progress: i.progress, dueDate: i.dueDate, assignee: i.assignee, repositoryUrl: i.repositoryUrl, branchName: i.branchName, commitHash: i.commitHash, pullRequestUrl: i.pullRequestUrl, releaseTag: i.releaseTag, releaseUrl: i.releaseUrl, horizon: i.horizon, area: i.area, labels: i.labels, effort: i.effort, confidence: i.confidence, value: i.value, typeFields: i.typeFields })), i.view)
         },
         {
             name: "set_item_status",
@@ -824,9 +1052,30 @@ const BuildTools = ({ store, actor }) => {
             inputSchema: Obj({
                 item: S.str("Item origem (id|key)"),
                 relation: S.enum(LINK_RELATIONS, "Relação (valor exato)"),
-                target: S.str("Item alvo (id|key)")
+                target: S.str("Item alvo (id|key)"),
+                ...VIEW_FIELD_FOR("link", "{ id, sourceItemId, relation, targetItemId }")
             }, ["item","relation","target"]),
-            handler: (i) => store.LinkItem(A({ item: i.item, relation: i.relation, target: i.target }))
+            handler: async (i) => Written("link")(await store.LinkItem(A({ item: i.item, relation: i.relation, target: i.target })), i.view)
+        },
+        {
+            name: "link_items",
+            description: "Cria VÁRIOS vínculos numa chamada só. Mesma semântica de link_item por elemento (inclusive entre projetos), com resultado independente por vínculo: `{ index, ok, error? }`. Use ao registrar as dependências de um plano inteiro — dezenas de vínculos em 1 round-trip.",
+            inputSchema: Obj({
+                links: {
+                    type: "array",
+                    description: "Vínculos a criar",
+                    items: Obj({
+                        item: S.str("Item origem (id|key)"),
+                        relation: S.enum(LINK_RELATIONS, "Relação (valor exato)"),
+                        target: S.str("Item alvo (id|key)")
+                    }, ["item","relation","target"])
+                }
+            }, ["links"]),
+            handler: (i) => RunBatch(
+                i.links,
+                (entry) => store.LinkItem(A({ item: entry.item, relation: entry.relation, target: entry.target })),
+                (link) => ({ id: link.id, relation: link.relation })
+            )
         },
         {
             name: "assign_item_planning",
@@ -934,6 +1183,9 @@ const BuildTools = ({ store, actor }) => {
                 status: S.str("Filtrar por status (statusKey)"),
                 assignee: S.str("Responsável (id|handle)"),
                 area: S.str("Área"),
+                label: S.str("Só os itens com ESTE rótulo (valor exato — veja list_labels)"),
+                effort: S.enum(EFFORTS, "Estimativa (xs|s|m|l|xl)"),
+                confidence: S.enum(CONFIDENCE, "Confiança (low|medium|high)"),
                 release: S.str("Filtrar pelo release/tag do item (ex.: v0.0.29)"),
                 fields: { type: "array", items: { type: "string" }, description: "Projeção: SÓ estes campos por item (ex.: [\"key\",\"title\",\"statusKey\"]). Omitido = resumo padrão (sem a descrição)." },
                 limit: S.num("Máx. de itens por página (padrão 50)"),
@@ -942,16 +1194,17 @@ const BuildTools = ({ store, actor }) => {
             handler: async (i) => {
                 const limit = Number(i.limit) > 0 ? Number(i.limit) : 50
                 const offset = Number(i.offset) > 0 ? Number(i.offset) : 0
-                const filters = { text: i.text, project: i.project, type: i.type, status: i.status, assignee: i.assignee, area: i.area, release: i.release }
+                const filters = { text: i.text, project: i.project, type: i.type, status: i.status, assignee: i.assignee, area: i.area, label: i.label, effort: i.effort, confidence: i.confidence, release: i.release }
                 const [rows, total] = await Promise.all([
                     store.ListItems({ ...filters, limit, offset, sort: "created" }),
                     store.CountItems(filters)
                 ])
                 // Resumo por padrão: a descrição longa é o que estourava o contexto.
-                const DEFAULT_FIELDS = ["id", "key", "title", "type", "statusKey", "priority", "projectId", "assigneeUserId", "updatedAt"]
-                const fields = Array.isArray(i.fields) && i.fields.length ? i.fields : DEFAULT_FIELDS
-                const items = rows.map((r) => { const o = {}; for(const f of fields) if(f in r) o[f] = r[f]; return o })
-                return { items, total, limit, offset, returned: items.length, hasMore: offset + items.length < total }
+                // Mesma projeção do list_items + projectId (a busca cruza projetos).
+                return ListEnvelope({
+                    rows, total, limit, offset, fields: i.fields,
+                    defaultFields: ["projectId", ...ITEM_LIST_FIELDS]
+                })
             }
         },
         {
@@ -978,6 +1231,33 @@ const BuildTools = ({ store, actor }) => {
             inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }, ["project"]),
             handler: (i) => store.Overdue({ project: i.project })
         },
+        {
+            name: "report_ready",
+            description: "O que está PRONTO PARA COMEÇAR: itens em backlog/ready, sem bloqueio, com todas as dependências (`depends`/`blocks`) já concluídas e cuja entrega não está travada por outra. É o inverso de report_blocked — responde \"o que posso pegar agora?\" sem reconstruir o grafo de vínculos à mão. Ordenado por quantos itens cada um DESTRAVA (`unblocks`) e depois por prioridade: pegue primeiro o que libera mais trabalho.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                limit: S.num("Máx. de itens (padrão: todos)"),
+                fields: { type: "array", items: { type: "string" }, description: "Projeção: SÓ estes campos por item. Omitido = resumo padrão + unblocks/unblocksKeys." }
+            }, ["project"]),
+            handler: async (i) => {
+                const rows = await store.Ready({ project: i.project, limit: i.limit })
+                const DEFAULT_FIELDS = [...ITEM_LIST_FIELDS, "unblocks", "unblocksKeys"]
+                const fields = Array.isArray(i.fields) && i.fields.length ? i.fields : DEFAULT_FIELDS
+                return { items: rows.map((row) => Pick(row, fields)), total: rows.length }
+            }
+        },
+        {
+            name: "list_labels",
+            description: "Vocabulário de RÓTULOS realmente em uso no projeto, com a contagem de cada um. Consulte ANTES de rotular: reusar o rótulo existente é o que mantém o filtro (`list_items label=…`) íntegro — um rótulo novo com grafia diferente cria uma trilha paralela que ninguém encontra.",
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }, ["project"]),
+            handler: (i) => store.ListProjectLabels({ project: i.project })
+        },
+        {
+            name: "list_areas",
+            description: "Vocabulário de ÁREAS em uso no projeto, com a contagem de cada uma. `area` é texto livre: ao escrever, o servidor ADOTA a grafia já usada quando o valor difere só por caixa/acento/separador (\"Rede\" e \"rede\" não viram duas trilhas). `variants` mostra as grafias divergentes que sobraram de antes dessa normalização.",
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }, ["project"]),
+            handler: (i) => store.ListProjectAreas({ project: i.project })
+        },
 
         // ───────────── Contexto do ecossistema (Meta Platform) ─────────────
         //
@@ -1003,8 +1283,14 @@ const BuildTools = ({ store, actor }) => {
             })
         },
         {
+            name: "ecosystem_index_status",
+            description: "Estado do catálogo de pacotes, sem escrever nada: se está construído (`indexed`), quantos pacotes, quando foi a última indexação, a distribuição por repositório e tipo, e quais repositórios DECLARADOS ainda não foram indexados (`notIndexedRepositories`). Chame ANTES de vincular itens a pacotes — e antes de decidir se vale rodar index_ecosystem_packages.",
+            inputSchema: Obj({}),
+            handler: () => store.EcosystemIndexStatus()
+        },
+        {
             name: "index_ecosystem_packages",
-            description: "Relê os repositórios do disco e atualiza o catálogo de pacotes. Rode quando um pacote novo não aparecer em list_ecosystem_packages.",
+            description: "Relê os repositórios do disco e atualiza o catálogo de pacotes. IDEMPOTENTE e seguro de repetir: reindexar não apaga nem renomeia nada — pacotes existentes são atualizados no lugar, e os que sumiram do disco só ficam MARCADOS como ausentes (os vínculos item↔pacote continuam válidos). O custo é varrer os diretórios dos repositórios declarados (segundos). Consulte ecosystem_index_status antes, para saber se é necessário.",
             inputSchema: Obj({}),
             handler: () => store.IndexEcosystemPackages(A({}))
         },
@@ -1248,22 +1534,35 @@ const BuildTools = ({ store, actor }) => {
                     "Verifique o RESULTADO ao final (reconsulte/valide), não presuma sucesso.",
                     "Cheque list_feedback do projeto ANTES, DURANTE e ao FINALIZAR — não encerre com feedback aberto."
                 ],
-                constraints: {
-                    linkRelations: LINK_RELATIONS,
-                    crossProjectLinks: true,
-                    keyPrefixMaxChars: 5,
-                    shortDescriptionMaxChars: 240,
-                    linkAttachmentSchemes: ["http", "https", "file"],
-                    gatedActions: {
-                        create: ["project", "board", "milestone", "sprint"],
-                        delete: ["project", "board", "item", "risk", "planning-doc"],
-                        statusStart: ["in-progress"],
-                        statusDone: ["done", "completed", "coluna isDoneColumn"],
-                        archive: ["project (via archive_project/close_project)"]
-                    },
-                    humanOnly: ["aprovar pedido", "rejeitar pedido", "confirmar sessão"],
-                    globalActivityPermission: "activity:read:all_projects"
-                },
+                constraints: (() => {
+                    // O gate é DERIVADO da mesma política que o store consulta ao decidir
+                    // se bloqueia (store.AgentGatePolicy → Config.AGENT_GATE_POLICY). Uma
+                    // lista escrita à mão aqui já anunciou gate em milestone/sprint que o
+                    // código nunca aplicou, e o agente planejava esperas que não existiam.
+                    const policy = store.AgentGatePolicy()
+                    return {
+                        linkRelations: LINK_RELATIONS,
+                        riskLinkRelations: RISK_LINK_RELATIONS,
+                        milestoneLinkRelations: MILESTONE_LINK_RELATIONS,
+                        crossProjectLinks: true,
+                        keyPrefixMaxChars: 5,
+                        shortDescriptionMaxChars: 240,
+                        shortDescriptionOn: ["project", "board", "item", "milestone", "sprint"],
+                        efforts: EFFORTS,
+                        confidence: CONFIDENCE,
+                        values: VALUES,
+                        linkAttachmentSchemes: ["http", "https", "file"],
+                        // Chave = ação; valor = tipos de alvo gated. O que NÃO está aqui é
+                        // livre — inclusive criar milestone e sprint.
+                        gatedActions: {
+                            ...policy.actions,
+                            statusStart: policy.statuses.start,
+                            statusDone: [...policy.statuses.done, ...(policy.statuses.doneByColumn ? ["coluna isDoneColumn"] : [])]
+                        },
+                        humanOnly: policy.humanOnly,
+                        globalActivityPermission: "activity:read:all_projects"
+                    }
+                })(),
                 session: {
                     provider: actor && actor.session && actor.session.provider,
                     model: actor && actor.session && actor.session.model,

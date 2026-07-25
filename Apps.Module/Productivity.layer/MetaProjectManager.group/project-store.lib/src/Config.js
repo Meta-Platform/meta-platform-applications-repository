@@ -11,7 +11,18 @@ const WORK_ITEM_HORIZONS = ["inbox", "now", "next", "later", "maybe", "archived"
 
 const WORK_ITEM_CLARITY  = ["idea", "refining", "ready"]
 
+// ESTIMATIVA em faixas nomeadas. É o campo `effort` — não existe um segundo eixo
+// de "tamanho": quem planeja escreve xs…xl e o produto soma pelos pesos abaixo.
 const WORK_ITEM_EFFORTS  = ["xs", "s", "m", "l", "xl"]
+
+// Peso relativo de cada faixa, para SOMAR esforço por marco/sprint. Escala
+// tipo Fibonacci reduzida: dobrar de faixa custa mais que o dobro da anterior.
+// Sem isto, `progress` conta itens e trata "xl" e "xs" como iguais.
+const WORK_ITEM_EFFORT_WEIGHTS = { xs: 1, s: 2, m: 3, l: 5, xl: 8 }
+
+// CONFIANÇA na estimativa/no entendimento do item. Separada do esforço: "grande
+// e conhecido" e "pequeno e nebuloso" são riscos diferentes.
+const WORK_ITEM_CONFIDENCE = ["low", "medium", "high"]
 
 const WORK_ITEM_VALUES   = ["none", "low", "medium", "high", "critical"]
 
@@ -20,6 +31,17 @@ const WORK_ITEM_VALUES   = ["none", "low", "medium", "high", "critical"]
 const AREAS              = ["GUI", "CLI", "Backend", "Database", "Agents", "Infra", "UX", "Documentation", "Automation", "Integrations"]
 
 const LINK_RELATIONS     = ["blocks", "depends", "relates", "duplicates", "implements", "tests", "originated_from"]
+
+// Vínculo RISCO ↔ ITEM de trabalho. Direção: risco --relação--> item.
+//  - mitigates: o item REDUZ o risco (é o trabalho que endereça o risco);
+//  - triggers:  o item PODE PROVOCAR o risco (mexer ali é o que expõe o perigo);
+//  - relates:   relação de contexto, sem causalidade declarada.
+const RISK_LINK_RELATIONS = ["mitigates", "triggers", "relates"]
+
+// Dependência entre MARCOS (entregas). Direção: milestone --relação--> outro.
+// `depends` = precisa do outro concluído antes; `blocks` = o outro precisa deste.
+// São a mesma aresta vista dos dois lados; guardamos como o autor escreveu.
+const MILESTONE_LINK_RELATIONS = ["depends", "blocks"]
 
 const ATTACHMENT_TYPES   = ["file", "image", "video", "pdf", "markdown", "log", "link", "other"]
 
@@ -114,6 +136,32 @@ const DEFAULT_COLUMNS = [
 const AGENT_GATED_START_STATUSES = ["in-progress"]
 const AGENT_GATED_DONE_STATUSES  = ["done", "completed"]
 
+// FONTE ÚNICA do que passa por gate de aprovação humana quando o ator é agente.
+// `GateAgentAction` CONSULTA este mapa antes de criar o pedido, e a orientação
+// exposta ao agente (get_guidance) é derivada daqui — assim o que o produto diz
+// e o que o produto faz não podem divergir (era o caso de milestone/sprint, que
+// a orientação anunciava como gated e o código criava livremente).
+//
+// Chave = actionName do pedido; valor = tipos de alvo gated naquela ação.
+// Um par (ação, tipo) ausente daqui é LIVRE para o agente.
+const AGENT_GATE_POLICY = {
+    create:        ["project", "board", "column"],
+    update:        ["project", "column"],
+    move:          ["column"],
+    "set-default": ["board"],
+    archive:       ["project"],
+    restore:       ["project"],
+    // Só as transições de INICIAR/CONCLUIR (ver AGENT_GATED_*_STATUSES); as demais
+    // mudanças de status não chegam a chamar o gate.
+    "set-status":  ["work-item"],
+    delete:        ["project", "board", "item", "milestone", "sprint", "column",
+                    "checklist-item", "acceptance-criteria", "risk", "doc-page", "planning-doc"]
+}
+
+// Esta ação, sobre este tipo de alvo, exige aprovação humana quando feita por agente?
+const IsAgentGatedAction = ({ actionName, type } = {}) =>
+    Array.isArray(AGENT_GATE_POLICY[actionName]) && AGENT_GATE_POLICY[actionName].includes(type)
+
 // Limite padrão de tamanho de anexo (bytes). Configurável via startup-params.
 const DEFAULT_MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024
 
@@ -121,14 +169,20 @@ module.exports = {
     PROJECT_STATUSES,
     AGENT_GATED_START_STATUSES,
     AGENT_GATED_DONE_STATUSES,
+    AGENT_GATE_POLICY,
+    IsAgentGatedAction,
     WORK_ITEM_TYPES,
     WORK_ITEM_PRIORITIES,
     WORK_ITEM_HORIZONS,
     WORK_ITEM_CLARITY,
     WORK_ITEM_EFFORTS,
+    WORK_ITEM_EFFORT_WEIGHTS,
+    WORK_ITEM_CONFIDENCE,
     WORK_ITEM_VALUES,
     AREAS,
     LINK_RELATIONS,
+    RISK_LINK_RELATIONS,
+    MILESTONE_LINK_RELATIONS,
     ATTACHMENT_TYPES,
     MILESTONE_STATUSES,
     SPRINT_STATUSES,

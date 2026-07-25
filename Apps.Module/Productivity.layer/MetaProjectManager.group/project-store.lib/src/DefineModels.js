@@ -67,6 +67,9 @@ const DefineModels = (sequelize) => {
         type:               { type: DataTypes.STRING, allowNull: false, defaultValue: "task" },
         key:                { type: DataTypes.STRING, allowNull: false, unique: true },
         title:              { type: DataTypes.STRING, allowNull: false },
+        // Resumo de UMA linha (<=240 chars): é o que se lê no card e no modal de
+        // aprovação, sem abrir a descrição longa. Mesmo papel que em Project/Board.
+        shortDescription:   { type: DataTypes.STRING },
         description:        { type: DataTypes.TEXT },
         statusKey:          { type: DataTypes.STRING, allowNull: false, defaultValue: "backlog" },
         priority:           { type: DataTypes.STRING, allowNull: false, defaultValue: "none" },
@@ -90,6 +93,10 @@ const DefineModels = (sequelize) => {
         horizon:            { type: DataTypes.STRING },
         clarityState:       { type: DataTypes.STRING },
         effort:             { type: DataTypes.STRING },
+        // Quanta confiança se tem na estimativa/no entendimento (low|medium|high).
+        // "Grande e conhecido" e "pequeno e nebuloso" são riscos diferentes — o
+        // esforço sozinho não conta essa parte.
+        confidence:         { type: DataTypes.STRING },
         value:              { type: DataTypes.STRING },
         area:               { type: DataTypes.STRING },
         ideaOrigin:         { type: DataTypes.STRING },
@@ -481,6 +488,34 @@ const DefineModels = (sequelize) => {
         { fields: ["projectId"] }, { fields: ["milestoneId"] }
     ] })
 
+    // Vínculo RISCO ↔ ITEM de trabalho. Sem ele, "este risco é mitigado pelo
+    // VDRP-103" só existe como menção textual dentro da descrição do risco: não
+    // navega, não filtra, e ninguém descobre ao abrir o item. Tabela NOVA → o
+    // sync() a cria. Relação em RISK_LINK_RELATIONS (mitigates|triggers|relates).
+    const RiskItemLink = sequelize.define("RiskItemLink", {
+        id:         idField,
+        projectId:  { type: DataTypes.STRING, allowNull: false },
+        riskId:     { type: DataTypes.STRING, allowNull: false },
+        workItemId: { type: DataTypes.STRING, allowNull: false },
+        relation:   { type: DataTypes.STRING, allowNull: false, defaultValue: "mitigates" },
+        note:       { type: DataTypes.STRING }
+    }, { tableName: "risk_item_links", indexes: [
+        { fields: ["riskId"] }, { fields: ["workItemId"] }, { fields: ["projectId"] }
+    ] })
+
+    // Dependência entre MARCOS (entregas). Milestone tinha data-alvo e ordem, mas
+    // nada que dissesse "F3 não começa sem F1" — a sequência virava texto no
+    // description e não alimentava roadmap nem validação. Tabela NOVA → sync() cria.
+    const MilestoneLink = sequelize.define("MilestoneLink", {
+        id:               idField,
+        projectId:        { type: DataTypes.STRING, allowNull: false },
+        sourceMilestoneId:{ type: DataTypes.STRING, allowNull: false },
+        relation:         { type: DataTypes.STRING, allowNull: false, defaultValue: "depends" },
+        targetMilestoneId:{ type: DataTypes.STRING, allowNull: false }
+    }, { tableName: "milestone_links", indexes: [
+        { fields: ["sourceMilestoneId"] }, { fields: ["targetMilestoneId"] }, { fields: ["projectId"] }
+    ] })
+
     // Documento de planejamento (termo de abertura/charter, estilo PMBOK). Seções
     // ESTRUTURADAS (colunas), não markdown livre — é o que o distingue do DocPage
     // (wiki). Cada seção é markdown. `version` incrementa a cada edição (o histórico
@@ -536,7 +571,8 @@ const DefineModels = (sequelize) => {
         WorkItemChecklistItem, WorkItemAcceptanceCriteria,
         Attachment, Comment, User, AgentProfile, AgentSession,
         CreationRequest, Milestone, Sprint, AuditEvent, ActivityNote, AgentFeedback,
-        EcosystemPackage, WorkItemPackage, AppState, DocPage, DocPageAttachment, RiskItem, PlanningDoc
+        EcosystemPackage, WorkItemPackage, AppState, DocPage, DocPageAttachment, RiskItem, PlanningDoc,
+        RiskItemLink, MilestoneLink
     }
 }
 

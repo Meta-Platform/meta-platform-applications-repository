@@ -45,8 +45,14 @@ const story   = await store.CreateItem({ project: project.keyPrefix, type: "stor
 não é executada na hora: vira um **pedido pendente** (`CreationRequest`, modelo generalizado)
 que um humano aprova (a ação é executada de fato) ou rejeita.
 
-- Cobertura: **criação** de `project|board|milestone|sprint` e **remoção** (`actionName: "delete"`)
-  de `project|board|item`. Delete carrega `targetId` e `risk: "destructive"`.
+- Cobertura: definida em **`Config.AGENT_GATE_POLICY`** — a fonte única. `GateAgentAction`
+  consulta esse mapa antes de criar o pedido, e `AgentGatePolicy()` o devolve para quem precisa
+  DOCUMENTAR o gate (o `get_guidance` do MCP), em vez de manter uma segunda lista à mão.
+  Hoje: **criação** de `project|board|column`; **remoção** de `project|board|item|milestone|sprint|column|checklist-item|acceptance-criteria|risk|doc-page|planning-doc`;
+  alteração de identidade/ciclo de vida do projeto; **iniciar/concluir** tarefa. Criar
+  marco e sprint é **livre**. Delete carrega `targetId` e `risk: "destructive"`.
+  > Um par (ação, tipo) fora da política passa direto: nenhuma call-site inventa um gate que a
+  > orientação não anuncia — foi essa divergência que fez o agente esperar aprovações inexistentes.
 - `RequestApproval({ actionName, type, targetId, payload, risk, resumeToken, actor })` cria o
   pedido. `resumeToken` dá **idempotência** (retry reusa o pendente).
 - `ApproveRequest({ request, actor })` executa a ação (create OU delete, com um actor sem
@@ -72,8 +78,29 @@ que um humano aprova (a ação é executada de fato) ou rejeita.
 - **`AuditStore`**: `MakeListActivity` (filtros: `action`, `actorType`, `source`, `provider`,
   `model`, `sessionId`, `traceId`, `from`/`to`, escopo) e `GetAuditEvent` (evento único
   hidratado com `before`/`after`).
-- **`shortDescription`** (`Project`/`Board`/`Milestone`/`Sprint`): `<=240` chars
-  (`SHORT_DESCRIPTION_MAX`), **aceita vazio** e **nunca grava fallback** derivado da `description`.
+- **`shortDescription`** (`Project`/`Board`/`WorkItem`/`Milestone`/`Sprint`): `<=240` chars
+  (`SHORT_DESCRIPTION_MAX`, validado por `AssertShortDescription`), **aceita vazio** e **nunca
+  grava fallback** derivado da `description`.
+
+## Planejamento consultável
+
+O que classifica, dimensiona ou sequencia o trabalho é **campo**, não texto na descrição —
+só assim filtra, soma e navega:
+
+- **`labels`** (JSON no item): normalizados (sem espaços/duplicatas) por `NormalizeLabels`,
+  filtráveis em `ListItems({ label })` e agregados em `ListProjectLabels`.
+- **`area`**: texto livre, mas a escrita **adota a grafia já usada no projeto** quando difere só
+  por caixa/acento/separador (`ListProjectAreas` mostra o vocabulário e as variantes remanescentes).
+- **`effort`** (`xs…xl`) + **`confidence`** (`low|medium|high`): `ListMilestones`/`GetMilestone`
+  somam o esforço por `WORK_ITEM_EFFORT_WEIGHTS` e devolvem `effortProgress` (progresso por
+  esforço, não por contagem) e a distribuição de confiança.
+- **`RiskItemLink`**: risco ↔ item (`mitigates|triggers|relates`) — `GetItem` traz `risks`,
+  `GetRisk` traz `items`, `ListRisks({ item })` filtra.
+- **`MilestoneLink`**: dependência entre entregas (`depends|blocks`), com ciclo recusado;
+  `Roadmap` sai em ordem topológica e cada marco informa `dependenciesMet`/`pendingDependencies`.
+- **`Ready({ project })`**: o que está pronto para começar — dependências fechadas, sem bloqueio
+  e com a entrega liberada — ordenado por quantos itens cada um destrava.
+- **`EcosystemIndexStatus()`**: estado do catálogo de pacotes por leitura pura (sem indexar).
 
 ## Estrutura
 
@@ -88,6 +115,7 @@ src/
     ProjectsStore.js  BoardsStore.js  WorkItemsStore.js  PlanningStore.js
     AttachmentsStore.js  CommentsStore.js  UsersStore.js
     AgentsStore.js  ActivityStore.js  ReportsStore.js  AuditStore.js  ImportExportStore.js
+    DocsStore.js  RisksStore.js  PlanningDocsStore.js  EcosystemStore.js  FeedbackStore.js
 test/store.test.js            # node --test (spec §14.1)
 ```
 

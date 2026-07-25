@@ -136,6 +136,53 @@ const EcosystemStore = ({ models, writeAudit, emit, store, config }) => {
         return result
     }
 
+    // Estado do catálogo, sem escrever nada. Existia como saber o que está indexado,
+    // mas não SE está: quem chega numa base vazia não distingue "nenhum pacote casa a
+    // busca" de "o índice nunca foi construído" — e reindexar às cegas parecia
+    // arriscado. Aqui a resposta vem de leitura pura.
+    const EcosystemIndexStatus = async () => {
+        const [total, missing] = await Promise.all([
+            EcosystemPackage.count(),
+            EcosystemPackage.count({ where: { missingAt: { [Op.ne]: null } } })
+        ])
+        const rows = await EcosystemPackage.findAll({
+            attributes: ["repositoryName", "packageType", "indexedAt"], raw: true
+        })
+        const byRepository = {}
+        const byType = {}
+        let lastIndexedAt = null
+        for(const row of rows){
+            byRepository[row.repositoryName] = (byRepository[row.repositoryName] || 0) + 1
+            byType[row.packageType] = (byType[row.packageType] || 0) + 1
+            const at = row.indexedAt ? new Date(row.indexedAt).toISOString() : null
+            if(at && (!lastIndexedAt || at > lastIndexedAt)) lastIndexedAt = at
+        }
+
+        // Os repositórios DECLARADOS podem divergir dos indexados (repositório novo
+        // no repositories.json, ou fonte inacessível). Ler o arquivo pode falhar —
+        // isso é informação, não erro: devolvemos o motivo.
+        let declaredRepositories, declarationError
+        try { declaredRepositories = ReadDeclaredRepositories().map((r) => ({ name: r.name, root: r.root })) }
+        catch(e){ declarationError = { code: e.code || "ERROR", message: e.message } }
+
+        return {
+            indexed: total > 0,
+            totalPackages: total,
+            availablePackages: total - missing,
+            missingPackages: missing,
+            lastIndexedAt,
+            byRepository,
+            byType,
+            ecosystemDataPath: _ecosystemDataPath(),
+            declaredRepositories,
+            declarationError,
+            // Repositório declarado sem nenhum pacote no catálogo = índice desatualizado.
+            notIndexedRepositories: declaredRepositories
+                ? declaredRepositories.filter((r) => !byRepository[r.name]).map((r) => r.name)
+                : undefined
+        }
+    }
+
     // Busca do autocomplete: casa nome, namespace, grupo, camada, módulo e tipo.
     const ListEcosystemPackages = async ({
         text, repository, module: moduleName, layer, group, type, includeMissing = false, limit = 50, offset = 0
@@ -290,6 +337,7 @@ const EcosystemStore = ({ models, writeAudit, emit, store, config }) => {
 
     return {
         ReadDeclaredRepositories,
+        EcosystemIndexStatus,
         IndexEcosystemPackages,
         ListEcosystemPackages,
         GetEcosystemPackage,

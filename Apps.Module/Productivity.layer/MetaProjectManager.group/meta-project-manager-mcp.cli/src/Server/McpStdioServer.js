@@ -10,6 +10,8 @@
 // Métodos implementados: initialize, notifications/initialized, tools/list,
 // tools/call, ping.
 
+const { GuardResponseSize } = require("./ResponseGuard")
+
 const PROTOCOL_VERSION = "2024-11-05"
 const SUPPORTED_PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"]
 
@@ -62,7 +64,12 @@ const CreateMcpStdioServer = ({ name, version, tools, logger, instructions }) =>
             return ReplyError(id, -32602, `Tool desconhecida: ${name}`)
         }
         try {
-            const data = await tool.handler(input)
+            const raw = await tool.handler(input)
+            // Teto de tamanho: uma resposta gigante DEGRADA (campos longos fora,
+            // lista cortada, aviso em `_truncated`) em vez de estourar o contexto
+            // do cliente e fazer a chamada falhar por completo.
+            const { data, degraded } = GuardResponseSize(raw, { toolName: name })
+            if(degraded) logger.warn(`tool ${name}: resposta degradada para caber no teto de tamanho`)
             Reply(id, { content: [{ type: "text", text: JSON.stringify({ ok: true, data }, null, 2) }] })
         } catch(e){
             // Erros de DOMÍNIO (gate de aprovação, validação, não-encontrado) não

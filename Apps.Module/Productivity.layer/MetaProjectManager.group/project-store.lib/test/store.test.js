@@ -1229,3 +1229,312 @@ test("trava de planejamento (flag do MCP): TODA escrita em projeto 'planning' é
     const byHuman = await setup.CreateItem({ project: proj.id, type: "task", title: "humano no plano" })
     assert.ok(byHuman.key)
 })
+
+// ───────────── MPMX2: modelo consultável (rodada 2) ─────────────
+
+test("MPMX2-7/8 item aceita shortDescription, effort e confidence; shortDescription tem limite", async () => {
+    const p = await store.CreateProject({ name: "MPMX2 Modelo", keyPrefix: "X2A", actor: { source: "cli" } })
+    const item = await store.CreateItem({
+        project: p.id, type: "task", title: "Com resumo",
+        shortDescription: "Uma linha que o humano lê no card.",
+        effort: "l", confidence: "medium", value: "high"
+    })
+    assert.equal(item.shortDescription, "Uma linha que o humano lê no card.")
+    assert.equal(item.effort, "l")
+    assert.equal(item.confidence, "medium")
+
+    const updated = await store.UpdateItem({ item: item.id, shortDescription: "Outra linha.", confidence: "high" })
+    assert.equal(updated.shortDescription, "Outra linha.")
+    assert.equal(updated.confidence, "high")
+
+    // O limite é o MESMO de projeto/board/entrega (240).
+    await assert.rejects(
+        () => store.CreateItem({ project: p.id, type: "task", title: "Longo", shortDescription: "x".repeat(241) }),
+        (e) => e.code === "VALIDATION_ERROR" && e.details.field === "shortDescription")
+    // Confiança fora da escala não passa em silêncio.
+    await assert.rejects(
+        () => store.CreateItem({ project: p.id, type: "task", title: "Conf", confidence: "talvez" }),
+        (e) => e.code === "VALIDATION_ERROR")
+})
+
+test("MPMX2-3 labels são normalizados, filtráveis e viram vocabulário do projeto", async () => {
+    const p = await store.CreateProject({ name: "MPMX2 Labels", keyPrefix: "X2B", actor: { source: "cli" } })
+    const a = await store.CreateItem({ project: p.id, type: "task", title: "Com rótulos", labels: ["agente:senior", " trilha:iam ", "agente:senior"] })
+    // duplicata e espaços saem; a 1ª grafia fica
+    assert.deepEqual(a.labels, ["agente:senior", "trilha:iam"])
+    await store.CreateItem({ project: p.id, type: "task", title: "Outro", labels: "trilha:iam,agente:standard" })
+
+    const filtrados = await store.ListItems({ project: p.id, label: "trilha:iam" })
+    assert.equal(filtrados.length, 2)
+    const senior = await store.ListItems({ project: p.id, label: "agente:senior" })
+    assert.equal(senior.length, 1)
+    assert.equal(senior[0].key, a.key)
+
+    const vocab = await store.ListProjectLabels({ project: p.id })
+    const trilha = vocab.find((l) => l.label === "trilha:iam")
+    assert.equal(trilha.count, 2)
+    // o mais usado vem primeiro
+    assert.equal(vocab[0].label, "trilha:iam")
+
+    // update SUBSTITUI a lista
+    const semRotulo = await store.UpdateItem({ item: a.id, labels: [] })
+    assert.deepEqual(semRotulo.labels, [])
+})
+
+test("MPMX2-3 filtro por rótulo é literal: não casa prefixo, aspas nem curinga", async () => {
+    const p = await store.CreateProject({ name: "MPMX2 Filtro", keyPrefix: "X2M", actor: { source: "cli" } })
+    await store.CreateItem({ project: p.id, type: "task", title: "gateway", labels: ["api-gateway"] })
+    const aspas = await store.CreateItem({ project: p.id, type: "task", title: "esquisito", labels: ['tem"aspas'] })
+
+    // prefixo não casa: "api" e "api-gateway" são rótulos diferentes
+    assert.equal((await store.ListItems({ project: p.id, label: "api" })).length, 0)
+    assert.equal((await store.ListItems({ project: p.id, label: "api-gateway" })).length, 1)
+    // aspas no rótulo continuam encontráveis
+    const achado = await store.ListItems({ project: p.id, label: 'tem"aspas' })
+    assert.equal(achado.length, 1)
+    assert.equal(achado[0].key, aspas.key)
+    // curinga de LIKE é dado, não padrão: "%" não devolve tudo
+    assert.equal((await store.ListItems({ project: p.id, label: "%" })).length, 0)
+    assert.equal((await store.ListItems({ project: p.id, label: "_" })).length, 0)
+})
+
+test("MPMX2-12 área adota a grafia já usada no projeto (Rede/rede não viram duas trilhas)", async () => {
+    const p = await store.CreateProject({ name: "MPMX2 Areas", keyPrefix: "X2C", actor: { source: "cli" } })
+    await store.CreateItem({ project: p.id, type: "task", title: "primeiro", area: "Rede" })
+    const segundo = await store.CreateItem({ project: p.id, type: "task", title: "segundo", area: "rede" })
+    assert.equal(segundo.area, "Rede")
+    const terceiro = await store.CreateItem({ project: p.id, type: "task", title: "terceiro", area: " REDE " })
+    assert.equal(terceiro.area, "Rede")
+    // update segue a mesma regra
+    const quarto = await store.CreateItem({ project: p.id, type: "task", title: "quarto" })
+    assert.equal((await store.UpdateItem({ item: quarto.id, area: "rede" })).area, "Rede")
+
+    const areas = await store.ListProjectAreas({ project: p.id })
+    assert.equal(areas.length, 1)
+    assert.equal(areas[0].area, "Rede")
+    assert.equal(areas[0].count, 4)
+    // área nova continua livre
+    const outra = await store.CreateItem({ project: p.id, type: "task", title: "quinto", area: "Storage" })
+    assert.equal(outra.area, "Storage")
+})
+
+test("MPMX2-9 risco ↔ item: vínculo navegável dos dois lados", async () => {
+    const p = await store.CreateProject({ name: "MPMX2 Riscos", keyPrefix: "X2D", status: "active", actor: { source: "cli" } })
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Runner de migrations idempotente" })
+    const risk = await store.CreateRisk({ project: p.id, title: "Migração quebra a base", probability: "medium", impact: "high" })
+
+    const link = await store.LinkRiskItem({ risk: risk.id, item: item.key, relation: "mitigates", note: "endereça a migração" })
+    assert.equal(link.relation, "mitigates")
+    assert.equal(link.itemKey, item.key)
+
+    // do lado do item
+    const fullItem = await store.GetItem({ item: item.key })
+    assert.equal(fullItem.risks.length, 1)
+    assert.equal(fullItem.risks[0].riskTitle, "Migração quebra a base")
+    assert.equal(fullItem.risks[0].riskLevel, "high")
+    // do lado do risco
+    const fullRisk = await store.GetRisk({ risk: risk.id })
+    assert.equal(fullRisk.items.length, 1)
+    assert.equal(fullRisk.items[0].itemKey, item.key)
+    // filtro por item
+    assert.equal((await store.ListRisks({ project: p.id, item: item.key })).length, 1)
+
+    // repetir o vínculo não duplica
+    await store.LinkRiskItem({ risk: risk.id, item: item.key, relation: "mitigates" })
+    assert.equal((await store.ListRiskItems({ risk: risk.id })).length, 1)
+
+    // relação inválida e projeto cruzado são recusados
+    await assert.rejects(() => store.LinkRiskItem({ risk: risk.id, item: item.key, relation: "cura" }), (e) => e.code === "VALIDATION_ERROR")
+    const outro = await store.CreateProject({ name: "MPMX2 Outro", keyPrefix: "X2E", actor: { source: "cli" } })
+    const alheio = await store.CreateItem({ project: outro.id, type: "task", title: "de outro projeto" })
+    await assert.rejects(() => store.LinkRiskItem({ risk: risk.id, item: alheio.key }), (e) => e.code === "VALIDATION_ERROR")
+
+    assert.equal((await store.UnlinkRiskItem({ risk: risk.id, item: item.key })).removed, 1)
+    assert.equal((await store.GetItem({ item: item.key })).risks.length, 0)
+})
+
+test("MPMX2-10 dependência entre entregas: ciclo recusado, roadmap topológico, dependenciesMet", async () => {
+    const p = await store.CreateProject({ name: "MPMX2 Fases", keyPrefix: "X2F", status: "active", actor: { source: "cli" } })
+    // datas propositalmente FORA da ordem de dependência: a dependência manda.
+    const f1 = await store.CreateMilestone({ project: p.id, name: "F1", targetDate: "2026-12-01" })
+    const f2 = await store.CreateMilestone({ project: p.id, name: "F2", targetDate: "2026-09-01" })
+    const f3 = await store.CreateMilestone({ project: p.id, name: "F3", targetDate: "2026-10-01" })
+
+    await store.LinkMilestones({ milestone: f2.id, relation: "depends", target: f1.id })
+    await store.LinkMilestones({ milestone: f1.id, relation: "blocks", target: f3.id })   // F3 precisa de F1
+
+    // ciclo direto e indireto
+    await assert.rejects(() => store.LinkMilestones({ milestone: f1.id, relation: "depends", target: f2.id }), (e) => e.code === "VALIDATION_ERROR")
+    await assert.rejects(() => store.LinkMilestones({ milestone: f1.id, relation: "depends", target: f1.id }), (e) => e.code === "VALIDATION_ERROR")
+
+    const roadmap = await store.Roadmap({ project: p.id })
+    const ordem = roadmap.map((m) => m.name)
+    assert.ok(ordem.indexOf("F1") < ordem.indexOf("F2"), "F1 precisa vir antes de F2")
+    assert.ok(ordem.indexOf("F1") < ordem.indexOf("F3"), "F1 precisa vir antes de F3")
+
+    const lista = await store.ListMilestones({ project: p.id })
+    const dF2 = lista.find((m) => m.name === "F2")
+    assert.deepEqual(dF2.dependsOn.map((d) => d.name), ["F1"])
+    assert.equal(dF2.dependenciesMet, false)
+    assert.deepEqual(dF2.pendingDependencies, ["F1"])
+    assert.deepEqual(lista.find((m) => m.name === "F1").blocks.map((d) => d.name).sort(), ["F2", "F3"])
+
+    // entregue a F1, as dependentes ficam liberadas
+    await store.UpdateMilestone({ milestone: f1.id, status: "released" })
+    assert.equal((await store.ListMilestones({ project: p.id })).find((m) => m.name === "F2").dependenciesMet, true)
+
+    // remover a entrega leva as arestas junto
+    await store.DeleteMilestone({ milestone: f3.id, actor: { source: "cli" } })
+    assert.deepEqual((await store.ListMilestones({ project: p.id })).find((m) => m.name === "F1").blocks.map((d) => d.name), ["F2"])
+})
+
+test("MPMX2-8 entrega agrega esforço e confiança (capacidade, não só contagem)", async () => {
+    const p = await store.CreateProject({ name: "MPMX2 Capacidade", keyPrefix: "X2G", status: "active", actor: { source: "cli" } })
+    const m = await store.CreateMilestone({ project: p.id, name: "Fase única" })
+    const grande = await store.CreateItem({ project: p.id, type: "task", title: "grande", effort: "xl", confidence: "low", milestoneId: m.id })
+    await store.CreateItem({ project: p.id, type: "task", title: "pequena", effort: "xs", confidence: "high", milestoneId: m.id })
+    await store.CreateItem({ project: p.id, type: "task", title: "sem estimativa", milestoneId: m.id })
+
+    let detalhe = await store.GetMilestone({ milestone: m.id })
+    assert.equal(detalhe.effort.total, 9)          // xl(8) + xs(1)
+    assert.equal(detalhe.effort.estimated, 2)
+    assert.equal(detalhe.effort.unestimated, 1)
+    assert.equal(detalhe.confidence.low, 1)
+    assert.equal(detalhe.confidence.high, 1)
+    assert.equal(detalhe.confidence.unset, 1)
+    assert.equal(detalhe.effortProgress, 0)
+
+    await store.SetStatus({ item: grande.id, status: "done", actor: { source: "cli" } })
+    detalhe = await store.GetMilestone({ milestone: m.id })
+    // por CONTAGEM 1/3 = 33%; por ESFORÇO 8/9 = 89% — a diferença é o ponto do campo
+    assert.equal(detalhe.progress, 33)
+    assert.equal(detalhe.effortProgress, 89)
+    assert.equal(detalhe.effort.remaining, 1)
+})
+
+test("MPMX2-11 report_ready: só o desimpedido, ordenado por quanto destrava", async () => {
+    const p = await store.CreateProject({ name: "MPMX2 Prontidão", keyPrefix: "X2H", status: "active", actor: { source: "cli" } })
+    const base = await store.CreateItem({ project: p.id, type: "task", title: "Fundação", priority: "medium" })
+    const dependente = await store.CreateItem({ project: p.id, type: "task", title: "Depende da fundação" })
+    const outra = await store.CreateItem({ project: p.id, type: "task", title: "Depende também" })
+    const solta = await store.CreateItem({ project: p.id, type: "task", title: "Livre", priority: "urgent" })
+    const travada = await store.CreateItem({ project: p.id, type: "task", title: "Bloqueada" })
+    await store.SetBlocked({ item: travada.id, reason: "aguardando decisão" })
+
+    await store.LinkItem({ item: dependente.id, relation: "depends", target: base.id })
+    await store.LinkItem({ item: base.id, relation: "blocks", target: outra.id })
+
+    let pronto = await store.Ready({ project: p.id })
+    let keys = pronto.map((i) => i.key)
+    assert.ok(!keys.includes(dependente.key), "quem depende de item aberto não está pronto")
+    assert.ok(!keys.includes(outra.key), "quem é bloqueado por item aberto não está pronto")
+    assert.ok(!keys.includes(travada.key), "item bloqueado não está pronto")
+    // a fundação destrava 2 e vem antes da urgente que não destrava ninguém
+    assert.equal(keys[0], base.key)
+    assert.equal(pronto[0].unblocks, 2)
+    assert.deepEqual(pronto[0].unblocksKeys.sort(), [dependente.key, outra.key].sort())
+    assert.ok(keys.includes(solta.key))
+
+    // concluída a fundação, as duas dependentes entram
+    await store.SetStatus({ item: base.id, status: "done", actor: { source: "cli" } })
+    keys = (await store.Ready({ project: p.id })).map((i) => i.key)
+    assert.ok(keys.includes(dependente.key) && keys.includes(outra.key))
+})
+
+test("MPMX2-11 report_ready enxerga dependência que CRUZA projetos", async () => {
+    const a = await store.CreateProject({ name: "Prontidão Cross A", keyPrefix: "X2P", status: "active", actor: { source: "cli" } })
+    const b = await store.CreateProject({ name: "Prontidão Cross B", keyPrefix: "X2Q", status: "active", actor: { source: "cli" } })
+    const externo = await store.CreateItem({ project: b.id, type: "task", title: "fundação em outro projeto" })
+    const nosso = await store.CreateItem({ project: a.id, type: "task", title: "depende de fora" })
+    await store.LinkItem({ item: nosso.id, relation: "depends", target: externo.id })
+
+    assert.equal((await store.Ready({ project: a.id })).length, 0, "dependência externa aberta não pode ser ignorada")
+    await store.SetStatus({ item: externo.id, status: "done", actor: { source: "cli" } })
+    assert.deepEqual((await store.Ready({ project: a.id })).map((i) => i.key), [nosso.key])
+})
+
+test("MPMX2-11 report_ready respeita a dependência entre entregas", async () => {
+    const p = await store.CreateProject({ name: "MPMX2 Prontidão Fase", keyPrefix: "X2I", status: "active", actor: { source: "cli" } })
+    const f1 = await store.CreateMilestone({ project: p.id, name: "Fase 1" })
+    const f2 = await store.CreateMilestone({ project: p.id, name: "Fase 2" })
+    await store.LinkMilestones({ milestone: f2.id, relation: "depends", target: f1.id })
+    const naFase1 = await store.CreateItem({ project: p.id, type: "task", title: "na fase 1", milestoneId: f1.id })
+    const naFase2 = await store.CreateItem({ project: p.id, type: "task", title: "na fase 2", milestoneId: f2.id })
+
+    const keys = (await store.Ready({ project: p.id })).map((i) => i.key)
+    assert.ok(keys.includes(naFase1.key))
+    assert.ok(!keys.includes(naFase2.key), "item de entrega travada não está pronto")
+})
+
+test("MPMX2-13 convert_idea leva a triagem para o item criado", async () => {
+    const p = await store.CreateProject({ name: "MPMX2 Ideias", keyPrefix: "X2J", status: "active", actor: { source: "cli" } })
+    const m = await store.CreateMilestone({ project: p.id, name: "Fase provável" })
+    const ideia = await store.CreateItem({
+        project: p.id, type: "task", title: "Ideia crua", horizon: "inbox", clarityState: "idea",
+        shortDescription: "resumo da ideia", value: "high", effort: "m", confidence: "low",
+        labels: ["trilha:ux"], area: "UX", milestoneId: m.id
+    })
+    const { created, idea } = await store.ConvertIdea({ item: ideia.id, type: "feature" })
+    assert.equal(created.value, "high")
+    assert.equal(created.effort, "m")
+    assert.equal(created.confidence, "low")
+    assert.deepEqual(created.labels, ["trilha:ux"])
+    assert.equal(created.milestoneId, m.id)
+    assert.equal(created.shortDescription, "resumo da ideia")
+    assert.equal(idea.horizon, "archived")
+})
+
+test("MPMX2-13 inbox ordena por triagem (mais valor, menos esforço)", async () => {
+    const p = await store.CreateProject({ name: "MPMX2 Triagem", keyPrefix: "X2K", status: "active", actor: { source: "cli" } })
+    const base = { project: p.id, type: "task", horizon: "inbox", clarityState: "idea" }
+    await store.CreateItem({ ...base, title: "média/cara", value: "medium", effort: "xl" })
+    const joia = await store.CreateItem({ ...base, title: "alta/barata", value: "high", effort: "xs" })
+    await store.CreateItem({ ...base, title: "alta/cara", value: "high", effort: "l" })
+
+    const ordenado = await store.ListItems({ project: p.id, horizon: "inbox", sort: "triage" })
+    assert.equal(ordenado[0].key, joia.key)
+    assert.equal(ordenado[ordenado.length - 1].title, "média/cara")
+})
+
+test("MPMX2-6 política de gate é a fonte única: criar entrega é livre, remover é gated", async () => {
+    const policy = store.AgentGatePolicy()
+    assert.deepEqual(policy.actions.create, ["project", "board", "column"])
+    assert.ok(policy.actions.delete.includes("milestone"))
+    assert.deepEqual(policy.statuses.start, ["in-progress"])
+
+    const p = await store.CreateProject({ name: "MPMX2 Gate", keyPrefix: "X2L", status: "active", actor: { source: "cli" } })
+    const agente = { source: "agent", session: { provider: "claude", model: "opus", traceId: "X2-GATE" } }
+    // criar entrega/sprint por AGENTE não vira pedido pendente
+    const m = await store.CreateMilestone({ project: p.id, name: "Livre", actor: agente })
+    assert.ok(m.id)
+    const s = await store.CreateSprint({ project: p.id, name: "Sprint livre", actor: agente })
+    assert.ok(s.id)
+    // remover, sim
+    await assert.rejects(() => store.DeleteMilestone({ milestone: m.id, actor: agente }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+})
+
+test("MPMX2-16 estado do índice de pacotes é leitura pura e diz o que falta indexar", async () => {
+    const TMP3 = path.join(process.env.MPM_TEST_DIR || os.tmpdir(), `mpm-eco-${process.pid}`)
+    const repo = path.join(TMP3, "R", "A.Module", "B.layer", "G.group", "x.lib")
+    fs.mkdirSync(path.join(repo, "metadata"), { recursive: true })
+    fs.writeFileSync(path.join(repo, "metadata", "package.json"), "{}")
+    fs.writeFileSync(path.join(TMP3, "repositories.json"), JSON.stringify({ R: { installationPath: path.join(TMP3, "R") } }))
+
+    const eco = InitializeProjectStore({ storage: path.join(TMP3, "s.sqlite"), attachmentsDirPath: path.join(TMP3, "att"), ecosystemDataPath: TMP3 })
+    await eco.ConnectAndSync()
+
+    const antes = await eco.EcosystemIndexStatus()
+    assert.equal(antes.indexed, false)
+    assert.equal(antes.totalPackages, 0)
+    assert.deepEqual(antes.notIndexedRepositories, ["R"])
+
+    await eco.IndexEcosystemPackages({ actor: { source: "cli" } })
+    const depois = await eco.EcosystemIndexStatus()
+    assert.equal(depois.indexed, true)
+    assert.equal(depois.totalPackages, 1)
+    assert.equal(depois.byRepository.R, 1)
+    assert.equal(depois.byType.lib, 1)
+    assert.ok(depois.lastIndexedAt)
+    assert.deepEqual(depois.notIndexedRepositories, [])
+})

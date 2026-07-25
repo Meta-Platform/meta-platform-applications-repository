@@ -1,7 +1,7 @@
-const { Op, literal, fn, col } = require("sequelize")
-const { NewId, Serialize, SerializeMany, PatchDiff } = require("../Utils/helpers")
+const { Op, literal, fn, col, cast, where: whereExpression } = require("sequelize")
+const { NewId, Serialize, SerializeMany, PatchDiff, AssertShortDescription, NormalizeLabels } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
-const { WORK_ITEM_TYPES, WORK_ITEM_PRIORITIES, LINK_RELATIONS, WORK_ITEM_HORIZONS, WORK_ITEM_CLARITY, WORK_ITEM_EFFORTS, WORK_ITEM_VALUES, AGENT_GATED_START_STATUSES, AGENT_GATED_DONE_STATUSES } = require("../Config")
+const { WORK_ITEM_TYPES, WORK_ITEM_PRIORITIES, LINK_RELATIONS, WORK_ITEM_HORIZONS, WORK_ITEM_CLARITY, WORK_ITEM_EFFORTS, WORK_ITEM_VALUES, WORK_ITEM_CONFIDENCE, AGENT_GATED_START_STATUSES, AGENT_GATED_DONE_STATUSES } = require("../Config")
 
 const START_STATUS_SET = new Set(AGENT_GATED_START_STATUSES)
 const DONE_STATUS_SET = new Set(AGENT_GATED_DONE_STATUSES)
@@ -77,6 +77,67 @@ const WorkItemsStore = (ctx) => {
         }
     }
 
+    // ── Vocabulário do projeto: áreas e rótulos realmente em uso ────────────────
+    //
+    // `area` e `labels` são texto livre — e texto livre se fragmenta em silêncio:
+    // um "Rede" e um "rede" viram duas trilhas distintas, e ninguém percebe até o
+    // relatório sair errado. Não trocamos isso por um enum (o vocabulário é do
+    // projeto, não do produto): o valor escrito é COLADO na grafia que o projeto
+    // já usa quando difere só por caixa, acento ou separador.
+    const _vocabularyKey = (value) => String(value === null || value === undefined ? "" : value)
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .toLowerCase().replace(/[\s_-]+/g, " ").trim()
+
+    // Áreas em uso no projeto, da mais frequente para a menos.
+    const ListProjectAreas = async ({ project } = {}) => {
+        const projectId = (await store.ResolveProject(project)).id
+        const rows = await WorkItem.findAll({
+            where: { projectId, deletedAt: null, area: { [Op.ne]: null } },
+            attributes: ["area"], raw: true
+        })
+        const byKey = new Map()
+        for(const row of rows){
+            if(!row.area) continue
+            const key = _vocabularyKey(row.area)
+            if(!key) continue
+            const entry = byKey.get(key) || { area: row.area, count: 0, variants: [] }
+            entry.count++
+            if(!entry.variants.includes(row.area)) entry.variants.push(row.area)
+            byKey.set(key, entry)
+        }
+        return [...byKey.values()]
+            .map((e) => ({ ...e, variants: e.variants.length > 1 ? e.variants : undefined }))
+            .sort((a, b) => b.count - a.count || a.area.localeCompare(b.area))
+    }
+
+    // Rótulos em uso no projeto, da mais frequente para a menos.
+    const ListProjectLabels = async ({ project } = {}) => {
+        const projectId = (await store.ResolveProject(project)).id
+        const rows = await WorkItem.findAll({ where: { projectId, deletedAt: null }, attributes: ["labels"], raw: true })
+        const byKey = new Map()
+        for(const row of rows){
+            for(const label of NormalizeLabels(row.labels) || []){
+                const key = _vocabularyKey(label)
+                if(!key) continue
+                const entry = byKey.get(key) || { label, count: 0 }
+                entry.count++
+                byKey.set(key, entry)
+            }
+        }
+        return [...byKey.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+    }
+
+    // Devolve a grafia canônica da área dentro do projeto (a já usada), ou o
+    // próprio valor quando é uma área nova.
+    const _normalizeArea = async (area, projectId) => {
+        if(area === undefined || area === null || area === "") return area
+        const key = _vocabularyKey(area)
+        if(!key) return area
+        const known = await ListProjectAreas({ project: projectId })
+        const match = known.find((entry) => _vocabularyKey(entry.area) === key)
+        return match ? match.area : area
+    }
+
     const _resolveParent = async (parentRef, projectId) => {
         if(!parentRef) return undefined
         const parent = await ResolveItem(parentRef)
@@ -86,18 +147,20 @@ const WorkItemsStore = (ctx) => {
     }
 
     const CreateItem = async ({
-        project, type = "task", title, description, parent, board, statusKey, priority = "none",
+        project, type = "task", title, shortDescription, description, parent, board, statusKey, priority = "none",
         assignee, reporter, dueDate, startDate, estimatePoints, estimateMinutes, labels, milestoneId, sprintId,
-        horizon, clarityState, effort, value, area, ideaOrigin, actor, ...software
+        horizon, clarityState, effort, confidence, value, area, ideaOrigin, actor, ...software
     } = {}) => {
         if(!title) throw new DomainError("VALIDATION_ERROR", "Título do item é obrigatório.", { field: "title" })
         if(!WORK_ITEM_TYPES.includes(type))
             throw new DomainError("VALIDATION_ERROR", `Tipo inválido: ${type}.`, { field: "type", allowed: WORK_ITEM_TYPES })
         if(!WORK_ITEM_PRIORITIES.includes(priority))
             throw new DomainError("VALIDATION_ERROR", `Prioridade inválida: ${priority}.`, { field: "priority", allowed: WORK_ITEM_PRIORITIES })
+        AssertShortDescription(shortDescription)
         _assertEnum(horizon, WORK_ITEM_HORIZONS, "horizon")
         _assertEnum(clarityState, WORK_ITEM_CLARITY, "clarityState")
         _assertEnum(effort, WORK_ITEM_EFFORTS, "effort")
+        _assertEnum(confidence, WORK_ITEM_CONFIDENCE, "confidence")
         _assertEnum(value, WORK_ITEM_VALUES, "value")
 
         const projectInstance = await store.ResolveProject(project)
@@ -123,7 +186,7 @@ const WorkItemsStore = (ctx) => {
             projectId: projectInstance.id,
             boardId,
             parentId: parentInstance ? parentInstance.id : undefined,
-            type, key, title, description,
+            type, key, title, shortDescription, description,
             statusKey: statusKey || "backlog",
             priority,
             assigneeUserId: await _resolveUserId(assignee),
@@ -131,9 +194,10 @@ const WorkItemsStore = (ctx) => {
             createdByUserId: await _resolveUserId(actor && actor.actorUserId),
             createdBySessionId: actor && actor.actorSessionId,
             dueDate, startDate, estimatePoints, estimateMinutes,
-            labels: Array.isArray(labels) ? labels : (labels ? String(labels).split(",").map((s) => s.trim()).filter(Boolean) : []),
+            labels: NormalizeLabels(labels) || [],
             milestoneId, sprintId,
-            horizon, clarityState, effort, value, area, ideaOrigin,
+            horizon, clarityState, effort, confidence, value, ideaOrigin,
+            area: await _normalizeArea(area, projectInstance.id),
             order,
             ...softwareFields
         })
@@ -146,7 +210,7 @@ const WorkItemsStore = (ctx) => {
     // Monta a cláusula WHERE de itens a partir dos filtros. Extraída para ser
     // compartilhada por ListItems e CountItems — assim search_items devolve `total`
     // sem baixar todas as linhas (MPMX-2).
-    const _buildItemWhere = async ({ project, type, status, parent, board, assignee, text, priority, milestone, sprint, horizon, clarityState, effort, value, area, release, package: pkg } = {}) => {
+    const _buildItemWhere = async ({ project, type, status, parent, board, assignee, text, priority, milestone, sprint, horizon, clarityState, effort, confidence, value, area, label, release, package: pkg } = {}) => {
         const where = { deletedAt: null }
         // "o que está aberto no meta-project-manager.webgui?"
         if(pkg) where.id = { [Op.in]: await store.ItemIdsByPackage(pkg) }
@@ -160,9 +224,22 @@ const WorkItemsStore = (ctx) => {
         if(horizon) where.horizon = horizon === "none" ? null : horizon
         if(clarityState) where.clarityState = clarityState
         if(effort) where.effort = effort
+        if(confidence) where.confidence = confidence
         if(value) where.value = value
         if(area) where.area = area
         if(release) where.releaseTag = release
+        // `labels` é coluna JSON — comparar direto faria o Sequelize tratar o valor como
+        // JSON (e não casar nada). Procuramos o rótulo JÁ SERIALIZADO (com as aspas)
+        // dentro do array em texto: assim "api" não casa "api-gateway".
+        //
+        // `instr` em vez de LIKE de propósito: LIKE trataria `%` e `_` do rótulo como
+        // curinga (um filtro por "%" devolveria tudo), e escapar isso junto com as
+        // aspas do JSON é frágil. `instr` é busca literal. Case-sensitive: use o valor
+        // devolvido por ListProjectLabels.
+        if(label) where[Op.and] = [
+            ...(where[Op.and] || []),
+            whereExpression(fn("instr", cast(col("labels"), "text"), JSON.stringify(String(label))), { [Op.gt]: 0 })
+        ]
         if(parent !== undefined) where.parentId = parent === null || parent === "none" ? null : (await ResolveItem(parent)).id
         if(assignee) where.assigneeUserId = await _resolveUserId(assignee)
         // Busca por texto casa TÍTULO ou KEY: quem digita "MPMB-39" está procurando
@@ -177,9 +254,17 @@ const WorkItemsStore = (ctx) => {
     const ListItems = async (filters = {}) => {
         const { limit = 200, offset = 0, sort = "order" } = filters
         const where = await _buildItemWhere(filters)
+        // Ordenações de TRIAGEM: valor e esforço são escalas nomeadas, então a
+        // ordem sai de um CASE (alfabética não serve — 'xs' > 'l' no texto).
+        const VALUE_RANK = literal("CASE value WHEN 'critical' THEN 5 WHEN 'high' THEN 4 WHEN 'medium' THEN 3 WHEN 'low' THEN 2 ELSE 1 END")
+        const EFFORT_RANK = literal("CASE effort WHEN 'xl' THEN 5 WHEN 'l' THEN 4 WHEN 'm' THEN 3 WHEN 's' THEN 2 WHEN 'xs' THEN 1 ELSE 99 END")
         const order = sort === "created" ? [["createdAt", "DESC"]]
             : sort === "priority" ? [["priority", "DESC"]]
-            : sort === "value" ? [[literal("CASE value WHEN 'critical' THEN 5 WHEN 'high' THEN 4 WHEN 'medium' THEN 3 WHEN 'low' THEN 2 ELSE 1 END"), "DESC"]]
+            : sort === "value" ? [[VALUE_RANK, "DESC"]]
+            : sort === "effort" ? [[EFFORT_RANK, "ASC"]]
+            // "triage": o que rende mais pelo que custa menos — muito valor e pouco
+            // esforço primeiro. É a ordem com que se lê um inbox de ideias.
+            : sort === "triage" ? [[VALUE_RANK, "DESC"], [EFFORT_RANK, "ASC"], ["createdAt", "ASC"]]
             : [["order", "ASC"]]
         const rows = await WorkItem.findAll({ where, order, limit: Number(limit), offset: Number(offset) })
         const list = SerializeMany(rows)
@@ -195,13 +280,16 @@ const WorkItemsStore = (ctx) => {
 
     const GetItem = async ({ item } = {}) => {
         const instance = await ResolveItem(item)
-        const [checklist, acceptanceCriteria, links, children, packages] = await Promise.all([
+        const [checklist, acceptanceCriteria, links, children, packages, risks] = await Promise.all([
             WorkItemChecklistItem.findAll({ where: { workItemId: instance.id }, order: [["order", "ASC"]] }),
             WorkItemAcceptanceCriteria.findAll({ where: { workItemId: instance.id }, order: [["order", "ASC"]] }),
             WorkItemLink.findAll({ where: { [Op.or]: [{ sourceItemId: instance.id }, { targetItemId: instance.id }] } }),
             WorkItem.findAll({ where: { parentId: instance.id, deletedAt: null }, order: [["order", "ASC"]] }),
             // Onde se mexe: os pacotes do ecossistema que este item toca.
-            store.ListItemPackages({ item: instance.id })
+            store.ListItemPackages({ item: instance.id }),
+            // Que perigo este item carrega — quem abre a tarefa precisa ver o risco
+            // sem ter que lembrar que ele existe no registro do projeto.
+            store.ListItemRisks({ item: instance.id })
         ])
         const { att, com } = await _countsByItem([instance.id])
         // Vínculos NAVEGÁVEIS: resolve as duas pontas (key + projeto) para o agente
@@ -237,6 +325,7 @@ const WorkItemsStore = (ctx) => {
             links: links.map(serializeLink),
             children: SerializeMany(children),
             packages,
+            risks,
             attachmentCount: att[instance.id] || 0,
             commentCount: com[instance.id] || 0
         }
@@ -246,12 +335,15 @@ const WorkItemsStore = (ctx) => {
         const instance = await ResolveItem(item)
         await store.AssertProjectWritable({ project: instance.projectId })
         const patch = {}
-        const simple = ["title", "description", "statusKey", "priority", "progress", "dueDate", "startDate", "blockedReason",
+        const simple = ["title", "shortDescription", "description", "statusKey", "priority", "progress", "dueDate", "startDate", "blockedReason",
             "estimatePoints", "estimateMinutes", "milestoneId", "sprintId",
-            "horizon", "clarityState", "effort", "value", "area", "ideaOrigin",
+            "horizon", "clarityState", "effort", "confidence", "value", "ideaOrigin",
             "repositoryUrl", "branchName", "commitHash", "pullRequestUrl", "releaseTag", "releaseUrl",
             "environment", "packagePath", "moduleName", "layerName", "groupName"]
         for(const key of simple) if(fields[key] !== undefined) patch[key] = fields[key]
+        // Área: adota a grafia já usada no projeto (ver ListProjectAreas).
+        if(fields.area !== undefined) patch.area = await _normalizeArea(fields.area, instance.projectId)
+        if(patch.shortDescription !== undefined) AssertShortDescription(patch.shortDescription)
         // Campos por tipo: MERGE (não substitui o objeto inteiro), para um patch
         // parcial de um campo não apagar os demais.
         if(fields.typeFields !== undefined && fields.typeFields !== null)
@@ -265,9 +357,10 @@ const WorkItemsStore = (ctx) => {
         _assertEnum(fields.horizon, WORK_ITEM_HORIZONS, "horizon")
         _assertEnum(fields.clarityState, WORK_ITEM_CLARITY, "clarityState")
         _assertEnum(fields.effort, WORK_ITEM_EFFORTS, "effort")
+        _assertEnum(fields.confidence, WORK_ITEM_CONFIDENCE, "confidence")
         _assertEnum(fields.value, WORK_ITEM_VALUES, "value")
         if(fields.assignee !== undefined) patch.assigneeUserId = await _resolveUserId(fields.assignee)
-        if(fields.labels !== undefined) patch.labels = Array.isArray(fields.labels) ? fields.labels : String(fields.labels).split(",").map((s) => s.trim()).filter(Boolean)
+        if(fields.labels !== undefined) patch.labels = NormalizeLabels(fields.labels) || []
         // Diff: valor anterior dos campos alterados (auditoria mostra antes → depois).
         const before = {}
         for(const key of Object.keys(patch)) before[key] = instance[key]
@@ -389,9 +482,16 @@ const WorkItemsStore = (ctx) => {
         if(!WORK_ITEM_TYPES.includes(type)) throw new DomainError("VALIDATION_ERROR", `Tipo inválido: ${type}.`, { field: "type", allowed: WORK_ITEM_TYPES })
         const idea = await ResolveItem(item)
         await store.AssertProjectWritable({ project: idea.projectId })
+        // A TRIAGEM viaja junto: valor, esforço, confiança, rótulos e a fase-alvo
+        // foram justamente o que sustentou a decisão de promover a ideia. Recriar
+        // o item sem eles obrigaria a redigitar o que já estava decidido.
         const created = await CreateItem({
             project: idea.projectId, type, title: title || idea.title,
-            description: idea.description, parent, area: idea.area, actor
+            shortDescription: idea.shortDescription, description: idea.description,
+            parent, area: idea.area,
+            value: idea.value, effort: idea.effort, confidence: idea.confidence,
+            labels: idea.labels, milestoneId: idea.milestoneId, sprintId: idea.sprintId,
+            actor
         })
         await LinkItem({ item: created.id, relation: "originated_from", target: idea.id, actor })
         const before = { horizon: idea.horizon }
@@ -533,6 +633,7 @@ const WorkItemsStore = (ctx) => {
 
     return {
         ResolveItem,
+        ListProjectAreas, ListProjectLabels,
         CreateItem, ListItems, CountItems, GetItem, UpdateItem, SetStatus, Assign,
         MoveItem, MoveToBoard, ReorderItem, ConvertItem, ConvertIdea, SetBlocked,
         LinkItem, UnlinkItem, DeleteItem,

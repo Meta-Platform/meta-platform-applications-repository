@@ -33,12 +33,42 @@ dizendo o que mudou. Não ignore, não discuta, não peça confirmação.
 - **Título**: curto, imperativo, sem prefixo redundante. Ex.: "Corrigir gate de
   delete no board" — não "Tarefa para corrigir o problema do gate...".
 - **shortDescription**: UMA linha (<=240 chars). É o que o humano lê no card e
-  no modal de aprovação. Sempre preencha em projetos.
+  no modal de aprovação. Aceito em projeto, board, ITEM, entrega e sprint —
+  preencha sempre.
 - **description**: markdown ORGANIZADO e CURTO. Use seções (\`## Objetivo\`,
   \`## Reprodução\`, \`## Esperado\`, \`## Obtido\`, \`## Fora de escopo\`).
   Suporta **negrito**, *itálico* e <u>sublinhado</u>.
   NÃO despeje logs, caminhos longos, tabelas enormes ou dumps de código: o
   humano precisa decidir em segundos. Detalhe vai para anexo ou comentário.
+
+### 3.1. Campo, não markdown
+Se a informação vai ser FILTRADA, SOMADA ou COMPARADA depois, ela é campo — uma
+tabela markdown dentro da descrição não filtra, não agrega e diverge assim que
+outro agente escreve com formato próprio:
+- classificação (trilha, perfil de agente, tema) → \`labels\` (\`list_labels\`
+  mostra o vocabulário do projeto; \`list_items label=…\` filtra);
+- trilha de trabalho → \`area\` (\`list_areas\`; a grafia já usada é adotada
+  automaticamente, então "Rede" e "rede" não viram duas trilhas);
+- tamanho → \`effort\` (\`xs|s|m|l|xl\`, somado por entrega) e incerteza →
+  \`confidence\` (\`low|medium|high\`);
+- valor → \`value\`; sequência entre fases → \`link_milestones\`; perigo ligado a
+  uma tarefa → \`link_risk_item\`.
+
+### 3.2. Faça em LOTE
+Registrar um plano item a item custa uma rodada por item. Use:
+- \`create_items\` (N itens, \`parent\` pode citar a key de outro item do MESMO
+  lote) e \`acceptanceCriteria\` dentro de cada item;
+- \`link_items\` (N vínculos), \`add_acceptance_criteria\` com \`texts\`.
+Cada elemento volta como \`{ index, ok, key | error }\`: uma falha isolada não
+invalida o lote.
+
+### 3.3. O que volta de uma escrita
+Toda tool de escrita devolve um RESUMO (id/key + o estado que mudou), não o
+registro inteiro — peça \`view: "full"\` quando precisar do resto. As listagens
+devolvem \`{ items, total, limit, offset, hasMore }\` sem os textos longos; use
+\`fields\` para escolher colunas e \`limit\`/\`offset\` para paginar. Se ainda
+assim a resposta passar do teto, ela vem DEGRADADA com \`_truncated\`
+(explicando o que foi cortado) em vez de falhar.
 
 ## 4. O que é LIVRE e o que exige aprovação
 
@@ -57,10 +87,12 @@ LIVRE também: planejar dentro do projeto (criar/editar milestone e sprint),
 renomear board, checklist, critérios de aceite, vincular/desvincular, converter
 tipo, reordenar, e ajustes operacionais do projeto (ícone, cor, repositório).
 
-SOB GATE (exige um humano aprovar):
-- CRIAR projeto e board;
+SOB GATE (exige um humano aprovar) — a lista viva está em
+\`get_guidance().constraints.gatedActions\`, derivada da MESMA política que o
+servidor aplica; o que não estiver lá é livre:
+- CRIAR projeto, board e coluna (criar entrega/sprint é LIVRE);
 - REMOVER qualquer coisa: projeto, board, item, milestone, sprint, coluna,
-  passo de checklist, critério de aceite;
+  passo de checklist, critério de aceite, risco, página de doc, charter;
 - **INICIAR uma tarefa** (mover para \`in-progress\`) e **CONCLUIR uma tarefa**
   (mover para \`done\`/\`completed\` ou uma coluna de conclusão): você NUNCA começa
   nem dá uma tarefa por concluída sem solicitação/aprovação explícita do humano.
@@ -157,7 +189,16 @@ num passo só.
   projeto e \`crossProject\`).
 - **Milestone/Sprint**: criar um milestone NÃO vincula itens. Use
   \`assign_item_planning\` (ou os campos \`milestone\`/\`sprint\` de
-  \`create_item\`). Sem isso o milestone fica com 0 itens.
+  \`create_item\`). Sem isso o milestone fica com 0 itens. Para sequenciar
+  fases use \`link_milestones\` (\`depends\`/\`blocks\`, com ciclo recusado) —
+  o \`roadmap\` passa a sair em ordem topológica e cada entrega informa
+  \`dependenciesMet\`.
+- **O que pegar agora**: \`report_ready\` lista o que está desimpedido
+  (dependências fechadas, sem bloqueio, entrega liberada), ordenado por quanto
+  cada item DESTRAVA. É o inverso de \`report_blocked\`.
+- **Pacotes do ecossistema**: \`ecosystem_index_status\` diz se o catálogo está
+  construído, sem escrever nada; \`index_ecosystem_packages\` é idempotente e
+  não apaga vínculos.
 - **keyPrefix**: no máximo 5 caracteres, só letras e números. Se errar, o erro
   traz \`details.suggestion\` — use essa sugestão.
 - **Anexos por link**: \`add_link_attachment\` aceita \`http\`, \`https\` e

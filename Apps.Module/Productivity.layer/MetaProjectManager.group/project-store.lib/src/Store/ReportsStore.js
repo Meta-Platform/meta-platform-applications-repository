@@ -1,11 +1,15 @@
 const { Op } = require("sequelize")
-const { SerializeMany } = require("../Utils/helpers")
+const { SerializeMany, Serialize } = require("../Utils/helpers")
 
 const DONE = new Set(["done", "archived", "completed"])
 
+// Um item só está PRONTO PARA COMEÇAR se ainda não foi começado. Estes são os
+// status de espera; qualquer outro (in-progress, review…) já está em curso.
+const READY_STATUSES = new Set(["backlog", "ready"])
+
 const ReportsStore = (ctx) => {
     const { models, store } = ctx
-    const { WorkItem, User } = models
+    const { WorkItem, User, WorkItemLink, Milestone } = models
 
     const _projectItems = async (project) => {
         const projectInstance = await store.ResolveProject(project)
@@ -40,6 +44,90 @@ const ReportsStore = (ctx) => {
         return SerializeMany(items.filter((i) => i.dueDate && !DONE.has(i.statusKey) && new Date(i.dueDate).getTime() < now))
     }
 
+    // "O que posso pegar AGORA?" — o inverso de report_blocked. Existiam os relatórios
+    // do que está travado e do que atrasou; faltava o do que está livre. Sem isto,
+    // responder à primeira pergunta de qualquer coordenador exige reconstruir o grafo
+    // de vínculos item a item.
+    //
+    // Um item está pronto quando, ao mesmo tempo:
+    //  - está em backlog/ready (não começou);
+    //  - não está bloqueado (statusKey blocked ou blockedReason);
+    //  - todo item de que ele DEPENDE está concluído;
+    //  - nenhum item aberto declara BLOQUEAR ele;
+    //  - o marco a que pertence tem as dependências satisfeitas.
+    //
+    // A ordem é por quanto cada um DESTRAVA (unblocks) e depois por prioridade:
+    // pegar primeiro o que libera mais trabalho para os outros.
+    const Ready = async ({ project, limit } = {}) => {
+        const { projectInstance, items } = await _projectItems(project)
+        const byId = {}
+        items.forEach((i) => { byId[i.id] = i })
+
+        const links = await WorkItemLink.findAll({
+            where: { [Op.or]: [
+                { sourceItemId: { [Op.in]: items.map((i) => i.id) } },
+                { targetItemId: { [Op.in]: items.map((i) => i.id) } }
+            ] }
+        })
+
+        // Um vínculo pode CRUZAR projetos (link_item resolve keys no workspace todo).
+        // Sem carregar a outra ponta, uma dependência externa aberta passaria por
+        // concluída — e o item apareceria como pronto sem estar.
+        const externalIds = [...new Set(links.flatMap((l) => [l.sourceItemId, l.targetItemId]).filter((id) => !byId[id]))]
+        if(externalIds.length){
+            const externals = await WorkItem.findAll({
+                where: { id: { [Op.in]: externalIds } }, attributes: ["id", "key", "statusKey", "deletedAt"]
+            })
+            externals.forEach((i) => { byId[i.id] = i })
+        }
+        // Item que não existe mais (apagado) não trava ninguém.
+        const isOpen = (id) => !!byId[id] && !byId[id].deletedAt && !DONE.has(byId[id].statusKey)
+
+        // "A depends B" = A precisa de B. "A blocks B" = B precisa de A.
+        const needs = new Map()      // item → itens de que precisa
+        const unblocks = new Map()   // item → itens que ele destrava
+        const remember = (map, key, value) => {
+            if(!map.has(key)) map.set(key, new Set())
+            map.get(key).add(value)
+        }
+        for(const link of links){
+            if(link.relation === "depends"){
+                remember(needs, link.sourceItemId, link.targetItemId)
+                remember(unblocks, link.targetItemId, link.sourceItemId)
+            } else if(link.relation === "blocks"){
+                remember(needs, link.targetItemId, link.sourceItemId)
+                remember(unblocks, link.sourceItemId, link.targetItemId)
+            }
+        }
+
+        // Marcos cujas dependências ainda não fecharam: seus itens não estão prontos.
+        const milestones = Milestone ? await store.ListMilestones({ project: projectInstance.id, includeProgress: false }) : []
+        const blockedMilestones = new Set(milestones.filter((m) => m.dependenciesMet === false).map((m) => m.id))
+
+        const PRIORITY_RANK = { urgent: 5, critical: 5, high: 4, medium: 3, low: 2, none: 1 }
+        const ready = []
+        for(const item of items){
+            if(!READY_STATUSES.has(item.statusKey)) continue
+            if(item.blockedReason || item.statusKey === "blocked") continue
+            const pending = [...(needs.get(item.id) || [])].filter(isOpen)
+            if(pending.length) continue
+            if(item.milestoneId && blockedMilestones.has(item.milestoneId)) continue
+            const releases = [...(unblocks.get(item.id) || [])].filter(isOpen)
+            ready.push({
+                ...Serialize(item),
+                unblocks: releases.length,
+                unblocksKeys: releases.map((id) => byId[id] && byId[id].key).filter(Boolean)
+            })
+        }
+
+        ready.sort((a, b) =>
+            b.unblocks - a.unblocks ||
+            (PRIORITY_RANK[b.priority] || 0) - (PRIORITY_RANK[a.priority] || 0) ||
+            String(a.key).localeCompare(String(b.key))
+        )
+        return Number(limit) > 0 ? ready.slice(0, Number(limit)) : ready
+    }
+
     const _groupBy = async ({ project }, field) => {
         const { items } = await _projectItems(project)
         const groups = {}
@@ -68,7 +156,7 @@ const ReportsStore = (ctx) => {
         return groups.filter((g) => agentUsers.has(g.userId))
     }
 
-    return { ProjectStatus, Blocked, Overdue, ByAssignee, ByAgent }
+    return { ProjectStatus, Blocked, Overdue, Ready, ByAssignee, ByAgent }
 }
 
 module.exports = ReportsStore

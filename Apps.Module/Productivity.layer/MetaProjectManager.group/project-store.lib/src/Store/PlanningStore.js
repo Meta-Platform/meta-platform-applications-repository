@@ -1,6 +1,10 @@
-const { NewId, Serialize, SerializeMany, PatchDiff } = require("../Utils/helpers")
+const { Op } = require("sequelize")
+const { NewId, Serialize, SerializeMany, PatchDiff, AssertShortDescription } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
-const { MILESTONE_STATUSES, SPRINT_STATUSES } = require("../Config")
+const {
+    MILESTONE_STATUSES, SPRINT_STATUSES, MILESTONE_LINK_RELATIONS,
+    WORK_ITEM_EFFORT_WEIGHTS, WORK_ITEM_CONFIDENCE
+} = require("../Config")
 
 const DONE = new Set(["done", "archived", "completed"])
 
@@ -9,12 +13,43 @@ const DONE = new Set(["done", "archived", "completed"])
 // entra no mesmo gate de projeto/board.
 const PlanningStore = (ctx) => {
     const { models, writeAudit, emit, store } = ctx
-    const { Milestone, Sprint, WorkItem } = models
+    const { Milestone, Sprint, WorkItem, MilestoneLink } = models
 
+    // Progresso + CAPACIDADE: contar itens trata "xl" e "xs" como iguais, o que faz
+    // um marco com 9 tarefas pequenas parecer maior que um com 3 gigantes. Somamos
+    // o esforço pelos pesos de Config e reportamos a distribuição de confiança —
+    // dois marcos com o mesmo esforço e confiança oposta não são o mesmo risco.
     const _progress = async (field, id) => {
         const items = await WorkItem.findAll({ where: { [field]: id, deletedAt: null } })
         const done = items.filter((i) => DONE.has(i.statusKey)).length
-        return { totalItems: items.length, doneItems: done, progress: items.length ? Math.round((done / items.length) * 100) : 0 }
+
+        const effort = { total: 0, done: 0, remaining: 0, estimated: 0, unestimated: 0, byBucket: {} }
+        const confidence = { unset: 0 }
+        for(const level of WORK_ITEM_CONFIDENCE) confidence[level] = 0
+
+        for(const item of items){
+            const weight = WORK_ITEM_EFFORT_WEIGHTS[item.effort]
+            if(weight === undefined) effort.unestimated++
+            else {
+                effort.estimated++
+                effort.total += weight
+                if(DONE.has(item.statusKey)) effort.done += weight
+                else effort.remaining += weight
+                effort.byBucket[item.effort] = (effort.byBucket[item.effort] || 0) + 1
+            }
+            if(item.confidence && confidence[item.confidence] !== undefined) confidence[item.confidence]++
+            else confidence.unset++
+        }
+
+        return {
+            totalItems: items.length,
+            doneItems: done,
+            progress: items.length ? Math.round((done / items.length) * 100) : 0,
+            effort,
+            // Progresso por ESFORÇO (não por contagem): null quando nada foi estimado.
+            effortProgress: effort.total ? Math.round((effort.done / effort.total) * 100) : null,
+            confidence
+        }
     }
 
     // ---------------- Milestones ----------------
@@ -28,6 +63,7 @@ const PlanningStore = (ctx) => {
     const CreateMilestone = async ({ project, name, shortDescription, description, targetDate, status = "planning", actor } = {}) => {
         if(!name) throw new DomainError("VALIDATION_ERROR", "Nome do milestone é obrigatório.", { field: "name" })
         if(!MILESTONE_STATUSES.includes(status)) throw new DomainError("VALIDATION_ERROR", `Status inválido: ${status}.`, { field: "status", allowed: MILESTONE_STATUSES })
+        AssertShortDescription(shortDescription)
         const projectInstance = await store.ResolveProject(project)
         await store.AssertProjectWritable({ project: projectInstance })
 
@@ -41,17 +77,137 @@ const PlanningStore = (ctx) => {
         return data
     }
 
+    // ── Dependência entre marcos ────────────────────────────────────────────────
+    //
+    // `depends` e `blocks` são a MESMA aresta vista de pontas opostas: "F3 depends
+    // F1" e "F1 blocks F3" descrevem a mesma restrição. Guardamos a linha como o
+    // autor escreveu (o texto do plano continua fiel), mas ciclo, ordenação e
+    // prontidão são calculados sobre a forma normalizada `precisa de`.
+    const _dependencyEdge = (link) => link.relation === "blocks"
+        ? { from: link.targetMilestoneId, to: link.sourceMilestoneId }   // alvo precisa da origem
+        : { from: link.sourceMilestoneId, to: link.targetMilestoneId }   // origem precisa do alvo
+
+    const _projectMilestoneLinks = async (projectId) =>
+        MilestoneLink.findAll({ where: { projectId }, order: [["createdAt", "ASC"]] })
+
+    // Mapa marco → marcos de que ele PRECISA (arestas normalizadas).
+    const _dependencyMap = async (projectId) => {
+        const map = new Map()
+        for(const link of await _projectMilestoneLinks(projectId)){
+            const { from, to } = _dependencyEdge(link)
+            if(!map.has(from)) map.set(from, new Set())
+            map.get(from).add(to)
+        }
+        return map
+    }
+
+    // Segue as dependências a partir de `start`; lança se alcançar `forbidden`.
+    const _assertNoDependencyCycle = async (projectId, start, forbidden, extraEdge) => {
+        const map = await _dependencyMap(projectId)
+        if(extraEdge){
+            if(!map.has(extraEdge.from)) map.set(extraEdge.from, new Set())
+            map.get(extraEdge.from).add(extraEdge.to)
+        }
+        const seen = new Set()
+        const stack = [start]
+        while(stack.length){
+            const current = stack.pop()
+            if(current === forbidden)
+                throw new DomainError("VALIDATION_ERROR", "Vínculo criaria um ciclo de dependência entre entregas.", { milestone: forbidden })
+            if(seen.has(current)) continue
+            seen.add(current)
+            for(const next of map.get(current) || []) stack.push(next)
+        }
+    }
+
+    const LinkMilestones = async ({ milestone, relation = "depends", target, actor } = {}) => {
+        if(!MILESTONE_LINK_RELATIONS.includes(relation))
+            throw new DomainError("VALIDATION_ERROR", `Relação inválida: ${relation}.`, { field: "relation", allowed: MILESTONE_LINK_RELATIONS })
+        const source = await ResolveMilestone(milestone)
+        await store.AssertProjectWritable({ project: source.projectId })
+        const targetInstance = await ResolveMilestone(target)
+        if(source.id === targetInstance.id)
+            throw new DomainError("VALIDATION_ERROR", "Uma entrega não depende de si mesma.", { field: "target" })
+        if(targetInstance.projectId !== source.projectId)
+            throw new DomainError("VALIDATION_ERROR", "A outra entrega pertence a outro projeto.", { field: "target" })
+
+        const edge = _dependencyEdge({ relation, sourceMilestoneId: source.id, targetMilestoneId: targetInstance.id })
+        // Ciclo: quem passa a ser dependência já depende (direta ou indiretamente) de quem depende dele?
+        await _assertNoDependencyCycle(source.projectId, edge.to, edge.from, edge)
+
+        const existing = await MilestoneLink.findOne({ where: { sourceMilestoneId: source.id, relation, targetMilestoneId: targetInstance.id } })
+        if(existing) return Serialize(existing)
+        const link = await MilestoneLink.create({
+            id: NewId(), projectId: source.projectId,
+            sourceMilestoneId: source.id, relation, targetMilestoneId: targetInstance.id
+        })
+        const data = Serialize(link)
+        await writeAudit({ projectId: source.projectId, entityType: "milestone-link", entityId: link.id, action: "create", actor, metadata: { relation, source: source.name, target: targetInstance.name } })
+        emit("milestone.updated", { id: source.id })
+        return data
+    }
+
+    const UnlinkMilestones = async ({ milestone, relation, target, actor } = {}) => {
+        const source = await ResolveMilestone(milestone)
+        await store.AssertProjectWritable({ project: source.projectId })
+        const targetInstance = await ResolveMilestone(target)
+        const where = { sourceMilestoneId: source.id, targetMilestoneId: targetInstance.id }
+        if(relation) where.relation = relation
+        const removed = await MilestoneLink.destroy({ where })
+        await writeAudit({ projectId: source.projectId, entityType: "milestone-link", entityId: `${source.id}:${targetInstance.id}`, action: "delete", actor, metadata: { relation: relation || "all", removed } })
+        emit("milestone.updated", { id: source.id })
+        return { removed }
+    }
+
+    // Dependências de cada marco do projeto, já resolvidas em nome/estado, mais o
+    // veredicto `dependenciesMet` — um marco cuja dependência não fechou não deveria
+    // estar sendo tocado, e isso precisa ser visível sem reconstruir o grafo à mão.
+    const _milestoneRelations = async (projectId) => {
+        const [rows, links] = await Promise.all([
+            Milestone.findAll({ where: { projectId, deletedAt: null } }),
+            _projectMilestoneLinks(projectId)
+        ])
+        const byId = {}
+        rows.forEach((m) => { byId[m.id] = m })
+        const brief = (id) => byId[id] ? { id, name: byId[id].name, status: byId[id].status, targetDate: byId[id].targetDate } : { id, missing: true }
+
+        const relations = {}
+        rows.forEach((m) => { relations[m.id] = { dependsOn: [], blocks: [] } })
+        for(const link of links){
+            const { from, to } = _dependencyEdge(link)
+            if(relations[from]) relations[from].dependsOn.push(brief(to))
+            if(relations[to]) relations[to].blocks.push(brief(from))
+        }
+        for(const id of Object.keys(relations)){
+            const pending = relations[id].dependsOn.filter((d) => !d.missing && d.status !== "released" && d.status !== "archived")
+            relations[id].dependenciesMet = pending.length === 0
+            relations[id].pendingDependencies = pending.map((d) => d.name)
+        }
+        return relations
+    }
+
     const ListMilestones = async ({ project, includeProgress = true } = {}) => {
         const projectInstance = await store.ResolveProject(project)
         const rows = await Milestone.findAll({ where: { projectId: projectInstance.id, deletedAt: null }, order: [["targetDate", "ASC"], ["order", "ASC"]] })
+        const relations = await _milestoneRelations(projectInstance.id)
         const out = []
-        for(const m of rows) out.push(includeProgress ? { ...Serialize(m), ...(await _progress("milestoneId", m.id)) } : Serialize(m))
+        for(const m of rows)
+            out.push({
+                ...Serialize(m),
+                ...(includeProgress ? await _progress("milestoneId", m.id) : {}),
+                ...(relations[m.id] || { dependsOn: [], blocks: [], dependenciesMet: true, pendingDependencies: [] })
+            })
         return out
     }
 
     const GetMilestone = async ({ milestone } = {}) => {
         const m = await ResolveMilestone(milestone)
-        return { ...Serialize(m), ...(await _progress("milestoneId", m.id)) }
+        const relations = await _milestoneRelations(m.projectId)
+        return {
+            ...Serialize(m),
+            ...(await _progress("milestoneId", m.id)),
+            ...(relations[m.id] || { dependsOn: [], blocks: [], dependenciesMet: true, pendingDependencies: [] })
+        }
     }
 
     const UpdateMilestone = async ({ milestone, actor, ...fields } = {}) => {
@@ -60,6 +216,7 @@ const PlanningStore = (ctx) => {
         const patch = {}
         for(const k of ["name", "shortDescription", "description", "targetDate", "status", "order"]) if(fields[k] !== undefined) patch[k] = fields[k]
         if(patch.status && !MILESTONE_STATUSES.includes(patch.status)) throw new DomainError("VALIDATION_ERROR", `Status inválido: ${patch.status}.`, { field: "status", allowed: MILESTONE_STATUSES })
+        if(patch.shortDescription !== undefined) AssertShortDescription(patch.shortDescription)
         const before = PatchDiff(m, patch)
         await m.update(patch)
         const data = Serialize(m)
@@ -77,13 +234,36 @@ const PlanningStore = (ctx) => {
         })
         await m.update({ deletedAt: new Date() })
         await WorkItem.update({ milestoneId: null }, { where: { milestoneId: m.id } })
+        // Dependências de/para o marco removido saem junto: uma aresta órfã faria
+        // outra entrega parecer bloqueada por algo que não existe mais.
+        await MilestoneLink.destroy({ where: { [Op.or]: [{ sourceMilestoneId: m.id }, { targetMilestoneId: m.id }] } })
         await writeAudit({ projectId: m.projectId, entityType: "milestone", entityId: m.id, action: "delete", actor })
         emit("milestone.updated", { id: m.id, deleted: true })
         return { id: m.id, deleted: true }
     }
 
-    // Roadmap: milestones por data-alvo com progresso (visão consumida pela GUI).
-    const Roadmap = async ({ project } = {}) => ListMilestones({ project, includeProgress: true })
+    // Roadmap: marcos com progresso, em ordem que RESPEITA as dependências — uma
+    // entrega nunca aparece antes daquilo de que ela precisa, mesmo que a data-alvo
+    // diga o contrário (data errada é comum; dependência declarada é intencional).
+    // Empate mantém a ordem original (data-alvo, depois `order`).
+    const Roadmap = async ({ project } = {}) => {
+        const milestones = await ListMilestones({ project, includeProgress: true })
+        const byId = {}
+        milestones.forEach((m) => { byId[m.id] = m })
+
+        const sorted = []
+        const state = {}   // undefined = não visitado; 1 = visitando; 2 = pronto
+        const visit = (id) => {
+            if(state[id] === 2 || !byId[id]) return
+            if(state[id] === 1) return   // ciclo residual: não trava a listagem
+            state[id] = 1
+            for(const dep of byId[id].dependsOn || []) visit(dep.id)
+            state[id] = 2
+            sorted.push(byId[id])
+        }
+        milestones.forEach((m) => visit(m.id))
+        return sorted
+    }
 
     // Roadmap por HORIZONTE: itens agrupados em inbox/now/next/later/maybe/archived
     // (+ unassigned). Alimenta a visão de roadmap por fase e o Inbox.
@@ -180,6 +360,7 @@ const PlanningStore = (ctx) => {
 
     return {
         ResolveMilestone, CreateMilestone, ListMilestones, GetMilestone, UpdateMilestone, DeleteMilestone, Roadmap, RoadmapByHorizon,
+        LinkMilestones, UnlinkMilestones,
         ResolveSprint, CreateSprint, ListSprints, GetSprint, UpdateSprint, DeleteSprint,
         AssignItemPlanning
     }

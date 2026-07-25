@@ -1,6 +1,9 @@
 const { NewId, Serialize, SerializeMany } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
-const { AGENT_PROVIDERS } = require("../Config")
+const {
+    AGENT_PROVIDERS, AGENT_GATE_POLICY, IsAgentGatedAction,
+    AGENT_GATED_START_STATUSES, AGENT_GATED_DONE_STATUSES
+} = require("../Config")
 
 const AgentsStore = (ctx) => {
     const { models, writeAudit, emit, store } = ctx
@@ -220,6 +223,10 @@ const AgentsStore = (ctx) => {
     // passam direto. Chame no início do método do store que precisa de gate.
     const GateAgentAction = async ({ actionName, type, targetId, projectId, payload = {}, risk = "normal", reason, actor } = {}) => {
         if(!IsAgentActor(actor)) return
+        // A política (Config.AGENT_GATE_POLICY) decide o que é gated — a mesma que
+        // alimenta a orientação lida pelo agente. Par (ação, tipo) fora dela passa
+        // direto: nenhuma call-site pode inventar um gate que a orientação não anuncia.
+        if(!IsAgentGatedAction({ actionName, type })) return
         const { request } = await RequestApproval({
             actionName, type, targetId, projectId, payload, risk,
             resumeToken: actor.resumeToken, actor
@@ -445,7 +452,22 @@ const AgentsStore = (ctx) => {
         return out
     }
 
+    // Política de gate EXECUTÁVEL: é o mesmo mapa que GateAgentAction consulta.
+    // Quem documenta o gate para o agente (MCP get_guidance) lê daqui, em vez de
+    // manter uma segunda lista à mão que envelhece em silêncio.
+    const AgentGatePolicy = () => ({
+        actions: AGENT_GATE_POLICY,
+        statuses: {
+            start: AGENT_GATED_START_STATUSES,
+            done: AGENT_GATED_DONE_STATUSES,
+            // Concluir também é gated em coluna marcada isDoneColumn, seja qual for o statusKey.
+            doneByColumn: true
+        },
+        humanOnly: ["aprovar pedido", "rejeitar pedido", "confirmar sessão"]
+    })
+
     return {
+        AgentGatePolicy,
         CreateAgent, ResolveAgent, ListAgents, GetAgent,
         RegisterSession, ResolveSession, ListSessions, GetSession,
         ConfirmSession, RejectSession, CloseSession,

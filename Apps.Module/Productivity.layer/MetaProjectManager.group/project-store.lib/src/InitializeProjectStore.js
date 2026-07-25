@@ -102,7 +102,11 @@ const InitializeProjectStore = (options = {}) => {
         ["creation_requests", "executedAt",       "DATETIME"],
         ["work_items",        "typeFields",       "TEXT"],
         ["work_items",        "releaseTag",       "VARCHAR(255)"],
-        ["work_items",        "releaseUrl",       "VARCHAR(255)"]
+        ["work_items",        "releaseUrl",       "VARCHAR(255)"],
+        // Resumo de uma linha do item (o que o humano lê no card) e confiança na
+        // estimativa — o esforço já existia em `effort`.
+        ["work_items",        "shortDescription", "VARCHAR(255)"],
+        ["work_items",        "confidence",       "VARCHAR(255)"]
     ]
     const MigrateAddedColumns = async () => {
         for(const [table, column, type] of ADDED_COLUMNS){

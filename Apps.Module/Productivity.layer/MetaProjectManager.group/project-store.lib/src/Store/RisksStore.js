@@ -1,6 +1,7 @@
+const { Op } = require("sequelize")
 const { NewId, Serialize, SerializeMany, PatchDiff } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
-const { RISK_LEVELS, RISK_STATUSES } = require("../Config")
+const { RISK_LEVELS, RISK_STATUSES, RISK_LINK_RELATIONS } = require("../Config")
 
 // Registro de riscos do projeto (planejamento documental, estilo PMBOK). Lista
 // PLANA (sem árvore) de riscos, cada um com probabilidade × impacto (matriz 3×3),
@@ -9,7 +10,7 @@ const { RISK_LEVELS, RISK_STATUSES } = require("../Config")
 // por AssertProjectWritable (projeto arquivado é somente leitura).
 const RisksStore = (ctx) => {
     const { models, writeAudit, emit, store } = ctx
-    const { RiskItem } = models
+    const { RiskItem, RiskItemLink, WorkItem } = models
 
     // Peso de cada nível na matriz 3×3 e o nível derivado do produto prob×impacto.
     const _weight = { low: 1, medium: 2, high: 3 }
@@ -56,16 +57,27 @@ const RisksStore = (ctx) => {
     }
 
     // Todos os riscos do projeto (planos, ordenados). A GUI monta a matriz/tabela.
-    const ListRisks = async ({ project } = {}) => {
-        const projectInstance = await store.ResolveProject(project)
-        const rows = await RiskItem.findAll({
-            where: { projectId: projectInstance.id, deletedAt: null },
-            order: [["order", "ASC"], ["createdAt", "ASC"]]
-        })
+    // `item` restringe aos riscos VINCULADOS àquele item de trabalho.
+    const ListRisks = async ({ project, item } = {}) => {
+        const where = { deletedAt: null }
+        if(project) where.projectId = (await store.ResolveProject(project)).id
+        if(item){
+            const workItem = await store.ResolveItem(item)
+            const links = await RiskItemLink.findAll({ where: { workItemId: workItem.id }, attributes: ["riskId"], raw: true })
+            where.id = { [Op.in]: links.map((l) => l.riskId) }
+        }
+        if(!project && !item)
+            throw new DomainError("VALIDATION_ERROR", "Informe o projeto ou o item.", { field: "project" })
+        const rows = await RiskItem.findAll({ where, order: [["order", "ASC"], ["createdAt", "ASC"]] })
         return _serializeMany(rows)
     }
 
-    const GetRisk = async ({ risk } = {}) => _serialize(await ResolveRisk(risk))
+    // Detalhe do risco COM o trabalho que o endereça: abrir um risco sem ver se já
+    // existe item para ele é o que fazia a informação viver na memória de quem leu.
+    const GetRisk = async ({ risk } = {}) => {
+        const instance = await ResolveRisk(risk)
+        return { ..._serialize(instance), items: await ListRiskItems({ risk: instance.id }) }
+    }
 
     const CreateRisk = async ({ project, title, description, probability, impact, status, category, mitigation, contingency, ownerUserId, milestoneId, actor } = {}) => {
         if(!title || !String(title).trim())
@@ -142,9 +154,95 @@ const RisksStore = (ctx) => {
         return { id: instance.id, deleted: true }
     }
 
+    // ── Vínculo risco ↔ item de trabalho ────────────────────────────────────────
+    //
+    // O risco existia solto no registro do projeto e o trabalho que o endereça só
+    // aparecia como menção textual. Aqui a relação vira aresta: quem abre o item vê
+    // o perigo (GetItem.risks) e quem abre o risco vê se já há trabalho (ListRiskItems).
+    // Criar/remover vínculo é LIVRE — é informação, e é reversível.
+
+    const _serializeLink = (link, { risk, workItem } = {}) => ({
+        ...Serialize(link),
+        riskTitle: risk ? risk.title : undefined,
+        riskLevel: risk ? _level(risk.probability, risk.impact) : undefined,
+        riskStatus: risk ? risk.status : undefined,
+        itemKey: workItem ? workItem.key : undefined,
+        itemTitle: workItem ? workItem.title : undefined,
+        itemStatus: workItem ? workItem.statusKey : undefined
+    })
+
+    const LinkRiskItem = async ({ risk, item, relation = "mitigates", note, actor } = {}) => {
+        if(!RISK_LINK_RELATIONS.includes(relation))
+            throw new DomainError("VALIDATION_ERROR", `Relação inválida: ${relation}.`, { field: "relation", allowed: RISK_LINK_RELATIONS })
+        const riskInstance = await ResolveRisk(risk)
+        await store.AssertProjectWritable({ project: riskInstance.projectId })
+        const workItem = await store.ResolveItem(item)
+        // Um risco é do projeto; vincular a item de OUTRO projeto tornaria o registro
+        // de riscos ilegível (o item nem aparece nas listagens daquele projeto).
+        if(workItem.projectId !== riskInstance.projectId)
+            throw new DomainError("VALIDATION_ERROR", "O item pertence a outro projeto.", { field: "item" })
+        const existing = await RiskItemLink.findOne({ where: { riskId: riskInstance.id, workItemId: workItem.id, relation } })
+        if(existing){
+            if(note !== undefined) await existing.update({ note })
+            return _serializeLink(existing, { risk: riskInstance, workItem })
+        }
+        const link = await RiskItemLink.create({
+            id: NewId(), projectId: riskInstance.projectId,
+            riskId: riskInstance.id, workItemId: workItem.id, relation, note
+        })
+        const data = _serializeLink(link, { risk: riskInstance, workItem })
+        await writeAudit({ projectId: riskInstance.projectId, entityType: "risk-item-link", entityId: link.id, action: "create", actor, metadata: { relation, risk: riskInstance.title, item: workItem.key } })
+        emit("risk.updated", { id: riskInstance.id })
+        emit("item.updated", { id: workItem.id })
+        return data
+    }
+
+    const UnlinkRiskItem = async ({ risk, item, relation, actor } = {}) => {
+        const riskInstance = await ResolveRisk(risk)
+        await store.AssertProjectWritable({ project: riskInstance.projectId })
+        const workItem = await store.ResolveItem(item)
+        const where = { riskId: riskInstance.id, workItemId: workItem.id }
+        // Sem `relation`, remove a ligação inteira entre os dois (todas as relações).
+        if(relation) where.relation = relation
+        const removed = await RiskItemLink.destroy({ where })
+        await writeAudit({ projectId: riskInstance.projectId, entityType: "risk-item-link", entityId: `${riskInstance.id}:${workItem.id}`, action: "delete", actor, metadata: { relation: relation || "all", removed } })
+        emit("risk.updated", { id: riskInstance.id })
+        emit("item.updated", { id: workItem.id })
+        return { removed }
+    }
+
+    // Itens vinculados a um risco (o trabalho que o endereça ou o dispara).
+    const ListRiskItems = async ({ risk } = {}) => {
+        const riskInstance = await ResolveRisk(risk)
+        const links = await RiskItemLink.findAll({ where: { riskId: riskInstance.id }, order: [["createdAt", "ASC"]] })
+        const items = links.length
+            ? await WorkItem.findAll({ where: { id: { [Op.in]: links.map((l) => l.workItemId) }, deletedAt: null }, attributes: ["id", "key", "title", "statusKey"] })
+            : []
+        const byId = {}
+        items.forEach((i) => { byId[i.id] = i })
+        return links
+            .filter((l) => byId[l.workItemId])
+            .map((l) => _serializeLink(l, { risk: riskInstance, workItem: byId[l.workItemId] }))
+    }
+
+    // Riscos vinculados a um item (consumido por GetItem).
+    const ListItemRisks = async ({ item } = {}) => {
+        const workItem = await store.ResolveItem(item)
+        const links = await RiskItemLink.findAll({ where: { workItemId: workItem.id }, order: [["createdAt", "ASC"]] })
+        const risks = links.length
+            ? await RiskItem.findAll({ where: { id: { [Op.in]: links.map((l) => l.riskId) }, deletedAt: null } })
+            : []
+        const byId = {}
+        risks.forEach((r) => { byId[r.id] = r })
+        return links
+            .filter((l) => byId[l.riskId])
+            .map((l) => _serializeLink(l, { risk: byId[l.riskId], workItem }))
+    }
+
     return {
         ResolveRisk,
-        ListRisks, GetRisk, CreateRisk, UpdateRisk, DeleteRisk
+        ListRisks, GetRisk, CreateRisk, UpdateRisk, DeleteRisk,
+        LinkRiskItem, UnlinkRiskItem, ListRiskItems, ListItemRisks
     }
 }
 
