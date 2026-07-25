@@ -647,3 +647,52 @@ test("MPMX2-16 ecosystem_index_status não escreve e diz se o índice existe", a
     // sem repositories.json acessível, o motivo vem explicado em vez de estourar
     assert.ok(status.declaredRepositories || status.declarationError)
 })
+
+test("MPMX2-17 set_item_status BLOQUEIA até a aprovação e retorna o item no novo status", async () => {
+    const it = await store.CreateItem({ project: "MCP", type: "task", title: "Conclusão sob gate" })
+    // concluir é gated: a chamada fica pendurada, como nas demais tools sob gate
+    const call = byName("set_item_status").handler({ item: it.key, status: "done" })
+
+    let reqId
+    for(let i = 0; i < 100 && !reqId; i++){
+        const pend = (await store.ListCreationRequests({ status: "pending", actionName: "set-status" })).find((r) => r.targetId === it.id)
+        if(pend) reqId = pend.id; else await new Promise((r) => setTimeout(r, 20))
+    }
+    assert.ok(reqId, "o pedido pendente precisa existir enquanto a tool espera")
+
+    await store.ApproveRequest({ request: reqId, actor: { actorUserId: "h", source: "gui" } })
+    const out = await call
+    assert.equal(out.statusKey, "done")
+    assert.equal(out.key, it.key)
+    assert.ok(out.completedAt)
+})
+
+test("MPMX2-17 set_item_status rejeitado vira REJECTED_BY_HUMAN e o item não muda", async () => {
+    const it = await store.CreateItem({ project: "MCP", type: "task", title: "Início recusado" })
+    const call = byName("set_item_status").handler({ item: it.key, status: "in-progress" })
+        .then((r) => ({ ok: r }), (e) => ({ err: e }))
+
+    let reqId
+    for(let i = 0; i < 100 && !reqId; i++){
+        const pend = (await store.ListCreationRequests({ status: "pending", actionName: "set-status" })).find((r) => r.targetId === it.id)
+        if(pend) reqId = pend.id; else await new Promise((r) => setTimeout(r, 20))
+    }
+    await store.RejectRequest({ request: reqId, reason: "ainda não", actor: { actorUserId: "h", source: "gui" } })
+
+    const res = await call
+    assert.equal(res.err.code, "REJECTED_BY_HUMAN")
+    assert.equal((await store.GetItem({ item: it.id })).statusKey, "backlog")
+})
+
+test("MPMX2-17 waitApproval:false devolve o pedido sem esperar; transição livre passa direto", async () => {
+    const it = await store.CreateItem({ project: "MCP", type: "task", title: "Sem espera" })
+    const pendente = await byName("set_item_status").handler({ item: it.key, status: "done", waitApproval: false })
+    assert.equal(pendente.status, "pending_approval")
+    assert.ok(pendente.approvalRequestId)
+    assert.equal((await store.GetItem({ item: it.id })).statusKey, "backlog", "nada muda antes da decisão")
+
+    // backlog → review não é gated: retorna na hora, com o resumo de sempre
+    const livre = await byName("set_item_status").handler({ item: it.key, status: "review" })
+    assert.equal(livre.statusKey, "review")
+    assert.equal(livre.pendingFeedbackCount, 0)
+})

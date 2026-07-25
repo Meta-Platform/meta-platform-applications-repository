@@ -106,8 +106,9 @@ servidor aplica; o que não estiver lá é livre:
 **A tool BLOQUEIA até o humano decidir.** Ao bater no gate, a chamada vira um
 pedido pendente e a tool fica esperando (polling) a decisão no Meta Project
 Manager — ela só retorna quando o humano aprovar (devolve o objeto criado/
-removido) ou rejeitar (erro \`REJECTED_BY_HUMAN\`, com o motivo). Isso vale
-tanto para criação quanto para remoção, e é o padrão (\`waitApproval: true\`).
+removido/atualizado) ou rejeitar (erro \`REJECTED_BY_HUMAN\`, com o motivo).
+Vale para criação, remoção **e mudança de status** (iniciar/concluir), e é o
+padrão (\`waitApproval: true\`).
 
 Consequências práticas:
 - Uma chamada gated pode demorar minutos. **Isso não é travamento**: é o

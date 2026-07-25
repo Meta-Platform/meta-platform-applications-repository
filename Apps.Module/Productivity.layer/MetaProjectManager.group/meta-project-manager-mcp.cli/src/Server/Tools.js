@@ -125,7 +125,7 @@ const BuildTools = ({ store, actor }) => {
     // e devolve o resultado da ação — o agente não segue adiante sem o veredicto.
     // Se rejeitado/expirado, erro estruturado. resumeToken (derivado da ação + alvo)
     // dá idempotência: retries reusam o pedido pendente em vez de duplicá-lo.
-    const ACTION_LABEL = { create: "criação", delete: "remoção" }
+    const ACTION_LABEL = { create: "criação", delete: "remoção", "set-status": "mudança de status" }
     const GatedAction = async ({ actionName = "delete", type, ref, run, waitApproval = true, approvalTimeoutSeconds }) => {
         const resumeToken = `${actionName}:${type}:${ref}`
         try {
@@ -1024,9 +1024,28 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "set_item_status",
-            description: "Muda o status de um item (ex.: backlog → ready → in-progress → review → done). A maioria das transições é LIVRE, MAS iniciar (mover para in-progress) e concluir (mover para done/completed ou coluna de conclusão) EXIGEM aprovação humana: a chamada BLOQUEIA até o humano decidir (AGENT_SESSION_CONFIRMATION_REQUIRED). Nunca comece nem dê uma tarefa por concluída sem solicitação explícita do usuário. Retorna um RESUMO + pendingFeedbackCount (use view:\"full\" para o item inteiro).",
-            inputSchema: Obj({ item: S.str("Item (id|key)"), status: S.str("Novo status (statusKey)"), ...VIEW_FIELD }, ["item","status"]),
-            handler: async (i) => ItemMutationResult(await store.SetStatus(A({ item: i.item, status: i.status })), i.view)
+            description: "Muda o status de um item (ex.: backlog → ready → in-progress → review → done). A maioria das transições é LIVRE, MAS iniciar (mover para in-progress) e concluir (mover para done/completed ou coluna de conclusão) EXIGEM aprovação humana: a chamada BLOQUEIA até o humano decidir e então retorna o item já no novo status; rejeição vira REJECTED_BY_HUMAN. Nunca comece nem dê uma tarefa por concluída sem solicitação explícita do usuário. Use waitApproval:false para receber o approvalRequestId sem esperar. Retorna um RESUMO + pendingFeedbackCount (use view:\"full\" para o item inteiro).",
+            inputSchema: Obj({
+                item: S.str("Item (id|key)"),
+                status: S.str("Novo status (statusKey)"),
+                ...VIEW_FIELD,
+                ...WAIT_FIELDS
+            }, ["item","status"]),
+            // Iniciar/concluir é gated como criar/remover — e agora ESPERA como elas.
+            // Antes, esta tool chamava o store direto: o pedido nascia pendente e o erro
+            // subia na hora, contrariando a própria descrição e deixando pedidos órfãos
+            // que ninguém aguardava. Transições livres não tocam o gate e passam direto.
+            handler: async (i) => {
+                const result = await GatedAction({
+                    actionName: "set-status", type: "work-item", ref: `${i.item}:${i.status}`,
+                    waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                    run: (actor) => store.SetStatus({ item: i.item, status: i.status, actor })
+                })
+                // Com waitApproval:false o retorno é o PEDIDO, não o item — resumi-lo
+                // como item devolveria um objeto vazio.
+                if(result && result.status === "pending_approval") return result
+                return ItemMutationResult(result, i.view)
+            }
         },
         {
             name: "assign_item",

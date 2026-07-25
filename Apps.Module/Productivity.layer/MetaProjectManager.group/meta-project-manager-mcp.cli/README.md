@@ -116,8 +116,11 @@ a espera. A interface humana mostra **O QUE** será removido (impacto em cascata
 pediu (provider/modelo/sessão). Não tente burlar o gate.
 
 **Executar (livre):** `create_item`, `add_to_inbox`, `list_items`, `get_item`,
-`update_item`, `set_item_status`, `assign_item`, `move_item_to_board`,
-`block_item`, `link_item`, `assign_item_planning`.
+`update_item`, `assign_item`, `move_item_to_board`, `block_item`, `link_item`,
+`assign_item_planning`. `set_item_status` também é livre, **exceto** iniciar
+(`in-progress`) e concluir (`done`/`completed`/coluna de conclusão): aí passa
+pelo mesmo gate das tools acima — BLOQUEIA até a decisão humana e retorna o item
+já no novo status (ou `REJECTED_BY_HUMAN`), com `waitApproval`/`approvalTimeoutSeconds`.
 
 **Em lote:** `create_items` (N itens; `ref`/`parent:"@apelido"` montam a
 hierarquia dentro do próprio lote), `link_items` (N vínculos) e
