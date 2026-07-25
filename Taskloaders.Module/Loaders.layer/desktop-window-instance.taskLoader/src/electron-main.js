@@ -33,6 +33,13 @@ if(IS_GUI_HOST){
     ])
 }
 
+// PRIME offload is explicit opt-in. Keep ANGLE on the NVIDIA-backed OpenGL
+// context instead of allowing Chromium's Vulkan probe to fall back to software.
+if(process.platform === "linux" && process.env.__NV_PRIME_RENDER_OFFLOAD === "1"){
+    app.commandLine.appendSwitch("use-gl", "angle")
+    app.commandLine.appendSwitch("use-angle", "gl")
+}
+
 // Identidade de janela para o gerenciador de janelas (X11 WM_CLASS). Sem isto,
 // TODOS os .desktopapp compartilham a mesma classe (o binário Electron) e o KDE
 // (e afins) os agrupa num único botão da barra de tarefas. Damos a cada app uma
