@@ -1,7 +1,7 @@
 import dagre from "dagre"
 import { MarkerType } from "reactflow"
 
-import { BootGraph, GraphNode } from "../../../Domain/bootGraph"
+import { GraphNode, RuntimeGraph } from "../../../Domain/runtimeGraph"
 import { EDGE_THEME } from "./diagramTheme"
 
 // Converte o grafo do domínio em nós/arestas do reactflow, com posições
@@ -10,7 +10,7 @@ import { EDGE_THEME } from "./diagramTheme"
 const NODE_W = 230
 const NODE_H = 72
 
-export const layoutGraph = (graph:BootGraph, direction:"LR" | "TB" = "LR") => {
+export const layoutGraph = (graph:RuntimeGraph, direction:"LR" | "TB" = "LR") => {
 
     const g = new dagre.graphlib.Graph()
     g.setDefaultEdgeLabel(() => ({}))

@@ -6,16 +6,17 @@ import ReactFlow, {
 } from "reactflow"
 import "reactflow/dist/style.css"
 
-import { BootGraph, buildBootGraph, collectNodeKinds } from "../../../Domain/bootGraph"
+import { GraphScope, RuntimeGraph, buildRuntimeGraph, collectNodeKinds } from "../../../Domain/runtimeGraph"
 import { PackageModel } from "../../../Domain/packageModel"
 import { EDGE_THEME, NODE_THEME } from "./diagramTheme"
 import BootFlowNode from "./BootFlowNode"
 import layoutGraph from "./layoutGraph"
 import { EmptyState, IconButton, Segmented } from "../ui/Primitives"
 
-// Diagrama da topologia do boot. Interativo de verdade: zoom, pan, ajustar à
-// tela, centralizar a seleção, minimapa, legenda e destaque da vizinhança do nó
-// selecionado. Clicar num nó seleciona o recurso no Inspector.
+// Diagrama da topologia de uma capacidade do runtime — do boot inteiro a uma
+// seção só (endpoints, serviços, comandos…). Interativo: zoom, pan, ajustar à
+// tela, centralizar, minimapa, legenda e destaque da vizinhança. Clicar num nó
+// seleciona o recurso no Inspector; selecionar fora CENTRALIZA o nó aqui.
 
 const nodeTypes = { boot: BootFlowNode }
 
@@ -27,11 +28,13 @@ const MIN_READABLE_ZOOM = 0.5
 
 type Props = {
     model        : PackageModel
+    scope?       : GraphScope      // "boot" (padrão) ou uma seção do runtime
     selectedId?  : string          // id do item do modelo atualmente selecionado
     onSelectItem : (itemId:string) => void
+    emptyHint?   : string
 }
 
-const Canvas = ({ graph, selectedId, onSelectItem }:{ graph:BootGraph, selectedId?:string, onSelectItem:(id:string) => void }) => {
+const Canvas = ({ graph, selectedId, onSelectItem }:{ graph:RuntimeGraph, selectedId?:string, onSelectItem:(id:string) => void }) => {
 
     const [direction, setDirection] = useState<"LR" | "TB">("LR")
     const layouted = useMemo(() => layoutGraph(graph, direction), [graph, direction])
@@ -88,6 +91,14 @@ const Canvas = ({ graph, selectedId, onSelectItem }:{ graph:BootGraph, selectedI
         const node:any = getNode(selectedNodeId)
         if(node) setCenter(node.position.x + 115, node.position.y + 36, { zoom: 1.1, duration: 250 })
     }, [selectedNodeId, getNode, setCenter, fitView])
+
+    // Selecionar um recurso na árvore/lista traz o nó dele para o centro — é o
+    // que faz o diagrama valer como visão principal, e não como enfeite.
+    useEffect(() => {
+        if(!selectedNodeId || !nodesInitialized) return
+        const node:any = getNode(selectedNodeId)
+        if(node) setCenter(node.position.x + 115, node.position.y + 36, { zoom: 1, duration: 250 })
+    }, [selectedNodeId, nodesInitialized])
 
     const onNodeClick = useCallback((_e:any, node:any) => {
         if(node && node.data && node.data.itemId) onSelectItem(node.data.itemId)
@@ -157,19 +168,19 @@ const Canvas = ({ graph, selectedId, onSelectItem }:{ graph:BootGraph, selectedI
     </ReactFlow>
 }
 
-const BootDiagramView = ({ model, selectedId, onSelectItem }:Props) => {
+const RuntimeDiagramView = ({ model, scope = "boot", selectedId, onSelectItem, emptyHint }:Props) => {
 
-    const graph = useMemo(() => buildBootGraph(model), [model])
+    const graph = useMemo(() => buildRuntimeGraph(model, scope), [model, scope])
 
     if(!graph.nodes.length)
         return <EmptyState icon="sitemap" title="Sem topologia para desenhar"
-            hint="Este pacote não declara serviços, executáveis, endpoints ou comandos." />
+            hint={emptyHint || "Esta capacidade não declara nada que possa ser ligado num diagrama."} />
 
-    return <div className="pdx-diagram app-grid-bg" style={{height:"calc(100vh - var(--pd-header-h) - 210px)", minHeight:420}}>
+    return <div className="pdx-diagram app-grid-bg" style={{height:"calc(100vh - var(--pd-header-h) - 250px)", minHeight:400}}>
         <ReactFlowProvider>
-            <Canvas graph={graph} selectedId={selectedId} onSelectItem={onSelectItem} />
+            <Canvas key={String(scope)} graph={graph} selectedId={selectedId} onSelectItem={onSelectItem} />
         </ReactFlowProvider>
     </div>
 }
 
-export default BootDiagramView
+export default RuntimeDiagramView

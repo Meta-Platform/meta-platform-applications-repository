@@ -2,7 +2,7 @@ import * as React from "react"
 
 // Stub do reactflow para o ambiente de teste: o pacote é ESM + CSS e não roda no
 // jsdom. O que interessa testar (montagem do grafo, tipos de nó, arestas) vive em
-// Domain/bootGraph e Boot/layoutGraph, cobertos por testes próprios. Aqui só
+// Domain/runtimeGraph e Boot/layoutGraph, cobertos por testes próprios. Aqui só
 // garantimos que a view renderiza nós clicáveis.
 
 export const MarkerType = { ArrowClosed: "arrowclosed" }
