@@ -1,7 +1,7 @@
 // Modelo de apresentação do REPOSITÓRIO e do WORKSPACE. Lê os metadados como
 // vêm de GetRepositoryMetadata (<repo>/metadata/*.json) e cruza com o índice de
-// pacotes e o status git já disponíveis na tela — sem inventar campo que o
-// domínio não fornece (ex.: origem remota não é exposta pelo git-status.lib).
+// pacotes e o status git já disponíveis na tela. Campo ausente no domínio é
+// campo omitido na tela — nada é inventado aqui.
 
 import { IndexedPackage } from "./packageIndex"
 import { Issue } from "./packageModel"
@@ -21,6 +21,7 @@ export type RepositoryModel = {
     dependencies  : string[]
     supportedPackageTypes : string[]
     branch?       : string
+    remote?       : string
     dirtyCount?   : number
     metadataFiles : string[]
     applications  : RepositoryApplication[]
@@ -36,6 +37,7 @@ export type WorkspaceModel = {
         name    : string
         path?   : string
         branch? : string
+        remote? : string
         dirty?  : number
         active  : boolean
         packages?: number
@@ -105,6 +107,7 @@ export const buildRepositoryModel = (
         dependencies: asArray(repositoryJson.dependencies),
         supportedPackageTypes: asArray(repositoryJson.supportedPackageTypes),
         branch      : git && git.branch,
+        remote      : git && git.remote,
         dirtyCount  : git && git.count,
         metadataFiles: (metadata && metadata.fileNames || []).map((f:string) => `metadata/${f}`),
         applications,
@@ -136,6 +139,7 @@ export const buildWorkspaceModel = (
             name,
             path    : git.path,
             branch  : git.branch,
+            remote  : git.remote,
             dirty   : git.count,
             active  : name === activeRepository,
             packages: packages ? packages.length : undefined

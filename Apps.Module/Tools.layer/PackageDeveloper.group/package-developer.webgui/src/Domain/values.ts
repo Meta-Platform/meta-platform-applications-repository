@@ -94,19 +94,32 @@ export const toPropertyEntry = (label:string, value:any):PropertyEntry => {
     }
 }
 
-// Converte um objeto em entradas chave→valor, DESCARTANDO as vazias. Aceita
-// tanto mapas ({"a":"1"}) quanto listas de strings (["a","b"] → valor sem chave).
-export const toPropertyEntries = (value:any):PropertyEntry[] => {
+// Converte um objeto em entradas chave→valor, DESCARTANDO as vazias. Objetos
+// aninhados (ex.: bound-params.controller-params) são ACHATADOS em "pai.filho",
+// para que cada valor apareça legível e copiável em vez de virar um JSON cru.
+const MAX_DEPTH = 3
+
+export const toPropertyEntries = (value:any, prefix = "", depth = 0):PropertyEntry[] => {
     if(isEmptyValue(value)) return []
+    const key = (k:string) => prefix ? `${prefix}.${k}` : k
+
     if(Array.isArray(value))
         return value
             .filter((v) => !isEmptyValue(v))
-            .map((v, i) => toPropertyEntry(isScalar(v) ? String(i + 1) : `#${i + 1}`, v))
+            .reduce((acc:PropertyEntry[], v, i) =>
+                isScalar(v) || depth >= MAX_DEPTH
+                    ? acc.concat([toPropertyEntry(key(String(i + 1)), v)])
+                    : acc.concat(toPropertyEntries(v, key(String(i + 1)), depth + 1)), [])
+
     if(typeof value === "object")
         return Object.keys(value)
             .filter((k) => !isEmptyValue(value[k]))
-            .map((k) => toPropertyEntry(k, value[k]))
-    return [toPropertyEntry("valor", value)]
+            .reduce((acc:PropertyEntry[], k) =>
+                isScalar(value[k]) || depth >= MAX_DEPTH
+                    ? acc.concat([toPropertyEntry(key(k), value[k])])
+                    : acc.concat(toPropertyEntries(value[k], key(k), depth + 1)), [])
+
+    return [toPropertyEntry(prefix || "valor", value)]
 }
 
 // Grupo de propriedades; devolve [] quando não há nada a mostrar (a UI omite a

@@ -26,6 +26,7 @@ import ResponsiveInspectorDrawer from "./ResponsiveInspectorDrawer"
 
 const COLS_KEY  = "ide:explorer-columns"
 const BOOT_VIEW_KEY = "ide:explorer-boot-view"
+const FAVORITES_KEY = "ide:favorite-packages"
 const DEFAULT_WIDTHS = [252, 268, 380]
 
 type Props = {
@@ -58,8 +59,8 @@ const PackageExplorer = ({
 }:Props) => {
 
     const layout = useResponsiveLayout()
-    const { packages, metadata, loading, error, indexes, reload } =
-        useExplorerData({ HTTPServerManager, repository: workspace })
+    const { packages, metadata, loading, error, indexes, allPackages, pendingRepositories, reload } =
+        useExplorerData({ HTTPServerManager, repository: workspace, repositories: openRepositories })
 
     const [selection, setSelection]   = useState<Selection | undefined>()
     const [scope, setScope]           = useState<{ path:string, label:string } | undefined>()
@@ -69,6 +70,9 @@ const PackageExplorer = ({
     const [widths, setWidths]         = useState<number[]>(DEFAULT_WIDTHS)
     const [bootView, setBootView]     = useState<"structure" | "diagram">("structure")
     const [drawerOpen, setDrawerOpen] = useState(false)
+    // Escopo da busca: só o repositório ativo ou todos os repositórios abertos.
+    const [scopeMode, setScopeMode]   = useState<"repository" | "workspace">("repository")
+    const [favorites, setFavorites]   = useState<string[]>([])
 
     // Preferências persistidas (larguras e visualização do boot).
     useEffect(() => {
@@ -81,27 +85,40 @@ const PackageExplorer = ({
         getAppState(BOOT_VIEW_KEY).then((v:any) => {
             if(v === "diagram" || v === "structure") setBootView(v)
         }).catch(() => {})
+        getAppState(FAVORITES_KEY).then((v:any) => {
+            try {
+                const arr = typeof v === "string" ? JSON.parse(v) : v
+                if(Array.isArray(arr)) setFavorites(arr)
+            } catch(e) { /* preferência inválida: começa sem favoritos */ }
+        }).catch(() => {})
     }, [])
 
     // Troca de repositório: zera seleção e escopo, mantém filtros de busca.
     useEffect(() => { setSelection(undefined); setScope(undefined); setDrawerOpen(false) }, [workspace])
 
+    // Escopo em três níveis: container selecionado → repositório ativo → workspace.
+    const basePackages = scopeMode === "workspace" ? allPackages : packages
     const scopedPackages = useMemo(() =>
-        scope ? packages.filter((p) => p.path === scope.path || p.path.indexOf(scope.path + "/") === 0) : packages,
-        [packages, scope])
+        scope && scopeMode === "repository"
+            ? packages.filter((p) => p.path === scope.path || p.path.indexOf(scope.path + "/") === 0)
+            : basePackages,
+        [basePackages, packages, scope, scopeMode])
 
     const results = useMemo(() => filterPackages(scopedPackages, filters), [scopedPackages, filters])
     const facets  = useMemo(() => buildFacets(scopedPackages, filters), [scopedPackages, filters])
 
     const selectedPath = selectedPackagePath(selection)
+    // O pacote selecionado pode ser de outro repositório aberto (busca no
+    // workspace), por isso a procura é no conjunto completo.
     const selectedPackage = useMemo(() =>
-        selectedPath ? packages.filter((p) => p.path === selectedPath)[0] : undefined,
-        [packages, selectedPath])
+        selectedPath ? allPackages.filter((p) => p.path === selectedPath)[0] : undefined,
+        [allPackages, selectedPath])
 
-    const wantReadme = !!selection && selection.kind === "package"
+    const selectedRepository = (selectedPackage && selectedPackage.repository) || workspace
+
     const details = usePackageDetails({
         HTTPServerManager,
-        workspace,
+        workspace: selectedRepository,
         pkg: selectedPackage,
         fallbackModel: selectedPackage && selectedPackage.model,
         wantReadme: true
@@ -124,37 +141,42 @@ const PackageExplorer = ({
     }, [layout])
 
     const selectPackage = useCallback((path:string) => {
-        select({ kind: "package", repository: workspace, packagePath: path })
+        const owner = allPackages.filter((p) => p.path === path)[0]
+        select({ kind: "package", repository: (owner && owner.repository) || workspace, packagePath: path })
         setExpanded((prev) => ({ ...prev, [`package:${path}`]: true }))
-    }, [select, workspace])
+    }, [select, workspace, allPackages])
 
     const selectSection = useCallback((sectionId:SectionId | "boot") => {
         if(!selectedPath) return
         if(sectionId === "boot"){
-            select({ kind: "package", repository: workspace, packagePath: selectedPath })
+            select({ kind: "package", repository: selectedRepository, packagePath: selectedPath })
             return
         }
-        select({ kind: "section", repository: workspace, packagePath: selectedPath, sectionId })
-    }, [select, selectedPath, workspace])
+        select({ kind: "section", repository: selectedRepository, packagePath: selectedPath, sectionId })
+    }, [select, selectedPath, selectedRepository])
 
     const selectItem = useCallback((itemId:string) => {
         if(!selectedPath) return
-        select({ kind: "item", repository: workspace, packagePath: selectedPath, itemId })
+        select({ kind: "item", repository: selectedRepository, packagePath: selectedPath, itemId })
         setExpanded((prev) => ({
             ...prev,
             [`package:${selectedPath}`]: true,
             [`section:${selectedPath}#${itemId.split("/")[0]}`]: true
         }))
-    }, [select, selectedPath, workspace])
+    }, [select, selectedPath, selectedRepository])
 
-    // Link de referência (@/pacote): navega para o pacote correspondente.
+    // Link de referência (@/pacote): navega para o pacote correspondente, mesmo
+    // que ele viva em outro repositório aberto (aí o escopo passa a workspace).
     const openReference = useCallback((target:string) => {
-        const hit = findByReference(packages, target)
-        if(hit) return selectPackage(hit.path)
-        // Pacote de outro repositório aberto: troca o repositório ativo.
-        const other = Object.keys(indexes).filter((name) => name !== workspace && findByReference(indexes[name], target))[0]
-        if(other) onSwitchRepository(other)
-    }, [packages, indexes, workspace, selectPackage, onSwitchRepository])
+        const local = findByReference(packages, target)
+        if(local) return selectPackage(local.path)
+        const remote = findByReference(allPackages, target)
+        if(remote){
+            setScopeMode("workspace")
+            setScope(undefined)
+            return selectPackage(remote.path)
+        }
+    }, [packages, allPackages, selectPackage])
 
     const toggle = (key:string) => setExpanded((prev) => ({ ...prev, [key]: !prev[key] }))
     const toggleStructure = (key:string) => setStructureOpen((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -167,6 +189,22 @@ const PackageExplorer = ({
         setBootView(view)
         setAppState(BOOT_VIEW_KEY, view)
     }
+
+    const changeScopeMode = (mode:"repository" | "workspace") => {
+        setScopeMode(mode)
+        if(mode === "workspace") setScope(undefined)
+    }
+
+    // Favoritos: lista de caminhos, persistida no AppState (igual aos recentes).
+    const toggleFavorite = (path:string) => setFavorites((prev) => {
+        const next = prev.indexOf(path) > -1 ? prev.filter((p) => p !== path) : prev.concat([path])
+        setAppState(FAVORITES_KEY, JSON.stringify(next))
+        return next
+    })
+
+    const favoritePackages = useMemo(() =>
+        favorites.map((path) => allPackages.filter((p) => p.path === path)[0]).filter(Boolean),
+        [favorites, allPackages])
 
     // ---- inspector -------------------------------------------------------
 
@@ -183,7 +221,7 @@ const PackageExplorer = ({
                 packages={scopedPackages} onOpenPackage={selectPackage} />
 
         return <PackageInspector
-            workspace={workspace}
+            workspace={selectedRepository}
             model={details.model}
             loading={details.loading}
             error={details.error}
@@ -197,9 +235,11 @@ const PackageExplorer = ({
             readme={details.readme}
             readmeLoading={details.readmeLoading}
             bootView={bootView}
-            onBootView={changeBootView} />
+            onBootView={changeBootView}
+            favorite={!!selectedPackage && favorites.indexOf(selectedPackage.path) > -1}
+            onToggleFavorite={selectedPackage ? () => toggleFavorite(selectedPackage.path) : undefined} />
     }, [selection, workspaceModel, repositoryModel, scopedPackages, details.model, details.loading,
-        details.error, details.readme, details.readmeLoading, bootView, workspace, selectedPackage])
+        details.error, details.readme, details.readmeLoading, bootView, selectedRepository, selectedPackage, favorites])
 
     const inspectorTitle =
         selection && selection.kind === "workspace"  ? "Workspace" :
@@ -207,13 +247,21 @@ const PackageExplorer = ({
         selection && selection.kind === "container"  ? selection.label :
         details.model ? `${details.model.identity.name}.${details.model.identity.ext}` : "Inspector"
 
-    const scopeLabel = scope ? scope.label : "Todos os pacotes"
+    const scopeLabel = scopeMode === "workspace"
+        ? `Workspace · ${openRepositories.length} repositórios`
+        : scope ? scope.label : "Todos os pacotes"
 
     const explorerPanel = <PackageExplorerPanel
         workspace={workspace}
         repository={workspace}
         scopeLabel={scopeLabel}
-        onClearScope={scope ? () => { setScope(undefined); setSelection(undefined) } : undefined}
+        scopeMode={scopeMode}
+        onScopeMode={changeScopeMode}
+        pendingRepositories={pendingRepositories}
+        showRepository={scopeMode === "workspace"}
+        favorites={favorites}
+        onToggleFavorite={toggleFavorite}
+        onClearScope={scope && scopeMode === "repository" ? () => { setScope(undefined); setSelection(undefined) } : undefined}
         filters={filters}
         onFilters={setFilters}
         facets={facets}
@@ -254,7 +302,9 @@ const PackageExplorer = ({
         onSwitchRepository={onSwitchRepository}
         onCloseRepository={onCloseRepository}
         onAddRepository={onAddRepository}
-        onOpenRecent={onOpenRecent} />
+        onOpenRecent={onOpenRecent}
+        favoritePackages={favoritePackages}
+        onOpenFavorite={(pkg:any) => selectPackage(pkg.path)} />
 
     return <div className="pdx-shell" data-layout={layout}>
         {

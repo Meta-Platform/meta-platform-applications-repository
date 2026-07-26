@@ -43,14 +43,17 @@ type Props = {
     onContextMenu? : (e:any, pkg:any) => void
     statusByPath?  : any
     repository  : string
+    showRepository? : boolean          // escopo workspace: de qual repo é o pacote
+    favorites?  : string[]
+    onToggleFavorite? : (path:string) => void
 }
 
 const Highlight = ({ text, query }:{ text:string, query:string }) =>
     <>{ highlightSegments(text, query).map((seg, i) => seg.hit ? <mark key={i} className="pdx-hit">{seg.text}</mark> : <React.Fragment key={i}>{seg.text}</React.Fragment>) }</>
 
 const buildRows = (
-    { results, expanded, repository, workspace, query, statusByPath }:
-    { results:SearchResult[], expanded:any, repository:string, workspace:string, query:string, statusByPath:any }
+    { results, expanded, repository, workspace, query, statusByPath, showRepository }:
+    { results:SearchResult[], expanded:any, repository:string, workspace:string, query:string, statusByPath:any, showRepository?:boolean }
 ):Row[] => {
     const rows:Row[] = []
     results.forEach((result) => {
@@ -62,10 +65,12 @@ const buildRows = (
             level: 0,
             type: "package",
             label: pkg.name,
-            icon: <PackageIcon workspace={workspace} name={pkg.name} ext={pkg.ext} size={16} />,
+            icon: <PackageIcon workspace={pkg.repository || workspace} name={pkg.name} ext={pkg.ext} size={16} />,
             expandable: pkg.model.sections.length > 0,
-            selection: { kind: "package", repository, packagePath: pkg.path },
+            selection: { kind: "package", repository: pkg.repository || repository, packagePath: pkg.path },
             meta: <span className="pdx-inline" style={{gap:4}}>
+                { showRepository && pkg.repository &&
+                    <span className="pdx-why__chip" title={`repositório ${pkg.repository}`}>{pkg.repository}</span> }
                 <GitBadge entry={git} />
                 <IssueBadges issues={pkg.model.issues} compact />
             </span>,
@@ -83,7 +88,7 @@ const buildRows = (
                 icon: <Icon name={section.icon as any} style={{margin:0}} />,
                 meta: <span>{section.items.length}</span>,
                 expandable: section.items.length > 0,
-                selection: { kind: "section", repository, packagePath: pkg.path, sectionId: section.id }
+                selection: { kind: "section", repository: pkg.repository || repository, packagePath: pkg.path, sectionId: section.id }
             })
             if(!expanded[sectionKey]) return
 
@@ -98,7 +103,7 @@ const buildRows = (
                     sub: item.subtitle,
                     icon: <Icon name={item.icon as any} style={{margin:0}} />,
                     expandable: hasChildren,
-                    selection: { kind: "item", repository, packagePath: pkg.path, itemId: item.id },
+                    selection: { kind: "item", repository: pkg.repository || repository, packagePath: pkg.path, itemId: item.id },
                     itemId: item.id
                 })
                 if(hasChildren && expanded[itemKey]) item.children!.forEach((child) => pushItem(child, level + 1))
@@ -111,12 +116,13 @@ const buildRows = (
 
 const PackageResultsTree = ({
     workspace, results, query, expanded, onToggle, selection, onSelect,
-    onEditPackage, onContextMenu, statusByPath, repository
+    onEditPackage, onContextMenu, statusByPath, repository, showRepository,
+    favorites, onToggleFavorite
 }:Props) => {
 
     const rows = useMemo(
-        () => buildRows({ results, expanded, repository, workspace, query, statusByPath }),
-        [results, expanded, repository, workspace, query, statusByPath])
+        () => buildRows({ results, expanded, repository, workspace, query, statusByPath, showRepository }),
+        [results, expanded, repository, workspace, query, statusByPath, showRepository])
 
     const activeKey = selectionKey(selection)
     const focusIndex = useRef<number>(0)
@@ -157,7 +163,14 @@ const PackageResultsTree = ({
         else if(e.key === "Enter" || e.key === " "){ e.preventDefault(); onSelect(row.selection) }
     }
 
-    return <ul className="pdx-tree" role="tree" aria-label="Pacotes e capacidades" ref={containerRef}>
+    // Leitor de tela: anuncia o recurso que passou a estar selecionado.
+    const selectedRow = rows.filter((r) => selectionKey(r.selection) === activeKey)[0]
+
+    return <>
+        <div className="pdx-sr-only" role="status" aria-live="polite">
+            { selectedRow ? `Selecionado: ${selectedRow.label}` : "" }
+        </div>
+        <ul className="pdx-tree" role="tree" aria-label="Pacotes e capacidades" ref={containerRef}>
         {
             rows.map((row, index) => {
                 const isSelected = selectionKey(row.selection) === activeKey
@@ -202,10 +215,23 @@ const PackageResultsTree = ({
                         : undefined}
                     onContextMenu={row.type === "package" && row.result && onContextMenu
                         ? (e:any) => onContextMenu(e, row.result!.pkg)
+                        : undefined}
+                    action={row.type === "package" && row.result && onToggleFavorite
+                        ? <button type="button" className="pdx-copy pdx-fav"
+                            aria-pressed={!!favorites && favorites.indexOf(row.result.pkg.path) > -1}
+                            aria-label={favorites && favorites.indexOf(row.result.pkg.path) > -1
+                                ? `remover ${row.result.pkg.dirname} dos favoritos`
+                                : `favoritar ${row.result.pkg.dirname}`}
+                            title="Favoritar"
+                            onClick={(e:any) => { e.stopPropagation(); onToggleFavorite(row.result!.pkg.path) }}>
+                            <Icon name={favorites && favorites.indexOf(row.result.pkg.path) > -1 ? "star" : "star outline"}
+                                style={{margin:0}} />
+                          </button>
                         : undefined} />
             })
         }
-    </ul>
+        </ul>
+    </>
 }
 
 export default PackageResultsTree

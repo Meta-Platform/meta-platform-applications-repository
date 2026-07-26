@@ -46,6 +46,13 @@ const RepositoryMetadataView = ({ model, loading, error, onRetry, onOpenPackage 
                         { model.namespace && <CopyableCodeValue value={model.namespace} type="text" /> }
                         { model.path && <CopyableCodeValue value={model.path} type="path" /> }
                     </div>
+                    {
+                        model.remote &&
+                        <div className="pdx-ident__badges" style={{marginTop:4}}>
+                            <span className="pdx-props__key" style={{fontSize:11}}>origem</span>
+                            <CopyableCodeValue value={model.remote} type="text" />
+                        </div>
+                    }
                 </div>
             </div>
         </div>

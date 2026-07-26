@@ -22,12 +22,15 @@ type Props = {
     onOpenRecent       : (pkg:any) => void
     editorCount?  : number
     onOpenEditor? : () => void
+    favoritePackages? : any[]
+    onOpenFavorite?   : (pkg:any) => void
 }
 
 const WorkspaceRepositoryPanel = ({
     repositories, activeRepository, selection, recentPackages,
     onSelectWorkspace, onSelectRepository, onSwitchRepository, onCloseRepository,
-    onAddRepository, onOpenRecent, editorCount, onOpenEditor
+    onAddRepository, onOpenRecent, editorCount, onOpenEditor,
+    favoritePackages, onOpenFavorite
 }:Props) => {
 
     const key = selectionKey(selection)
@@ -88,6 +91,30 @@ const WorkspaceRepositoryPanel = ({
                     })
                 }
             </ul>
+
+            {
+                favoritePackages && favoritePackages.length > 0 && onOpenFavorite &&
+                <div style={{marginTop:14}}>
+                    <div className="pdx-filters__label" style={{padding:"0 6px"}}>Favoritos</div>
+                    <ul className="pdx-tree" role="list">
+                        {
+                            favoritePackages.map((pkg:any) =>
+                                <li key={pkg.path} role="none">
+                                    <div role="button" tabIndex={0} className="pdx-row" title={pkg.path}
+                                        onClick={() => onOpenFavorite(pkg)}
+                                        onKeyDown={(e:any) => { if(e.key === "Enter"){ e.preventDefault(); onOpenFavorite(pkg) } }}>
+                                        <span className="pdx-row__twisty pdx-row__twisty--leaf" />
+                                        <span className="pdx-row__icon"><Icon name="star" style={{margin:0}} color="yellow" /></span>
+                                        <span className="pdx-row__label">
+                                            {pkg.name}<span className="pdx-row__ext">.{pkg.ext}</span>
+                                            <span className="pdx-row__sub">{pkg.repository}</span>
+                                        </span>
+                                    </div>
+                                </li>)
+                        }
+                    </ul>
+                </div>
+            }
 
             {
                 recentPackages.length > 0 &&

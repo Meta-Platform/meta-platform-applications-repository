@@ -6,7 +6,7 @@ import { Facets, Filters, SearchResult, hasActiveFilters } from "../../Domain/pa
 import { Selection } from "../../Domain/selection"
 import PackageSearchFilters, { ActiveFilters } from "./PackageSearchFilters"
 import PackageResultsTree from "./PackageResultsTree"
-import { EmptyState, IconButton } from "./ui/Primitives"
+import { EmptyState, IconButton, Segmented } from "./ui/Primitives"
 
 // Painel 3: busca, filtros e resultados. A busca é o instrumento principal de
 // descoberta — vale para nome, namespace, tipo, serviço, executável, comando,
@@ -17,6 +17,12 @@ type Props = {
     repository  : string
     scopeLabel  : string
     onClearScope? : () => void
+    scopeMode?  : "repository" | "workspace"
+    onScopeMode?: (mode:"repository" | "workspace") => void
+    pendingRepositories? : string[]
+    showRepository? : boolean
+    favorites?  : string[]
+    onToggleFavorite? : (path:string) => void
     filters     : Filters
     onFilters   : (f:Filters) => void
     facets      : Facets
@@ -35,7 +41,9 @@ type Props = {
 }
 
 const PackageExplorerPanel = ({
-    workspace, repository, scopeLabel, onClearScope, filters, onFilters, facets,
+    workspace, repository, scopeLabel, onClearScope, scopeMode, onScopeMode,
+    pendingRepositories, showRepository, favorites, onToggleFavorite,
+    filters, onFilters, facets,
     results, total, loading, error, onRetry, expanded, onToggle, selection, onSelect,
     onEditPackage, onContextMenu, statusByPath
 }:Props) => {
@@ -61,6 +69,23 @@ const PackageExplorerPanel = ({
                 title="Filtros por tipo, módulo, layer e capacidade"
                 onClick={() => setShowFilters(!showFilters)} />
         </div>
+
+        {
+            onScopeMode &&
+            <div className="pdx-search" style={{paddingTop:0, borderBottom:"1px solid var(--mp-line-soft)"}}>
+                <Segmented ariaLabel="Escopo da busca" value={scopeMode || "repository"} onChange={onScopeMode}
+                    options={[
+                        { value: "repository", label: "Repositório", icon: "database" },
+                        { value: "workspace",  label: "Workspace",   icon: "folder open outline" }
+                    ]} />
+                {
+                    scopeMode === "workspace" && pendingRepositories && pendingRepositories.length > 0 &&
+                    <span className="pdx-muted" style={{fontSize:11}} aria-live="polite">
+                        carregando {pendingRepositories.length} repositório(s)…
+                    </span>
+                }
+            </div>
+        }
 
         { showFilters && <PackageSearchFilters filters={filters} facets={facets} onChange={onFilters} /> }
 
@@ -95,6 +120,9 @@ const PackageExplorerPanel = ({
                 : <PackageResultsTree
                     workspace={workspace}
                     repository={repository}
+                    showRepository={showRepository}
+                    favorites={favorites}
+                    onToggleFavorite={onToggleFavorite}
                     results={results}
                     query={filters.query}
                     expanded={expanded}

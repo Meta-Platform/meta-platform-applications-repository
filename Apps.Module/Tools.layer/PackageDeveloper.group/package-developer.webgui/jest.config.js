@@ -7,7 +7,9 @@ module.exports = {
     moduleNameMapper: {
         "\\.(css|scss|sass)$": "identity-obj-proxy",
         // reactflow publica CSS e ESM; o diagrama é testado pelo adapter (bootGraph).
-        "^reactflow$": "<rootDir>/test/__mocks__/reactflow.tsx"
+        "^reactflow$": "<rootDir>/test/__mocks__/reactflow.tsx",
+        "^axios$": "<rootDir>/test/__mocks__/axios.ts",
+        "^query-string$": "<rootDir>/test/__mocks__/query-string.ts"
     },
     setupFilesAfterEnv: ["<rootDir>/test/setup.ts"],
     testMatch: ["**/test/**/*.test.(ts|tsx)"],

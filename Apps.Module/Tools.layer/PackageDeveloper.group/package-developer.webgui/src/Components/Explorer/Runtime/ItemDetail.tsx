@@ -6,6 +6,7 @@ import TechnicalPropertyList from "../ui/TechnicalPropertyList"
 import CopyableCodeValue from "../ui/CopyableCodeValue"
 import { IssueList } from "../ui/ValidationBadge"
 import { Badge, CollapsibleSection } from "../ui/Primitives"
+import EndpointRoutes from "./EndpointRoutes"
 
 // Detalhe de UM recurso do runtime (serviço, executável, endpoint, comando,
 // parâmetro, janela). A estrutura é sempre a mesma — identidade, propriedades,
@@ -14,6 +15,7 @@ import { Badge, CollapsibleSection } from "../ui/Primitives"
 type Props = {
     item        : RuntimeItem
     model       : PackageModel
+    workspace?  : string
     onOpenRef?  : (target:string) => void
     onSelectItem?: (itemId:string) => void
 }
@@ -30,10 +32,14 @@ const KIND_LABEL:any = {
     "startup-param"  : "startup param"
 }
 
-const ItemDetail = ({ item, model, onOpenRef, onSelectItem }:Props) => {
+const ItemDetail = ({ item, model, workspace, onOpenRef, onSelectItem }:Props) => {
 
     const providers = item.refs.filter((r) => r !== `${model.identity.name}.${model.identity.ext}`)
     const children = item.children || []
+    // Endpoint do tipo controller: as rotas (com método HTTP) vêm do api-template.
+    const apiTemplate = item.kind === "endpoint" && item.raw && item.raw.params
+        ? item.raw.params["api-template"]
+        : undefined
 
     return <div>
         <div className="pdx-ident" style={{marginBottom:12}}>
@@ -83,6 +89,14 @@ const ItemDetail = ({ item, model, onOpenRef, onSelectItem }:Props) => {
                         }
                     </div>
                 </CollapsibleSection>
+            </div>
+        }
+
+        {
+            apiTemplate && workspace &&
+            <div style={{marginTop:16}}>
+                <EndpointRoutes workspace={workspace} pkg={model.identity}
+                    apiTemplate={apiTemplate} baseUrl={item.raw && item.raw.url} />
             </div>
         }
 

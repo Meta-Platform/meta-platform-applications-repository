@@ -1,5 +1,7 @@
 import * as React from "react"
 import { fireEvent, render, screen } from "@testing-library/react"
+import { Provider } from "react-redux"
+import { createStore } from "redux"
 
 import PackageInspector from "../src/Components/Explorer/PackageInspector"
 import { buildPackageModel } from "../src/Domain/packageModel"
@@ -10,9 +12,14 @@ const modelOf = (raw:any) => buildPackageModel({
     pkg: raw, metadata: raw.metadata, packageJson: raw.packageJson, repository: "Repo"
 })
 
+// O detalhe de endpoint monta um componente conectado (carrega o api-template),
+// por isso os testes do Inspector rodam dentro de um Provider.
+const store = createStore(() => ({ HTTPServerManager: { list_web_servers_running: [{ name: "x" }] } }))
+const withStore = (node:any) => <Provider store={store}>{node}</Provider>
+
 const renderInspector = (raw:any, selection?:Selection, props:any = {}) => {
     const model = modelOf(raw)
-    const utils = render(<PackageInspector
+    const utils = render(withStore(<PackageInspector
         workspace="Repo"
         model={model}
         selection={selection || { kind: "package", repository: "Repo", packagePath: raw.path }}
@@ -21,7 +28,7 @@ const renderInspector = (raw:any, selection?:Selection, props:any = {}) => {
         onSelectPackageRoot={() => {}}
         bootView="structure"
         onBootView={() => {}}
-        {...props} />)
+        {...props} />))
     return { model, ...utils }
 }
 
@@ -78,11 +85,11 @@ describe("inspector — a seleção manda no conteúdo", () => {
         expect(screen.getAllByText("/task-executor-monitor").length).toBeGreaterThan(0)
 
         const model = modelOf(IEP_WEBSERVICE)
-        rerender(<PackageInspector
+        rerender(withStore(<PackageInspector
             workspace="Repo" model={model}
             selection={{ kind: "item", repository: "Repo", packagePath: IEP_WEBSERVICE.path, itemId: "endpoints/1" }}
             onSelectSection={() => {}} onSelectItem={() => {}} onSelectPackageRoot={() => {}}
-            bootView="structure" onBootView={() => {}} />)
+            bootView="structure" onBootView={() => {}} />))
 
         expect(screen.getAllByText("Controllers/RepositoryManager.controller").length).toBeGreaterThan(0)
         expect(screen.queryByText("Controllers/TaskExecutorMonitor.controller")).toBeNull()
@@ -109,16 +116,16 @@ describe("inspector — a seleção manda no conteúdo", () => {
 describe("inspector — estados", () => {
 
     it("sem modelo, orienta a escolher um pacote", () => {
-        render(<PackageInspector workspace="Repo" onSelectSection={() => {}} onSelectItem={() => {}}
-            onSelectPackageRoot={() => {}} bootView="structure" onBootView={() => {}} />)
+        render(withStore(<PackageInspector workspace="Repo" onSelectSection={() => {}} onSelectItem={() => {}}
+            onSelectPackageRoot={() => {}} bootView="structure" onBootView={() => {}} />))
         expect(screen.getByText("Nenhum recurso selecionado")).toBeInTheDocument()
     })
 
     it("erro de carga é diferente de ausência de dados, e oferece retry", () => {
         const onRetry = jest.fn()
-        render(<PackageInspector workspace="Repo" error="ECONNREFUSED" onRetry={onRetry}
+        render(withStore(<PackageInspector workspace="Repo" error="ECONNREFUSED" onRetry={onRetry}
             onSelectSection={() => {}} onSelectItem={() => {}} onSelectPackageRoot={() => {}}
-            bootView="structure" onBootView={() => {}} />)
+            bootView="structure" onBootView={() => {}} />))
         expect(screen.getByText("Não foi possível carregar o pacote")).toBeInTheDocument()
         fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }))
         expect(onRetry).toHaveBeenCalled()
@@ -129,5 +136,48 @@ describe("inspector — estados", () => {
         expect(screen.getByText("lib")).toBeInTheDocument()
         expect(screen.getByText("v0.0.1")).toBeInTheDocument()
         expect(screen.getAllByLabelText(`copiar ${GIT_STATUS_LIB.path}`).length).toBeGreaterThan(0)
+    })
+})
+
+// --- rotas do controller (api-template) -----------------------------------
+// O método HTTP não está no endpoint-group.json: vem do src/APIs/*.api.json,
+// lido sob demanda quando o endpoint é inspecionado.
+jest.mock("../src/Utils/GetRequestByServer", () => ({
+    __esModule: true,
+    default: () => () => ({
+        GetContentItem: ({ path }:any) => Promise.resolve({
+            data: path === "/src/APIs/TaskExecutorMonitor.api.json"
+                ? JSON.stringify({
+                    name: "TaskExecutorMonitor",
+                    endpoints: [
+                        { path: "/instances", method: "GET", summary: "ListInstances" },
+                        { path: "/instance/:id", method: "DELETE", summary: "StopInstance",
+                          parameters: [{ name: "id", in: "path", type: "string", required: true }] }
+                    ]
+                })
+                : undefined
+        })
+    })
+}))
+
+describe("inspector — rotas do endpoint", () => {
+
+    it("carrega o api-template e mostra método, rota e função", async () => {
+        renderInspector(IEP_WEBSERVICE,
+            { kind: "item", repository: "Repo", packagePath: IEP_WEBSERVICE.path, itemId: "endpoints/0" })
+
+        expect(await screen.findByText("Rotas do controller")).toBeInTheDocument()
+        expect(screen.getByText("GET")).toBeInTheDocument()
+        expect(screen.getByText("DELETE")).toBeInTheDocument()
+        expect(screen.getByText("ListInstances")).toBeInTheDocument()
+        // a rota é composta com o prefixo do endpoint
+        expect(screen.getAllByText("/task-executor-monitor/instances").length).toBeGreaterThan(0)
+        expect(screen.getByTitle("id (path, obrigatório)")).toBeInTheDocument()
+    })
+
+    it("endpoint sem api-template não tenta carregar rotas", async () => {
+        renderInspector(DEVELOPER_WEBAPP,
+            { kind: "item", repository: "Repo", packagePath: DEVELOPER_WEBAPP.path, itemId: "boot-endpoints/0" })
+        expect(screen.queryByText("Rotas do controller")).toBeNull()
     })
 })

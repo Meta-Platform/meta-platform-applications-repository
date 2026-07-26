@@ -4,8 +4,8 @@ import { Icon } from "semantic-ui-react"
 // Primitivos visuais do explorador. Todos usam as classes .pdx-* (explorer.css),
 // que por sua vez leem os tokens --mp-* do design system — nada de cor solta.
 
-export const Badge = ({ tone, icon, children, title }:any) =>
-    <span className={`pdx-badge${tone ? ` pdx-badge--${tone}` : ""}`} title={title}>
+export const Badge = ({ tone, icon, children, title, className }:any) =>
+    <span className={`pdx-badge${tone ? ` pdx-badge--${tone}` : ""}${className ? ` ${className}` : ""}`} title={title}>
         { icon && <Icon name={icon} style={{margin:0}} /> }
         {children}
     </span>

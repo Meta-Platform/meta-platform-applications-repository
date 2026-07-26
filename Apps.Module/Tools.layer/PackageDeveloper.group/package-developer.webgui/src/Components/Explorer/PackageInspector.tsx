@@ -35,6 +35,8 @@ type Props = {
     readmeLoading?: boolean
     bootView      : "structure" | "diagram"
     onBootView    : (v:"structure" | "diagram") => void
+    favorite?     : boolean
+    onToggleFavorite? : () => void
 }
 
 const BASE_TABS:TabDef[] = [
@@ -49,7 +51,7 @@ const BASE_TABS:TabDef[] = [
 const PackageInspector = ({
     workspace, model, loading, error, onRetry, selection,
     onSelectSection, onSelectItem, onSelectPackageRoot, onOpenRef, onEdit,
-    readme, readmeLoading, bootView, onBootView
+    readme, readmeLoading, bootView, onBootView, favorite, onToggleFavorite
 }:Props) => {
 
     const [tab, setTab] = useState<string>("overview")
@@ -147,6 +149,12 @@ const PackageInspector = ({
                     </div>
                 </div>
                 <div className="pdx-ident__actions">
+                    {
+                        onToggleFavorite &&
+                        <IconButton icon={favorite ? "star" : "star outline"} active={favorite}
+                            label={favorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+                            onClick={onToggleFavorite} />
+                    }
                     { onEdit && <IconButton icon="edit outline" label="Abrir no editor" onClick={onEdit} /> }
                 </div>
             </div>
@@ -184,7 +192,8 @@ const PackageInspector = ({
             aria-labelledby={`inspector-tab-${activeTab}`}>
             {
                 contextItem
-                ? <ItemDetail item={contextItem} model={model} onOpenRef={onOpenRef} onSelectItem={onSelectItem} />
+                ? <ItemDetail item={contextItem} model={model} workspace={workspace}
+                    onOpenRef={onOpenRef} onSelectItem={onSelectItem} />
                 : activeTab === "overview"
                 ? <PackageOverview model={model} onOpenSection={onSelectSection} onOpenRef={onOpenRef} />
                 : activeTab === "readme"

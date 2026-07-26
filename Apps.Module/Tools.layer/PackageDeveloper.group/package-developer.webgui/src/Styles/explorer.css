@@ -114,6 +114,13 @@
 /* -------------------------------------------------------------- árvore/lista */
 
 .pdx-tree { list-style: none; margin: 0; padding: 0; }
+/* Listas longas (escopo workspace): o navegador pula layout/paint das linhas
+   fora da viewport. Mantém teclado, busca e scrollIntoView funcionando — ao
+   contrário de uma virtualização manual, que reimplementaria tudo isso. */
+.pdx-tree > li {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 28px;
+}
 .pdx-tree .pdx-tree { padding-left: 14px; border-left: 1px solid var(--mp-line-faint); margin-left: 10px; }
 
 .pdx-row {
@@ -179,6 +186,19 @@
     font-size: 11px;
     color: var(--mp-muted);
 }
+.pdx-row__action {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    opacity: 0;
+}
+.pdx-row:hover .pdx-row__action,
+.pdx-row--selected .pdx-row__action,
+.pdx-row:focus-within .pdx-row__action { opacity: 1; }
+.pdx-fav[aria-pressed="true"] { opacity: 1; color: var(--mp-accent-yellow); }
+.pdx-row__action .pdx-fav { opacity: .65; }
+.pdx-row__action .pdx-fav:hover { opacity: 1; color: var(--mp-accent-yellow); }
+
 .pdx-row__sub {
     display: block;
     font-family: var(--mp-font-mono);
@@ -366,6 +386,12 @@
 .pdx-badge--warning { background: var(--mp-warning-tint); border-color: var(--mp-warning); color: var(--mp-ink); }
 .pdx-badge--ok      { background: var(--mp-success-tint); border-color: var(--mp-success); color: var(--mp-ink); }
 .pdx-badge--method  { font-family: var(--mp-font-mono); background: var(--mp-accent-blue-tint); border-color: var(--mp-accent-blue); }
+/* Método HTTP: cor semântica + o próprio verbo escrito (nunca só a cor). */
+.pdx-method--get    { background: var(--mp-accent-blue-tint);   border-color: var(--mp-accent-blue); }
+.pdx-method--post   { background: var(--mp-success-tint);       border-color: var(--mp-success); }
+.pdx-method--put    { background: var(--mp-accent-orange-tint); border-color: var(--mp-accent-orange); }
+.pdx-method--delete { background: var(--mp-danger-tint);        border-color: var(--mp-danger); }
+.pdx-method--other  { background: var(--mp-surface-2);          border-color: var(--mp-line-soft); }
 
 .pdx-crumbs {
     display: flex;
@@ -584,6 +610,10 @@
 .pdx-table tbody tr:hover { background: var(--mp-surface-2); }
 .pdx-table tbody tr[aria-selected="true"] { background: var(--mp-accent-blue-tint); }
 .pdx-table td.pdx-mono { font-family: var(--mp-font-mono); word-break: break-all; }
+/* Rotas e caminhos numa tabela dentro do Inspector: preferimos rolar a tabela a
+   picotar a rota em pedaços ilegíveis. */
+.pdx-table--nowrap td { white-space: nowrap; }
+.pdx-table--nowrap .pdx-code { white-space: nowrap; word-break: normal; }
 
 /* --------------------------------------------------------- estados/avisos */
 

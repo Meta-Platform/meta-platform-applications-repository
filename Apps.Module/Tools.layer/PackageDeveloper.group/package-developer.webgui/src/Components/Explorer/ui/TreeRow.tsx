@@ -15,6 +15,7 @@ type Props = {
     expanded?   : boolean
     selected?   : boolean
     meta?       : React.ReactNode
+    action?     : React.ReactNode      // ação da linha (ex.: favoritar)
     sub?        : React.ReactNode
     title?      : string
     onToggle?   : () => void
@@ -28,7 +29,7 @@ type Props = {
 }
 
 const TreeRow = ({
-    label, icon, level = 0, expandable, expanded, selected, meta, sub, title,
+    label, icon, level = 0, expandable, expanded, selected, meta, action, sub, title,
     onToggle, onSelect, onContextMenu, onDoubleClick, rowRef, tabIndex, onKeyDown, children
 }:Props) =>
     <li role="none" style={{listStyle:"none"}}>
@@ -60,6 +61,7 @@ const TreeRow = ({
                 { sub && <span className="pdx-row__sub">{sub}</span> }
             </span>
             { meta && <span className="pdx-row__meta">{meta}</span> }
+            { action && <span className="pdx-row__action">{action}</span> }
         </div>
         { expandable && expanded && children }
     </li>
