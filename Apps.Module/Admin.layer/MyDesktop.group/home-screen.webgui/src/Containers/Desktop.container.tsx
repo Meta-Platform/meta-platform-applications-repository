@@ -28,6 +28,10 @@ import RepositoryManager  from "../Components/RepositoryManager"
 
 const WELCOME_STORAGE_KEY = "myd-welcome-seen"
 const DRAG_THRESHOLD = 4
+// Janela de tempo para distinguir clique simples de duplo na dock. Só entra em
+// jogo quando o aplicativo já está aberto (aí o clique simples significa "dar
+// foco" e o duplo, "abrir outra instância").
+const DOCK_DOUBLE_CLICK_MS = 280
 const ICON_BOX = { w: 96, h: 104 }
 
 // Renderiza a mensagem de um toast com um subconjunto mínimo de marcação para
@@ -157,6 +161,9 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     // Marca que um arrasto cross-surface de fato ocorreu, para SUPRIMIR o clique
     // de lançamento que dispararia logo depois (dock/launcher usam onClick).
     const crossDidDragRef = useRef<boolean>(false)
+    // Cliques na dock aguardando virar "foco" (por key do aplicativo). Se um
+    // segundo clique chegar antes do timer, o gesto vira duplo → nova instância.
+    const dockClickTimers = useRef<{ [key:string]: any }>({})
     // Garante uma única carga do layout do backend (o effect re-roda a cada
     // mudança em applicationList).
     const layoutLoadStartedRef = useRef<boolean>(false)
@@ -665,9 +672,38 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     const onLauncherItemPointerDown = (e:React.PointerEvent, key:string) => _StartCrossDrag(e, key, "launcher")
 
     // Lançamentos que precisam ignorar o clique pós-arrasto (dock/launcher).
+    //
+    // Dock, comportamento estilo sistema operacional:
+    //   aplicativo FECHADO       → clique simples lança (sem espera)
+    //   aplicativo JÁ EM EXECUÇÃO→ clique simples dá FOCO na janela mais recente
+    //                              e clique DUPLO abre outra instância
+    //   aplicativo ABRINDO       → clique simples é ignorado (não abre janela
+    //                              duplicada por impaciência); duplo ainda abre
+    // A espera de DOCK_DOUBLE_CLICK_MS só existe quando há algo aberto — com o
+    // aplicativo fechado, o lançamento continua instantâneo.
     const handleDockOpen = (av:any) => {
         if(crossDidDragRef.current){ crossDidDragRef.current = false; return }
-        handleLaunch(av)
+
+        const pending = dockClickTimers.current[av.key]
+        if(pending){
+            clearTimeout(pending)
+            delete dockClickTimers.current[av.key]
+            handleLaunch(av)
+            return
+        }
+
+        const instances = InstancesOf(av)
+        if(instances.length === 0 && !launchByKey[av.key]){
+            handleLaunch(av)
+            return
+        }
+
+        // A mais recente: allInstances vem ordenada da mais antiga para a mais nova.
+        const target = instances[instances.length - 1]
+        dockClickTimers.current[av.key] = setTimeout(() => {
+            delete dockClickTimers.current[av.key]
+            if(target) handleFocusInstance(av, target)
+        }, DOCK_DOUBLE_CLICK_MS)
     }
     const handleLauncherLaunch = (key:string) => {
         if(crossDidDragRef.current){ crossDidDragRef.current = false; return }
@@ -730,6 +766,28 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
             setToast({ tone: "danger", title: "Falha ao iniciar", message: (typeof e === "string" ? e : e?.message) || "Falha ao iniciar." })
         }
     }
+
+    // ---- focar -------------------------------------------------------------
+    // Traz para frente a janela de uma instância já aberta (o daemon fala com o
+    // canal de janela do processo dela). Se a janela não puder ser trazida —
+    // instância encerrando, ou aberta antes deste canal existir — avisamos que o
+    // aplicativo já está em execução, para o clique nunca parecer "sem efeito".
+    const handleFocusInstance = async (av:any, instance:RunningInstance) => {
+        try {
+            const response = await _GetExecutionAPI().FocusInstance({ instanceId: instance.instanceId })
+            const focused = response && response.data && response.data.focused
+            if(!focused)
+                setToast({ tone: "exec", title: "Em execução", message: `${av.label} já está aberto.`, iconUrl: av.iconUrl })
+        } catch(e:any) {
+            setToast({ tone: "exec", title: "Em execução", message: `${av.label} já está aberto.`, iconUrl: av.iconUrl })
+        }
+    }
+
+    // Timers pendentes de clique da dock não podem sobreviver à desmontagem.
+    useEffect(() => () => {
+        Object.values(dockClickTimers.current).forEach((timer) => clearTimeout(timer))
+        dockClickTimers.current = {}
+    }, [])
 
     const handleOpenSelection = () => {
         const views = appViews.filter((av) => selectedKeys.includes(av.key))

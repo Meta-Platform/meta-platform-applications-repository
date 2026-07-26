@@ -3,7 +3,7 @@ const http  = require("http")
 const https = require("https")
 const crypto = require("crypto")
 const fs = require("fs")
-const { join } = require("path")
+const { join, dirname } = require("path")
 const { pathToFileURL } = require("url")
 
 const DEFAULT_WIDTH  = 1024
@@ -79,6 +79,67 @@ const _ReportLaunchProgress = (phase, percentage) => {
         req.on("error", () => {})
         req.end(body)
     } catch(e){}
+}
+
+// Canal de CONTROLE DE JANELA desta instância. O daemon (executor-manager)
+// precisa poder trazer esta janela para frente quando o usuário clica no ícone
+// de um aplicativo que já está aberto — em vez de abrir outra instância. Para
+// isso publicamos um Unix socket por instância (caminho injetado pelo daemon em
+// META_WINDOW_CONTROL_SOCKET, derivado do instanceId), no mesmo espírito do
+// socket de tarefas que o processo `run` já publica.
+//
+// Superfície mínima: POST /focus → { focused }.
+// Best-effort: qualquer falha aqui é ignorada — o canal é conveniência, não
+// pode impedir a janela de abrir nem derrubar o app.
+const StartWindowControlServer = (window) => {
+    const socketPath = process.env.META_WINDOW_CONTROL_SOCKET
+    if(!socketPath) return
+
+    const _FocusWindow = () => {
+        if(window.isDestroyed()) return false
+        if(window.isMinimized()) window.restore()
+        window.show()
+        window.focus()
+        // No X11 o gerenciador de janelas costuma apenas piscar a entrada da
+        // barra de tarefas quando o foco é pedido por outro processo. O pulo
+        // por "sempre no topo" (imediatamente revertido) força a elevação sem
+        // deixar a janela presa acima das demais.
+        try {
+            window.setAlwaysOnTop(true)
+            window.setAlwaysOnTop(false)
+        } catch(e) {}
+        return true
+    }
+
+    try {
+        fs.mkdirSync(dirname(socketPath), { recursive: true })
+        // Sobra de um processo que morreu sem limpar: o bind falharia com EADDRINUSE.
+        try { fs.unlinkSync(socketPath) } catch(e) {}
+
+        const server = http.createServer((request, response) => {
+            if(request.method === "POST" && request.url === "/focus"){
+                const focused = _FocusWindow()
+                response.writeHead(200, { "Content-Type": "application/json" })
+                response.end(JSON.stringify({ focused }))
+                return
+            }
+            response.writeHead(404)
+            response.end()
+        })
+        server.on("error", () => {})
+        server.listen(socketPath)
+
+        const _CleanUp = () => {
+            try { server.close() } catch(e) {}
+            try { fs.unlinkSync(socketPath) } catch(e) {}
+        }
+        // O fechamento da janela chama app.exit(0) direto (outro listener), que
+        // pode não dar tempo aos listeners seguintes: por isso limpamos também
+        // no "exit" do processo.
+        window.on("closed", _CleanUp)
+        app.on("before-quit", _CleanUp)
+        process.on("exit", _CleanUp)
+    } catch(e) {}
 }
 
 const ResolveUrl = (baseUrl, path) => {
@@ -218,6 +279,9 @@ const CreateWindow = () => {
     // Esta task loader cria uma única janela. Ao fechar essa janela, encerra o
     // processo Electron inteiro para não deixar renderer/GPU/network órfãos.
     window.on("closed", () => app.exit(0))
+
+    // Canal de foco: permite ao daemon trazer esta janela para frente.
+    StartWindowControlServer(window)
 
     // Ícone do pacote aplicado em 2º plano (NÃO bloqueia a abertura da janela).
     ApplyPackageIcon(window, iconPath)
@@ -458,6 +522,7 @@ const CreateGuiHostWindow = async () => {
         }
     })
     window.on("closed", () => app.exit(0))
+    StartWindowControlServer(window)
     ApplyPackageIcon(window, iconPath)
 
     // Janela criada (tela de carregamento visível) → o ícone do MyDesktop deixa

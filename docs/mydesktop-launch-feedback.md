@@ -90,6 +90,47 @@ No store (`instance-store.lib`), `instanceId` é a identidade (UNIQUE) e
 `packagePath` deixou de ser único. Só `kind: "desktop"` admite várias instâncias:
 `app` (in-process) e `cli` continuam um-por-pacote.
 
+## Clicar num aplicativo que já está aberto (foco)
+
+Na dock, o clique **não lança sempre**. O gesto segue a convenção de sistema
+operacional:
+
+| Situação do aplicativo | Clique simples | Clique duplo |
+|------------------------|----------------|--------------|
+| fechado | lança (imediato, sem espera) | — |
+| em execução | **dá foco** na janela mais recente | abre **outra instância** |
+| abrindo (spinner/barra) | ignorado | abre outra instância |
+
+A espera de `DOCK_DOUBLE_CLICK_MS` (280 ms) que separa o clique simples do duplo
+só existe quando há algo aberto — com o aplicativo fechado o lançamento continua
+instantâneo.
+
+### Canal de foco (janela ← daemon)
+
+Dar foco é cross-process pelo mesmo motivo do progresso de build: a janela vive
+num processo Electron separado. Cada instância desktop publica um **Unix socket
+de controle de janela**, espelhando o socket de tarefas que o processo `run` já
+abre:
+
+```
+home-screen.webgui  ── FocusInstance(instanceId) ──►  execution-manager.webservice
+      ▼
+executor-manager daemon  ── POST /focus ──►  <sockets>/instance-windows/<instanceId>.sock
+      ▼
+  electron-main.js   window.restore() + show() + focus()
+```
+
+- O caminho do socket é **derivado do `instanceId`** (não é guardado no store),
+  então continua resolvível para instâncias readotadas depois de um restart do
+  daemon. O daemon o injeta no env do `run` como `META_WINDOW_CONTROL_SOCKET`,
+  de onde flui até o `electron-main` (que herda o env por `OpenElectronWindow`).
+- No X11 o WM costuma apenas piscar a barra de tarefas quando outro processo
+  pede foco; o `electron-main` faz um pulo por `setAlwaysOnTop(true/false)` para
+  forçar a elevação sem deixar a janela presa no topo.
+- **Degradação graciosa:** socket ausente (instância encerrando, ou aberta por
+  uma versão anterior do taskLoader) → `{ focused: false }`, e o webgui avisa
+  *"já está aberto"* em vez de abrir uma segunda janela.
+
 ## Detalhes que evitam bugs
 
 - **`ready` = UI renderizada, não "bundle pronto".** O `electron-main.js` só

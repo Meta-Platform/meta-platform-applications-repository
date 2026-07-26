@@ -37,6 +37,14 @@
 			]
 		},
 		{
+			"summary": "FocusInstance",
+			"method": "POST",
+			"path": "/focus-instance",
+			"parameters": [
+				{ "name": "instanceId", "in": "body", "type": "string", "required": true }
+			]
+		},
+		{
 			"summary": "BuildProgressStream",
 			"method": "WS",
 			"path": "/build-progress"

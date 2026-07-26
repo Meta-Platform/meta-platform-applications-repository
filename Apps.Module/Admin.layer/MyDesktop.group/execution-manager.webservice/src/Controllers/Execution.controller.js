@@ -128,6 +128,21 @@ const ExecutionController = (params) => {
         }
     }
 
+    // Dá FOCO à janela de UMA instância já aberta (endpoint de 1 parâmetro →
+    // valor posicional). É o que a área de trabalho usa no clique simples de um
+    // aplicativo em execução, em vez de lançar outra instância.
+    const FocusInstance = async (instanceId) => {
+        if(!instanceId) throw "É necessário informar a instância a focar."
+
+        try {
+            const result = await instanceManager.FocusInstance({ instanceId })
+            return { instanceId, ...result }
+        } catch (e) {
+            _Notify("Execution.FocusInstance", "error", `Falha ao focar a instância ${instanceId}: ${e.message || e}`)
+            throw e
+        }
+    }
+
     // Ponte WebSocket: repassa o stream de progresso de lançamento do daemon
     // (abrindo → build → aberto) para o renderer/navegador. Só daemon→cliente.
     const BuildProgressStream = async (ws) => {
@@ -156,6 +171,7 @@ const ExecutionController = (params) => {
         ListRunning,
         StopApplication,
         StopInstance,
+        FocusInstance,
         BuildProgressStream
     }
 }
