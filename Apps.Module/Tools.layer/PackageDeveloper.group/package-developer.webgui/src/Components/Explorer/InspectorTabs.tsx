@@ -1,25 +1,23 @@
 import * as React from "react"
 import { Icon } from "semantic-ui-react"
 
-// Barra de abas do Inspector: abas fixas do pacote + abas CONTEXTUAIS (um
-// recurso selecionado). Contextuais são fecháveis; as fixas, não. Sem duplicar
-// aba para o mesmo recurso (a chave é o id da seleção).
+// Barra de abas do Inspector: só as abas FIXAS do pacote (visão geral, README,
+// runtime, dependências, metadados, npm, git). Recurso selecionado na árvore não
+// vira aba — abre dentro do Runtime, abaixo da lista.
 
 export type TabDef = {
-    id       : string
-    label    : string
-    icon?    : string
-    closable?: boolean
+    id    : string
+    label : string
+    icon? : string
 }
 
 type Props = {
     tabs      : TabDef[]
     active    : string
     onSelect  : (id:string) => void
-    onClose?  : (id:string) => void
 }
 
-const InspectorTabs = ({ tabs, active, onSelect, onClose }:Props) => {
+const InspectorTabs = ({ tabs, active, onSelect }:Props) => {
 
     const onKeyDown = (e:any, index:number) => {
         if(e.key !== "ArrowRight" && e.key !== "ArrowLeft") return
@@ -40,14 +38,6 @@ const InspectorTabs = ({ tabs, active, onSelect, onClose }:Props) => {
                     onClick={() => onSelect(tab.id)}>
                     { tab.icon && <Icon name={tab.icon as any} style={{margin:0}} /> }
                     <span>{tab.label}</span>
-                    {
-                        tab.closable && onClose &&
-                        <span className="pdx-tab__close" role="button" tabIndex={-1}
-                            aria-label={`fechar ${tab.label}`}
-                            onClick={(e:any) => { e.stopPropagation(); onClose(tab.id) }}>
-                            <Icon name="times" style={{margin:0, fontSize:"0.85em"}} />
-                        </span>
-                    }
                 </button>)
         }
     </div>

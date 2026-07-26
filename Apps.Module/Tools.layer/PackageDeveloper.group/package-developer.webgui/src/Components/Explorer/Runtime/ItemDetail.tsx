@@ -42,15 +42,9 @@ const ItemDetail = ({ item, model, workspace, onOpenRef, onSelectItem }:Props) =
         : undefined
 
     return <div>
-        <div className="pdx-ident" style={{marginBottom:12}}>
-            <Icon name={item.icon as any} className="pdx-ident__icon" size="large" style={{color:"var(--mp-muted)"}} />
-            <div className="pdx-ident__main">
-                <div className="pdx-ident__name pdx-mono">{item.title}</div>
-                <div className="pdx-ident__badges">
-                    <Badge>{KIND_LABEL[item.kind] || item.kind}</Badge>
-                    { item.subtitle && <span className="pdx-muted" style={{fontSize:12}}>{item.subtitle}</span> }
-                </div>
-            </div>
+        <div className="pdx-inline" style={{marginBottom:12}}>
+            <Badge tone="type">{KIND_LABEL[item.kind] || item.kind}</Badge>
+            { item.subtitle && <span className="pdx-muted pdx-mono" style={{fontSize:12}}>{item.subtitle}</span> }
         </div>
 
         <TechnicalPropertyList groups={item.groups} onOpenRef={onOpenRef} />

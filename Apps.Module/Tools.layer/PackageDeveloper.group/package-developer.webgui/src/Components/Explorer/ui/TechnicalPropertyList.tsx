@@ -20,18 +20,29 @@ const TechnicalPropertyList = ({ groups, onOpenRef }:Props) => {
             visible.map((group) =>
                 <div className="pdx-props__group" key={group.label}>
                     <div className="pdx-props__label">{group.label}</div>
-                    <div className="pdx-props__grid">
-                        {
-                            group.entries.map((entry, i) =>
-                                <React.Fragment key={`${entry.label}-${i}`}>
-                                    <div className="pdx-props__key">{entry.label}</div>
-                                    <div className="pdx-props__value">
-                                        <CopyableCodeValue value={entry.value} type={entry.type}
-                                            refTarget={entry.refTarget} onOpenRef={onOpenRef} />
-                                    </div>
-                                </React.Fragment>)
-                        }
-                    </div>
+                    {
+                        // Lista de nomes: chips lado a lado (numerar seria ruído).
+                        group.variant === "chips"
+                        ? <div className="pdx-inline">
+                            {
+                                group.entries.map((entry, i) =>
+                                    <CopyableCodeValue key={`${entry.label}-${i}`} value={entry.value}
+                                        type={entry.type} refTarget={entry.refTarget} onOpenRef={onOpenRef} />)
+                            }
+                          </div>
+                        : <div className="pdx-props__grid">
+                            {
+                                group.entries.map((entry, i) =>
+                                    <React.Fragment key={`${entry.label}-${i}`}>
+                                        <div className="pdx-props__key">{entry.label}</div>
+                                        <div className="pdx-props__value">
+                                            <CopyableCodeValue value={entry.value} type={entry.type}
+                                                refTarget={entry.refTarget} onOpenRef={onOpenRef} />
+                                        </div>
+                                    </React.Fragment>)
+                            }
+                          </div>
+                    }
                 </div>)
         }
     </div>

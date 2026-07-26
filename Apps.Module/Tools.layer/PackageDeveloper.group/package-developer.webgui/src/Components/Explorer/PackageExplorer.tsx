@@ -6,6 +6,7 @@ import { EMPTY_FILTERS, Filters, IndexedPackage, buildFacets, filterPackages } f
 import { SectionId } from "../../Domain/packageModel"
 import { Selection, selectedPackagePath } from "../../Domain/selection"
 import { buildRepositoryModel, buildWorkspaceModel } from "../../Domain/repositoryModel"
+import { buildGitModel, gitForPackage } from "../../Domain/gitModel"
 import useExplorerData from "../../Hooks/useExplorerData"
 import usePackageDetails from "../../Hooks/usePackageDetails"
 import useResponsiveLayout from "../../Hooks/useResponsiveLayout"
@@ -132,6 +133,11 @@ const PackageExplorer = ({
         openRepositories, activeRepository: workspace, gitRepositories, indexes
     }), [openRepositories, workspace, gitRepositories, indexes])
 
+    // Git: o que está por commitar, por repositório e por pacote.
+    const gitModel = useMemo(() => buildGitModel({
+        gitRepositories, openRepositories, indexes
+    }), [gitRepositories, openRepositories, indexes])
+
     // ---- seleção ---------------------------------------------------------
 
     const select = useCallback((next:Selection) => {
@@ -210,11 +216,12 @@ const PackageExplorer = ({
 
     const inspector = useMemo(() => {
         if(selection && selection.kind === "workspace")
-            return <WorkspaceMetadataView model={workspaceModel} onOpenRepository={onSwitchRepository} />
+            return <WorkspaceMetadataView model={workspaceModel} onOpenRepository={onSwitchRepository}
+                gitModel={gitModel} onOpenPackage={selectPackage} />
 
         if(selection && selection.kind === "repository")
             return <RepositoryMetadataView model={repositoryModel} loading={loading} error={error}
-                onRetry={reload} onOpenPackage={selectPackage} />
+                onRetry={reload} onOpenPackage={selectPackage} gitModel={gitModel} />
 
         if(selection && selection.kind === "container")
             return <ContainerView kind={selection.containerKind} label={selection.label} path={selection.path}
@@ -237,9 +244,11 @@ const PackageExplorer = ({
             bootView={bootView}
             onBootView={changeBootView}
             favorite={!!selectedPackage && favorites.indexOf(selectedPackage.path) > -1}
-            onToggleFavorite={selectedPackage ? () => toggleFavorite(selectedPackage.path) : undefined} />
+            onToggleFavorite={selectedPackage ? () => toggleFavorite(selectedPackage.path) : undefined}
+            gitScope={selectedPackage ? gitForPackage(gitModel, selectedRepository, selectedPackage.path) : undefined} />
     }, [selection, workspaceModel, repositoryModel, scopedPackages, details.model, details.loading,
-        details.error, details.readme, details.readmeLoading, bootView, selectedRepository, selectedPackage, favorites])
+        details.error, details.readme, details.readmeLoading, bootView, selectedRepository, selectedPackage,
+        favorites, gitModel])
 
     const inspectorTitle =
         selection && selection.kind === "workspace"  ? "Workspace" :

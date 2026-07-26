@@ -2,14 +2,17 @@ import * as React from "react"
 import { useMemo } from "react"
 import { Icon } from "semantic-ui-react"
 
-import { PackageModel, SectionId } from "../../../Domain/packageModel"
+import { PackageModel, SectionId, findItem } from "../../../Domain/packageModel"
 import BootStructuredView from "../Boot/BootStructuredView"
 import BootDiagramView from "../Boot/BootDiagramView"
 import SectionView from "./SectionView"
+import ItemDetail from "./ItemDetail"
+import TechnicalPropertyList from "../ui/TechnicalPropertyList"
 import { EmptyState, Segmented } from "../ui/Primitives"
 
 // Aba Runtime: navegação segmentada entre Boot e as demais capacidades do
-// pacote. Só aparecem as seções que existem — nada de aba "Comandos" vazia.
+// pacote. Só aparecem as seções que existem. O item selecionado abre ABAIXO da
+// lista, no mesmo painel — sem aba nova e sem esconder os irmãos.
 
 const SHORT_TITLE:any = {
     "boot-params"     : "Parâmetros",
@@ -33,9 +36,13 @@ type Props = {
     onBootView   : (view:"structure" | "diagram") => void
     selectedId?  : string
     onSelectItem : (itemId:string) => void
+    workspace?   : string
+    onOpenRef?   : (target:string) => void
 }
 
-const RuntimeView = ({ model, tab, onTab, bootView, onBootView, selectedId, onSelectItem }:Props) => {
+const RuntimeView = ({
+    model, tab, onTab, bootView, onBootView, selectedId, onSelectItem, workspace, onOpenRef
+}:Props) => {
 
     const tabs = useMemo(() => {
         const list:{ id:RuntimeTab, label:string, icon:string, count?:number }[] = []
@@ -52,17 +59,20 @@ const RuntimeView = ({ model, tab, onTab, bootView, onBootView, selectedId, onSe
 
     const active = tabs.some((t) => t.id === tab) ? tab : tabs[0].id
     const section = model.sections.filter((s) => s.id === active)[0]
+    const selectedItem = selectedId ? findItem(model, selectedId) : undefined
+    // O detalhe só acompanha a seção aberta (trocar de seção não deixa detalhe órfão).
+    const detailItem = selectedItem && section && selectedItem.sectionId === section.id ? selectedItem : undefined
 
     return <div>
-        <div className="pdx-tabs" role="tablist" aria-label="Capacidades do runtime" style={{padding:0, marginBottom:12}}>
+        <div className="pdx-subnav" role="tablist" aria-label="Capacidades do runtime">
             {
                 tabs.map((t) =>
-                    <button key={t.id} type="button" role="tab" className="pdx-tab"
+                    <button key={t.id} type="button" role="tab" className="pdx-subnav__item"
                         aria-selected={active === t.id}
                         onClick={() => onTab(t.id)}>
                         <Icon name={t.icon as any} style={{margin:0}} />
                         {t.label}
-                        { t.count != null && <span className="pdx-mono" style={{fontSize:11, opacity:.7}}>{t.count}</span> }
+                        { t.count != null && <span className="pdx-subnav__count">{t.count}</span> }
                     </button>)
             }
         </div>
@@ -70,7 +80,7 @@ const RuntimeView = ({ model, tab, onTab, bootView, onBootView, selectedId, onSe
         {
             active === "boot"
             ? <div>
-                <div className="pdx-inline" style={{marginBottom:12}}>
+                <div className="pdx-inline" style={{marginBottom:14}}>
                     <Segmented ariaLabel="Visualização do boot" value={bootView} onChange={onBootView} options={[
                         { value: "structure", label: "Estrutura", icon: "list" },
                         { value: "diagram",   label: "Diagrama",  icon: "sitemap" }
@@ -83,7 +93,34 @@ const RuntimeView = ({ model, tab, onTab, bootView, onBootView, selectedId, onSe
                 }
               </div>
             : section
-                ? <SectionView section={section} selectedId={selectedId} onSelect={onSelectItem} />
+                ? <div>
+                    {
+                        section.requirements && section.requirements.length > 0 &&
+                        <div className="pdx-requirements">
+                            <div className="pdx-requirements__title">
+                                <Icon name="lock" style={{margin:0}} />
+                                O grupo exige, de quem o carrega:
+                            </div>
+                            <TechnicalPropertyList groups={section.requirements} onOpenRef={onOpenRef} />
+                        </div>
+                    }
+
+                    <SectionView section={section} selectedId={selectedId} onSelect={onSelectItem} />
+
+                    {
+                        detailItem &&
+                        <div className="pdx-detail" id="pdx-item-detail">
+                            <div className="pdx-detail__bar">
+                                <Icon name={detailItem.icon as any} style={{margin:0}} />
+                                <span className="pdx-detail__title">{detailItem.title}</span>
+                            </div>
+                            <div className="pdx-detail__body">
+                                <ItemDetail item={detailItem} model={model} workspace={workspace}
+                                    onOpenRef={onOpenRef} onSelectItem={onSelectItem} />
+                            </div>
+                        </div>
+                    }
+                  </div>
                 : null
         }
     </div>

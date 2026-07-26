@@ -9,7 +9,7 @@
 
 import {
     PropertyEntry, PropertyGroup, collectReferences, isEmptyValue,
-    referenceTarget, templateVariables, toPropertyEntries, toPropertyEntry, toPropertyGroup
+    referenceTarget, templateVariables, toChipGroup, toPropertyEntries, toPropertyEntry, toPropertyGroup
 } from "./values"
 import { validateMetadataFile } from "../Components/metadataSchema"
 
@@ -58,6 +58,10 @@ export type RuntimeSection = {
     icon     : string
     file     : string
     items    : RuntimeItem[]
+    // O que o GRUPO exige para ser carregado (bound-params/params declarados no
+    // topo de endpoint-group.json / command-group.json). Sem isso, ler a lista
+    // de endpoints não conta a história toda.
+    requirements? : PropertyGroup[]
 }
 
 export type PackageIdentity = {
@@ -187,6 +191,8 @@ const bootWindowItem = (raw:any, i:number):RuntimeItem => ({
     refs: collectReferences(raw), issues: []
 })
 
+// Em services.json, params/bound-params são os nomes que o serviço EXIGE de quem
+// o instancia (não valores) — daí os chips em vez da grade chave→valor.
 const serviceItem = (raw:any, i:number):RuntimeItem => ({
     id: `services/${i}`, kind: "service", sectionId: "services",
     title: raw.namespace || `serviço ${i + 1}`,
@@ -194,7 +200,8 @@ const serviceItem = (raw:any, i:number):RuntimeItem => ({
     icon: ITEM_ICONS["service"], file: SERVICES_FILE, path: [i], raw,
     groups: identityGroup(entry("namespace", raw.namespace))
         .concat(group("implementação", entry("path", raw.path)))
-        .concat(bindingGroups(raw)),
+        .concat(toChipGroup("params exigidos", raw.params))
+        .concat(toChipGroup("bound-params exigidos", raw["bound-params"])),
     refs: collectReferences(raw), issues: []
 })
 
@@ -321,8 +328,20 @@ export type BuildInput = {
     packageJson?: any           // opcional: quando já veio do índice
 }
 
-const section = (id:SectionId, kind:ResourceKind, title:string, file:string, items:RuntimeItem[]):RuntimeSection[] =>
-    items.length ? [{ id, kind, title, icon: ICONS[id], file, items }] : []
+const section = (
+    id:SectionId, kind:ResourceKind, title:string, file:string,
+    items:RuntimeItem[], requirements?:PropertyGroup[]
+):RuntimeSection[] =>
+    items.length
+        ? [{ id, kind, title, icon: ICONS[id], file, items,
+             requirements: requirements && requirements.length ? requirements : undefined }]
+        : []
+
+// Requisitos declarados no topo de um arquivo de grupo (endpoint-group/command-group).
+const groupRequirements = (group:any):PropertyGroup[] =>
+    ([] as PropertyGroup[])
+        .concat(toChipGroup("bound-params exigidos", group && group["bound-params"]))
+        .concat(toChipGroup("params exigidos", group && group.params))
 
 export const buildPackageModel = ({ pkg, metadata, repository, packageJson }:BuildInput):PackageModel => {
 
@@ -352,9 +371,11 @@ export const buildPackageModel = ({ pkg, metadata, repository, packageJson }:Bui
         .concat(section("services", "service", "Serviços fornecidos", SERVICES_FILE,
             asArray(services).map(serviceItem)))
         .concat(section("endpoints", "endpoint", "Endpoints", ENDPOINTS_FILE,
-            asArray(endpointGroup && endpointGroup.endpoints).map(endpointItem)))
+            asArray(endpointGroup && endpointGroup.endpoints).map(endpointItem),
+            groupRequirements(endpointGroup)))
         .concat(section("commands", "command", "Comandos", COMMANDS_FILE,
-            asArray(commandGroup && commandGroup.commands).map((c:any, i:number) => commandItem(c, i))))
+            asArray(commandGroup && commandGroup.commands).map((c:any, i:number) => commandItem(c, i)),
+            groupRequirements(commandGroup)))
         .concat(section("startup-params", "startup-param", "Startup params", PARAMS_FILE,
             startupParams && typeof startupParams === "object"
                 ? Object.keys(startupParams).map((k, i) => startupParamItem(k, startupParams[k], i, bootParams))

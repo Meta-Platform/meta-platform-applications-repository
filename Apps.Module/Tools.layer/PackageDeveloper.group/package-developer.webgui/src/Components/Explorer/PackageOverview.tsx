@@ -2,142 +2,165 @@ import * as React from "react"
 import { Icon } from "semantic-ui-react"
 
 import { PackageModel, SectionId } from "../../Domain/packageModel"
+import { GitScope } from "../../Domain/gitModel"
 import CopyableCodeValue from "./ui/CopyableCodeValue"
-import { Badge, CollapsibleSection, Metrics } from "./ui/Primitives"
+import { GitCounters } from "./GitStatusView"
+import { Badge } from "./ui/Primitives"
 import { IssueList } from "./ui/ValidationBadge"
 
-// Visão geral: grupos semânticos (propósito, localização, capacidades, runtime,
-// dependências, validação, metadados) em vez de uma lista contínua de texto.
-// Cada grupo some quando não tem conteúdo.
+// Visão geral: blocos com peso visual DIFERENTE, para o olho achar o que quer
+// sem ler tudo — descrição em destaque, capacidades como atalhos coloridos por
+// tipo de recurso, localização como ficha, e alertas só quando existem.
 
 type Props = {
     model        : PackageModel
     onOpenSection: (sectionId:SectionId | "boot") => void
     onOpenRef?   : (target:string) => void
     onOpenTab?   : (tab:string) => void
+    gitScope?    : GitScope
 }
 
-const SECTION_LABEL:any = {
-    "boot-params": "parâmetros", "boot-services": "serviços do boot",
-    "boot-executables": "executáveis", "boot-endpoints": "endpoints do boot",
-    "boot-windows": "janelas", "services": "serviços", "endpoints": "endpoints",
-    "commands": "comandos", "startup-params": "startup params"
+// Cor por família de recurso — a mesma do diagrama do boot, para o usuário
+// aprender uma vez só.
+const SECTION_META:any = {
+    "boot-params"     : { label: "parâmetros",      accent: "neutral" },
+    "boot-services"   : { label: "serviços do boot", accent: "green" },
+    "boot-executables": { label: "executáveis",     accent: "orange" },
+    "boot-endpoints"  : { label: "endpoints do boot", accent: "blue" },
+    "boot-windows"    : { label: "janelas",         accent: "violet" },
+    "services"        : { label: "serviços",        accent: "green" },
+    "endpoints"       : { label: "endpoints",       accent: "blue" },
+    "commands"        : { label: "comandos",        accent: "cyan" },
+    "startup-params"  : { label: "startup params",  accent: "neutral" }
 }
 
-const PackageOverview = ({ model, onOpenSection, onOpenRef, onOpenTab }:Props) => {
+const Block = ({ title, icon, right, children, tone }:any) =>
+    <section className={`pdx-block${tone ? ` pdx-block--${tone}` : ""}`}>
+        <header className="pdx-block__head">
+            { icon && <Icon name={icon} style={{margin:0}} /> }
+            <h3 className="pdx-block__title">{title}</h3>
+            { right }
+        </header>
+        <div className="pdx-block__body">{children}</div>
+    </section>
+
+const PackageOverview = ({ model, onOpenSection, onOpenRef, onOpenTab, gitScope }:Props) => {
 
     const { identity } = model
-    const location:{ label:string, value:string }[] = [
-        identity.repository ? { label: "repositório", value: identity.repository } : null,
-        identity.module     ? { label: "módulo", value: identity.module } : null,
-        identity.layer      ? { label: "layer", value: identity.layer } : null,
-        identity.group      ? { label: "grupo", value: identity.group } : null
-    ].filter(Boolean) as any[]
+    const errors   = model.issues.filter((i) => i.level === "error")
+    const warnings = model.issues.filter((i) => i.level === "warning")
 
-    return <div>
+    return <div className="pdx-overview">
+
         {
             identity.description &&
-            <p style={{fontSize:14, lineHeight:1.5, color:"var(--mp-ink-2)", marginTop:0}}>{identity.description}</p>
+            <p className="pdx-overview__lead">{identity.description}</p>
         }
-
-        <Metrics items={model.sections.map((s) => ({
-            value: s.items.length, label: SECTION_LABEL[s.id] || s.title
-        })).concat([{ value: model.npm.length, label: "npm" }])} />
-
-        <CollapsibleSection id="ov-location" title="Localização" icon="folder outline">
-            <div className="pdx-props__grid">
-                {
-                    location.map((l) =>
-                        <React.Fragment key={l.label}>
-                            <div className="pdx-props__key">{l.label}</div>
-                            <div className="pdx-props__value"><span style={{fontSize:12}}>{l.value}</span></div>
-                        </React.Fragment>)
-                }
-                <div className="pdx-props__key">caminho</div>
-                <div className="pdx-props__value"><CopyableCodeValue value={identity.path} type="path" /></div>
-                {
-                    identity.namespace &&
-                    <>
-                        <div className="pdx-props__key">namespace</div>
-                        <div className="pdx-props__value"><CopyableCodeValue value={identity.namespace} type="reference" /></div>
-                    </>
-                }
-            </div>
-        </CollapsibleSection>
 
         {
-            model.sections.length > 0 &&
-            <CollapsibleSection id="ov-capabilities" title="Capacidades" icon="cubes" count={model.sections.length}>
-                <div className="pdx-inline">
-                    { model.boot &&
-                        <button type="button" className="pdx-chip" onClick={() => onOpenSection("boot")}>
-                            <Icon name="rocket" style={{margin:0}} />boot
-                        </button> }
+            (errors.length > 0 || warnings.length > 0) &&
+            <Block title="Precisa de atenção" icon="warning sign" tone="alert"
+                right={<span className="pdx-inline" style={{marginLeft:"auto", gap:4}}>
+                    { errors.length > 0 && <Badge tone="error">{errors.length} erro(s)</Badge> }
+                    { warnings.length > 0 && <Badge tone="warning">{warnings.length} aviso(s)</Badge> }
+                </span>}>
+                <IssueList issues={model.issues.slice(0, 6)} />
+                { model.issues.length > 6 &&
+                    <div className="pdx-muted" style={{fontSize:12, marginTop:6}}>
+                        e mais {model.issues.length - 6} problema(s) — ver aba Metadados
+                    </div> }
+            </Block>
+        }
+
+        {
+            (model.sections.length > 0 || model.boot) &&
+            <Block title="Capacidades" icon="cubes"
+                right={<span className="pdx-block__hint">clique para abrir no Runtime</span>}>
+                <div className="pdx-caps">
                     {
-                        model.sections.map((s) =>
-                            <button key={s.id} type="button" className="pdx-chip" onClick={() => onOpenSection(s.id)}>
+                        model.boot &&
+                        <button type="button" className="pdx-cap pdx-cap--boot" onClick={() => onOpenSection("boot")}>
+                            <Icon name="rocket" style={{margin:0}} />
+                            <span className="pdx-cap__label">boot</span>
+                        </button>
+                    }
+                    {
+                        model.sections.map((s) => {
+                            const meta = SECTION_META[s.id] || { label: s.title, accent: "neutral" }
+                            return <button key={s.id} type="button"
+                                className={`pdx-cap pdx-cap--${meta.accent}`}
+                                onClick={() => onOpenSection(s.id)}>
                                 <Icon name={s.icon as any} style={{margin:0}} />
-                                {SECTION_LABEL[s.id] || s.title}
-                                <span className="pdx-chip__count">{s.items.length}</span>
-                            </button>)
+                                <span className="pdx-cap__label">{meta.label}</span>
+                                <span className="pdx-cap__count">{s.items.length}</span>
+                            </button>
+                        })
                     }
                 </div>
-            </CollapsibleSection>
+            </Block>
         }
+
+        <Block title="Localização" icon="folder outline">
+            <dl className="pdx-facts">
+                { identity.repository && <><dt>repositório</dt><dd>{identity.repository}</dd></> }
+                { identity.module && <><dt>módulo</dt><dd>{identity.module}</dd></> }
+                { identity.layer && <><dt>layer</dt><dd>{identity.layer}</dd></> }
+                { identity.group && <><dt>grupo</dt><dd>{identity.group}</dd></> }
+                { identity.namespace &&
+                    <><dt>namespace</dt><dd><CopyableCodeValue value={identity.namespace} type="reference" /></dd></> }
+                <dt>caminho</dt>
+                <dd><CopyableCodeValue value={identity.path} type="path" /></dd>
+            </dl>
+        </Block>
 
         {
             model.packageRefs.length > 0 &&
-            <CollapsibleSection id="ov-refs" title="Dependências internas" icon="sitemap" count={model.packageRefs.length}>
+            <Block title="Depende de" icon="sitemap"
+                right={ onOpenTab
+                    ? <button type="button" className="pdx-link pdx-block__action"
+                        onClick={() => onOpenTab("dependencies")}>ver detalhes</button>
+                    : undefined }>
                 <div className="pdx-inline">
                     {
                         model.packageRefs.map((ref) =>
-                            <CopyableCodeValue key={ref} value={ref} type="reference" refTarget={ref} onOpenRef={onOpenRef} />)
+                            <button key={ref} type="button" className="pdx-ref"
+                                onClick={() => onOpenRef && onOpenRef(ref)} title={`Abrir ${ref}`}>
+                                {ref}
+                            </button>)
                     }
                 </div>
-            </CollapsibleSection>
+            </Block>
         }
 
         {
-            model.npm.length > 0 &&
-            <CollapsibleSection id="ov-npm" title="Dependências npm" icon="cube" count={model.npm.length} defaultOpen={false}>
-                <div className="pdx-props__grid">
-                    {
-                        model.npm.map((dep) =>
-                            <React.Fragment key={dep.name}>
-                                <div className="pdx-props__key pdx-mono">{dep.name}</div>
-                                <div className="pdx-props__value"><CopyableCodeValue value={dep.range} type="text" /></div>
-                            </React.Fragment>)
-                    }
-                </div>
-            </CollapsibleSection>
-        }
-
-        {
-            model.issues.length > 0 &&
-            <CollapsibleSection id="ov-issues" title="Validação" icon="warning sign" count={model.issues.length}>
-                <IssueList issues={model.issues} />
-            </CollapsibleSection>
-        }
-
-        {
-            model.metadataFiles.length > 0 &&
-            <CollapsibleSection id="ov-files" title="Arquivos de metadado" icon="file code outline"
-                count={model.metadataFiles.length} defaultOpen={false}>
+            gitScope && gitScope.files.length > 0 &&
+            <Block title="Alterações não commitadas" icon="code branch" tone="git"
+                right={<span className="pdx-inline" style={{marginLeft:"auto", gap:4}}>
+                    <GitCounters counts={gitScope.counts} />
+                </span>}>
                 <div className="pdx-inline">
-                    { model.metadataFiles.map((f) => <CopyableCodeValue key={f} value={f} type="path" />) }
+                    { gitScope.files.slice(0, 8).map((f) => <span key={f.path} className="pdx-chip-file">{f.name}</span>) }
+                    { gitScope.files.length > 8 &&
+                        <span className="pdx-muted" style={{fontSize:12}}>+{gitScope.files.length - 8}</span> }
                 </div>
-            </CollapsibleSection>
+                { onOpenTab &&
+                    <button type="button" className="pdx-link pdx-block__action" style={{marginTop:8}}
+                        onClick={() => onOpenTab("git")}>ver todos na aba Git</button> }
+            </Block>
         }
 
         {
-            (identity.author || identity.license || identity.version) &&
-            <CollapsibleSection id="ov-pkg" title="Publicação" icon="tag" defaultOpen={false}>
+            (identity.version || identity.license || identity.author || model.npm.length > 0) &&
+            <Block title="Publicação" icon="tag">
                 <div className="pdx-inline">
                     { identity.version && <Badge tone="version">v{identity.version}</Badge> }
                     { identity.license && <Badge>{identity.license}</Badge> }
-                    { identity.author && <span className="pdx-muted" style={{fontSize:12}}>{identity.author}</span> }
+                    { model.npm.length > 0 &&
+                        <Badge icon="cube">{model.npm.length} dependência(s) npm</Badge> }
                 </div>
-            </CollapsibleSection>
+                { identity.author &&
+                    <div className="pdx-muted" style={{fontSize:12, marginTop:8}}>{identity.author}</div> }
+            </Block>
         }
     </div>
 }

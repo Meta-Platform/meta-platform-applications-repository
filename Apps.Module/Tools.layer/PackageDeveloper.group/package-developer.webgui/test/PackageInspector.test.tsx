@@ -60,14 +60,27 @@ describe("inspector — abas", () => {
 
 describe("inspector — a seleção manda no conteúdo", () => {
 
-    it("selecionar o serviço de git-status.lib abre o detalhe daquele serviço", () => {
+    it("selecionar o serviço de git-status.lib leva ao Runtime e abre o detalhe abaixo da lista", () => {
         renderInspector(GIT_STATUS_LIB, { kind: "item", repository: "Repo", packagePath: GIT_STATUS_LIB.path, itemId: "services/0" })
-        // aba contextual criada com o nome do recurso
-        expect(screen.getAllByRole("tab").map((t) => t.textContent).join("|")).toContain("GitStatusManager")
-        // e o detalhe traz identidade + implementação (dados reais do pacote)
+
+        // nenhuma aba nova: a seleção usa as abas fixas do pacote
+        const tabs = screen.getAllByRole("tab").map((t) => t.textContent)
+        expect(tabs.join("|")).not.toContain("GitStatusManager")
+        expect(screen.getByRole("tab", { name: /Runtime/ })).toHaveAttribute("aria-selected", "true")
+
+        // a lista da seção continua visível E o detalhe aparece abaixo
+        expect(screen.getAllByText("GitStatusManager").length).toBeGreaterThan(1)
         expect(screen.getByText("serviço fornecido")).toBeInTheDocument()
-        expect(screen.getAllByText("Services/GitStatusManager.service").length).toBeGreaterThan(0)
         expect(screen.getAllByText("metadata/services.json").length).toBeGreaterThan(0)
+    })
+
+    it("trocar de seção não deixa o detalhe do item anterior órfão", () => {
+        renderInspector(DEVELOPER_WEBAPP,
+            { kind: "item", repository: "Repo", packagePath: DEVELOPER_WEBAPP.path, itemId: "boot-services/0" })
+        expect(screen.getByText("serviço do boot")).toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole("tab", { name: /Endpoints do boot/ }))
+        expect(screen.queryByText("serviço do boot")).toBeNull()
     })
 
     it("selecionar um endpoint abre o endpoint correto, com controller e template", () => {
@@ -104,12 +117,15 @@ describe("inspector — a seleção manda no conteúdo", () => {
         expect(nav.textContent).toContain("@@/git-status-service")
     })
 
-    it("aba contextual pode ser fechada, voltando à visão geral", () => {
+    it("as abas do Inspector são sempre as mesmas do pacote (nenhuma fechável)", () => {
         renderInspector(GIT_STATUS_LIB,
             { kind: "item", repository: "Repo", packagePath: GIT_STATUS_LIB.path, itemId: "services/0" })
-        fireEvent.click(screen.getByLabelText("fechar GitStatusManager"))
-        expect(screen.getAllByRole("tab").map((t) => t.textContent).join("|")).not.toContain("GitStatusManager")
-        expect(screen.getByRole("tab", { name: /Visão geral/ })).toHaveAttribute("aria-selected", "true")
+        expect(screen.queryByLabelText(/^fechar /)).toBeNull()
+        // abas fixas do pacote (as sub-abas do Runtime têm role tab próprio)
+        const inspectorTabs = Array.prototype.slice
+            .call(document.querySelectorAll(".pdx-tabs [role='tab']"))
+            .map((t:any) => t.textContent)
+        expect(inspectorTabs).toEqual(["Visão geral", "Runtime", "Metadados", "npm"])
     })
 })
 
@@ -134,7 +150,7 @@ describe("inspector — estados", () => {
     it("identidade traz tipo, versão e caminho copiável", () => {
         renderInspector(GIT_STATUS_LIB)
         expect(screen.getByText("lib")).toBeInTheDocument()
-        expect(screen.getByText("v0.0.1")).toBeInTheDocument()
+        expect(screen.getAllByText("v0.0.1").length).toBeGreaterThan(0)
         expect(screen.getAllByLabelText(`copiar ${GIT_STATUS_LIB.path}`).length).toBeGreaterThan(0)
     })
 })

@@ -16,6 +16,9 @@ export type PropertyEntry = {
 export type PropertyGroup = {
     label   : string
     entries : PropertyEntry[]
+    // "chips": lista de NOMES (params exigidos, bound-params de grupo) — numerar
+    // essas entradas só cria ruído, então elas aparecem lado a lado.
+    variant?: "grid" | "chips"
 }
 
 const REF_RE          = /^@\//
@@ -122,9 +125,21 @@ export const toPropertyEntries = (value:any, prefix = "", depth = 0):PropertyEnt
     return [toPropertyEntry(prefix || "valor", value)]
 }
 
+// Lista de nomes (["installDataDirPath", "?panelStateFilePath"]) → chips.
+export const toChipGroup = (label:string, value:any):PropertyGroup[] => {
+    if(!Array.isArray(value)) return []
+    const entries = value
+        .filter((v) => !isEmptyValue(v) && isScalar(v))
+        .map((v) => toPropertyEntry(String(v), v))
+    return entries.length ? [{ label, entries, variant: "chips" as const }] : []
+}
+
 // Grupo de propriedades; devolve [] quando não há nada a mostrar (a UI omite a
-// seção inteira em vez de renderizar um cabeçalho vazio).
+// seção inteira em vez de renderizar um cabeçalho vazio). Uma lista de nomes
+// vira chips; o resto vira grade chave→valor.
 export const toPropertyGroup = (label:string, value:any):PropertyGroup[] => {
+    if(Array.isArray(value) && value.length > 0 && value.every(isScalar))
+        return toChipGroup(label, value)
     const entries = toPropertyEntries(value)
     return entries.length ? [{ label, entries }] : []
 }

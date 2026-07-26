@@ -2,6 +2,9 @@ import * as React from "react"
 import { Icon } from "semantic-ui-react"
 
 import { WorkspaceModel } from "../../Domain/repositoryModel"
+import { GitModel } from "../../Domain/gitModel"
+import GitStatusView from "./GitStatusView"
+import InspectorTabs from "./InspectorTabs"
 import CopyableCodeValue from "./ui/CopyableCodeValue"
 import { Badge, CollapsibleSection, Metrics } from "./ui/Primitives"
 import { IssueList } from "./ui/ValidationBadge"
@@ -13,10 +16,15 @@ import { IssueList } from "./ui/ValidationBadge"
 type Props = {
     model      : WorkspaceModel
     onOpenRepository : (name:string) => void
+    gitModel?  : GitModel
+    onOpenPackage? : (path:string) => void
 }
 
-const WorkspaceMetadataView = ({ model, onOpenRepository }:Props) =>
-    <div className="pdx-inspector">
+const WorkspaceMetadataView = ({ model, onOpenRepository, gitModel, onOpenPackage }:Props) => {
+
+    const [tab, setTab] = React.useState("overview")
+
+    return <div className="pdx-inspector">
         <div className="pdx-inspector__head">
             <div className="pdx-ident">
                 <Icon name="folder open outline" size="large" className="pdx-ident__icon" style={{color:"var(--mp-muted)"}} />
@@ -25,11 +33,24 @@ const WorkspaceMetadataView = ({ model, onOpenRepository }:Props) =>
                     <div className="pdx-ident__badges">
                         <Badge tone="type">{model.counts.repositories} repositório(s)</Badge>
                         { model.activeRepository && <Badge icon="dot circle outline">{model.activeRepository}</Badge> }
+                        { gitModel && gitModel.total > 0 &&
+                            <Badge tone="warning" icon="code branch">{gitModel.total} sem commitar</Badge> }
                     </div>
                 </div>
             </div>
         </div>
 
+        <InspectorTabs active={tab} onSelect={setTab} tabs={[
+            { id: "overview", label: "Visão geral", icon: "info circle" },
+            { id: "git", label: "Git", icon: "code branch" }
+        ]} />
+
+        {
+            tab === "git"
+            ? <div className="pdx-inspector__body">
+                { gitModel && <GitStatusView model={gitModel} onOpenPackage={onOpenPackage} /> }
+              </div>
+            :
         <div className="pdx-inspector__body">
             <Metrics items={[
                 { value: model.counts.repositories, label: "repositórios" },
@@ -71,6 +92,8 @@ const WorkspaceMetadataView = ({ model, onOpenRepository }:Props) =>
                 </CollapsibleSection>
             }
         </div>
+        }
     </div>
+}
 
 export default WorkspaceMetadataView

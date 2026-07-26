@@ -1,23 +1,25 @@
 import * as React from "react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Icon, Loader } from "semantic-ui-react"
 
 import { PackageModel, SectionId, findItem, findSection } from "../../Domain/packageModel"
+import { GitScope } from "../../Domain/gitModel"
 import { Selection, breadcrumbOf } from "../../Domain/selection"
 import PackageIcon from "../PackageIcon"
 import Markdown from "../Markdown"
 import InspectorTabs, { TabDef } from "./InspectorTabs"
 import PackageOverview from "./PackageOverview"
 import RuntimeView, { RuntimeTab } from "./Runtime/RuntimeView"
-import ItemDetail from "./Runtime/ItemDetail"
-import SectionView from "./Runtime/SectionView"
+import DependenciesView from "./DependenciesView"
+import { PackageGitView, GitCounters } from "./GitStatusView"
 import CopyableCodeValue from "./ui/CopyableCodeValue"
 import { IssueBadges } from "./ui/ValidationBadge"
 import { Badge, EmptyState, IconButton } from "./ui/Primitives"
 
 // Inspector do pacote: cabeçalho persistente (identidade + ações), trilha do
-// recurso selecionado e abas. A SELEÇÃO manda: escolher um item na árvore abre a
-// aba contextual daquele item; o conteúdo nunca fica preso na seleção anterior.
+// recurso selecionado e abas FIXAS do pacote. Selecionar um item da árvore NÃO
+// cria aba nova — leva à aba Runtime, na seção do item, com o detalhe aberto
+// logo abaixo da lista (que continua visível).
 
 type Props = {
     workspace     : string
@@ -37,31 +39,32 @@ type Props = {
     onBootView    : (v:"structure" | "diagram") => void
     favorite?     : boolean
     onToggleFavorite? : () => void
+    gitScope?     : GitScope
 }
 
 const BASE_TABS:TabDef[] = [
     { id: "overview", label: "Visão geral", icon: "info circle" },
     { id: "readme",   label: "README",      icon: "file alternate outline" },
-    { id: "metadata", label: "Metadados",   icon: "file code outline" },
-    { id: "dependencies", label: "Dependências", icon: "sitemap" },
     { id: "runtime",  label: "Runtime",     icon: "rocket" },
-    { id: "npm",      label: "npm",         icon: "cube" }
+    { id: "dependencies", label: "Dependências", icon: "sitemap" },
+    { id: "metadata", label: "Metadados",   icon: "file code outline" },
+    { id: "npm",      label: "npm",         icon: "cube" },
+    { id: "git",      label: "Git",         icon: "code branch" }
 ]
 
 const PackageInspector = ({
     workspace, model, loading, error, onRetry, selection,
     onSelectSection, onSelectItem, onSelectPackageRoot, onOpenRef, onEdit,
-    readme, readmeLoading, bootView, onBootView, favorite, onToggleFavorite
+    readme, readmeLoading, bootView, onBootView, favorite, onToggleFavorite, gitScope
 }:Props) => {
 
     const [tab, setTab] = useState<string>("overview")
-    const [contextTabs, setContextTabs] = useState<TabDef[]>([])
     const [runtimeTab, setRuntimeTab] = useState<RuntimeTab>("boot")
 
     const selectedItem    = selection && selection.kind === "item" ? findItem(model, selection.itemId) : undefined
     const selectedSection = selection && selection.kind === "section" ? findSection(model, selection.sectionId) : undefined
 
-    // A seleção governa a aba ativa: item/seção abrem (ou reativam) a contextual.
+    // A seleção governa a aba: item/seção levam ao Runtime, na seção certa.
     useEffect(() => {
         if(!selection) return
         if(selection.kind === "package"){ setTab("overview"); return }
@@ -71,36 +74,23 @@ const PackageInspector = ({
             return
         }
         if(selection.kind === "item" && selectedItem){
-            const id = `item:${selectedItem.id}`
-            setContextTabs((prev) => prev.some((t) => t.id === id)
-                ? prev
-                : prev.concat([{ id, label: selectedItem.title, icon: selectedItem.icon, closable: true }]).slice(-4))
             setRuntimeTab(selectedItem.sectionId)
-            setTab(id)
+            setTab("runtime")
         }
     }, [selection && (selection as any).itemId, selection && (selection as any).sectionId,
         selection && (selection as any).packagePath, selection && selection.kind, model])
 
-    // Troca de pacote: abas contextuais do pacote anterior não fazem sentido.
-    // (só limpa numa troca real — na montagem a aba do recurso selecionado já veio)
-    const lastPath = useRef<string | undefined>(model && model.identity.path)
-    useEffect(() => {
-        const path = model && model.identity.path
-        if(lastPath.current !== undefined && path !== lastPath.current) setContextTabs([])
-        lastPath.current = path
-    }, [model && model.identity.path])
-
     const tabs = useMemo(() => {
         if(!model) return []
-        const available = BASE_TABS.filter((t) =>
+        return BASE_TABS.filter((t) =>
             t.id === "overview" ? true :
             t.id === "readme"   ? !!readme :
             t.id === "metadata" ? model.metadataFiles.length > 0 :
             t.id === "dependencies" ? model.packageRefs.length > 0 :
             t.id === "runtime"  ? (model.sections.length > 0 || !!model.boot) :
-            t.id === "npm"      ? model.npm.length > 0 : false)
-        return available.concat(contextTabs)
-    }, [model, readme, contextTabs])
+            t.id === "npm"      ? model.npm.length > 0 :
+            t.id === "git"      ? !!(gitScope && gitScope.files.length) : false)
+    }, [model, readme, gitScope])
 
     const activeTab = tabs.some((t) => t.id === tab) ? tab : (tabs[0] ? tabs[0].id : "overview")
     const crumbs = useMemo(() => breadcrumbOf(selection, model), [selection, model])
@@ -124,14 +114,12 @@ const PackageInspector = ({
         </div>
 
     const { identity } = model
-    const contextItemId = activeTab.indexOf("item:") === 0 ? activeTab.slice(5) : undefined
-    const contextItem = contextItemId ? findItem(model, contextItemId) : undefined
 
     return <div className="pdx-inspector">
         <div className="pdx-inspector__head">
             <div className="pdx-ident">
                 <span className="pdx-ident__icon">
-                    <PackageIcon workspace={workspace} name={identity.name} ext={identity.ext} size={28} />
+                    <PackageIcon workspace={workspace} name={identity.name} ext={identity.ext} size={30} />
                 </span>
                 <div className="pdx-ident__main">
                     <div className="pdx-ident__name">
@@ -140,10 +128,11 @@ const PackageInspector = ({
                     <div className="pdx-ident__badges">
                         <Badge tone="type">{identity.ext}</Badge>
                         { identity.version && <Badge tone="version">v{identity.version}</Badge> }
+                        { gitScope && gitScope.files.length > 0 && <GitCounters counts={gitScope.counts} /> }
                         { loading && <Loader active inline size="mini" /> }
                         <IssueBadges issues={model.issues} />
                     </div>
-                    <div className="pdx-ident__badges" style={{marginTop:6}}>
+                    <div className="pdx-ident__refs">
                         { identity.namespace && <CopyableCodeValue value={identity.namespace} type="reference" /> }
                         <CopyableCodeValue value={identity.path} type="path" title={identity.path} />
                     </div>
@@ -182,35 +171,31 @@ const PackageInspector = ({
             }
         </div>
 
-        <InspectorTabs tabs={tabs} active={activeTab} onSelect={setTab}
-            onClose={(id) => {
-                setContextTabs((prev) => prev.filter((t) => t.id !== id))
-                if(activeTab === id) setTab("overview")
-            }} />
+        <InspectorTabs tabs={tabs} active={activeTab} onSelect={setTab} />
 
         <div className="pdx-inspector__body" id="inspector-panel" role="tabpanel"
             aria-labelledby={`inspector-tab-${activeTab}`}>
             {
-                contextItem
-                ? <ItemDetail item={contextItem} model={model} workspace={workspace}
-                    onOpenRef={onOpenRef} onSelectItem={onSelectItem} />
-                : activeTab === "overview"
-                ? <PackageOverview model={model} onOpenSection={onSelectSection} onOpenRef={onOpenRef} />
+                activeTab === "overview"
+                ? <PackageOverview model={model} onOpenSection={onSelectSection} onOpenRef={onOpenRef}
+                    onOpenTab={setTab} gitScope={gitScope} />
                 : activeTab === "readme"
                 ? (readmeLoading ? <Loader active inline="centered" /> : <Markdown text={readme} />)
                 : activeTab === "runtime"
                 ? <RuntimeView model={model} tab={runtimeTab} onTab={setRuntimeTab}
                     bootView={bootView} onBootView={onBootView}
+                    workspace={workspace}
                     selectedId={selection && selection.kind === "item" ? selection.itemId : undefined}
-                    onSelectItem={onSelectItem} />
+                    onSelectItem={onSelectItem}
+                    onOpenRef={onOpenRef} />
                 : activeTab === "metadata"
                 ? <MetadataView model={model} />
                 : activeTab === "dependencies"
                 ? <DependenciesView model={model} onOpenRef={onOpenRef} />
                 : activeTab === "npm"
                 ? <NpmView model={model} />
-                : selectedSection
-                ? <SectionView section={selectedSection} onSelect={onSelectItem} />
+                : activeTab === "git"
+                ? <PackageGitView scope={gitScope} />
                 : null
             }
         </div>
@@ -222,7 +207,7 @@ const PackageInspector = ({
 const MetadataView = ({ model }:{ model:PackageModel }) =>
     <div>
         <div className="pdx-props__label">arquivos declarados</div>
-        <div className="pdx-inline" style={{marginBottom:14}}>
+        <div className="pdx-inline" style={{marginBottom:16}}>
             { model.metadataFiles.map((f) => <CopyableCodeValue key={f} value={f} type="path" />) }
         </div>
         {
@@ -241,38 +226,6 @@ const MetadataView = ({ model }:{ model:PackageModel }) =>
                 </div>)
         }
     </div>
-
-const DependenciesView = ({ model, onOpenRef }:{ model:PackageModel, onOpenRef?:(t:string) => void }) => {
-    // Quem usa o quê: para cada pacote referenciado, os itens que o referenciam.
-    const usage:{[ref:string]:{ title:string, section:string }[]} = {}
-    model.sections.forEach((section) => section.items.forEach((item) =>
-        item.refs.forEach((ref) => {
-            usage[ref] = (usage[ref] || []).concat([{ title: item.title, section: section.title }])
-        })))
-    return <div>
-        {
-            model.packageRefs.map((ref) =>
-                <div key={ref} className="pdx-card">
-                    <div className="pdx-card__head">
-                        <Icon name="sitemap" style={{margin:0, color:"var(--mp-muted)"}} />
-                        <span className="pdx-card__title">
-                            <button type="button" className="pdx-link" onClick={() => onOpenRef && onOpenRef(ref)}>{ref}</button>
-                        </span>
-                        <span className="pdx-section__count">{(usage[ref] || []).length}</span>
-                    </div>
-                    <div className="pdx-card__body">
-                        {
-                            (usage[ref] || []).map((u, i) =>
-                                <div key={i} style={{fontSize:12}}>
-                                    <span className="pdx-muted">{u.section} · </span>
-                                    <span className="pdx-mono">{u.title}</span>
-                                </div>)
-                        }
-                    </div>
-                </div>)
-        }
-    </div>
-}
 
 const NpmView = ({ model }:{ model:PackageModel }) =>
     <div className="pdx-tablewrap">

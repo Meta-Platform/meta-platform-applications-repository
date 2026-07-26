@@ -2,6 +2,9 @@ import * as React from "react"
 import { Icon, Loader } from "semantic-ui-react"
 
 import { RepositoryModel } from "../../Domain/repositoryModel"
+import { GitModel } from "../../Domain/gitModel"
+import GitStatusView from "./GitStatusView"
+import InspectorTabs from "./InspectorTabs"
 import CopyableCodeValue from "./ui/CopyableCodeValue"
 import { Badge, CollapsibleSection, EmptyState, IconButton, Metrics } from "./ui/Primitives"
 import { IssueList } from "./ui/ValidationBadge"
@@ -16,9 +19,12 @@ type Props = {
     error?      : string
     onRetry?    : () => void
     onOpenPackage? : (path:string) => void
+    gitModel?   : GitModel
 }
 
-const RepositoryMetadataView = ({ model, loading, error, onRetry, onOpenPackage }:Props) => {
+const RepositoryMetadataView = ({ model, loading, error, onRetry, onOpenPackage, gitModel }:Props) => {
+
+    const [tab, setTab] = React.useState("overview")
 
     if(error)
         return <div className="pdx-inspector__body">
@@ -57,6 +63,19 @@ const RepositoryMetadataView = ({ model, loading, error, onRetry, onOpenPackage 
             </div>
         </div>
 
+        <InspectorTabs active={tab} onSelect={setTab} tabs={[
+            { id: "overview", label: "Visão geral", icon: "info circle" },
+            { id: "git", label: "Git", icon: "code branch" }
+        ]} />
+
+        {
+            tab === "git"
+            ? <div className="pdx-inspector__body">
+                { gitModel
+                    ? <GitStatusView model={gitModel} repositories={[model.name]} onOpenPackage={onOpenPackage} />
+                    : <Loader active inline="centered" /> }
+              </div>
+            :
         <div className="pdx-inspector__body">
             <Metrics items={[
                 { value: model.counts.packages, label: "pacotes" },
@@ -167,6 +186,7 @@ const RepositoryMetadataView = ({ model, loading, error, onRetry, onOpenPackage 
                 </CollapsibleSection>
             }
         </div>
+        }
     </div>
 }
 

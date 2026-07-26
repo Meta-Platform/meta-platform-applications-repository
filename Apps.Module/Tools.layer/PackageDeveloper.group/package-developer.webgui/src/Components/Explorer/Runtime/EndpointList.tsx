@@ -3,7 +3,7 @@ import { useMemo, useState } from "react"
 import { Icon } from "semantic-ui-react"
 
 import { RuntimeItem } from "../../../Domain/packageModel"
-import { EmptyState, IconButton, Segmented } from "../ui/Primitives"
+import { Badge, EmptyState, IconButton, Segmented } from "../ui/Primitives"
 
 // Endpoints como TABELA pesquisável: rota, tipo, controller e template de API em
 // colunas — comparar rotas é o que se faz aqui, e cartão empilhado não compara.
@@ -21,6 +21,14 @@ type SortKey = "url" | "controller" | "type"
 const paramOf = (item:RuntimeItem, key:string):string | undefined => {
     const params = (item.raw && item.raw.params) || {}
     return params[key]
+}
+
+// "Controllers/Configurations.controller" → "Configurations" (o caminho inteiro
+// fica no title; a coluna precisa comparar, não repetir prefixo).
+const shortName = (value?:string):string => {
+    if(!value) return ""
+    const last = value.split("/").pop() || value
+    return last.replace(/\.(controller|api)(\.json)?$/, "")
 }
 
 const EndpointList = ({ items, selectedId, onSelect }:Props) => {
@@ -89,23 +97,33 @@ const EndpointList = ({ items, selectedId, onSelect }:Props) => {
                             <thead>
                                 <tr>
                                     <th>rota</th>
-                                    <th>tipo</th>
                                     <th>controller</th>
-                                    <th>api-template</th>
+                                    <th>tipo</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {
-                                    group.items.map((item) =>
-                                        <tr key={item.id} aria-selected={selectedId === item.id}
+                                    group.items.map((item) => {
+                                        const controller = paramOf(item, "controller")
+                                        const template = paramOf(item, "api-template")
+                                        return <tr key={item.id} aria-selected={selectedId === item.id}
                                             tabIndex={0}
                                             onClick={() => onSelect(item.id)}
                                             onKeyDown={(e:any) => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); onSelect(item.id) } }}>
-                                            <td className="pdx-mono"><strong>{item.title}</strong></td>
-                                            <td>{(item.raw && item.raw.type) || ""}</td>
-                                            <td className="pdx-mono">{paramOf(item, "controller") || ""}</td>
-                                            <td className="pdx-mono">{paramOf(item, "api-template") || ""}</td>
-                                        </tr>)
+                                            <td className="pdx-route" title={item.title}>{item.title}</td>
+                                            <td title={[controller, template].filter(Boolean).join("\n")}>
+                                                <span className="pdx-mono">{shortName(controller)}</span>
+                                                { template &&
+                                                    <span className="pdx-muted" style={{fontSize:11, display:"block"}}>
+                                                        {shortName(template)}.api
+                                                    </span> }
+                                            </td>
+                                            <td>
+                                                { item.raw && item.raw.type &&
+                                                    <Badge>{item.raw.type}</Badge> }
+                                            </td>
+                                        </tr>
+                                    })
                                 }
                             </tbody>
                         </table>
