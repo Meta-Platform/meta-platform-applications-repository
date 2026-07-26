@@ -1,5 +1,11 @@
 # datasource-gui.service
 
+- **Tipo:** pacote de serviços (`.service`)
+- **Namespace:** `@/datasource-gui.service`
+- **Localização:** `Apps.Module/Admin.layer/DataSource.group/datasource-gui.service` (PlatformApplicationsRepo)
+
+## Propósito
+
 Serviço especializado em **servir a GUI** (`datasource-manager.webgui`) da
 aplicação Electron **sem webservices HTTP** (modo *GUI-host* — ver
 `desktop-window-instance.lib`).
@@ -13,3 +19,9 @@ negócio permanece única na webservice (dual-transport). Expõe `Invoke` e
 
 Bound-params: `dataSourceLocalService` (service instanciado),
 `datasourceManagerWebservice` (handle).
+
+## Serviços expostos (`metadata/services.json`)
+
+| Namespace | Path | Dependências (bound-params) |
+|---|---|---|
+| `DatasourceGuiService` | `Services/DatasourceGui.service` | `dataSourceLocalService`, `datasourceManagerWebservice` |

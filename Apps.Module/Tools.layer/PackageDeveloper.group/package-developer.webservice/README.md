@@ -1,5 +1,11 @@
 # package-developer.webservice
 
+- **Tipo:** serviço web, backend HTTP (`.webservice`)
+- **Namespace:** `@/package-developer.webservice`
+- **Localização:** `Apps.Module/Tools.layer/PackageDeveloper.group/package-developer.webservice` (PlatformApplicationsRepo)
+
+## Propósito
+
 Web service (backend) do **Package Developer** (`package-developer.webapp`).
 Expõe as APIs de workspaces/pacotes, navegação, tarefas de build e os *explorers*
 por tipo de package.
@@ -16,47 +22,16 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 > abaixo, além de `workspace` e `packageName`, também recebem esse `ext`.
 
 ## Serviços disponibilizados
-- Packages
-    - List Workspaces
-    - List Packages By Workspace
-    - Create Workspace
-    - Create Package
-    - Status
-    - Get Icon
-- Package Navigator
-    - List Modules
-    - Get Module
-    - List Item
-    - Get Item
-- Package Tasks
-    - Install Dependencies
-    - Clear Dependencies
-    - BuildArtifact
-    - Start
-    - Develop
-- Package Explorer
-    - Get Details
-    - Get Boot
-- UI Explorer
-    - Get Details
-    - Get Boot
-    - Get Routes
-- Web Explorer
-    - Get Details
-    - Get Boot
-    - Get APIs
-    - Get Controllers
-- Lib Explorer
-    - Get Details
-    - Get Boot
-    - Get Services
-    - Get Managers
-- Boot Editor
-    - ListServices
-- File System Navigator
-    - List Item
-    - Get Content Item
 
+- **Packages** — `List Workspaces`, `List Packages By Workspace`, `Create Workspace`, `Create Package`, `Status`, `Get Icon`.
+- **Package Navigator** — `List Modules`, `Get Module`, `List Item`, `Get Item`.
+- **Package Tasks** — `Install Dependencies`, `Clear Dependencies`, `BuildArtifact`, `Start`, `Develop`.
+- **Package Explorer** — `Get Details`, `Get Boot`.
+- **UI Explorer** — `Get Details`, `Get Boot`, `Get Routes`.
+- **Web Explorer** — `Get Details`, `Get Boot`, `Get APIs`, `Get Controllers`.
+- **Lib Explorer** — `Get Details`, `Get Boot`, `Get Services`, `Get Managers`.
+- **Boot Editor** — `ListServices`.
+- **File System Navigator** — `List Item`, `Get Content Item`.
 
 ## **Packages** [Packages]
 **Serviços**
@@ -66,7 +41,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 - Create Package
 - Status
 - Get Icon
-
 
 ### **List Workspaces** [ListWorkspaces]
 `GET` /workspaces
@@ -79,14 +53,12 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | ------------- | ------------- | ------------- | -------------|
 | workspace  | string  | path  | yes  |
 
-
 ### **Create Workspace** [CreateWorkspace]
 `POST` /workspace
 
 **Parâmetros**
 | Name  | Value Type | Parameter Type | Required |
 | ------------- | ------------- | ------------- | -------------|
-
 
 ### **Create Package** [CreatePackage]
 `POST` /package
@@ -95,10 +67,8 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | Name  | Value Type | Parameter Type | Required |
 | ------------- | ------------- | ------------- | -------------|
 
-
 ### **Status** [Status]
 `GET` /status
-
 
 ### **Get Icon** [GetIcon]
 `GET` /icon/:workspace/:packageName/:ext
@@ -110,14 +80,12 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | packageName  | string  | path  | yes  |
 | ext  | string  | path  | yes  |
 
-
 ## **Package Navigator** [PackageNavigator]
 **Serviços**
 - List Modules
 - Get Module
 - List Item
 - Get Item
-
 
 ### **List Modules** [ListModules]
 `POST` /modules
@@ -128,7 +96,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | workspace  | string  | body  | yes  |
 | packageName  | string  | body  | yes  |
 
-
 ### **Get Module** [GetModule]
 `POST` /module/:module
 
@@ -138,7 +105,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | workspace  | string  | body  | yes  |
 | packageName  | string  | body  | yes  |
 | module  | string  | path  | no  |
-
 
 ### **List Item** [ListItem]
 `POST` /items
@@ -151,7 +117,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | module  | string  | body  | yes  |
 | path  | string  | body  | yes  |
 
-
 ### **Get Item** [GetItem]
 `POST` /item
 
@@ -162,7 +127,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | packageName  | string  | body  | yes  |
 | module  | string  | body  | yes  |
 | path  | string  | body  | yes  |
-
 
 ## **Package Tasks** [PackageTasks]
 **Serviços**
@@ -182,7 +146,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | packageName  | string  | body  | yes  |
 | type  | string  | body  | yes  |
 
-
 ### **Clear Dependencies** [ClearDependencies]
 `POST` /clear-dependencies
 
@@ -192,7 +155,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | workspace  | string  | body  | yes  |
 | packageName  | string  | body  | yes  |
 | type  | string  | body  | yes  |
-
 
 ### **BuildArtifact** [BuildArtifact]
 `POST` /build-artifact
@@ -204,7 +166,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | packageName  | string  | body  | yes  |
 | type  | string  | body  | yes  |
 
-
 ### **Start** [Start]
 `POST` /start
 
@@ -214,7 +175,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | workspace  | string  | body  | yes  |
 | packageName  | string  | body  | yes  |
 | type  | string  | body  | yes  |
-
 
 ### **Develop** [Develop]
 `POST` /develop
@@ -240,7 +200,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | workspace  | string  | path  | yes  |
 | packageName | string  | path  | yes  |
 
-
 ### **Get Boot** [GetBoot]
 `GET` /workspace/:workspace/package/:packageName/ext/:ext/boot
 
@@ -249,7 +208,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | ------------- | ------------- | ------------- | -------------|
 | workspace  | string  | path  | yes  |
 | packageName | string  | path  | yes  |
-
 
 ## **UI Explorer** [WebguiExplorer]
 **Serviços**
@@ -266,7 +224,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | workspace  | string  | path  | yes  |
 | packageName | string  | path  | yes  |
 
-
 ### **Get Boot** [GetBoot]
 `GET` /workspace/:workspace/package/:packageName/ext/:ext/boot
 
@@ -276,7 +233,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | workspace  | string  | path  | yes  |
 | packageName | string  | path  | yes  |
 
-
 ### **Get Routes** [GetRoutes]
 `GET` /workspace/:workspace/package/:packageName/ext/:ext/routes
 
@@ -285,7 +241,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | ------------- | ------------- | ------------- | -------------|
 | workspace  | string  | path  | yes  |
 | packageName | string  | path  | yes  |
-
 
 ## **Web Explorer** [WebserviceExplorer]
 **Serviços**
@@ -303,7 +258,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | workspace  | string  | path  | yes  |
 | packageName | string  | path  | yes  |
 
-
 ### **Get Boot** [GetBoot]
 `GET` /workspace/:workspace/package/:packageName/ext/:ext/boot
 
@@ -313,7 +267,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | workspace  | string  | path  | yes  |
 | packageName | string  | path  | yes  |
 
-
 ### **Get APIs** [GetAPIs]
 `GET` /workspace/:workspace/package/:packageName/ext/:ext/apis
 
@@ -322,7 +275,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | ------------- | ------------- | ------------- | -------------|
 | workspace  | string  | path  | yes  |
 | packageName | string  | path  | yes  |
-
 
 ### **Get Controllers** [GetControllers]
 `GET` /workspace/:workspace/package/:packageName/ext/:ext/controllers
@@ -349,7 +301,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | workspace  | string  | path  | yes  |
 | packageName | string  | path  | yes  |
 
-
 ### **Get Boot** [GetBoot]
 `GET` /workspace/:workspace/package/:packageName/ext/:ext/boot
 
@@ -368,7 +319,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | workspace  | string  | path  | yes  |
 | packageName | string  | path  | yes  |
 
-
 ### **Get Managers** [GetManagers]
 `GET` /workspace/:workspace/package/:packageName/ext/:ext/managers
 
@@ -377,7 +327,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | ------------- | ------------- | ------------- | -------------|
 | workspace  | string  | path  | yes  |
 | packageName | string  | path  | yes  |
-
 
 ## **Boot Editor** [BootEditor]
 **Serviços**
@@ -392,7 +341,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | workspace  | string  | path  | yes  |
 | packageName | string  | path  | yes  |
 | module  | string  | body  | yes  |
-
 
 ## **File System Navigator** [FileSystemNavigator]
 **Serviços**
@@ -409,7 +357,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | packageName | string  | path  | yes  |
 | ext | string  | path  | yes  |
 | path  | string  | body  | yes  |
-
 
 ### **Get Content Item** [GetContentItem]
 `POST` /:workspace/package/:packageName/content-item

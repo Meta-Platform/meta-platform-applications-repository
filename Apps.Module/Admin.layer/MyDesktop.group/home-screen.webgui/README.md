@@ -1,5 +1,11 @@
 # home-screen.webgui
 
+- **Tipo:** interface web (`.webgui`)
+- **Namespace:** `@/home-screen.webgui`
+- **Localização:** `Apps.Module/Admin.layer/MyDesktop.group/home-screen.webgui` (PlatformApplicationsRepo)
+
+## Propósito
+
 Interface gráfica (SPA React + TypeScript) do **MyDesktop** — a área de trabalho
 e porta de entrada do uso local do ecossistema.
 

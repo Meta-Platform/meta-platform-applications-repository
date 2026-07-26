@@ -1,4 +1,11 @@
-# Data Source Manager (Desktop)
+# datasource-manager.desktopapp
+
+- **Tipo:** aplicação desktop Electron (`.desktopapp`)
+- **Namespace:** `@/datasource-manager.desktopapp`
+- **Executável:** `sources-desktop`
+- **Localização:** `Apps.Module/Admin.layer/DataSource.group/datasource-manager.desktopapp` (PlatformApplicationsRepo)
+
+## Propósito
 
 Versão **desktop** do Data Source Manager: roda a mesma aplicação web do
 [`datasource-manager.webapp`](../datasource-manager.webapp) dentro de uma janela
@@ -16,6 +23,12 @@ O `metadata/boot.json` combina:
 A janela só abre depois que o `@@/server-service` está `ACTIVE` (via
 `agentLinkRules` gerado a partir do `bound-param` `serverService`). O object loader
 `desktop-window-instance` faz `spawn` do Electron.
+
+## Janelas (`metadata/boot.json` → `windows`)
+
+| Título | Dimensões | Dependência | GUI-host |
+|---|---|---|---|
+| Data Source Manager | 1280x800 | `@/datasource-manager.webgui` | sim |
 
 > Diferente do `datasource-manager.webapp` (que você abre no navegador), esta versão
 > encapsula a mesma interface e o mesmo backend local em uma janela nativa. Roda

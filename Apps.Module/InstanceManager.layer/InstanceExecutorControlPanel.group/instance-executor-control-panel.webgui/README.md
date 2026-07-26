@@ -2,7 +2,7 @@
 
 - **Tipo:** interface web (`.webgui`)
 - **Namespace:** `@/instance-executor-control-panel.webgui`
-- **Localização:** `Apps.Module/InstanceManager.layer/InstanceExecutorControlPanel.group/instance-executor-control-panel.webgui` (ApplicationsRepository)
+- **Localização:** `Apps.Module/InstanceManager.layer/InstanceExecutorControlPanel.group/instance-executor-control-panel.webgui` (PlatformApplicationsRepo)
 
 ## Propósito
 
@@ -10,6 +10,13 @@ Front-end (React/TSX) do **painel do executor de instâncias**. Compõe, com o
 `.webservice` e o `.webapp` do grupo [InstanceExecutorControlPanel](../), a
 aplicação `executor-panel`. É o painel que **executa** pacotes e observa o que
 está rodando — o Ecosystem Control Panel administra o ecossistema e não executa.
+
+## Execução
+
+Não é executada de forma independente: é compilada em runtime pelo loader
+`web-graphic-user-interface`, quando o `instance-executor-control-panel.webapp`
+(web) ou o `instance-executor-control-panel.desktopapp` (Electron, modo
+GUI-host) sobe.
 
 ## Menus
 

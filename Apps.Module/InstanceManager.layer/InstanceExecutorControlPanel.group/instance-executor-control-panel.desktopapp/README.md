@@ -1,4 +1,11 @@
-# Instance Executor Control Panel (Desktop)
+# instance-executor-control-panel.desktopapp
+
+- **Tipo:** aplicação desktop Electron (`.desktopapp`)
+- **Namespace:** `@/instance-executor-control-panel.desktopapp`
+- **Executável:** `executor-panel-desktop`
+- **Localização:** `Apps.Module/InstanceManager.layer/InstanceExecutorControlPanel.group/instance-executor-control-panel.desktopapp` (PlatformApplicationsRepo)
+
+## Propósito
 
 Versão **desktop** (Electron) do Instance Executor Control Panel: painel para
 monitorar o executor de tarefas de uma instância, explorar pacotes/repositórios e
@@ -31,6 +38,12 @@ usa `Utils/IPCWebSocket` (API compatível com a do WebSocket do browser) sobre
 `window.metaGui.stream` — os hooks/consumidores de socket não mudam.
 
 Ícones de pacote são servidos pelo protocolo `metaicon://` (via `guiService.GetIcon`).
+
+## Janelas (`metadata/boot.json` → `windows`)
+
+| Título | Dimensões | Dependência | GUI-host |
+|---|---|---|---|
+| Instance Executor Control Panel | 1280x800 | `@/instance-executor-control-panel.webgui` | sim |
 
 > **Nota (`installDataDirPath`):** use caminho **absoluto** (ex.
 > `/home/<user>/EcosystemData`) no `startup-params.json`. O `EcosystemManager` do

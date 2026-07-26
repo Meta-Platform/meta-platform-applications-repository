@@ -1,5 +1,11 @@
 # instance-executor-control-panel.webservice
 
+- **Tipo:** serviço web, backend HTTP (`.webservice`)
+- **Namespace:** `@/instance-executor-control-panel.webservice`
+- **Localização:** `Apps.Module/InstanceManager.layer/InstanceExecutorControlPanel.group/instance-executor-control-panel.webservice` (PlatformApplicationsRepo)
+
+## Propósito
+
 Web service (backend) do **Instance Executor Control Panel** (executável
 `executor-panel`). Expõe as APIs REST/controllers que o
 `instance-executor-control-panel.webgui` consome para acompanhar o executor de
@@ -14,7 +20,7 @@ sobre um `@@/server-service` a partir do seu
 Depende, via `bound-params`, de `serverService`, `taskExecutorMachineService`,
 `repositoryManagerService` e `ecosystemManagerService`.
 
-## Endpoints (controllers)
+## Serviços disponibilizados
 
 | URL | Controller | Papel |
 |-----|-----------|-------|

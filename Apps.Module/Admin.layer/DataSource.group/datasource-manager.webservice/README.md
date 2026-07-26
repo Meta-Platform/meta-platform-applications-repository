@@ -1,5 +1,11 @@
 # datasource-manager.webservice
 
+- **Tipo:** serviço web, backend HTTP (`.webservice`)
+- **Namespace:** `@/datasource-manager.webservice`
+- **Localização:** `Apps.Module/Admin.layer/DataSource.group/datasource-manager.webservice` (PlatformApplicationsRepo)
+
+## Propósito
+
 Web service (backend) do **Data Source Manager** (`datasource-manager.webapp`).
 Expõe as APIs de fontes de dados, navegação em data stores/arquivos e handler de
 banco relacional.
@@ -11,30 +17,11 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 `datasource-manager.webapp` é executado pelo Package Executor.
 
 ## Serviços disponibilizados
-- Datasource Manager
-    - Create File System
-    - Create Data Store
-    - Create ORM
-    - Get Data Source
-    - Status
-    - List Datasource Manager
-    - List Datasource Manager By Type
-- Data Store Navigator
-    - Insert
-    - Find
-    - Find One
-    - Count
-    - Update
-    - Remove
-    - Ensure Index
-    - Remove Index
-- File System Navigator
-    - List Item
-    - Get Content Item
-- Relacional Database Handler
-    - Show All TableName
-    - Describe Table
 
+- **Datasource Manager** — `Create File System`, `Create Data Store`, `Create ORM`, `Get Data Source`, `Status`, `List Datasource Manager`, `List Datasource Manager By Type`.
+- **Data Store Navigator** — `Insert`, `Find`, `Find One`, `Count`, `Update`, `Remove`, `Ensure Index`, `Remove Index`.
+- **File System Navigator** — `List Item`, `Get Content Item`.
+- **Relacional Database Handler** — `Show All TableName`, `Describe Table`.
 
 ## **Datasource Manager** [DataSources]
 **Serviços**
@@ -46,7 +33,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 - List Datasource Manager
 - List Datasource Manager By Type
 
-
 ### **Create File System** [CreateFileSystem]
 `POST` /data-source/fs
 
@@ -55,7 +41,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | ------------- | ------------- | ------------- | -------------|
 | name  | string  | body  | yes  |
 
-
 ### **Create Data Store** [CreateDataStore]
  `POST` /data-source/datastore
 
@@ -63,7 +48,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | Name  | Value Type | Parameter Type | Required |
 | ------------- | ------------- | ------------- | -------------|
 | name  | string  | body  | yes  |
-
 
 ### **Create ORM** [CreateORM]
 `POST` /data-source/orm
@@ -77,7 +61,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | user  | string  | body  | yes  |
 | password  | string  | body  | yes  |
 
-
 ### **Get Data Source** [GetDataSource]
 `POST` /data-source
 
@@ -86,14 +69,11 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | ------------- | ------------- | ------------- | -------------|
 | name  | string  | body  | yes  |
 
-
 ### **Status** [Status]
 `GET` /status
 
-
 ### **List Datasource Manager** [ListDataSources]
 `GET` /datasource-manager
-
 
 ### **List Datasource Manager By Type** [ListDataSourcesByType]
 `GET` /datasource-manager/:type
@@ -102,7 +82,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | Name  | Value Type | Parameter Type | Required |
 | ------------- | ------------- | ------------- | -------------|
 | type  | string  | path  | yes  |
-
 
 ## **Data Store Navigator** [DataStoreNavigator]
 **Serviços**
@@ -115,7 +94,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 - Ensure Index
 - Remove Index
 
-
 ### **Insert** [Insert]
 `POST` /insert
 
@@ -124,7 +102,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | ------------- | ------------- | ------------- | -------------|
 | keystone  | string  | body  | yes  |
 | docs  | json  | body  | yes  |
-
 
 ### **Find** [Find]
  `GET` /find
@@ -139,7 +116,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | skip  | number  | query  | no  |
 | limit  | number  | query  | no  |
 
-
 ### **Find One** [FindOne]
 `GET` /findone
 
@@ -150,7 +126,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | query  | json  | query  | yes  |
 | projection  | json  | query  | no  |
 
-
 ### **Count** [Count]
 `GET` /count
 
@@ -159,7 +134,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | ------------- | ------------- | ------------- | -------------|
 | keystone  | string  | query  | yes  |
 | query  | json  | query  | yes  |
-
 
 ### **Update** [Update]
 `PUT` /update
@@ -172,7 +146,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | update  | json  | body  | yes  |
 | options  | json  | body  | no  |
 
-
 ### **Remove** [Remove]
 `DELETE` /remove
 
@@ -183,7 +156,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | query  | json  | body  | yes  |
 | options  | json  | body  | no  |
 
-
 ### **Ensure Index** [EnsureIndex]
 `POST` /ensure-index
 
@@ -193,7 +165,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | keystone  | string  | body  | yes  |
 | options  | json  | body  | yes  |
 
-
 ### **Remove Index** [RemoveIndex]
 `DELETE` /remove-index
 
@@ -202,7 +173,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | ------------- | ------------- | ------------- | -------------|
 | keystone  | string  | body  | yes  |
 | fieldName  | string  | body  | yes  |
-
 
 ## **File System Navigator** [FileSystemNavigator]
 **Serviços**
@@ -218,7 +188,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | keystone  | string  | body  | yes  |
 | path  | string  | body  | yes  |
 
-
 ### **Get Content Item** [GetContentItem]
  `POST` /content-item
 
@@ -233,7 +202,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 - Show All TableName
 - Describe Table
 
-
 ### **Show All TableName** [ShowAllTableName]
 `GET` /show-all-table-name
 
@@ -242,7 +210,6 @@ sobre um `@@/server-service` a partir do `metadata/endpoint-group.json`, quando 
 | ------------- | ------------- | ------------- | -------------|
 | keystone  | string  | query  | yes  |
 | options  | json  | query  | no  |
-
 
 ### **Describe Table** [DescribeTable]
 

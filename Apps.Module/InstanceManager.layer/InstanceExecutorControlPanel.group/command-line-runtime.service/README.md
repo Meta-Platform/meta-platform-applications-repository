@@ -1,8 +1,8 @@
 # command-line-runtime.service
 
-- **Tipo:** serviço (`.service`)
+- **Tipo:** pacote de serviços (`.service`)
 - **Namespace:** `@/command-line-runtime.service`
-- **Localização:** `InstanceExecutorControlPanel.group/command-line-runtime.service`
+- **Localização:** `Apps.Module/InstanceManager.layer/InstanceExecutorControlPanel.group/command-line-runtime.service` (PlatformApplicationsRepo)
 
 ## Propósito
 
@@ -23,5 +23,11 @@ expõe ao controller os métodos de terminal:
 
 - `platformApplicationSocketPath` — socket do daemon `executor-manager`.
 - `httpServerManagerEndpoint` — endpoint de status (opcional; default na lib).
+
+## Serviços expostos (`metadata/services.json`)
+
+| Namespace | Path | Dependências (bound-params) |
+|---|---|---|
+| `CommandLineRuntime` | `Services/CommandLineRuntime.service` | `instanceManagerClientLib` |
 
 > Consulte a [Arquitetura](https://github.com/Meta-Platform/.github/blob/main/docs/ARQUITETURA.md).

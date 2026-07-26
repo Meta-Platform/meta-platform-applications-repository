@@ -1,4 +1,11 @@
-# meta-project-manager.cli (`mpm`)
+# meta-project-manager.cli
+
+- **Tipo:** aplicação de linha de comando (`.cli`)
+- **Namespace:** `@/meta-project-manager.cli`
+- **Executável:** `mpm`
+- **Localização:** `Apps.Module/Productivity.layer/MetaProjectManager.group/meta-project-manager.cli` (PlatformApplicationsRepo)
+
+## Propósito
 
 CLI do **Meta Project Manager**, com **paridade funcional com a GUI** e desenhada para
 operação por **agentes de IA** (spec §7, §12). Reusa a mesma camada de domínio
@@ -113,3 +120,30 @@ node --test
 ```
 O harness (`test/cli.harness.js`) replica o `CommandApplication.taskLoader` (yargs +
 command-group.json) e exercita o fluxo completo de agente.
+
+## Comandos (`metadata/command-group.json`)
+
+| Comando | Descrição |
+|---|---|
+| `project` | Gerenciar projetos |
+| `board` | Gerenciar boards |
+| `story` | Histórias |
+| `task` | Tarefas |
+| `subtask` | Subtarefas |
+| `item` | Itens de trabalho (genérico) |
+| `attachment` | Anexos |
+| `comment` | Comentários |
+| `user` | Usuários |
+| `agent` | Agentes de IA e sessões |
+| `report` | Relatórios |
+| `activity` | Atividade/auditoria |
+| `export` | Exportar |
+| `import` | Importar |
+| `milestone` | Milestones/Releases |
+| `sprint` | Sprints/Iterações |
+| `roadmap` | Roadmap: milestones por data-alvo com progresso |
+| `epic` | Epics |
+| `feature` | Features |
+| `inbox` | Captura de ideias (horizon=inbox) |
+| `backlog` | Backlog futuro |
+| `audit` | Auditoria (eventos imutáveis) |

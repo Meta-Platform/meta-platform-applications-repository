@@ -1,6 +1,10 @@
-# desktop-window-instance.lib
+# desktop-window-instance.taskLoader
 
-- **Tipo:** biblioteca / *task loader* (`.lib`) · **Namespace:** `@/desktop-window-instance.lib`
+- **Tipo:** *task loader* (`.taskLoader`)
+- **Namespace:** `@/desktop-window-instance.taskLoader`
+- **Localização:** `Taskloaders.Module/Loaders.layer/desktop-window-instance.taskLoader` (PlatformApplicationsRepo)
+
+## Propósito
 
 *Object loader* do tipo **`desktop-window-instance`**: abre uma janela
 [Electron](https://www.electronjs.org/) durante a execução de um plano pelo *task
@@ -177,6 +181,14 @@ Declara `electron` em `package.json`. Como qualquer dependência de package, é
 instalada no ambiente de execução pela task `install-nodejs-package-dependencies`
 — não há `npm install` global. No modo `gui-host`, `webpack`/`html-webpack-plugin`
 são resolvidos de `EXTERNAL_NODE_MODULES_PATH` (herdado do host pelo `spawn`).
+
+## Registro (`metadata/taskloaders.json` do repositório)
+
+| Campo | Valor |
+|---|---|
+| `objectLoaderType` | `desktop-window-instance` |
+| `entry` | `src/DesktopWindowInstance.taskLoader` |
+| `npmDependencies` | `electron` |
 
 > Parâmetros e exemplo no `execution-params`: ver
 > [Tipos de Object Loader → `desktop-window-instance`](https://github.com/Meta-Platform/meta-platform-open-standard/blob/main/concepts/tipos-de-object-loader.md#desktop-window-instance).

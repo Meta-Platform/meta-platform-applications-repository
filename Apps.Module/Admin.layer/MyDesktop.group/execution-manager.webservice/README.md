@@ -1,5 +1,11 @@
 # execution-manager.webservice
 
+- **Tipo:** serviço web, backend HTTP (`.webservice`)
+- **Namespace:** `@/execution-manager.webservice`
+- **Localização:** `Apps.Module/Admin.layer/MyDesktop.group/execution-manager.webservice` (PlatformApplicationsRepo)
+
+## Propósito
+
 Web service (backend) do **MyDesktop** (`home-screen.webgui`). Responsável por
 descobrir as aplicações de desktop instaladas no ecossistema e por lançá-las.
 

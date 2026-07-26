@@ -1,5 +1,11 @@
 # desktop-gui.service
 
+- **Tipo:** pacote de serviços (`.service`)
+- **Namespace:** `@/desktop-gui.service`
+- **Localização:** `Apps.Module/Admin.layer/MyDesktop.group/desktop-gui.service` (PlatformApplicationsRepo)
+
+## Propósito
+
 Serviço especializado em **servir a GUI** (`home-screen.webgui`) das aplicações
 Electron **sem webservices HTTP**.
 
@@ -31,3 +37,9 @@ no HTTP.
 `ecosystemdataHandlerService`, `notificationHubService`, `repositoryManagerService`,
 `jsonFileUtilitiesLib`, `ecosystemInstallUtilitiesLib`, `executionManagerWebservice`
 (handle) + param `ecosystemDefaultsFileRelativePath`.
+
+## Serviços expostos (`metadata/services.json`)
+
+| Namespace | Path | Dependências (bound-params) |
+|---|---|---|
+| `DesktopGuiService` | `Services/DesktopGui.service` | `ecosystemdataHandlerService`, `notificationHubService`, `repositoryManagerService`, `jsonFileUtilitiesLib`, `ecosystemInstallUtilitiesLib`, `executionManagerWebservice`, `instanceManagerClientLib` |

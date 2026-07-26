@@ -1,5 +1,12 @@
 # meta-project-manager-mcp.cli
 
+- **Tipo:** aplicação de linha de comando (`.cli`)
+- **Namespace:** `@/meta-project-manager-mcp.cli`
+- **Executável:** `meta-project-manager-mcp`
+- **Localização:** `Apps.Module/Productivity.layer/MetaProjectManager.group/meta-project-manager-mcp.cli` (PlatformApplicationsRepo)
+
+## Propósito
+
 Servidor **MCP (Model Context Protocol)** por **stdio** do Meta Project Manager.
 Permite que agentes de IA (Claude Code, Codex, OpenCode…) operem projetos,
 boards, tarefas, comentários e anexos **nativamente por tools MCP** — em vez de
@@ -204,3 +211,9 @@ src/
   Server/ResponseGuard.js        # teto de tamanho: degrada em vez de estourar
   Utils/{runtime,actor,logger}.js
 ```
+
+## Comandos (`metadata/command-group.json`)
+
+| Comando | Descrição |
+|---|---|
+| `serve` | Servidor MCP (stdio) do Meta Project Manager para agentes de IA |

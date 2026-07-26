@@ -1,5 +1,11 @@
 # package-developer-gui.service
 
+- **Tipo:** pacote de serviços (`.service`)
+- **Namespace:** `@/package-developer-gui.service`
+- **Localização:** `Apps.Module/Tools.layer/PackageDeveloper.group/package-developer-gui.service` (PlatformApplicationsRepo)
+
+## Propósito
+
 Serviço especializado em **servir a GUI** (`package-developer.webgui`) da aplicação
 Electron **sem webservices HTTP** (modo *GUI-host* — ver `desktop-window-instance.lib`).
 
@@ -15,3 +21,9 @@ Expõe `Invoke` (contrato HTTP 0/1/2+), `InvokeStream` (contrato WS — o endpoi
 
 Bound-params: `packageHandlerManagerService`, `processManagerService` (services),
 `packageDeveloperLib`, `packageToolkitLib`, `packageDeveloperWebservice` (handles).
+
+## Serviços expostos (`metadata/services.json`)
+
+| Namespace | Path | Dependências (bound-params) |
+|---|---|---|
+| `PackageDeveloperGuiService` | `Services/PackageDeveloperGui.service` | `packageHandlerManagerService`, `processManagerService`, `gitStatusManagerService`, `packageDeveloperLib`, `packageToolkitLib`, `packageDeveloperWebservice` |

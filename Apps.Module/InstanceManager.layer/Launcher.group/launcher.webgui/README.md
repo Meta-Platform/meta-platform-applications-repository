@@ -1,40 +1,45 @@
-# instance-executor-control-panel.webgui
+# launcher.webgui
 
 - **Tipo:** interface web (`.webgui`)
-- **Namespace:** `@/instance-executor-control-panel.webgui`
-- **Localização:** `Apps.Module/InstanceManager.layer/InstanceExecutorControlPanel.group/instance-executor-control-panel.webgui` (ApplicationsRepository)
+- **Namespace:** `@/launcher.webgui`
+- **Localização:** `Apps.Module/InstanceManager.layer/Launcher.group/launcher.webgui` (PlatformApplicationsRepo)
 
 ## Propósito
 
-Front-end (React/TSX) do **painel do executor de instâncias**. Compõe, com o
-`.webservice` e o `.webapp` do grupo [InstanceExecutorControlPanel](../), a
-aplicação `executor-panel`. É o painel que **executa** pacotes e observa o que
-está rodando — o Ecosystem Control Panel administra o ecossistema e não executa.
+Front-end (React/TSX) do **Launcher** — a interface por onde se **lança** um
+pacote do ecossistema: navegar pelos repositórios instalados, abrir a árvore
+`module → layer → group → package`, inspecionar um pacote e executá-lo.
 
-## Menus
+O Launcher nasceu dentro do `InstanceExecutorControlPanel.group` e foi extraído
+para uma aplicação própria: o painel de instâncias ficou só com o
+**monitoramento** do que já está no ar, e o ato de **lançar** passou a viver
+aqui. São responsabilidades distintas e agora são aplicações distintas.
 
-| menu | container | papel |
-|---|---|---|
-| `monitor` (inicial) | `TaskMonitor.container` | monitor de processos do ecossistema: tarefas do daemon em tabela densa ordenável ou em árvore pai→filho, com filtro por estado e kill (individual ou em lote) |
-| `launcher` | `Launcher.container` | repositórios + árvore `module → layer → group → package` + detalhe com execução (startup params, dependências, terminal para pacotes CLI) |
-| `instances` | `ControlPanel.container` | aplicações e serviços já em serviço, supervisionados pelo daemon |
-| `terminal` | `Terminal.container` | executa um pacote CLI por caminho digitado |
+Para pacotes `.cli`, a aba de comandos monta o formulário de execução a partir
+do `command-group.json` do próprio pacote — os metadados chegam inteiros ao
+navegador, então não é preciso um endpoint por comando.
 
-`launcher` unifica os antigos menus `packages` e `repositories`; URLs antigas
-(`?panel=packages`, `?panel=repositories`, `?panel=environments`,
-`?panel=task executor monitor`) continuam funcionando via alias.
+## Execução
+
+Não é executada de forma independente: é compilada em runtime pelo loader
+`web-graphic-user-interface`, quando o `launcher.webapp` (web) ou o
+`launcher.desktopapp` (Electron, modo GUI-host) sobe.
 
 ## Estrutura (`src/`)
 
-`Pages/`, `Containers/`, `Components/`, `Modals/`, `Hooks/`, `Actions/`,
-`Reducers/`, `Mappers/`, `Utils/`, `index.tsx`/`index.html`,
-`routes.config.json`.
+| Diretório | Conteúdo |
+|---|---|
+| `Pages/` | `ControlPanel.page.tsx` — a página do Launcher. |
+| `Containers/` | `App.container.tsx` e `Launcher.container` — estado e composição da tela. |
+| `Components/` · `Modals/` | Árvore de pacotes, formulário de comandos e diálogos. |
+| `Actions/` · `Reducers/` · `Hooks/` | Fluxo de estado da aplicação. |
+| `Mappers/` · `Utils/` · `Styles/` | Adaptação dos dados da API, utilitários e tema. |
+| `routes.config.json` | Rotas da interface. |
 
 ## Boot (`metadata/boot.json`)
 
-Sobe um `@@/server-service` (`@/server-manager.service`) e expõe seu
-`endpoint-group` próprio, montando também o `@/server-manager.webservice`.
-Parâmetros: `port`, `serverName`, `serverManagerUrl`,
-`RT_ENV_GENERATED_DIR_NAME`, `isWatch`.
+Sobe um `@@/server-service` (`@/server-manager.service/services/HTTPServerService`)
+e monta o endpoint group do `@/server-manager.webservice` mais o seu próprio.
+Parâmetros: `port`, `serverName`, `serverManagerUrl`, `isWatch`.
 
 > Veja o [README do repositório](../../../../README.md).

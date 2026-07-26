@@ -1,4 +1,11 @@
-# MyDesktop (Desktop)
+# my-desktop.desktopapp
+
+- **Tipo:** aplicação desktop Electron (`.desktopapp`)
+- **Namespace:** `@/my-desktop.desktopapp`
+- **Executável:** `my-desktop`
+- **Localização:** `Apps.Module/Admin.layer/MyDesktop.group/my-desktop.desktopapp` (PlatformApplicationsRepo)
+
+## Propósito
 
 Versão **desktop** do MyDesktop — a área de trabalho e porta de entrada do uso
 local do ecossistema. Roda a mesma aplicação web do `home-screen.webgui` dentro
@@ -26,3 +33,9 @@ padrão.
 O MyDesktop mostra as aplicações **instaladas** cujo `appType === "DESKTOP"`
 (registro `installedApplications` do EcosystemData). Cada ícone lança o pacote
 correspondente via `run package <path>`, abrindo sua própria janela.
+
+## Janelas (`metadata/boot.json` → `windows`)
+
+| Título | Dimensões | Dependência | GUI-host |
+|---|---|---|---|
+| MyDesktop | 1280x800 | `@/home-screen.webgui` | sim |

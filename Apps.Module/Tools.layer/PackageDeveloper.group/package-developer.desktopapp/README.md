@@ -1,4 +1,11 @@
-# Package Developer (Desktop)
+# package-developer.desktopapp
+
+- **Tipo:** aplicação desktop Electron (`.desktopapp`)
+- **Namespace:** `@/package-developer.desktopapp`
+- **Executável:** `developer-desktop`
+- **Localização:** `Apps.Module/Tools.layer/PackageDeveloper.group/package-developer.desktopapp` (PlatformApplicationsRepo)
+
+## Propósito
 
 Versão **desktop** do Package Developer: roda a mesma aplicação web do
 [`package-developer.webapp`](../package-developer.webapp) dentro de uma janela
@@ -16,6 +23,12 @@ O `metadata/boot.json` combina:
 A janela só abre depois que o `@@/server-service` está `ACTIVE` (via
 `agentLinkRules` gerado a partir do `bound-param` `serverService`). O object loader
 `desktop-window-instance` faz `spawn` do Electron.
+
+## Janelas (`metadata/boot.json` → `windows`)
+
+| Título | Dimensões | Dependência | GUI-host |
+|---|---|---|---|
+| Package Developer | 1280x800 | `@/package-developer.webgui` | sim |
 
 > Diferente do `package-developer.webapp` (que você abre no navegador), esta versão
 > encapsula a mesma interface e o mesmo backend local em uma janela nativa. Roda

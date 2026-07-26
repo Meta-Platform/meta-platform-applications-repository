@@ -1,8 +1,8 @@
 # instance-manager-runtime.service
 
-- **Tipo:** serviço (`.service`)
+- **Tipo:** pacote de serviços (`.service`)
 - **Namespace:** `@/instance-manager-runtime.service`
-- **Localização:** `InstanceExecutorControlPanel.group/instance-manager-runtime.service`
+- **Localização:** `Apps.Module/InstanceManager.layer/InstanceExecutorControlPanel.group/instance-manager-runtime.service` (PlatformApplicationsRepo)
 
 ## Propósito
 
@@ -27,5 +27,11 @@ Cria o cliente do daemon uma vez e reexpõe a superfície aos controllers
 ## Parâmetros
 
 - `platformApplicationSocketPath` — socket do daemon `executor-manager`.
+
+## Serviços expostos (`metadata/services.json`)
+
+| Namespace | Path | Dependências (bound-params) |
+|---|---|---|
+| `InstanceManagerRuntimeService` | `Services/InstanceManagerRuntime.service` | `instanceManagerClientLib` |
 
 > Consulte a [Arquitetura](https://github.com/Meta-Platform/.github/blob/main/docs/ARQUITETURA.md).

@@ -1,5 +1,11 @@
 # instance-executor-control-panel-gui.service
 
+- **Tipo:** pacote de serviços (`.service`)
+- **Namespace:** `@/instance-executor-control-panel-gui.service`
+- **Localização:** `Apps.Module/InstanceManager.layer/InstanceExecutorControlPanel.group/instance-executor-control-panel-gui.service` (PlatformApplicationsRepo)
+
+## Propósito
+
 Serviço especializado em **servir a GUI** (`instance-executor-control-panel.webgui`)
 da aplicação Electron **sem webservices HTTP** (modo *GUI-host* — ver
 `desktop-window-instance.lib`).
@@ -24,3 +30,9 @@ Expõe:
 
 Bound-params: `taskExecutorMachineService`, `repositoryManagerService`,
 `ecosystemManagerService`, `instanceExecutorControlPanelWebservice` (handle).
+
+## Serviços expostos (`metadata/services.json`)
+
+| Namespace | Path | Dependências (bound-params) |
+|---|---|---|
+| `InstanceExecutorControlPanelGuiService` | `Services/InstanceExecutorControlPanelGui.service` | `repositoryManagerService`, `commandLineRuntimeService`, `instanceManagerRuntimeService`, `instanceExecutorControlPanelWebservice` |

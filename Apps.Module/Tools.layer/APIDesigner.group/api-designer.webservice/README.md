@@ -1,18 +1,23 @@
-# Módulo Web API Designer
+# api-designer.webservice
+
+- **Tipo:** serviço web, backend HTTP (`.webservice`)
+- **Namespace:** `@/api-designer.webservice`
+- **Localização:** `Apps.Module/Tools.layer/APIDesigner.group/api-designer.webservice` (PlatformApplicationsRepo)
+
+## Propósito
+
 Módulo de serviços web da aplicação api-designer.webapp
 
-O Módulo Web API Designer pode ser executado de forma independente
+## Execução
+
+Ao contrário da maioria dos `.webservice`, este declara um `@@/server-service`
+no próprio `metadata/boot.json` e **pode subir sozinho** pelo Package Executor
+(parâmetros `apisDirPath`, `port`, `serverName`). No uso normal, porém, quem o
+sobe é o `api-designer.webapp` ou o `api-designer.desktopapp`.
 
 ## Serviços disponibilizados
-- APIDesigner
-    - List API
-    - List Endpoints
-    - Create Endpoint
-    - Create API
-    - Update Path
-    - Update Method
-    - Update Parameters
 
+- **APIDesigner** — `List API`, `List Endpoints`, `Create Endpoint`, `Create API`, `Update Path`, `Update Method`, `Update Parameters`.
 
 ## API Designer [APIDesigner]
 **Serviços**
@@ -24,10 +29,8 @@ O Módulo Web API Designer pode ser executado de forma independente
 - Update Method
 - Update Parameters
 
-
 ### **List API** [ListAPI]
  `GET` /
-
 
 ### **List Endpoints** [ListEndpoints]
 `GET` /:api/endpoint
@@ -36,7 +39,6 @@ O Módulo Web API Designer pode ser executado de forma independente
 | Name  | Value Type | Parameter Type | Required |
 | ------------- | ------------- | ------------- | -------------|
 | api  | string  | path  | yes  |
-
 
 ### **Create Endpoint** [CreateEndpoint]
  `POST` /:api/endpoint
@@ -48,7 +50,6 @@ O Módulo Web API Designer pode ser executado de forma independente
 | endpoint  | string  | body  | yes  |
 | method  | string  | body  | yes  |
 
-
 ### **Create API** [CreateAPI]
 `POST` /
 
@@ -56,7 +57,6 @@ O Módulo Web API Designer pode ser executado de forma independente
 | Name  | Value Type | Parameter Type | Required |
 | ------------- | ------------- | ------------- | -------------|
 | name  | string  | body  | yes  |
-
 
 ### **Update Path** [UpdatePath]
 `PUT` /:api/endpoints/:endpoint/path
@@ -68,7 +68,6 @@ O Módulo Web API Designer pode ser executado de forma independente
 | endpoint  | string  | path  | yes  |
 | path  | string  | body  | yes  |
 
-
 ### **Update Method** [UpdateMethod]
 `PUT` /:api/endpoints/:endpoint/method
 
@@ -79,7 +78,6 @@ O Módulo Web API Designer pode ser executado de forma independente
 | endpoint  | string  | path  | yes  |
 | method  | string  | body  | yes  |
 
-
 ### **Update Parameters** [UpdateParameters]
 `PUT` /:api/endpoints/:endpoint/parameters
 
@@ -89,4 +87,3 @@ O Módulo Web API Designer pode ser executado de forma independente
 | api  | string  | path  | yes  |
 | endpoint  | string  | path  | yes  |
 | parameters  | json  | body  | yes  |
-

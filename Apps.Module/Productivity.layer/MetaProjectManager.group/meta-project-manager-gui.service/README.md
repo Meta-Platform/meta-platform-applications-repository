@@ -1,5 +1,11 @@
 # meta-project-manager-gui.service
 
+- **Tipo:** pacote de serviços (`.service`)
+- **Namespace:** `@/meta-project-manager-gui.service`
+- **Localização:** `Apps.Module/Productivity.layer/MetaProjectManager.group/meta-project-manager-gui.service` (PlatformApplicationsRepo)
+
+## Propósito
+
 Serviço **GUI-host** do Meta Project Manager. No desktop (Electron), o processo principal
 instancia este serviço e o expõe ao renderer por IPC (`window.metaGui`) — **sem HTTP**.
 
@@ -15,3 +21,9 @@ que continuam servidos por HTTP no caminho navegador (dual-transport). Molde: `d
 Injeção (services.json): bound-params `metaProjectManagerWebservice`, `projectStoreLib`;
 params `dbFilePath`, `attachmentsDirPath`, `maxAttachmentBytes`. O `AppContext` singleton
 do webservice garante **um** store compartilhado entre todos os controllers.
+
+## Serviços expostos (`metadata/services.json`)
+
+| Namespace | Path | Dependências (bound-params) |
+|---|---|---|
+| `MetaProjectManagerGuiService` | `Services/MetaProjectManagerGui.service` | `metaProjectManagerWebservice`, `projectStoreLib` |

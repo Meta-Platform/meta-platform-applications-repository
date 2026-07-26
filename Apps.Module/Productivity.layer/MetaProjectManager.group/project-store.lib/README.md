@@ -1,5 +1,11 @@
 # project-store.lib
 
+- **Tipo:** biblioteca (`.lib`)
+- **Namespace:** `@/project-store.lib`
+- **Localização:** `Apps.Module/Productivity.layer/MetaProjectManager.group/project-store.lib` (PlatformApplicationsRepo)
+
+## Propósito
+
 Camada de domínio, persistência (SQLite via Sequelize) e auditoria do **Meta Project Manager**.
 É a **única** fonte de regra de negócio — a CLI (`meta-project-manager.cli`), o servidor MCP
 (`meta-project-manager-mcp.cli`) e o webservice (`meta-project-manager.webservice`) são
@@ -8,6 +14,23 @@ delete**, as **permissões** e a **auditoria com diff** vivem aqui, não nos ada
 
 Segue o idioma de `workspace-store.lib`: uma factory que recebe o caminho do `.sqlite` e
 retorna métodos async; `sequelize.sync()` cria/atualiza o schema (sem migrations manuais).
+
+## Exports (`src/`)
+
+| Módulo | Responsabilidade |
+|---|---|
+| `InitializeProjectStore.js` | Entrada: conecta no SQLite, sincroniza os modelos e devolve o store completo. |
+| `DefineModels.js` · `Config.js` · `Errors.js` | Modelos Sequelize, configuração e erros de domínio. |
+| `Store/ProjectsStore.js` · `BoardsStore.js` · `WorkItemsStore.js` | Projetos, boards e itens de trabalho. |
+| `Store/PlanningStore.js` · `PlanningDocsStore.js` · `RisksStore.js` | Entregas, sprints, charter e riscos. |
+| `Store/DocsStore.js` · `DocAttachmentsStore.js` · `DocsExportStore.js` | Wiki de páginas, anexos por página e exportação HTML/ZIP. |
+| `Store/CommentsStore.js` · `AttachmentsStore.js` · `FeedbackStore.js` | Comentários, anexos de item e a fila de feedback para agentes. |
+| `Store/AgentsStore.js` · `AuditStore.js` · `ActivityStore.js` | Sessões de agente, auditoria e notas de atividade. |
+| `Store/ReportsStore.js` · `AnalyticsStore.js` | Relatórios e métricas. |
+| `Store/EcosystemStore.js` | Catálogo de pacotes reais do ecossistema e o vínculo item↔pacote. |
+| `Store/UsersStore.js` · `ImportExportStore.js` | Usuários e importação/exportação. |
+| `Utils/ecosystemPath.js` | `ParsePackagePath` e `PackageRef` — como um pacote é identificado. |
+| `Utils/helpers.js` · `zip.js` | Utilitários gerais e geração de ZIP sem dependência externa. |
 
 ## Uso
 

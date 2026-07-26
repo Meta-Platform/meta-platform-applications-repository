@@ -1,4 +1,11 @@
-# API Designer (Desktop)
+# api-designer.desktopapp
+
+- **Tipo:** aplicação desktop Electron (`.desktopapp`)
+- **Namespace:** `@/api-designer.desktopapp`
+- **Executável:** `api-designer-desktop`
+- **Localização:** `Apps.Module/Tools.layer/APIDesigner.group/api-designer.desktopapp` (PlatformApplicationsRepo)
+
+## Propósito
 
 Versão **desktop** do API Designer: roda a mesma aplicação web do
 [`api-designer.webapp`](../api-designer.webapp) dentro de uma janela
@@ -16,6 +23,12 @@ O `metadata/boot.json` combina:
 A janela só abre depois que o `@@/server-service` está `ACTIVE` (via
 `agentLinkRules` gerado a partir do `bound-param` `serverService`). O object loader
 `desktop-window-instance` faz `spawn` do Electron.
+
+## Janelas (`metadata/boot.json` → `windows`)
+
+| Título | Dimensões | Dependência | GUI-host |
+|---|---|---|---|
+| API Designer | 1280x800 | `@/api-designer.webgui` | sim |
 
 > Diferente do `api-designer.webapp` (que você abre no navegador), esta versão
 > encapsula a mesma interface e o mesmo backend local em uma janela nativa. Roda

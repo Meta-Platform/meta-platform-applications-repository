@@ -1,5 +1,11 @@
 # meta-project-manager.webservice
 
+- **Tipo:** serviço web, backend HTTP (`.webservice`)
+- **Namespace:** `@/meta-project-manager.webservice`
+- **Localização:** `Apps.Module/Productivity.layer/MetaProjectManager.group/meta-project-manager.webservice` (PlatformApplicationsRepo)
+
+## Propósito
+
 API REST (+ realtime) do **Meta Project Manager**. Adaptador HTTP fino sobre
 `@/project-store.lib` — **não duplica regra de negócio**. Porta standalone: **9094**.
 
@@ -14,6 +20,20 @@ API REST (+ realtime) do **Meta Project Manager**. Adaptador HTTP fino sobre
 Contrato de argumentos (server-manager): endpoint com 0 params → método sem args; com
 exatamente 1 param presente → **valor posicional**; senão → **objeto** `{...path,...body,...query}`.
 Os métodos usam `idOf()` para aceitar ambas as formas com segurança.
+
+## Execução
+
+Não é executado de forma independente (`node index.js`). É montado em runtime
+sobre um `@@/server-service` a partir do seu `metadata/endpoint-group.json`,
+quando o `meta-project-manager.webapp` ou o `meta-project-manager.desktopapp` é
+executado pelo Package Executor.
+
+## Serviços disponibilizados
+
+Um controller por área, espelhando os `src/APIs/*.api.json`: `Projects`,
+`Boards`, `Items`, `Comments`, `Attachments`, `Docs`, `Planning`,
+`PlanningDocs`, `Risks`, `Reports`, `Users`, `Agents`, `Feedback`, `Events`,
+`Activity`, `Ecosystem`, `System` e `Health`.
 
 ## Endpoints (spec §8.1)
 
