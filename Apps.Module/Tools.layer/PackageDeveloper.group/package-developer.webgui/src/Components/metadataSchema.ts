@@ -21,8 +21,11 @@ export const F_BOOT_SERVICE: Field[] = [
     { key:"params",       label:"params",       type:"keyvalue" },
     { key:"bound-params", label:"bound-params", type:"keyvalue" }
 ]
+// services.json declara os serviços FORNECIDOS pelo pacote: aqui `namespace` é o
+// nome do serviço (ex.: "GitStatusManager"), não uma referência @/ ou @@/ — quem
+// consome é que escreve "@/git-status.lib/services/GitStatusManager".
 export const F_SERVICE: Field[] = [
-    { key:"namespace",    label:"namespace",    type:"reference", required:true, placeholder:"@@/service-name" },
+    { key:"namespace",    label:"namespace",    type:"string",    required:true, placeholder:"GitStatusManager" },
     { key:"path",         label:"path",         type:"path",      required:true },
     { key:"bound-params", label:"bound-params", type:"stringlist" },
     { key:"params",       label:"params",       type:"stringlist" }

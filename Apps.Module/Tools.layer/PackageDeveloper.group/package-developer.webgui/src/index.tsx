@@ -10,6 +10,7 @@ import "./Styles/theme-retro-brutalist.css"
 import "./Styles/components.css"
 import "./Styles/themes.css"
 import "./Styles/workbench.css"
+import "./Styles/explorer.css"
 
 import { applySavedTheme } from "./Utils/theme"
 

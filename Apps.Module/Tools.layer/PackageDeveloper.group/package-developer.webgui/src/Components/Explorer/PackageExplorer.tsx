@@ -1,0 +1,292 @@
+import * as React from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { connect } from "react-redux"
+
+import { EMPTY_FILTERS, Filters, IndexedPackage, buildFacets, filterPackages } from "../../Domain/packageIndex"
+import { SectionId } from "../../Domain/packageModel"
+import { Selection, selectedPackagePath } from "../../Domain/selection"
+import { buildRepositoryModel, buildWorkspaceModel } from "../../Domain/repositoryModel"
+import useExplorerData from "../../Hooks/useExplorerData"
+import usePackageDetails from "../../Hooks/usePackageDetails"
+import useResponsiveLayout from "../../Hooks/useResponsiveLayout"
+import ExplorerColumns from "./ExplorerColumns"
+import WorkspaceRepositoryPanel from "./WorkspaceRepositoryPanel"
+import RepositoryStructureTree from "./RepositoryStructureTree"
+import PackageExplorerPanel from "./PackageExplorerPanel"
+import PackageInspector from "./PackageInspector"
+import RepositoryMetadataView from "./RepositoryMetadataView"
+import WorkspaceMetadataView from "./WorkspaceMetadataView"
+import ContainerView from "./ContainerView"
+import ResponsiveInspectorDrawer from "./ResponsiveInspectorDrawer"
+
+// Tela de navegação de pacotes: workspace → estrutura → explorador → inspector.
+// Este componente é o único que conhece o ESTADO da tela (seleção, escopo,
+// filtros, layout). Os painéis são de apresentação; o domínio (Domain/*) faz a
+// interpretação dos metadados.
+
+const COLS_KEY  = "ide:explorer-columns"
+const BOOT_VIEW_KEY = "ide:explorer-boot-view"
+const DEFAULT_WIDTHS = [252, 268, 380]
+
+type Props = {
+    HTTPServerManager : any
+    workspace         : string
+    hierarchy         : any
+    openRepositories  : string[]
+    gitRepositories   : any
+    gitStatusByPath   : any
+    recentPackages    : any[]
+    editorCount?      : number
+    onOpenEditor?     : () => void
+    onSwitchRepository : (name:string) => void
+    onCloseRepository  : (name:string) => void
+    onAddRepository    : () => void
+    onEditPackage      : (pkg:any) => void
+    onOpenRecent       : (pkg:any) => void
+    onNodeContext?     : (e:any, kind:string, node:any) => void
+    getAppState        : (key:string) => Promise<any>
+    setAppState        : (key:string, value:string) => any
+}
+
+const findByReference = (packages:IndexedPackage[], target:string):IndexedPackage | undefined =>
+    packages.filter((p) => p.dirname === target || p.namespace === `@/${target}` || `${p.name}.${p.ext}` === target)[0]
+
+const PackageExplorer = ({
+    HTTPServerManager, workspace, hierarchy, openRepositories, gitRepositories, gitStatusByPath,
+    recentPackages, editorCount, onOpenEditor, onSwitchRepository, onCloseRepository, onAddRepository,
+    onEditPackage, onOpenRecent, onNodeContext, getAppState, setAppState
+}:Props) => {
+
+    const layout = useResponsiveLayout()
+    const { packages, metadata, loading, error, indexes, reload } =
+        useExplorerData({ HTTPServerManager, repository: workspace })
+
+    const [selection, setSelection]   = useState<Selection | undefined>()
+    const [scope, setScope]           = useState<{ path:string, label:string } | undefined>()
+    const [filters, setFilters]       = useState<Filters>(EMPTY_FILTERS)
+    const [expanded, setExpanded]     = useState<{[k:string]:boolean}>({})
+    const [structureOpen, setStructureOpen] = useState<{[k:string]:boolean}>({})
+    const [widths, setWidths]         = useState<number[]>(DEFAULT_WIDTHS)
+    const [bootView, setBootView]     = useState<"structure" | "diagram">("structure")
+    const [drawerOpen, setDrawerOpen] = useState(false)
+
+    // Preferências persistidas (larguras e visualização do boot).
+    useEffect(() => {
+        getAppState(COLS_KEY).then((v:any) => {
+            try {
+                const arr = typeof v === "string" ? JSON.parse(v) : v
+                if(Array.isArray(arr) && arr.length === 3) setWidths(arr)
+            } catch(e) { /* preferência inválida: mantém o padrão */ }
+        }).catch(() => {})
+        getAppState(BOOT_VIEW_KEY).then((v:any) => {
+            if(v === "diagram" || v === "structure") setBootView(v)
+        }).catch(() => {})
+    }, [])
+
+    // Troca de repositório: zera seleção e escopo, mantém filtros de busca.
+    useEffect(() => { setSelection(undefined); setScope(undefined); setDrawerOpen(false) }, [workspace])
+
+    const scopedPackages = useMemo(() =>
+        scope ? packages.filter((p) => p.path === scope.path || p.path.indexOf(scope.path + "/") === 0) : packages,
+        [packages, scope])
+
+    const results = useMemo(() => filterPackages(scopedPackages, filters), [scopedPackages, filters])
+    const facets  = useMemo(() => buildFacets(scopedPackages, filters), [scopedPackages, filters])
+
+    const selectedPath = selectedPackagePath(selection)
+    const selectedPackage = useMemo(() =>
+        selectedPath ? packages.filter((p) => p.path === selectedPath)[0] : undefined,
+        [packages, selectedPath])
+
+    const wantReadme = !!selection && selection.kind === "package"
+    const details = usePackageDetails({
+        HTTPServerManager,
+        workspace,
+        pkg: selectedPackage,
+        fallbackModel: selectedPackage && selectedPackage.model,
+        wantReadme: true
+    })
+
+    const repositoryModel = useMemo(() => buildRepositoryModel({
+        name: workspace, metadata, packages, git: (gitRepositories || {})[workspace]
+    }), [workspace, metadata, packages, gitRepositories])
+
+    const workspaceModel = useMemo(() => buildWorkspaceModel({
+        openRepositories, activeRepository: workspace, gitRepositories, indexes
+    }), [openRepositories, workspace, gitRepositories, indexes])
+
+    // ---- seleção ---------------------------------------------------------
+
+    const select = useCallback((next:Selection) => {
+        setSelection(next)
+        if(next.kind === "container") setScope({ path: next.path, label: next.label })
+        if(layout !== "wide") setDrawerOpen(true)
+    }, [layout])
+
+    const selectPackage = useCallback((path:string) => {
+        select({ kind: "package", repository: workspace, packagePath: path })
+        setExpanded((prev) => ({ ...prev, [`package:${path}`]: true }))
+    }, [select, workspace])
+
+    const selectSection = useCallback((sectionId:SectionId | "boot") => {
+        if(!selectedPath) return
+        if(sectionId === "boot"){
+            select({ kind: "package", repository: workspace, packagePath: selectedPath })
+            return
+        }
+        select({ kind: "section", repository: workspace, packagePath: selectedPath, sectionId })
+    }, [select, selectedPath, workspace])
+
+    const selectItem = useCallback((itemId:string) => {
+        if(!selectedPath) return
+        select({ kind: "item", repository: workspace, packagePath: selectedPath, itemId })
+        setExpanded((prev) => ({
+            ...prev,
+            [`package:${selectedPath}`]: true,
+            [`section:${selectedPath}#${itemId.split("/")[0]}`]: true
+        }))
+    }, [select, selectedPath, workspace])
+
+    // Link de referência (@/pacote): navega para o pacote correspondente.
+    const openReference = useCallback((target:string) => {
+        const hit = findByReference(packages, target)
+        if(hit) return selectPackage(hit.path)
+        // Pacote de outro repositório aberto: troca o repositório ativo.
+        const other = Object.keys(indexes).filter((name) => name !== workspace && findByReference(indexes[name], target))[0]
+        if(other) onSwitchRepository(other)
+    }, [packages, indexes, workspace, selectPackage, onSwitchRepository])
+
+    const toggle = (key:string) => setExpanded((prev) => ({ ...prev, [key]: !prev[key] }))
+    const toggleStructure = (key:string) => setStructureOpen((prev) => ({ ...prev, [key]: !prev[key] }))
+
+    const commitWidths = (next:number[]) => setAppState(COLS_KEY, JSON.stringify(next))
+    const resizeColumn = (index:number, width:number) =>
+        setWidths((prev) => prev.map((w, i) => i === index ? width : w))
+
+    const changeBootView = (view:"structure" | "diagram") => {
+        setBootView(view)
+        setAppState(BOOT_VIEW_KEY, view)
+    }
+
+    // ---- inspector -------------------------------------------------------
+
+    const inspector = useMemo(() => {
+        if(selection && selection.kind === "workspace")
+            return <WorkspaceMetadataView model={workspaceModel} onOpenRepository={onSwitchRepository} />
+
+        if(selection && selection.kind === "repository")
+            return <RepositoryMetadataView model={repositoryModel} loading={loading} error={error}
+                onRetry={reload} onOpenPackage={selectPackage} />
+
+        if(selection && selection.kind === "container")
+            return <ContainerView kind={selection.containerKind} label={selection.label} path={selection.path}
+                packages={scopedPackages} onOpenPackage={selectPackage} />
+
+        return <PackageInspector
+            workspace={workspace}
+            model={details.model}
+            loading={details.loading}
+            error={details.error}
+            onRetry={details.retry}
+            selection={selection}
+            onSelectSection={selectSection}
+            onSelectItem={selectItem}
+            onSelectPackageRoot={() => selectedPath && selectPackage(selectedPath)}
+            onOpenRef={openReference}
+            onEdit={selectedPackage ? () => onEditPackage(selectedPackage) : undefined}
+            readme={details.readme}
+            readmeLoading={details.readmeLoading}
+            bootView={bootView}
+            onBootView={changeBootView} />
+    }, [selection, workspaceModel, repositoryModel, scopedPackages, details.model, details.loading,
+        details.error, details.readme, details.readmeLoading, bootView, workspace, selectedPackage])
+
+    const inspectorTitle =
+        selection && selection.kind === "workspace"  ? "Workspace" :
+        selection && selection.kind === "repository" ? selection.repository :
+        selection && selection.kind === "container"  ? selection.label :
+        details.model ? `${details.model.identity.name}.${details.model.identity.ext}` : "Inspector"
+
+    const scopeLabel = scope ? scope.label : "Todos os pacotes"
+
+    const explorerPanel = <PackageExplorerPanel
+        workspace={workspace}
+        repository={workspace}
+        scopeLabel={scopeLabel}
+        onClearScope={scope ? () => { setScope(undefined); setSelection(undefined) } : undefined}
+        filters={filters}
+        onFilters={setFilters}
+        facets={facets}
+        results={results}
+        total={scopedPackages.length}
+        loading={loading}
+        error={error}
+        onRetry={reload}
+        expanded={expanded}
+        onToggle={toggle}
+        selection={selection}
+        onSelect={select}
+        onEditPackage={onEditPackage}
+        onContextMenu={onNodeContext ? (e:any, pkg:any) => onNodeContext(e, "package", pkg) : undefined}
+        statusByPath={gitStatusByPath} />
+
+    const structurePanel = <RepositoryStructureTree
+        hierarchy={hierarchy}
+        packages={packages}
+        repository={workspace}
+        selection={selection}
+        expanded={structureOpen}
+        onToggle={toggleStructure}
+        onSelect={select}
+        onSelectRepositoryRoot={() => { setScope(undefined); select({ kind: "repository", repository: workspace }) }}
+        onNodeContext={onNodeContext}
+        statusByPath={gitStatusByPath} />
+
+    const workspacePanel = <WorkspaceRepositoryPanel
+        repositories={workspaceModel.repositories}
+        activeRepository={workspace}
+        selection={selection}
+        recentPackages={recentPackages}
+        editorCount={editorCount}
+        onOpenEditor={onOpenEditor}
+        onSelectWorkspace={() => select({ kind: "workspace" })}
+        onSelectRepository={(name:string) => select({ kind: "repository", repository: name })}
+        onSwitchRepository={onSwitchRepository}
+        onCloseRepository={onCloseRepository}
+        onAddRepository={onAddRepository}
+        onOpenRecent={onOpenRecent} />
+
+    return <div className="pdx-shell" data-layout={layout}>
+        {
+            layout === "wide"
+            ? <ExplorerColumns widths={widths} onResize={resizeColumn} onCommit={() => commitWidths(widths)}>
+                {workspacePanel}
+                {structurePanel}
+                {explorerPanel}
+                {inspector}
+              </ExplorerColumns>
+            : layout === "medium"
+            ? <ExplorerColumns widths={[widths[1]]} onResize={(i:number, w:number) => resizeColumn(1, w)}
+                onCommit={() => commitWidths(widths)}>
+                {structurePanel}
+                {explorerPanel}
+              </ExplorerColumns>
+            : explorerPanel
+        }
+
+        {
+            layout !== "wide" &&
+            <ResponsiveInspectorDrawer
+                open={drawerOpen && !!selection}
+                full={layout === "narrow"}
+                title={inspectorTitle}
+                onClose={() => setDrawerOpen(false)}>
+                {inspector}
+            </ResponsiveInspectorDrawer>
+        }
+    </div>
+}
+
+const mapStateToProps = ({ HTTPServerManager }:any) => ({ HTTPServerManager })
+
+export default connect(mapStateToProps)(PackageExplorer)

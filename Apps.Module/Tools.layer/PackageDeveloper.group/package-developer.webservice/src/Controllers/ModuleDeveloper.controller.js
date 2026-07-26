@@ -28,6 +28,8 @@ const ModuleDeveloperController = (params) => {
     const GetIcon                 = packageDeveloperLib.require("Services/PackageHandler.service/PublicFunctions/GetIcon.function")
     const IsRepository            = packageDeveloperLib.require("Manager.Functions/IsRepository.function")
     const GetRepositoryHierarchy  = packageDeveloperLib.require("Manager.Functions/GetRepositoryHierarchy.function")
+    const GetRepositoryIndex      = packageDeveloperLib.require("Manager.Functions/GetRepositoryIndex.function")
+    const GetRepositoryMetadata   = packageDeveloperLib.require("Manager.Functions/GetRepositoryMetadata.function")
     const RenameNode              = packageDeveloperLib.require("Manager.Functions/RenameNode.function")
     const DeleteNode              = packageDeveloperLib.require("Manager.Functions/DeleteNode.function")
     // Scaffold compartilhado com o CLI (package-toolkit.lib, ecosystem-core).
@@ -66,6 +68,25 @@ const ModuleDeveloperController = (params) => {
         if(!repo) throw `Repository "${name}" não encontrado`
         await packageHandlerManagerService.TouchWorkspace({ name })
         return GetRepositoryHierarchy(repo.path)
+    }
+
+    // Índice do repositório: todos os pacotes com os metadados que definem suas
+    // capacidades (boot/serviços/endpoints/comandos). Alimenta a busca, os
+    // filtros e as contagens da tela de navegação numa única chamada.
+    const _GetRepositoryIndex = async (name) => {
+        const repo = await packageHandlerManagerService.GetWorkspace({ name })
+        if(!repo) throw `Repository "${name}" não encontrado`
+        const index = await GetRepositoryIndex(repo.path)
+        return { workspace: name, ...index }
+    }
+
+    // Metadados do próprio repositório (<repo>/metadata/*.json: repository.json,
+    // applications.json, taskloaders.json…), como estão em disco.
+    const _GetRepositoryMetadata = async (name) => {
+        const repo = await packageHandlerManagerService.GetWorkspace({ name })
+        if(!repo) throw `Repository "${name}" não encontrado`
+        const metadata = await GetRepositoryMetadata(repo.path)
+        return { workspace: name, ...metadata }
     }
 
     // Navegador de diretórios do picker. `path` vazio -> última pasta salva (ou
@@ -235,6 +256,8 @@ const ModuleDeveloperController = (params) => {
         DeleteNode              : _DeleteNode,
         RemoveWorkspace         : _RemoveWorkspace,
         GetRepositoryHierarchy  : _GetRepositoryHierarchy,
+        GetRepositoryIndex      : _GetRepositoryIndex,
+        GetRepositoryMetadata   : _GetRepositoryMetadata,
         BrowseDir               : _BrowseDir,
         GetAppState             : _GetAppState,
         SetAppState             : _SetAppState,

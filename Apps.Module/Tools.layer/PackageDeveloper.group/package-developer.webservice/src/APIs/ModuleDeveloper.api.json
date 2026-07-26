@@ -20,6 +20,22 @@
       ]
     },
     {
+      "path": "/workspace/:workspace/index",
+      "method": "GET",
+      "summary": "GetRepositoryIndex",
+      "parameters": [
+        { "name": "workspace", "in": "path", "type": "string", "required": true }
+      ]
+    },
+    {
+      "path": "/workspace/:workspace/metadata",
+      "method": "GET",
+      "summary": "GetRepositoryMetadata",
+      "parameters": [
+        { "name": "workspace", "in": "path", "type": "string", "required": true }
+      ]
+    },
+    {
       "path": "/app-state/:key",
       "method": "GET",
       "summary": "GetAppState",
