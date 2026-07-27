@@ -117,6 +117,8 @@ const useWorkspaces = (serverManagerInformation: any) => {
         SplitGroup:      (groupId: string, paneId: string, direction: "row" | "column") =>
             _Update((workspace) => Operations.SplitGroup(workspace, { groupId, paneId, direction })),
         MovePaneToGroup: (paneId: string, groupId: string) => _Update((workspace) => Operations.MovePaneToGroup(workspace, paneId, groupId)),
+        DropPaneOnEdge:  (paneId: string, targetGroupId: string, edge: "left" | "right" | "top" | "bottom") =>
+            _Update((workspace) => Operations.DropPaneOnEdge(workspace, { paneId, targetGroupId, edge })),
         ResizeSplit:     (splitId: string, sizes: number[]) => _Update((workspace) => Operations.ResizeSplit(workspace, splitId, sizes)),
 
         FloatPane:    (paneId: string) => _Update((workspace) => Operations.FloatPane(workspace, paneId)),

@@ -1327,3 +1327,40 @@
     cursor: nwse-resize;
     background: linear-gradient(135deg, transparent 50%, var(--iep-line-strong) 50%);
 }
+
+/* ---- Zona de soltura (arrastar aba) ---- */
+
+/* O destino do arrasto precisa ser visível ANTES de soltar: sem a marca, dividir
+   por arraste vira tentativa e erro. */
+.iep-dropzone {
+    position: absolute;
+    z-index: 6;
+    pointer-events: none;
+    background: var(--mp-accent-soft);
+    border: 2px dashed var(--mp-accent-blue);
+    border-radius: var(--mp-radius-sm);
+    display: grid;
+    place-items: center;
+    transition: all .08s ease-out;
+}
+
+.iep-dropzone__hint {
+    font-size: var(--mp-text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--mp-accent-blue);
+    background: var(--mp-surface);
+    border: 1px solid var(--mp-accent-blue);
+    border-radius: var(--mp-radius-sm);
+    padding: 2px 8px;
+}
+
+.iep-dropzone--center { inset: 8px; }
+.iep-dropzone--left   { top: 8px; bottom: 8px; left: 8px; width: calc(50% - 12px); }
+.iep-dropzone--right  { top: 8px; bottom: 8px; right: 8px; width: calc(50% - 12px); }
+.iep-dropzone--top    { left: 8px; right: 8px; top: 8px; height: calc(50% - 12px); }
+.iep-dropzone--bottom { left: 8px; right: 8px; bottom: 8px; height: calc(50% - 12px); }
+
+/* O corpo do grupo é a referência de posicionamento da zona. */
+.iep-panebody { position: relative; }

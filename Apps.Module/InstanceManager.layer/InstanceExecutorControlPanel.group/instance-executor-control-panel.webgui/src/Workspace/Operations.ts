@@ -158,6 +158,59 @@ export const SplitGroup = (
     return { ...workspace, layout }
 }
 
+/**
+ * Solta um painel na BORDA de um grupo, criando a divisão ali.
+ *
+ * É o gesto que se espera de um workspace: arrastar a aba do log para a metade
+ * direita da área e ter as duas coisas lado a lado, sem passar por botão. A
+ * borda escolhida decide a direção e de que lado o painel entra.
+ */
+export const DropPaneOnEdge = (
+    workspace: Workspace,
+    { paneId, targetGroupId, edge }: { paneId: string, targetGroupId: string, edge: "left" | "right" | "top" | "bottom" }
+): Workspace => {
+
+    const target = CollectGroups(workspace.layout).find((group) => group.id === targetGroupId)
+    if (!target) return workspace
+
+    // Soltar o único painel do grupo numa borda dele mesmo não muda nada — e
+    // deixaria um dos lados vazio.
+    if (target.paneIds.length === 1 && target.paneIds[0] === paneId) return workspace
+
+    const detached = _DetachPane(workspace, paneId)
+
+    const direction: "row" | "column" = (edge === "left" || edge === "right") ? "row" : "column"
+    const insertBefore = edge === "left" || edge === "top"
+
+    const newGroup: TabGroup = {
+        type: "tabs",
+        id: NewId("group"),
+        paneIds: [paneId],
+        activePaneId: paneId
+    }
+
+    // O alvo pode ter sido colapsado pelo _DetachPane (se o painel arrastado era
+    // o último dele): nesse caso não há o que dividir, e o painel só volta.
+    const survivingTarget = CollectGroups(detached.layout).find((group) => group.id === targetGroupId)
+    if (!survivingTarget) return DockPane(detached, paneId)
+
+    const layout = ReplaceNode(detached.layout, (node) => {
+        if (!IsTabs(node) || node.id !== targetGroupId) return node
+        // Id novo pelo mesmo motivo do SplitGroup: o grupo mantido continua na
+        // árvore abaixo do split e voltaria a casar com esta regra.
+        const kept: TabGroup = { ...node, id: NewId("group") }
+        return {
+            type: "split",
+            id: NewId("split"),
+            direction,
+            children: insertBefore ? [newGroup, kept] : [kept, newGroup],
+            sizes: [0.5, 0.5]
+        } as LayoutNode
+    })
+
+    return { ...detached, layout }
+}
+
 // Move um painel para outro grupo já existente (arrastar aba entre áreas).
 export const MovePaneToGroup = (workspace: Workspace, paneId: string, targetGroupId: string): Workspace => {
     const current = FindGroupOfPane(workspace.layout, paneId)
@@ -247,17 +300,65 @@ export const AddToGrid = (workspace: Workspace, paneId: string): Workspace => {
         ? { x: GRID_COLUMNS / 2, y: sameRow.y }
         : _NextGridSlot(workspace.grid)
 
+    // Passa pela resolução de colisão: o cálculo do espaço livre é uma
+    // estimativa, e o bloco novo não pode nascer por cima de outro.
     return {
         ...workspace,
-        grid: [...workspace.grid, { paneId, ...slot, ...GRID_DEFAULT }]
+        grid: _ResolveCollisions([...workspace.grid, { paneId, ...slot, ...GRID_DEFAULT }], paneId)
     }
 }
 
-export const MoveGridWidget = (workspace: Workspace, paneId: string, box: Partial<GridPlacement>): Workspace => ({
-    ...workspace,
-    grid: workspace.grid.map((placement) =>
+const _Overlaps = (a: GridPlacement, b: GridPlacement) =>
+    a.x < b.x + b.w && a.x + a.w > b.x &&
+    a.y < b.y + b.h && a.y + a.h > b.y
+
+/**
+ * Empurra para baixo quem o bloco movido invadiu, em cascata.
+ *
+ * Sem isto, arrastar um bloco por cima de outro deixava os dois na mesma célula
+ * do CSS grid — um por cima do outro, ambos ilegíveis, e sem como separá-los a
+ * não ser adivinhando onde o de baixo estava.
+ *
+ * A resolução é sempre para BAIXO (nunca para os lados) porque a grade tem
+ * altura infinita e largura fixa: empurrar na horizontal esbarraria na borda e
+ * exigiria uma decisão arbitrária sobre quem cede.
+ */
+const _ResolveCollisions = (grid: GridPlacement[], movedPaneId: string): GridPlacement[] => {
+    const moved = grid.find((placement) => placement.paneId === movedPaneId)
+    if (!moved) return grid
+
+    // Ordem por linha mantém a cascata previsível: cada bloco só empurra os que
+    // estão abaixo dele.
+    const others = grid
+        .filter((placement) => placement.paneId !== movedPaneId)
+        .sort((a, b) => a.y - b.y || a.x - b.x)
+
+    const settled: GridPlacement[] = [moved]
+
+    others.forEach((placement) => {
+        let candidate = { ...placement }
+        // O laço trata o efeito dominó: ao descer, o bloco pode topar no próximo.
+        let guard = 0
+        while (settled.some((other) => _Overlaps(candidate, other)) && guard < 100) {
+            const blocker = settled.find((other) => _Overlaps(candidate, other)) as GridPlacement
+            candidate = { ...candidate, y: blocker.y + blocker.h }
+            guard += 1
+        }
+        settled.push(candidate)
+    })
+
+    // Preserva a ordem original da lista (a posição no array não significa nada
+    // para o layout, mas manter estável evita re-render desnecessário).
+    return grid.map((placement) =>
+        settled.find((item) => item.paneId === placement.paneId) || placement)
+}
+
+export const MoveGridWidget = (workspace: Workspace, paneId: string, box: Partial<GridPlacement>): Workspace => {
+    const grid = workspace.grid.map((placement) =>
         placement.paneId === paneId ? { ...placement, ...box } : placement)
-})
+
+    return { ...workspace, grid: _ResolveCollisions(grid, paneId) }
+}
 
 export const RemoveFromGrid = (workspace: Workspace, paneId: string): Workspace => ({
     ...workspace,

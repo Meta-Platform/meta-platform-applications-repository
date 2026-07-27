@@ -33,24 +33,61 @@ const PANE_ICON: any = {
 
 // ---- Grupo de abas ------------------------------------------------------
 
+// Onde a aba solta cai: no centro ela entra como mais uma aba do grupo; numa
+// borda, cria a divisão daquele lado. É o gesto esperado de um workspace —
+// arrastar o log para a metade direita e ficar com os dois lado a lado.
+const DROP_EDGE_RATIO = 0.28
+
+const _EdgeFromPoint = (bounds: DOMRect, x: number, y: number): "left" | "right" | "top" | "bottom" | "center" => {
+    const relativeX = (x - bounds.left) / bounds.width
+    const relativeY = (y - bounds.top) / bounds.height
+
+    // A borda mais próxima ganha; o centro é a zona neutra (vira aba).
+    const distances = [
+        { edge: "left"   as const, distance: relativeX },
+        { edge: "right"  as const, distance: 1 - relativeX },
+        { edge: "top"    as const, distance: relativeY },
+        { edge: "bottom" as const, distance: 1 - relativeY }
+    ].sort((a, b) => a.distance - b.distance)
+
+    return distances[0].distance <= DROP_EDGE_RATIO ? distances[0].edge : "center"
+}
+
 const TabGroupView = ({ group, workspace, actions, isOnly }: any) => {
 
     const panes: Pane[] = group.paneIds.map((paneId: string) => workspace.panes[paneId]).filter(Boolean)
     const activePane = workspace.panes[group.activePaneId] || panes[panes.length - 1]
 
-    const [ dragOver, setDragOver ] = useState(false)
+    const [ dropZone, setDropZone ] = useState<string>()
+    const bodyRef = useRef<HTMLDivElement>(null)
+
+    const _ZoneFromEvent = (event: React.DragEvent) => {
+        const element = bodyRef.current
+        if (!element) return "center"
+        return _EdgeFromPoint(element.getBoundingClientRect(), event.clientX, event.clientY)
+    }
+
+    const _OnDragOver = (event: React.DragEvent) => {
+        event.preventDefault()
+        setDropZone(_ZoneFromEvent(event))
+    }
 
     const _OnDrop = (event: React.DragEvent) => {
         event.preventDefault()
-        setDragOver(false)
+        const zone = _ZoneFromEvent(event)
+        setDropZone(undefined)
+
         const paneId = event.dataTransfer.getData("text/pane-id")
-        if (paneId) actions.MovePaneToGroup(paneId, group.id)
+        if (!paneId) return
+
+        if (zone === "center") actions.MovePaneToGroup(paneId, group.id)
+        else actions.DropPaneOnEdge(paneId, group.id, zone)
     }
 
     return <div
-        className={`iep-panegroup${dragOver ? " iep-panegroup--dropping" : ""}`}
-        onDragOver={(event) => { event.preventDefault(); setDragOver(true) }}
-        onDragLeave={() => setDragOver(false)}
+        className={`iep-panegroup${dropZone ? " iep-panegroup--dropping" : ""}`}
+        onDragOver={_OnDragOver}
+        onDragLeave={() => setDropZone(undefined)}
         onDrop={_OnDrop}>
 
         <div className="iep-panetabs">
@@ -102,7 +139,15 @@ const TabGroupView = ({ group, workspace, actions, isOnly }: any) => {
             }
         </div>
 
-        <div className="iep-panebody">
+        <div className="iep-panebody" ref={bodyRef}>
+            {
+                dropZone &&
+                <div className={`iep-dropzone iep-dropzone--${dropZone}`}>
+                    <span className="iep-dropzone__hint">
+                        {dropZone === "center" ? "abrir como aba" : "dividir aqui"}
+                    </span>
+                </div>
+            }
             {
                 activePane
                 ? <PaneContent pane={activePane}/>
