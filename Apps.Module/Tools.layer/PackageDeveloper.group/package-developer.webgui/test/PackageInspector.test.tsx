@@ -34,6 +34,9 @@ const renderInspector = (raw:any, selection?:Selection, props:any = {}) => {
 
 const tabNames = () => screen.getAllByRole("tab").map((t) => t.textContent)
 
+// A trilha do cabeçalho repete o nome do recurso; estas buscas olham só a árvore.
+const treeText = () => (document.querySelector(".pdx-stree") as HTMLElement | null)?.textContent || ""
+
 describe("inspector — abas", () => {
 
     it("mostra só as abas com conteúdo", () => {
@@ -60,7 +63,7 @@ describe("inspector — abas", () => {
 
 describe("inspector — a seleção manda no conteúdo", () => {
 
-    it("selecionar o serviço de git-status.lib leva ao Runtime e abre o detalhe abaixo da lista", () => {
+    it("selecionar o serviço de git-status.lib leva ao Runtime e ABRE o nó na árvore", () => {
         renderInspector(GIT_STATUS_LIB, { kind: "item", repository: "Repo", packagePath: GIT_STATUS_LIB.path, itemId: "services/0" })
 
         // nenhuma aba nova: a seleção usa as abas fixas do pacote
@@ -68,34 +71,45 @@ describe("inspector — a seleção manda no conteúdo", () => {
         expect(tabs.join("|")).not.toContain("GitStatusManager")
         expect(screen.getByRole("tab", { name: /Runtime/ })).toHaveAttribute("aria-selected", "true")
 
-        // a lista da seção continua visível E o detalhe aparece abaixo
-        expect(screen.getAllByText("GitStatusManager").length).toBeGreaterThan(1)
-        expect(screen.getByText("serviço fornecido")).toBeInTheDocument()
-        expect(screen.getAllByText("metadata/services.json").length).toBeGreaterThan(0)
+        // o recurso vira um nó de árvore, aberto, com seus grupos e valores
+        const row = document.querySelector(".pdx-stree__row--item") as HTMLElement
+        expect(row.textContent).toContain("GitStatusManager")
+        expect(row).toHaveAttribute("aria-selected", "true")
+        expect(row).toHaveAttribute("aria-expanded", "true")
+        expect(row.className).toContain("pdx-stree__row--selected")
+        expect(screen.getByText("identidade")).toBeInTheDocument()
+        expect(screen.getByText("implementação")).toBeInTheDocument()
+        expect(screen.getAllByText("Services/GitStatusManager.service").length).toBeGreaterThan(0)
     })
 
-    it("trocar de seção não deixa o detalhe do item anterior órfão", () => {
+    it("trocar de seção troca a árvore inteira", () => {
         renderInspector(DEVELOPER_WEBAPP,
             { kind: "item", repository: "Repo", packagePath: DEVELOPER_WEBAPP.path, itemId: "boot-services/0" })
-        expect(screen.getByText("serviço do boot")).toBeInTheDocument()
+        expect(treeText()).toContain("@@/server-service")
 
         fireEvent.click(screen.getByRole("tab", { name: /Endpoints do boot/ }))
-        expect(screen.queryByText("serviço do boot")).toBeNull()
+        expect(treeText()).not.toContain("@@/server-service")
+        expect(treeText()).toContain("@/package-developer.webservice/endpoint-group")
     })
 
     it("selecionar um endpoint abre o endpoint correto, com controller e template", () => {
         renderInspector(IEP_WEBSERVICE, { kind: "item", repository: "Repo", packagePath: IEP_WEBSERVICE.path, itemId: "endpoints/1" })
-        expect(screen.getAllByText("/repository-manager").length).toBeGreaterThan(0)
-        expect(screen.getAllByText("Controllers/RepositoryManager.controller").length).toBeGreaterThan(0)
-        expect(screen.getAllByText("APIs/RepositoryManager.api.json").length).toBeGreaterThan(0)
-        // não vazou o outro endpoint
-        expect(screen.queryByText("Controllers/TaskExecutorMonitor.controller")).toBeNull()
+        expect(treeText()).toContain("/repository-manager")
+        expect(treeText()).toContain("Controllers/RepositoryManager.controller")
+        expect(treeText()).toContain("APIs/RepositoryManager.api.json")
+        // o outro endpoint continua na árvore, mas FECHADO: aparece o título e o
+        // subtítulo da linha, não os grupos (api-template só do selecionado).
+        expect(treeText()).toContain("/task-executor-monitor")
+        expect(treeText()).not.toContain("APIs/TaskExecutorMonitor.api.json")
+        const rows = document.querySelectorAll(".pdx-stree__row--item")
+        expect(rows[0]).toHaveAttribute("aria-expanded", "false")
+        expect(rows[1]).toHaveAttribute("aria-expanded", "true")
     })
 
-    it("troca rápida de seleção não deixa conteúdo obsoleto", () => {
+    it("troca rápida de seleção move a seleção — a árvore não fecha o que o usuário abriu", () => {
         const { rerender } = renderInspector(IEP_WEBSERVICE,
             { kind: "item", repository: "Repo", packagePath: IEP_WEBSERVICE.path, itemId: "endpoints/0" })
-        expect(screen.getAllByText("/task-executor-monitor").length).toBeGreaterThan(0)
+        expect(treeText()).toContain("Controllers/TaskExecutorMonitor.controller")
 
         const model = modelOf(IEP_WEBSERVICE)
         rerender(withStore(<PackageInspector
@@ -104,8 +118,12 @@ describe("inspector — a seleção manda no conteúdo", () => {
             onSelectSection={() => {}} onSelectItem={() => {}} onSelectPackageRoot={() => {}}
             bootView="structure" onBootView={() => {}} />))
 
-        expect(screen.getAllByText("Controllers/RepositoryManager.controller").length).toBeGreaterThan(0)
-        expect(screen.queryByText("Controllers/TaskExecutorMonitor.controller")).toBeNull()
+        // a seleção passou para o segundo endpoint...
+        const selected = document.querySelector(".pdx-stree__row--selected") as HTMLElement
+        expect(selected.textContent).toContain("/repository-manager")
+        expect(document.querySelectorAll(".pdx-stree__row--selected")).toHaveLength(1)
+        // ...e o nó que já estava aberto continua aberto (estado do usuário)
+        expect(treeText()).toContain("APIs/TaskExecutorMonitor.api.json")
     })
 
     it("a trilha mostra pacote › seção › item", () => {

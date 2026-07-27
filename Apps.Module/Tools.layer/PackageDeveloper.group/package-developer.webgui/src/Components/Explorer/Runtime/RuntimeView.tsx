@@ -12,9 +12,11 @@ import TechnicalPropertyList from "../ui/TechnicalPropertyList"
 import { EmptyState, Segmented } from "../ui/Primitives"
 
 // Aba Runtime: navegação segmentada entre Boot e as demais capacidades. Cada uma
-// com duas leituras — ESTRUTURA (lista) e DIAGRAMA (topologia) — porque um
-// endpoint-group ou um services.json também têm ligações que valem desenhar.
-// O item selecionado abre ABAIXO, em qualquer das duas leituras.
+// com duas leituras:
+//   ESTRUTURA — árvore de detalhes (o recurso ABRE no lugar, com seus grupos);
+//   DIAGRAMA  — topologia, com o detalhe do recurso selecionado abaixo do canvas.
+// Na estrutura não repetimos o bloco de detalhe: ele seria a duplicata do nó
+// que já está aberto na árvore.
 
 const SHORT_TITLE:any = {
     "boot-params"     : "Parâmetros",
@@ -126,8 +128,8 @@ const RuntimeView = ({
               </div>
             : active === "boot"
             ? <div>
-                <BootStructuredView model={model} selectedId={selectedId} onSelectItem={onSelectItem} />
-                {detail}
+                <BootStructuredView model={model} selectedId={selectedId} onSelectItem={onSelectItem}
+                    onOpenRef={onOpenRef} workspace={workspace} />
               </div>
             : section
             ? <div>
@@ -141,8 +143,8 @@ const RuntimeView = ({
                         <TechnicalPropertyList groups={section.requirements} onOpenRef={onOpenRef} />
                     </div>
                 }
-                <SectionView section={section} selectedId={selectedId} onSelect={onSelectItem} />
-                {detail}
+                <SectionView section={section} selectedId={selectedId} onSelect={onSelectItem}
+                    onOpenRef={onOpenRef} workspace={workspace} pkg={model.identity} />
               </div>
             : null
         }

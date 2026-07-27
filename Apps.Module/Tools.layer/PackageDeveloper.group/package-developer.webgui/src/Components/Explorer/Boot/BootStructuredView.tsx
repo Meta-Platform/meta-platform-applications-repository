@@ -23,9 +23,11 @@ type Props = {
     model       : PackageModel
     selectedId? : string
     onSelectItem: (itemId:string) => void
+    onOpenRef?  : (target:string) => void
+    workspace?  : string
 }
 
-const BootStructuredView = ({ model, selectedId, onSelectItem }:Props) => {
+const BootStructuredView = ({ model, selectedId, onSelectItem, onOpenRef, workspace }:Props) => {
 
     const sections = model.sections.filter((s) => BOOT_SECTIONS.indexOf(s.id) > -1)
     if(!model.boot)
@@ -48,7 +50,8 @@ const BootStructuredView = ({ model, selectedId, onSelectItem }:Props) => {
             sections.map((section) =>
                 <CollapsibleSection key={section.id} id={section.id} icon={section.icon}
                     title={section.title} count={section.items.length}>
-                    <SectionView section={section} selectedId={selectedId} onSelect={onSelectItem} />
+                    <SectionView section={section} selectedId={selectedId} onSelect={onSelectItem}
+                        onOpenRef={onOpenRef} workspace={workspace} pkg={model.identity} />
                 </CollapsibleSection>)
         }
     </div>

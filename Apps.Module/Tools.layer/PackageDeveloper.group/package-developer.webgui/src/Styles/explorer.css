@@ -1283,3 +1283,136 @@
     color: var(--pdx-ink);
     white-space: nowrap;
 }
+
+/* ==========================================================================
+   Estrutura: árvore de DETALHES (recurso → grupos → valores)
+   Mesma gramática da árvore de pacotes; o que muda é o que os nós carregam.
+   ========================================================================== */
+
+.pdx-stree, .pdx-stree ul { list-style: none; margin: 0; padding: 0; }
+
+.pdx-stree__item {
+    border: 1px solid var(--pdx-line);
+    border-radius: var(--mp-radius-md);
+    background: var(--mp-surface);
+    margin-bottom: 8px;
+    overflow: hidden;
+}
+.pdx-stree__item--selected { border-color: var(--mp-accent-blue); box-shadow: 0 0 0 2px var(--mp-accent-blue-tint); }
+
+/* ------- linhas ------- */
+
+.pdx-stree__row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    min-height: 28px;
+    padding: 4px 10px 4px 4px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.pdx-stree__row--item {
+    background: var(--mp-surface-2);
+    border-bottom: 1px solid var(--mp-line-faint);
+    min-height: 32px;
+}
+.pdx-stree__row--item:hover { background: var(--mp-paper-2); }
+.pdx-stree__row--selected {
+    background: var(--mp-accent-blue-tint);
+    box-shadow: inset 3px 0 0 var(--mp-accent-blue);
+}
+.pdx-stree__row:focus-visible { outline: 2px solid var(--mp-accent-blue); outline-offset: -2px; }
+
+.pdx-stree__row--group { cursor: pointer; min-height: 26px; }
+.pdx-stree__row--group:hover { background: var(--mp-surface-2); }
+
+.pdx-stree__twisty {
+    flex: 0 0 16px;
+    width: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--mp-muted);
+    border-radius: 3px;
+    cursor: pointer;
+}
+.pdx-stree__twisty:hover { background: var(--mp-paper-3); color: var(--mp-ink); }
+.pdx-stree__twisty--leaf { visibility: hidden; cursor: default; }
+
+.pdx-stree__name {
+    font-family: var(--mp-font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--pdx-ink);
+    overflow-wrap: anywhere;
+}
+.pdx-stree__sub {
+    font-family: var(--mp-font-mono);
+    font-size: 11px;
+    color: var(--mp-muted);
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.pdx-stree__badges { margin-left: auto; display: inline-flex; gap: 4px; align-items: center; flex: 0 0 auto; }
+
+.pdx-stree__grouplabel {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--pdx-label);
+}
+.pdx-stree__count {
+    font-family: var(--mp-font-mono);
+    font-size: 10px;
+    color: var(--mp-muted);
+    background: var(--mp-surface-2);
+    border: 1px solid var(--mp-line-faint);
+    border-radius: 8px;
+    padding: 0 6px;
+}
+
+/* ------- valores ------- */
+
+.pdx-stree__children { padding: 4px 0 6px; }
+.pdx-stree__group + .pdx-stree__group { border-top: 1px dashed var(--mp-line-faint); }
+
+.pdx-stree__values { padding-bottom: 4px; }
+.pdx-stree__value {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 2px 10px 2px 0;
+    min-width: 0;
+}
+.pdx-stree__value + .pdx-stree__value { margin-top: 2px; }
+.pdx-stree__key {
+    flex: 0 0 auto;
+    min-width: 92px;
+    max-width: 40%;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--pdx-ink-soft);
+    overflow-wrap: anywhere;
+}
+
+/* A guia vertical liga o grupo aos seus valores, como na árvore de pacotes. */
+.pdx-stree__children { position: relative; }
+.pdx-stree__values { position: relative; }
+.pdx-stree__values::before {
+    content: "";
+    position: absolute;
+    left: -8px;
+    top: 2px;
+    bottom: 4px;
+    width: 1px;
+    background: var(--mp-line-faint);
+}
