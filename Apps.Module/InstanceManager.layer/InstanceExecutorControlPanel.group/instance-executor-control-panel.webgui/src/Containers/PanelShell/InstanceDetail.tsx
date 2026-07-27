@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useEffect, useMemo } from "react"
+import { useMemo } from "react"
 
 import { Icon } from "semantic-ui-react"
 
@@ -10,7 +10,6 @@ import {
     LogViewer,
     Meter,
     StateLabel,
-    Tabs,
     TimeSeriesChart,
     FormatBytes,
     FormatDateTime,
@@ -21,22 +20,9 @@ import {
 
 import CopyableMonoText from "../../Components/ui/CopyableMonoText"
 
-import InstanceTasksTab from "./InstanceTasksTab"
-
-// Workspace de UMA instância: identidade no topo e o detalhe em abas —
-// Resumo, Tarefas, Log e Desempenho.
-//
-// A divisão por abas é o que permite ao painel responder perguntas diferentes
-// sem virar uma tela sobrecarregada: "o que é isso" (resumo), "o que está
-// fazendo" (tarefas), "o que aconteceu" (log) e "quanto está custando"
-// (desempenho).
-
-const TABS = [
-    { key: "summary",     label: "resumo",     icon: "info circle" },
-    { key: "tasks",       label: "tarefas",    icon: "sitemap" },
-    { key: "log",         label: "log",        icon: "file alternate outline" },
-    { key: "performance", label: "desempenho", icon: "chart line" }
-]
+// Painéis de UMA instância, hospedados pelo espaço de trabalho: "o que é isso"
+// (resumo) e "quanto está custando" (desempenho). Tarefas e log têm componentes
+// próprios; estes dois vivem aqui porque compartilham a leitura das amostras.
 
 // Série de taxa a partir de um contador acumulado (I/O total lido/escrito):
 // o número cru só cresce e não diz nada num gráfico; o que interessa é quanto
@@ -52,7 +38,7 @@ const _RateSeries = (history: any[], field: string) =>
         }
     })
 
-export const SummaryTab = ({ instance, sample, history, systemSample }: any) => {
+export const SummaryTab = ({ instance, sample, history, systemSample, onStopInstance, onFocusInstance }: any) => {
 
     // A barra de memória precisa de um denominador, e o único que faz sentido é
     // a RAM da máquina — o sample da instância traz bytes, não proporção.
@@ -63,6 +49,40 @@ export const SummaryTab = ({ instance, sample, history, systemSample }: any) => 
     const taskEntries = sample && sample.tasksByStatus ? Object.keys(sample.tasksByStatus) : []
 
     return <div className="iep-view__body">
+        {
+            (onStopInstance || onFocusInstance) &&
+            <div className="iep-entity">
+                <div className="iep-entity__body">
+                    <div className="iep-entity__title">
+                        <span className="iep-entity__name" title={instance.packagePath}>
+                            {PackageName(instance.packagePath)}
+                        </span>
+                        <KindTag kind={instance.kind}/>
+                        <StateLabel status={instance.status}/>
+                    </div>
+                    <div className="iep-entity__meta">
+                        {instance.pid ? `pid ${instance.pid}` : instance.taskId != null ? `task ${instance.taskId}` : "—"}
+                        {"  ·  "}lançado por {instance.launchedBy || "—"}
+                    </div>
+                </div>
+                <div className="iep-entity__actions">
+                    {
+                        // Só instância desktop tem janela para trazer à frente.
+                        instance.kind === "desktop" && onFocusInstance &&
+                        <button type="button" className="iep-btn" title="trazer a janela para frente" onClick={() => onFocusInstance(instance)}>
+                            <Icon name="external square" style={{ margin: 0 }}/> focar
+                        </button>
+                    }
+                    {
+                        onStopInstance &&
+                        <button type="button" className="iep-btn iep-btn--danger" title="encerrar instância" onClick={() => onStopInstance(instance)}>
+                            <Icon name="stop" style={{ margin: 0 }}/> encerrar
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
         <div className="iep-panelgrid">
             <Card title="identidade" icon="id card outline">
                 <KeyValueList entries={[
@@ -207,102 +227,3 @@ export const PerformanceTab = ({ instance, sample, history }: any) => {
         </div>
     </div>
 }
-
-const InstanceDetail = ({
-    instance,
-    sample,
-    systemSample,
-    history = [],
-    taskList,
-    activeTab = "summary",
-    onChangeTab,
-    onClose,
-    onStopInstance,
-    onFocusInstance,
-    onStopTasks,
-    onFetchHistory,
-    serverManagerInformation
-}: any) => {
-
-    // Ao abrir uma instância, traz o histórico que o daemon já tinha: sem isso o
-    // gráfico começaria vazio e levaria minutos para ganhar forma.
-    useEffect(() => {
-        if (onFetchHistory) onFetchHistory(instance.instanceId)
-    }, [instance.instanceId])
-
-    const taskCount = sample && sample.tasksByStatus
-        ? Object.keys(sample.tasksByStatus).reduce((sum, status) => sum + sample.tasksByStatus[status], 0)
-        : undefined
-
-    const tabs = TABS.map((tab) => tab.key === "tasks" ? { ...tab, count: taskCount } : tab)
-
-    return <>
-        <div className="iep-entity">
-            <div className="iep-entity__body">
-                <div className="iep-entity__title">
-                    <span className="iep-entity__name" title={instance.packagePath}>
-                        {PackageName(instance.packagePath)}
-                    </span>
-                    <KindTag kind={instance.kind}/>
-                    <StateLabel status={instance.status}/>
-                </div>
-                <div className="iep-entity__meta" title={instance.packagePath}>
-                    {instance.pid ? `pid ${instance.pid}` : instance.taskId != null ? `task ${instance.taskId}` : "—"}
-                    {"  ·  "}lançado por {instance.launchedBy || "—"}
-                    {sample && sample.uptimeSeconds !== undefined ? `  ·  no ar há ${FormatDuration(sample.uptimeSeconds)}` : ""}
-                </div>
-            </div>
-            <div className="iep-entity__actions">
-                {
-                    instance.kind === "desktop" &&
-                    <button type="button" className="iep-btn" title="trazer a janela para frente" onClick={() => onFocusInstance(instance)}>
-                        <Icon name="external square" style={{ margin: 0 }}/> focar
-                    </button>
-                }
-                <button type="button" className="iep-btn iep-btn--danger" title="encerrar instância" onClick={() => onStopInstance(instance)}>
-                    <Icon name="stop" style={{ margin: 0 }}/> encerrar
-                </button>
-                <button type="button" className="iep-btn" title="fechar detalhe" onClick={onClose}>
-                    <Icon name="close" style={{ margin: 0 }}/>
-                </button>
-            </div>
-        </div>
-
-        <Tabs tabs={tabs} activeKey={activeTab} onSelect={onChangeTab}/>
-
-        {
-            activeTab === "summary" &&
-            <div className="iep-view" style={{ overflow: "auto" }}>
-                <SummaryTab instance={instance} sample={sample} history={history} systemSample={systemSample}/>
-            </div>
-        }
-
-        {
-            activeTab === "tasks" &&
-            <InstanceTasksTab
-                instance={instance}
-                taskList={taskList}
-                serverManagerInformation={serverManagerInformation}
-                onStopTasks={onStopTasks}/>
-        }
-
-        {
-            activeTab === "log" &&
-            <div className="iep-view__body iep-view__body--flush" style={{ padding: "var(--mp-space-2)" }}>
-                <LogViewer
-                    key={instance.instanceId}
-                    instance={instance}
-                    serverManagerInformation={serverManagerInformation}/>
-            </div>
-        }
-
-        {
-            activeTab === "performance" &&
-            <div className="iep-view" style={{ overflow: "auto" }}>
-                <PerformanceTab instance={instance} sample={sample} history={history}/>
-            </div>
-        }
-    </>
-}
-
-export default InstanceDetail

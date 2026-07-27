@@ -1,5 +1,5 @@
 import * as React from "react"
-import { createContext, useContext } from "react"
+import { createContext, useContext, useEffect } from "react"
 
 import { EmptyState, LogViewer } from "../Components/system"
 
@@ -33,6 +33,14 @@ const WorkspaceContext = createContext<WorkspaceContextValue>({} as any)
 
 export const WorkspaceProvider = WorkspaceContext.Provider
 export const useWorkspaceContext = () => useContext(WorkspaceContext)
+
+// Traz do daemon o histórico anterior à abertura do painel. Sem isto o gráfico
+// começa do zero e leva minutos para ganhar forma — justamente quando se abre a
+// instância para entender o que acabou de acontecer com ela.
+const WithHistory = ({ instanceId, fetchHistory, children }: any) => {
+    useEffect(() => { if (fetchHistory && instanceId) fetchHistory(instanceId) }, [instanceId])
+    return children
+}
 
 const PaneContent = ({ pane }: { pane: Pane }) => {
 
@@ -75,17 +83,11 @@ const PaneContent = ({ pane }: { pane: Pane }) => {
         case "instances":
             return <InstancesView
                 instanceList={monitor.instanceList}
-                taskList={monitor.taskList}
                 historyByInstance={monitor.historyByInstance}
-                systemSample={monitor.systemSample}
                 selectedInstanceId={selectedInstanceId}
                 onSelectInstance={onSelectInstance}
                 onOpenInstancePane={OpenInstancePane}
-                onStopInstance={monitor.StopInstance}
-                onFocusInstance={monitor.FocusInstance}
-                onStopTasks={monitor.StopTasks}
-                onFetchHistory={monitor.FetchHistory}
-                serverManagerInformation={serverManagerInformation}/>
+                onStopInstance={monitor.StopInstance}/>
 
         case "performance":
             return <PerformanceView
@@ -98,17 +100,25 @@ const PaneContent = ({ pane }: { pane: Pane }) => {
             return <LogsView
                 instanceList={monitor.instanceList}
                 selectedInstanceId={selectedInstanceId}
-                onSelectInstance={onSelectInstance}
+                onSelectInstance={(instanceId?: string, openInstance?: boolean) => {
+                    if (!openInstance) { onSelectInstance(instanceId); return }
+                    const target = monitor.instanceList.find((item: any) => item.instanceId === instanceId)
+                    if (target) OpenInstancePane("instance-summary", target)
+                }}
                 serverManagerInformation={serverManagerInformation}/>
 
         case "instance-summary":
-            return <div className="iep-view" style={{ overflow: "auto" }}>
-                <SummaryTab
-                    instance={instance}
-                    sample={instance.metrics}
-                    systemSample={monitor.systemSample}
-                    history={monitor.historyByInstance.get(pane.instanceId) || []}/>
-            </div>
+            return <WithHistory instanceId={pane.instanceId} fetchHistory={monitor.FetchHistory}>
+                <div className="iep-view" style={{ overflow: "auto" }}>
+                    <SummaryTab
+                        instance={instance}
+                        sample={instance.metrics}
+                        systemSample={monitor.systemSample}
+                        history={monitor.historyByInstance.get(pane.instanceId) || []}
+                        onStopInstance={monitor.StopInstance}
+                        onFocusInstance={monitor.FocusInstance}/>
+                </div>
+            </WithHistory>
 
         case "instance-tasks":
             return <InstanceTasksTab
@@ -118,12 +128,14 @@ const PaneContent = ({ pane }: { pane: Pane }) => {
                 onStopTasks={monitor.StopTasks}/>
 
         case "instance-performance":
-            return <div className="iep-view" style={{ overflow: "auto" }}>
-                <PerformanceTab
-                    instance={instance}
-                    sample={instance.metrics}
-                    history={monitor.historyByInstance.get(pane.instanceId) || []}/>
-            </div>
+            return <WithHistory instanceId={pane.instanceId} fetchHistory={monitor.FetchHistory}>
+                <div className="iep-view" style={{ overflow: "auto" }}>
+                    <PerformanceTab
+                        instance={instance}
+                        sample={instance.metrics}
+                        history={monitor.historyByInstance.get(pane.instanceId) || []}/>
+                </div>
+            </WithHistory>
 
         case "instance-log":
             return <div className="iep-view__body iep-view__body--flush" style={{ padding: "var(--mp-space-2)" }}>
