@@ -35,6 +35,10 @@ contrato de arquivos do seu tipo.
 |---|---|---|
 | `PackageHandlerManager` | `Managers/PackageHandler` | `workspaceStoreLib` |
 
-Parâmetro: `workspaceStorageFilePath`.
+Parâmetro: `workspaceStorageFilePath` — **recurso declarado** em
+`metadata/storage-params.json` dos packages do grupo (namespace
+`package-developer`), resolvido pela
+[resource-params-handler.lib](../../../../../essential-repository/Runtime.Module/MetadataHelpers.layer/resource-params-handler.lib/README.md).
+O mesmo banco é usado pelo `package-toolkit.cli` do EcosystemCoreRepo.
 
 > Veja o [README do repositório](../../../../README.md).

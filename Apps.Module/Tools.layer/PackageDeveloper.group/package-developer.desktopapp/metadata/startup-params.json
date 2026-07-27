@@ -1,6 +1,5 @@
 {
-    "installDataDirPath":"~/EcosystemData",
-    "serverName":"PackageDeveloperDesktopInstance",
-    "workspaceStorageFilePath":"~/virtual-desk-state/local-databases/package-developer-workspace-store-service.sqlite",
-    "runCommandPath":"/home/kadisk/EcosystemData/executables/run"
+    "installDataDirPath": "~/EcosystemData",
+    "serverName": "PackageDeveloperDesktopInstance",
+    "runCommandPath": "/home/kadisk/EcosystemData/executables/run"
 }

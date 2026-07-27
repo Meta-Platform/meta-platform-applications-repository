@@ -1,6 +1,5 @@
 {
-    "port":"8090",
-    "serverName":"PackageDeveloperWebserviceInstance",
-    "workspaceStorageFilePath":"~/virtual-desk-state/local-databases/package-developer-workspace-store-service.sqlite",
-    "runCommandPath":"/home/kadisk/EcosystemData/executables/run"
+    "port": "8090",
+    "serverName": "PackageDeveloperWebserviceInstance",
+    "runCommandPath": "/home/kadisk/EcosystemData/executables/run"
 }
