@@ -175,6 +175,30 @@ seria idêntico). Qualquer falha no cálculo/leitura degrada com segurança para
 do *fingerprint* para invalidar bundles antigos. Vale para **todos** os
 `.desktopapp` em modo GUI-host (compartilham este `electron-main.js`).
 
+## Rota inicial (`META_INITIAL_ROUTE`)
+
+Uma aplicação pode mandar abrir outra **já na tela certa** — o Package Developer
+abre o Instance Executor direto na instância que acabou de lançar, para debugar.
+
+Quem pede informa a rota no lançamento, e o daemon a injeta no env do processo:
+
+```js
+instanceManager.RunPackage({
+    packagePath,
+    startupParams: { initialRoute: "/instances/<instanceId>?tab=log" },
+    launchedBy: "package-developer"
+})
+```
+
+A rota é aplicada como **hash** da página (`#/instances/…`), nos três modos de
+carregamento (`loadFile`, `loadURL` e GUI-host) — hash porque os webguis da
+plataforma roteiam com `HashRouter`: o arquivo carregado é sempre o mesmo
+`index.html`, e o que muda é o que vem depois do `#`. Uma `url` que já traga
+hash próprio manda, por ser mais específica que o pedido geral.
+
+Vale para **qualquer** `.desktopapp` cujo webgui use rotas endereçáveis; sem
+`initialRoute`, nada muda.
+
 ## Dependência
 
 Declara `electron` em `package.json`. Como qualquer dependência de package, é

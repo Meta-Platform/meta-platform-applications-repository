@@ -52,6 +52,31 @@ if(WM_CLASS){
     app.setName(WM_CLASS)
 }
 
+// Rota inicial da aplicação: quando quem manda abrir sabe ONDE quer chegar (o
+// Package Developer abrindo o Instance Executor já na instância que acabou de
+// lançar, para debugar), o daemon injeta META_INITIAL_ROUTE no env e ela é
+// aplicada como HASH da página carregada.
+//
+// Hash, e não caminho, porque os webguis da plataforma roteiam com HashRouter:
+// o arquivo carregado é sempre o mesmo index.html, e o que muda é o que vem
+// depois do "#".
+const INITIAL_ROUTE = process.env.META_INITIAL_ROUTE
+
+// O Electron espera o hash SEM o "#"; a rota pode chegar com ou sem ele.
+const _InitialHash = () =>
+    INITIAL_ROUTE ? String(INITIAL_ROUTE).replace(/^#/, "") : undefined
+
+const _LoadFileWithRoute = (window, filePath) => {
+    const hash = _InitialHash()
+    return hash ? window.loadFile(filePath, { hash }) : window.loadFile(filePath)
+}
+
+const _LoadURLWithRoute = (window, url) => {
+    const hash = _InitialHash()
+    // Uma url que já traga hash manda: ela é mais específica que o pedido geral.
+    return window.loadURL(hash && !url.includes("#") ? `${url}#${hash}` : url)
+}
+
 // Reporta o progresso de LANÇAMENTO ao daemon (executor-manager) que abriu esta
 // janela. O daemon injeta META_LAUNCH_PROGRESS_SOCKET/META_LAUNCH_ID no env; aqui
 // POSTamos o ciclo (window-ready → building → ready) no socket dele, e a área de
@@ -298,7 +323,7 @@ const CreateWindow = () => {
     // (badge verde) com a UI de fato pronta.
     if(!url) {
         window.webContents.once("did-finish-load", () => _ReportLaunchProgress("ready", 100))
-        window.loadFile(file)
+        _LoadFileWithRoute(window, file)
         return
     }
 
@@ -327,7 +352,7 @@ const CreateWindow = () => {
             // "ready" NÃO é reportado aqui: servidor respondendo 200 não é o
             // mesmo que a UI renderizada. Quem reporta é o did-finish-load do
             // front-end real (handler abaixo).
-            if(!window.isDestroyed()) window.loadURL(url)
+            if(!window.isDestroyed()) _LoadURLWithRoute(window, url)
             setTimeout(PollForUpdatedBundle, ASSET_POLL_INTERVAL_MS)
         } else {
             setTimeout(PollUntilReady, POLL_INTERVAL_MS)
@@ -353,7 +378,7 @@ const CreateWindow = () => {
         if(window.isDestroyed()) return
         if(result.response === 0) {
             currentBundleSignature = newBundleSignature
-            window.loadURL(url)
+            _LoadURLWithRoute(window, url)
         } else {
             ignoredBundleSignature = newBundleSignature
         }
@@ -379,7 +404,7 @@ const CreateWindow = () => {
             // valer (evita interromper o trabalho no watch mode).
             if(Date.now() - loadedAt < INITIAL_REBUILD_WINDOW_MS) {
                 currentBundleSignature = newBundleSignature
-                if(!window.isDestroyed()) window.loadURL(url)
+                if(!window.isDestroyed()) _LoadURLWithRoute(window, url)
             } else {
                 await ConfirmReload(newBundleSignature)
             }
@@ -640,7 +665,7 @@ const CreateGuiHostWindow = async () => {
         // página provisória já carregou muito antes, durante o build, então
         // o próximo did-finish-load é o da UI real.
         window.webContents.once("did-finish-load", () => _ReportLaunchProgress("ready", 100))
-        window.loadFile(join(output, "index.html"))
+        _LoadFileWithRoute(window, join(output, "index.html"))
     }
 
     try {
