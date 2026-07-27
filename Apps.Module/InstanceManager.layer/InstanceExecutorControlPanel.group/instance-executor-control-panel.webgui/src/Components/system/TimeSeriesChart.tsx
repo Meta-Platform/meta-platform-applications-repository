@@ -30,7 +30,13 @@ type Props = {
     emptyLabel?: string
 }
 
+// A margem esquerda tem de caber o MAIOR rótulo do eixo. Com valor fixo,
+// "1.1 GB" e "17 KB/s" estouravam a caixa e apareciam cortados pela metade.
 const PADDING = { top: 8, right: 8, bottom: 16, left: 44 }
+
+// ~6.2px por caractere na monoespaçada de 10px, mais o respiro até a grade.
+const _LeftPadding = (labels: string[]) =>
+    Math.max(PADDING.left, Math.ceil(Math.max(...labels.map((label) => label.length)) * 6.2) + 12)
 
 const TimeSeriesChart = ({
     series = [],
@@ -87,10 +93,18 @@ const TimeSeriesChart = ({
         return { xMin, xMax: xMax === xMin ? xMin + 1 : xMax, yMin, yMax: top }
     }, [allPoints, yMax, yMin])
 
-    const plotWidth  = Math.max(1, width - PADDING.left - PADDING.right)
+    const gridValues = useMemo(
+        () => [0, 0.5, 1].map((ratio) => domain.yMin + (domain.yMax - domain.yMin) * ratio),
+        [domain])
+
+    const paddingLeft = useMemo(
+        () => _LeftPadding(gridValues.map((value) => formatValue(value))),
+        [gridValues, formatValue])
+
+    const plotWidth  = Math.max(1, width - paddingLeft - PADDING.right)
     const plotHeight = Math.max(1, height - PADDING.top - PADDING.bottom)
 
-    const _X = (x: number) => PADDING.left + ((x - domain.xMin) / (domain.xMax - domain.xMin)) * plotWidth
+    const _X = (x: number) => paddingLeft + ((x - domain.xMin) / (domain.xMax - domain.xMin)) * plotWidth
     const _Y = (y: number) => PADDING.top + plotHeight - ((Math.min(y, domain.yMax) - domain.yMin) / (domain.yMax - domain.yMin || 1)) * plotHeight
 
     // Buraco na série (amostra sem valor) quebra a linha em vez de interpolar:
@@ -127,7 +141,7 @@ const TimeSeriesChart = ({
 
         const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
         const offsetX = event.clientX - bounds.left
-        const ratio = (offsetX - PADDING.left) / plotWidth
+        const ratio = (offsetX - paddingLeft) / plotWidth
         const index = Math.round(ratio * (points.length - 1))
 
         if (index < 0 || index >= points.length) { setHoverIndex(undefined); return }
@@ -136,8 +150,6 @@ const TimeSeriesChart = ({
     }
 
     const hasData = allPoints.some((point) => point.y !== undefined && point.y !== null)
-
-    const gridValues = [0, 0.5, 1].map((ratio) => domain.yMin + (domain.yMax - domain.yMin) * ratio)
 
     return <div className="iep-chart" ref={wrapperRef}>
         <div
@@ -158,11 +170,11 @@ const TimeSeriesChart = ({
                     gridValues.map((value) => <g key={value}>
                         <line
                             className="iep-chart__grid"
-                            x1={PADDING.left} x2={width - PADDING.right}
+                            x1={paddingLeft} x2={width - PADDING.right}
                             y1={_Y(value)} y2={_Y(value)}/>
                         <text
                             className="iep-chart__label"
-                            x={PADDING.left - 6} y={_Y(value) + 3}
+                            x={paddingLeft - 6} y={_Y(value) + 3}
                             textAnchor="end">
                             {formatValue(value)}
                         </text>
@@ -171,7 +183,7 @@ const TimeSeriesChart = ({
 
                 <line
                     className="iep-chart__axis"
-                    x1={PADDING.left} x2={PADDING.left}
+                    x1={paddingLeft} x2={paddingLeft}
                     y1={PADDING.top} y2={PADDING.top + plotHeight}/>
 
                 {
@@ -204,7 +216,7 @@ const TimeSeriesChart = ({
                 {
                     hasData && reference.points.length > 1 &&
                     <>
-                        <text className="iep-chart__label" x={PADDING.left} y={height - 3}>
+                        <text className="iep-chart__label" x={paddingLeft} y={height - 3}>
                             {FormatClock(reference.points[0].x)}
                         </text>
                         <text className="iep-chart__label" x={width - PADDING.right} y={height - 3} textAnchor="end">

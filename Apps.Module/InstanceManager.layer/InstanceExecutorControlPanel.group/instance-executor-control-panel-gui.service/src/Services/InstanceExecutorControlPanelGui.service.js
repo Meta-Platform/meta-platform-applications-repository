@@ -16,6 +16,8 @@ const CONTROLLER_MODULES = {
     // da webservice: registrar só um lado faz o painel funcionar num transporte e
     // falhar em silêncio no outro.
     InstanceObservability: { controller: "Controllers/InstanceObservability.controller", api: "APIs/InstanceObservability.api.json" },
+    // Espaços de trabalho (arranjo de painéis) — persistidos em disco pelo backend.
+    WorkspaceLayout: { controller: "Controllers/WorkspaceLayout.controller", api: "APIs/WorkspaceLayout.api.json" },
     RepositoryManager:   { controller: "Controllers/RepositoryManager.controller",   api: "APIs/RepositoryManager.api.json" },
     EcosystemManager:    { controller: "Controllers/EcosystemManager.controller",    api: "APIs/EcosystemManager.api.json" },
     CommandLineRuntime:  { controller: "Controllers/CommandLineRuntime.controller",   api: "APIs/CommandLineRuntime.api.json" }
@@ -33,6 +35,10 @@ const InstanceExecutorControlPanelGuiService = (params) => {
         commandLineRuntimeService,
         instanceManagerRuntimeService,
         instanceExecutorControlPanelWebservice,
+        // Bag escalar do gui-host (params da janela): é por aqui que o caminho
+        // do EcosystemData chega ao controller que grava os espaços de trabalho.
+        installDataDirPath,
+        ECO_DIRPATH_INSTALL_DATA,
         onReady
     } = params
 
@@ -43,7 +49,9 @@ const InstanceExecutorControlPanelGuiService = (params) => {
     const controllerParams = {
         repositoryManagerService,
         commandLineRuntimeService,
-        instanceManagerRuntimeService
+        instanceManagerRuntimeService,
+        installDataDirPath,
+        ECO_DIRPATH_INSTALL_DATA
     }
 
     const registry = {}

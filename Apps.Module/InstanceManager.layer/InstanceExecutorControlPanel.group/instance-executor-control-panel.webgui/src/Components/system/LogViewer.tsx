@@ -53,6 +53,9 @@ const LogViewer = ({ instance, serverManagerInformation, height }: any) => {
     const [ lines, setLines ]     = useState<string[]>([])
     const [ filter, setFilter ]   = useState("")
     const [ follow, setFollow ]   = useState(true)
+    // Log de terminal é linha longa: por padrão o excedente sai por rolagem
+    // horizontal (uma linha = uma linha), e a quebra é opcional.
+    const [ wrap, setWrap ]       = useState(false)
     const [ size, setSize ]       = useState<number>()
     const [ connected, setConnected ] = useState(false)
     const [ dropped, setDropped ] = useState(0)
@@ -115,7 +118,7 @@ const LogViewer = ({ instance, serverManagerInformation, height }: any) => {
         try { navigator.clipboard.writeText(visibleLines.map((entry) => entry.line).join("\n")) } catch (e) {}
     }
 
-    return <div className="iep-log" style={height ? { height, flex: "0 0 auto" } : undefined}>
+    return <div className={`iep-log${wrap ? " iep-log--wrap" : ""}`} style={height ? { height, flex: "0 0 auto" } : undefined}>
         <div className="iep-log__bar">
             <SearchField value={filter} onChange={setFilter} placeholder="filtrar no log" width={200}/>
 
@@ -125,6 +128,14 @@ const LogViewer = ({ instance, serverManagerInformation, height }: any) => {
                 title="rolar automaticamente conforme chegam linhas"
                 onClick={() => setFollow((current) => !current)}>
                 <Icon name="arrow down" style={{ margin: 0 }}/> acompanhar
+            </button>
+
+            <button
+                type="button"
+                className={`iep-btn${wrap ? " iep-btn--active" : ""}`}
+                title="quebrar linhas longas em vez de rolar na horizontal"
+                onClick={() => setWrap((current) => !current)}>
+                <Icon name="align left" style={{ margin: 0 }}/> quebrar
             </button>
 
             <button type="button" className="iep-btn" onClick={() => { setLines([]); setDropped(0) }}>

@@ -35,6 +35,18 @@
             }
         },
         {
+            "url": "/workspace-layout",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/WorkspaceLayout.api.json",
+                "controller": "Controllers/WorkspaceLayout.controller"
+            },
+            "bound-params": {
+                "controller-params":{},
+                "serverService":"serverService"
+            }
+        },
+        {
             "url": "/repository-manager",
             "type": "controller",
             "params": {

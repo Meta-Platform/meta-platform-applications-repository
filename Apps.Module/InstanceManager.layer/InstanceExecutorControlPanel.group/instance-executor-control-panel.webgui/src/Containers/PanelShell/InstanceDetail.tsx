@@ -19,6 +19,8 @@ import {
     PackageName
 } from "../../Components/system"
 
+import CopyableMonoText from "../../Components/ui/CopyableMonoText"
+
 import InstanceTasksTab from "./InstanceTasksTab"
 
 // Workspace de UMA instância: identidade no topo e o detalhe em abas —
@@ -50,7 +52,7 @@ const _RateSeries = (history: any[], field: string) =>
         }
     })
 
-const SummaryTab = ({ instance, sample, history, systemSample }: any) => {
+export const SummaryTab = ({ instance, sample, history, systemSample }: any) => {
 
     // A barra de memória precisa de um denominador, e o único que faz sentido é
     // a RAM da máquina — o sample da instância traz bytes, não proporção.
@@ -64,9 +66,12 @@ const SummaryTab = ({ instance, sample, history, systemSample }: any) => {
         <div className="iep-panelgrid">
             <Card title="identidade" icon="id card outline">
                 <KeyValueList entries={[
-                    { label: "pacote",    value: instance.packagePath, title: instance.packagePath },
+                    // Caminho de pacote quebrava a coluna em oito linhas: agora
+                    // trunca no meio (começo e fim são o que identificam) e o
+                    // valor inteiro sai pelo botão de copiar.
+                    { label: "pacote",    value: <CopyableMonoText value={instance.packagePath} maxChars={26}/> },
                     { label: "tipo",      value: <KindTag kind={instance.kind}/> },
-                    { label: "instância", value: instance.instanceId },
+                    { label: "instância", value: <CopyableMonoText value={instance.instanceId} maxChars={26}/> },
                     { label: "processo",  value: instance.pid ? `pid ${instance.pid}` : instance.taskId != null ? `task ${instance.taskId}` : undefined },
                     { label: "execução",  value: instance.executionId },
                     { label: "lançado por", value: instance.launchedBy },
@@ -136,7 +141,7 @@ const SummaryTab = ({ instance, sample, history, systemSample }: any) => {
     </div>
 }
 
-const PerformanceTab = ({ instance, sample, history }: any) => {
+export const PerformanceTab = ({ instance, sample, history }: any) => {
 
     const cpuSeries = useMemo(
         () => [{ key: "cpu", label: "cpu", color: "var(--iep-cpu)", points: history.map((item: any) => ({ x: item.at, y: item.cpuPercent })) }],

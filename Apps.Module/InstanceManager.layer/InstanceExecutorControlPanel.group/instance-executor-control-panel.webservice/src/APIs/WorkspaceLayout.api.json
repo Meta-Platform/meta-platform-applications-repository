@@ -1,0 +1,29 @@
+{
+  "name": "WorkspaceLayout",
+  "endpoints": [
+    {
+      "summary": "GetWorkspaces",
+      "method": "GET",
+      "path": "/workspaces"
+    },
+    {
+      "summary": "SaveWorkspaces",
+      "method": "POST",
+      "path": "/workspaces",
+      "parameters": [
+				{
+					"name": "workspaces",
+					"in": "body",
+					"type": "json",
+					"required": true
+				},
+				{
+					"name": "activeId",
+					"in": "body",
+					"type": "string",
+					"required": false
+				}
+      ]
+    }
+  ]
+}

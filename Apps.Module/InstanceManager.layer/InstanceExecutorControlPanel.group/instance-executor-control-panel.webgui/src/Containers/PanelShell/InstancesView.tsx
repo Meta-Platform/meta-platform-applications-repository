@@ -17,9 +17,7 @@ import {
     PackageName
 } from "../../Components/system"
 
-import InstanceDetail from "./InstanceDetail"
-
-// Lista de instâncias em execução + workspace da instância selecionada.
+// Lista de instâncias em execução — a lista de processos do ecossistema.
 //
 // É a tela principal do painel e a lista de processos do ecossistema: o que o
 // daemon colocou no ar, com o consumo de cada um ao vivo. Aplicações iniciadas
@@ -33,25 +31,27 @@ const KIND_FILTERS = [
     { key: "cli",     label: "cli" }
 ]
 
+// O que se abre de uma instância. São painéis do workspace — vários podem
+// ficar abertos ao mesmo tempo, de instâncias diferentes.
+const OPEN_ACTIONS: any[] = [
+    { kind: "instance-summary",     icon: "info circle",             label: "resumo" },
+    { kind: "instance-tasks",       icon: "sitemap",                 label: "tarefas" },
+    { kind: "instance-log",         icon: "file alternate outline",  label: "log" },
+    { kind: "instance-performance", icon: "chart line",              label: "desempenho" }
+]
+
 const _TaskTotal = (sample: any) =>
     sample && sample.tasksByStatus
         ? Object.keys(sample.tasksByStatus).reduce((sum, status) => sum + sample.tasksByStatus[status], 0)
         : undefined
 
-const InstancesView = ({
+export const InstancesView = ({
     instanceList,
-    taskList,
     historyByInstance,
-    systemSample,
     selectedInstanceId,
-    activeTab,
     onSelectInstance,
-    onChangeTab,
-    onStopInstance,
-    onFocusInstance,
-    onStopTasks,
-    onFetchHistory,
-    serverManagerInformation
+    onOpenInstancePane,
+    onStopInstance
 }: any) => {
 
     const [ filter, setFilter ]         = useState("")
@@ -68,10 +68,6 @@ const InstancesView = ({
         })
     }, [instanceList, filter, kindFilter])
 
-    const selectedInstance = useMemo(
-        () => instanceList.find((instance: any) => instance.instanceId === selectedInstanceId),
-        [instanceList, selectedInstanceId])
-
     const columns: GridColumn[] = [
         {
             key: "packagePath",
@@ -85,13 +81,6 @@ const InstancesView = ({
                 <KindIcon kind={row.kind} style={{ margin: 0, color: "var(--mp-muted)" }}/>
                 <strong>{PackageName(row.packagePath)}</strong>
             </span>
-        },
-        {
-            key: "kind",
-            label: "tipo",
-            width: 96,
-            sortable: true,
-            render: (row: any) => <KindTag kind={row.kind}/>
         },
         {
             key: "pid",
@@ -158,17 +147,28 @@ const InstancesView = ({
             render: (row: any) => row.metrics ? FormatDuration(row.metrics.uptimeSeconds) : "—"
         },
         {
-            key: "launchedBy",
-            label: "lançado por",
-            width: 118,
-            sortable: true
-        },
-        {
             key: "status",
             label: "estado",
             width: 118,
             sortable: true,
             render: (row: any) => <StateLabel status={row.status}/>
+        },
+        {
+            key: "open",
+            label: "abrir",
+            width: 108,
+            render: (row: any) => <span style={{ display: "inline-flex", gap: 1 }}>
+                {
+                    OPEN_ACTIONS.map((action) => <button
+                        key={action.kind}
+                        type="button"
+                        className="iep-iconbtn"
+                        title={`${action.label} — abre como painel`}
+                        onClick={(event: any) => { event.stopPropagation(); onOpenInstancePane(action.kind, row) }}>
+                        <Icon name={action.icon} style={{ margin: 0 }}/>
+                    </button>)
+                }
+            </span>
         },
         {
             key: "actions",
@@ -202,46 +202,25 @@ const InstancesView = ({
             </span>
         </div>
 
-        <div className={`iep-split${selectedInstance ? "" : " iep-split--wide"}`}>
-            <div className="iep-split__master">
-                <DataGrid
-                    columns={columns}
-                    rows={rows}
-                    rowKey={(row: any) => row.instanceId}
-                    selectedKey={selectedInstanceId}
-                    onSelectRow={(row: any) => onSelectInstance(row.instanceId)}
-                    defaultSort={{ column: "cpu", direction: "desc" }}
-                    emptyTitle={
-                        instanceList.length === 0
-                        ? "o daemon não lançou nenhuma instância"
-                        : "nenhuma instância corresponde ao filtro"
-                    }
-                    emptyHint={
-                        instanceList.length === 0
-                        ? "aplicações iniciadas fora dele (terminal, autostart) não aparecem aqui."
-                        : undefined
-                    }/>
-            </div>
-
-            {
-                selectedInstance &&
-                <div className="iep-split__detail">
-                    <InstanceDetail
-                        instance={selectedInstance}
-                        sample={selectedInstance.metrics}
-                        systemSample={systemSample}
-                        history={historyByInstance.get(selectedInstance.instanceId) || []}
-                        taskList={taskList}
-                        activeTab={activeTab}
-                        onChangeTab={onChangeTab}
-                        onClose={() => onSelectInstance(undefined)}
-                        onStopInstance={onStopInstance}
-                        onFocusInstance={onFocusInstance}
-                        onStopTasks={onStopTasks}
-                        onFetchHistory={onFetchHistory}
-                        serverManagerInformation={serverManagerInformation}/>
-                </div>
-            }
+        <div className="iep-view__body iep-view__body--flush" style={{ padding: "var(--mp-space-2)" }}>
+            <DataGrid
+                columns={columns}
+                rows={rows}
+                rowKey={(row: any) => row.instanceId}
+                selectedKey={selectedInstanceId}
+                onSelectRow={(row: any) => onSelectInstance(row.instanceId)}
+                onActivateRow={(row: any) => onOpenInstancePane("instance-summary", row)}
+                defaultSort={{ column: "cpu", direction: "desc" }}
+                emptyTitle={
+                    instanceList.length === 0
+                    ? "o daemon não lançou nenhuma instância"
+                    : "nenhuma instância corresponde ao filtro"
+                }
+                emptyHint={
+                    instanceList.length === 0
+                    ? "aplicações iniciadas fora dele (terminal, autostart) não aparecem aqui."
+                    : undefined
+                }/>
         </div>
     </div>
 }

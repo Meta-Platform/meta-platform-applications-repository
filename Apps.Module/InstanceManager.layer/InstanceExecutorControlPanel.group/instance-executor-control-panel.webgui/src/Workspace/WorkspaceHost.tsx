@@ -1,0 +1,368 @@
+import * as React from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+
+import { Icon } from "semantic-ui-react"
+
+import PaneContent from "./PaneContent"
+import { EmptyState } from "../Components/system"
+
+import { IsTabs, LayoutNode, Pane, TabGroup, Workspace } from "./Model"
+
+/**
+ * Onde os painéis aparecem. Três arranjos, um host:
+ *
+ *   ancorado  — árvore de divisões, cada folha um grupo de abas
+ *   flutuante — camada por cima, janelas arrastáveis
+ *   mural     — grade de blocos
+ *
+ * O conteúdo é sempre o mesmo `PaneContent`; muda só a moldura. É isso que
+ * permite mandar uma aba para flutuante (ou para o mural) sem que o log em
+ * acompanhamento se reconecte e perca o que já recebeu.
+ */
+
+const PANE_ICON: any = {
+    "overview":             "dashboard",
+    "instances":            "server",
+    "performance":          "chart line",
+    "logs":                 "file alternate outline",
+    "instance-summary":     "info circle",
+    "instance-tasks":       "sitemap",
+    "instance-log":         "file alternate outline",
+    "instance-performance": "chart line"
+}
+
+// ---- Grupo de abas ------------------------------------------------------
+
+const TabGroupView = ({ group, workspace, actions, isOnly }: any) => {
+
+    const panes: Pane[] = group.paneIds.map((paneId: string) => workspace.panes[paneId]).filter(Boolean)
+    const activePane = workspace.panes[group.activePaneId] || panes[panes.length - 1]
+
+    const [ dragOver, setDragOver ] = useState(false)
+
+    const _OnDrop = (event: React.DragEvent) => {
+        event.preventDefault()
+        setDragOver(false)
+        const paneId = event.dataTransfer.getData("text/pane-id")
+        if (paneId) actions.MovePaneToGroup(paneId, group.id)
+    }
+
+    return <div
+        className={`iep-panegroup${dragOver ? " iep-panegroup--dropping" : ""}`}
+        onDragOver={(event) => { event.preventDefault(); setDragOver(true) }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={_OnDrop}>
+
+        <div className="iep-panetabs">
+            {
+                panes.map((pane) => <div
+                    key={pane.id}
+                    className={`iep-panetab${pane.id === (activePane && activePane.id) ? " iep-panetab--active" : ""}`}
+                    draggable
+                    onDragStart={(event) => event.dataTransfer.setData("text/pane-id", pane.id)}
+                    onClick={() => actions.SetActivePane(group.id, pane.id)}
+                    title={pane.subtitle || pane.title}>
+                    <Icon name={PANE_ICON[pane.kind] || "window maximize outline"} style={{ margin: 0 }}/>
+                    <span className="iep-panetab__label">{pane.title}</span>
+                    <Icon
+                        name="close"
+                        className="iep-panetab__close"
+                        onClick={(event: any) => { event.stopPropagation(); actions.ClosePane(pane.id) }}/>
+                </div>)
+            }
+
+            <span className="iep-toolbar__spacer"/>
+
+            {
+                activePane &&
+                <div className="iep-panetabs__actions">
+                    <button
+                        type="button" className="iep-iconbtn" title="dividir ao lado"
+                        disabled={panes.length < 2}
+                        onClick={() => actions.SplitGroup(group.id, activePane.id, "row")}>
+                        <Icon name="columns" style={{ margin: 0 }}/>
+                    </button>
+                    <button
+                        type="button" className="iep-iconbtn" title="dividir abaixo"
+                        disabled={panes.length < 2}
+                        onClick={() => actions.SplitGroup(group.id, activePane.id, "column")}>
+                        <Icon name="window minimize outline" style={{ margin: 0 }}/>
+                    </button>
+                    <button
+                        type="button" className="iep-iconbtn" title="destacar em janela flutuante"
+                        onClick={() => actions.FloatPane(activePane.id)}>
+                        <Icon name="external" style={{ margin: 0 }}/>
+                    </button>
+                    <button
+                        type="button" className="iep-iconbtn" title="fixar no mural"
+                        onClick={() => actions.AddToGrid(activePane.id)}>
+                        <Icon name="th" style={{ margin: 0 }}/>
+                    </button>
+                </div>
+            }
+        </div>
+
+        <div className="iep-panebody">
+            {
+                activePane
+                ? <PaneContent pane={activePane}/>
+                : <EmptyState
+                    icon={isOnly ? "window restore outline" : "add"}
+                    title="área vazia"
+                    hint="abra um painel pela navegação à esquerda ou por uma instância da lista."/>
+            }
+        </div>
+    </div>
+}
+
+// ---- Divisão ------------------------------------------------------------
+
+const SplitView = ({ node, workspace, actions }: any) => {
+
+    const containerRef = useRef<HTMLDivElement>(null)
+    const dragRef = useRef<any>(null)
+
+    const _StartResize = (index: number) => (event: React.MouseEvent) => {
+        event.preventDefault()
+        const container = containerRef.current
+        if (!container) return
+        const bounds = container.getBoundingClientRect()
+        dragRef.current = {
+            index,
+            total: node.direction === "row" ? bounds.width : bounds.height,
+            start: node.direction === "row" ? event.clientX : event.clientY,
+            sizes: [...node.sizes]
+        }
+    }
+
+    useEffect(() => {
+        const _OnMove = (event: MouseEvent) => {
+            const state = dragRef.current
+            if (!state) return
+            const position = node.direction === "row" ? event.clientX : event.clientY
+            const delta = (position - state.start) / state.total
+
+            const sizes = [...state.sizes]
+            // Piso de 12%: sem ele, arrastar até o fim faz o painel sumir sem
+            // como trazê-lo de volta.
+            const next = Math.min(Math.max(sizes[state.index] + delta, 0.12), sizes[state.index] + sizes[state.index + 1] - 0.12)
+            const consumed = next - sizes[state.index]
+            sizes[state.index] = next
+            sizes[state.index + 1] -= consumed
+            actions.ResizeSplit(node.id, sizes)
+        }
+        const _OnUp = () => { dragRef.current = null }
+
+        document.addEventListener("mousemove", _OnMove)
+        document.addEventListener("mouseup", _OnUp)
+        return () => {
+            document.removeEventListener("mousemove", _OnMove)
+            document.removeEventListener("mouseup", _OnUp)
+        }
+    }, [node, actions])
+
+    return <div
+        ref={containerRef}
+        className={`iep-split-node iep-split-node--${node.direction}`}>
+        {
+            node.children.map((child: LayoutNode, index: number) => <React.Fragment key={child.id}>
+                <div className="iep-split-node__child" style={{ flexGrow: node.sizes[index] || 1 }}>
+                    <LayoutView node={child} workspace={workspace} actions={actions}/>
+                </div>
+                {
+                    index < node.children.length - 1 &&
+                    <div
+                        className={`iep-splitter iep-splitter--${node.direction}`}
+                        onMouseDown={_StartResize(index)}/>
+                }
+            </React.Fragment>)
+        }
+    </div>
+}
+
+const LayoutView = ({ node, workspace, actions, isOnly }: any) =>
+    IsTabs(node)
+        ? <TabGroupView group={node as TabGroup} workspace={workspace} actions={actions} isOnly={isOnly}/>
+        : <SplitView node={node} workspace={workspace} actions={actions}/>
+
+// ---- Janela flutuante ---------------------------------------------------
+
+const FloatingWindow = ({ placement, pane, actions }: any) => {
+
+    const dragRef = useRef<any>(null)
+
+    const _Start = (mode: "move" | "resize") => (event: React.MouseEvent) => {
+        event.preventDefault()
+        event.stopPropagation()
+        dragRef.current = {
+            mode,
+            startX: event.clientX,
+            startY: event.clientY,
+            box: { x: placement.x, y: placement.y, width: placement.width, height: placement.height }
+        }
+        actions.FocusPane(pane.id)
+    }
+
+    useEffect(() => {
+        const _OnMove = (event: MouseEvent) => {
+            const state = dragRef.current
+            if (!state) return
+            const dx = event.clientX - state.startX
+            const dy = event.clientY - state.startY
+
+            if (state.mode === "move")
+                actions.MoveFloating(pane.id, { x: Math.max(0, state.box.x + dx), y: Math.max(0, state.box.y + dy) })
+            else
+                actions.MoveFloating(pane.id, {
+                    width:  Math.max(260, state.box.width + dx),
+                    height: Math.max(160, state.box.height + dy)
+                })
+        }
+        const _OnUp = () => { dragRef.current = null }
+
+        document.addEventListener("mousemove", _OnMove)
+        document.addEventListener("mouseup", _OnUp)
+        return () => {
+            document.removeEventListener("mousemove", _OnMove)
+            document.removeEventListener("mouseup", _OnUp)
+        }
+    }, [pane.id, actions])
+
+    return <div
+        className="iep-floating"
+        style={{ left: placement.x, top: placement.y, width: placement.width, height: placement.height, zIndex: 40 + placement.z }}
+        onMouseDown={() => actions.FocusPane(pane.id)}>
+
+        <div className="iep-floating__bar" onMouseDown={_Start("move")}>
+            <Icon name={PANE_ICON[pane.kind] || "window maximize outline"} style={{ margin: 0 }}/>
+            <span className="iep-floating__title" title={pane.subtitle || pane.title}>{pane.title}</span>
+            <span className="iep-toolbar__spacer"/>
+            <button type="button" className="iep-iconbtn" title="reancorar" onClick={() => actions.DockPane(pane.id)}>
+                <Icon name="window restore outline" style={{ margin: 0 }}/>
+            </button>
+            <button type="button" className="iep-iconbtn" title="fechar" onClick={() => actions.ClosePane(pane.id)}>
+                <Icon name="close" style={{ margin: 0 }}/>
+            </button>
+        </div>
+
+        <div className="iep-floating__body">
+            <PaneContent pane={pane}/>
+        </div>
+
+        <div className="iep-floating__resizer" onMouseDown={_Start("resize")}/>
+    </div>
+}
+
+// ---- Mural --------------------------------------------------------------
+
+const GRID_COLUMNS = 12
+const GRID_ROW_HEIGHT = 42
+
+const WidgetGrid = ({ workspace, actions }: any) => {
+
+    const dragRef = useRef<any>(null)
+    const containerRef = useRef<HTMLDivElement>(null)
+
+    const _Start = (paneId: string, mode: "move" | "resize", placement: any) => (event: React.MouseEvent) => {
+        event.preventDefault()
+        const container = containerRef.current
+        if (!container) return
+        dragRef.current = {
+            paneId, mode, placement,
+            startX: event.clientX,
+            startY: event.clientY,
+            columnWidth: container.clientWidth / GRID_COLUMNS
+        }
+    }
+
+    useEffect(() => {
+        const _OnMove = (event: MouseEvent) => {
+            const state = dragRef.current
+            if (!state) return
+            const dx = Math.round((event.clientX - state.startX) / state.columnWidth)
+            const dy = Math.round((event.clientY - state.startY) / GRID_ROW_HEIGHT)
+
+            if (state.mode === "move")
+                actions.MoveGridWidget(state.paneId, {
+                    x: Math.min(Math.max(0, state.placement.x + dx), GRID_COLUMNS - state.placement.w),
+                    y: Math.max(0, state.placement.y + dy)
+                })
+            else
+                actions.MoveGridWidget(state.paneId, {
+                    w: Math.min(Math.max(2, state.placement.w + dx), GRID_COLUMNS - state.placement.x),
+                    h: Math.max(3, state.placement.h + dy)
+                })
+        }
+        const _OnUp = () => { dragRef.current = null }
+
+        document.addEventListener("mousemove", _OnMove)
+        document.addEventListener("mouseup", _OnUp)
+        return () => {
+            document.removeEventListener("mousemove", _OnMove)
+            document.removeEventListener("mouseup", _OnUp)
+        }
+    }, [actions])
+
+    if (workspace.grid.length === 0)
+        return <EmptyState
+            icon="th"
+            title="mural vazio"
+            hint="abra um painel e use “fixar no mural” para montar seu acompanhamento."/>
+
+    return <div className="iep-widgetgrid" ref={containerRef}>
+        {
+            workspace.grid.map((placement: any) => {
+                const pane = workspace.panes[placement.paneId]
+                if (!pane) return null
+                return <div
+                    key={placement.paneId}
+                    className="iep-widget"
+                    style={{
+                        gridColumn: `${placement.x + 1} / span ${placement.w}`,
+                        gridRow: `${placement.y + 1} / span ${placement.h}`
+                    }}>
+                    <div className="iep-widget__bar" onMouseDown={_Start(placement.paneId, "move", placement)}>
+                        <Icon name={PANE_ICON[pane.kind] || "window maximize outline"} style={{ margin: 0 }}/>
+                        <span className="iep-widget__title" title={pane.subtitle || pane.title}>{pane.title}</span>
+                        <span className="iep-toolbar__spacer"/>
+                        <button type="button" className="iep-iconbtn" title="abrir como aba" onClick={() => actions.DockPane(placement.paneId)}>
+                            <Icon name="expand" style={{ margin: 0 }}/>
+                        </button>
+                        <button type="button" className="iep-iconbtn" title="tirar do mural" onClick={() => actions.RemoveFromGrid(placement.paneId)}>
+                            <Icon name="close" style={{ margin: 0 }}/>
+                        </button>
+                    </div>
+                    <div className="iep-widget__body">
+                        <PaneContent pane={pane}/>
+                    </div>
+                    <div className="iep-widget__resizer" onMouseDown={_Start(placement.paneId, "resize", placement)}/>
+                </div>
+            })
+        }
+    </div>
+}
+
+// ---- Host ---------------------------------------------------------------
+
+const WorkspaceHost = ({ workspace, actions }: { workspace: Workspace, actions: any }) => {
+
+    const _RenderDocked = useCallback(
+        () => <LayoutView node={workspace.layout} workspace={workspace} actions={actions} isOnly={true}/>,
+        [workspace, actions])
+
+    return <div className="iep-workspace">
+        <div className="iep-workspace__surface">
+            { workspace.mode === "grid" ? <WidgetGrid workspace={workspace} actions={actions}/> : _RenderDocked() }
+        </div>
+
+        {
+            workspace.floating.map((placement) => {
+                const pane = workspace.panes[placement.paneId]
+                if (!pane) return null
+                return <FloatingWindow key={placement.paneId} placement={placement} pane={pane} actions={actions}/>
+            })
+        }
+    </div>
+}
+
+export default WorkspaceHost
