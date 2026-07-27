@@ -5,6 +5,7 @@ import RuntimeView from "../src/Components/Explorer/Runtime/RuntimeView"
 import BootStructuredView from "../src/Components/Explorer/Boot/BootStructuredView"
 import RuntimeDiagramView from "../src/Components/Explorer/Boot/RuntimeDiagramView"
 import { buildPackageModel } from "../src/Domain/packageModel"
+import { buildRuntimeGraph } from "../src/Domain/runtimeGraph"
 import { DEVELOPER_WEBAPP, GIT_STATUS_LIB, IEP_WEBSERVICE, PLAIN_LIB } from "./fixtures/packages"
 
 const modelOf = (raw:any) => buildPackageModel({
@@ -72,6 +73,29 @@ describe("boot — diagrama", () => {
         // nome completo disponível no title, sem truncar de forma destrutiva
         const card = node.querySelector(".pdx-node") as HTMLElement
         expect(card.getAttribute("title")).toContain("@/server-manager.service/services/HTTPServerService")
+    })
+
+    it("clicar num pacote provedor navega para aquele pacote", () => {
+        const onOpenRef = jest.fn()
+        const onSelectItem = jest.fn()
+        render(<RuntimeDiagramView model={modelOf(DEVELOPER_WEBAPP)}
+            onSelectItem={onSelectItem} onOpenRef={onOpenRef} />)
+        fireEvent.click(screen.getByTestId("node-provider:git-status.lib"))
+        expect(onOpenRef).toHaveBeenCalledWith("git-status.lib")
+        expect(onSelectItem).not.toHaveBeenCalled()
+    })
+
+    it("cada nó carrega a ficha usada no hover, vinda do metadado", () => {
+        const graph = buildRuntimeGraph(modelOf(DEVELOPER_WEBAPP), "boot")
+        const service = graph.nodes.filter((n) => n.id === "item:boot-services/0")[0]
+        // o grupo "identidade" não repete o nome em cada linha da ficha
+        expect(service.details!.map((d) => d.label)).toEqual(
+            ["tipo", "namespace", "dependency", "params · name", "params · port"])
+        expect(service.details!.map((d) => d.value)).toContain("@@/server-service")
+
+        const provider = graph.nodes.filter((n) => n.kind === "provider")[0]
+        expect(provider.packageRef).toBe(provider.label)
+        expect(provider.details!.map((d) => d.label)).toContain("tipo")
     })
 
     it("sem topologia, não desenha canvas vazio", () => {

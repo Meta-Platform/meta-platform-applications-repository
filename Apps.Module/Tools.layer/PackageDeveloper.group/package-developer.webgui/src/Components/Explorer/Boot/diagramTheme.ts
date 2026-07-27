@@ -25,6 +25,34 @@ export const NODE_THEME:{ [k in GraphNodeKind]: NodeTheme } = {
     "implementation" : { label: "implementação", accent: "var(--mp-ink-3)" }
 }
 
+// Forma e tamanho por tipo de nó: a silhueta já diz o que é a coisa, antes de
+// ler o rótulo. `variant` vira classe CSS; `width` alimenta o layout do Dagre.
+export type NodeShape = {
+    variant : "card" | "pill" | "note" | "chip"
+    width   : number
+    height  : number
+    icon?   : string
+}
+
+export const NODE_SHAPE:{ [k in GraphNodeKind]: NodeShape } = {
+    "package"        : { variant: "card", width: 240, height: 84, icon: "cube" },
+    "provider"       : { variant: "card", width: 220, height: 84, icon: "cubes" },
+    "section"        : { variant: "chip", width: 190, height: 60, icon: "folder open outline" },
+    "boot-service"   : { variant: "card", width: 230, height: 80, icon: "cog" },
+    "service"        : { variant: "card", width: 230, height: 80, icon: "cog" },
+    "boot-endpoint"  : { variant: "card", width: 230, height: 80, icon: "plug" },
+    "endpoint"       : { variant: "card", width: 230, height: 80, icon: "linkify" },
+    "boot-executable": { variant: "card", width: 210, height: 76, icon: "terminal" },
+    "command"        : { variant: "card", width: 210, height: 76, icon: "terminal" },
+    "boot-window"    : { variant: "card", width: 210, height: 76, icon: "window maximize outline" },
+    "boot-param"     : { variant: "pill", width: 170, height: 52, icon: "dot circle outline" },
+    "startup-param"  : { variant: "pill", width: 170, height: 52, icon: "dot circle outline" },
+    "requirement"    : { variant: "pill", width: 180, height: 56, icon: "lock" },
+    "controller"     : { variant: "note", width: 190, height: 68, icon: "file code outline" },
+    "template"       : { variant: "note", width: 190, height: 68, icon: "file alternate outline" },
+    "implementation" : { variant: "note", width: 190, height: 68, icon: "file code outline" }
+}
+
 export type EdgeTheme = { label: string, color: string, dashed: boolean, animated: boolean }
 
 export const EDGE_THEME:{ [k in GraphEdgeKind]: EdgeTheme } = {

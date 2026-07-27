@@ -359,20 +359,49 @@
     background: var(--mp-surface);
     border-bottom: 1px solid var(--mp-line-soft);
 }
-.pdx-ident { display: flex; align-items: flex-start; gap: 10px; }
-.pdx-ident__icon { flex: 0 0 auto; margin-top: 2px; }
+.pdx-ident { display: flex; align-items: center; gap: 10px; }
+.pdx-ident__icon { flex: 0 0 auto; display: inline-flex; }
 .pdx-ident__main { min-width: 0; flex: 1 1 auto; }
+/* Nome + situação na mesma linha; os badges quebram junto se faltar espaço. */
+.pdx-ident__titlerow {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
 .pdx-ident__name {
     font-family: var(--mp-font-display);
     font-size: 17px;
     font-weight: 800;
     line-height: 1.2;
     color: var(--mp-ink);
-    word-break: break-word;
+    word-break: normal;
+    overflow-wrap: break-word;
 }
 .pdx-ident__name .pdx-row__ext { font-weight: 600; }
 .pdx-ident__badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; align-items: center; }
-.pdx-ident__actions { display: flex; gap: 4px; flex: 0 0 auto; }
+.pdx-ident__actions { display: flex; gap: 4px; flex: 0 0 auto; align-self: flex-start; }
+
+/* Linha de contexto: trilha à esquerda, identificadores técnicos à direita. */
+.pdx-context {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin-top: 8px;
+}
+.pdx-context .pdx-crumbs { margin-top: 0; }
+.pdx-context__refs {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-left: auto;
+    min-width: 0;
+}
+.pdx-context__refs .pdx-code { font-size: 11px; }
 
 .pdx-badge {
     display: inline-flex;
@@ -665,22 +694,50 @@
 
 /* ------------------------------------------------------------- diagrama */
 
+.pdx-diagram-scrim {
+    position: fixed;
+    inset: 0;
+    background: rgba(23, 23, 19, 0.35);
+    z-index: var(--mp-z-window);
+}
+.pdx-diagram--full {
+    position: fixed;
+    top: calc(var(--pd-header-h) + 12px);
+    left: 24px;
+    right: 24px;
+    bottom: 24px;
+    height: auto !important;
+    min-height: 0 !important;
+    z-index: calc(var(--mp-z-window) + 1);
+    border: 2px solid var(--mp-line-strong);
+    box-shadow: var(--mp-shadow-soft);
+}
 .pdx-diagram { height: 100%; min-height: 380px; border: 1px solid var(--mp-line-soft); border-radius: var(--mp-radius-md); overflow: hidden; }
 .pdx-diagram .react-flow__attribution { display: none; }
 .pdx-node {
-    min-width: 150px;
-    max-width: 260px;
-    padding: 6px 10px;
+    padding: 7px 10px;
     border: 1.5px solid var(--mp-line);
-    border-radius: var(--mp-radius-md);
     background: var(--mp-surface);
     box-shadow: var(--mp-shadow-1);
+    box-sizing: border-box;
+}
+.pdx-node[data-clickable="true"] { cursor: pointer; }
+.pdx-node__top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.pdx-node__kind {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    padding: 0 4px;
+    white-space: nowrap;
 }
 .pdx-node__label {
     font-family: var(--mp-font-mono);
     font-size: 12px;
     font-weight: 700;
-    color: var(--mp-ink);
+    color: var(--pdx-ink, var(--mp-ink));
     line-height: 1.25;
     overflow-wrap: anywhere;
 }
@@ -689,24 +746,101 @@
     color: var(--mp-muted);
     margin-top: 3px;
     overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
-.pdx-node__kind {
-    display: inline-block;
+
+/* --- formas: a silhueta identifica o tipo antes da leitura --- */
+.pdx-node--card { border-radius: var(--mp-radius-md); border-left-width: 5px; }
+.pdx-node--pill {
+    border-radius: 999px;
+    border-width: 1.5px;
+    padding: 6px 14px;
+    text-align: center;
+    background: var(--mp-surface-2);
+}
+.pdx-node--pill .pdx-node__top { justify-content: center; margin-bottom: 2px; }
+.pdx-node--pill .pdx-node__label { font-size: 11px; }
+.pdx-node--note {
+    border-radius: 3px;
+    border-style: dashed;
+    background: var(--mp-paper-2);
+}
+.pdx-node--chip {
+    border-radius: var(--mp-radius-sm);
+    border-style: dashed;
+    background: var(--mp-paper-3);
+    text-align: center;
+}
+.pdx-node--chip .pdx-node__top { justify-content: center; }
+.pdx-node--kind-package  { border-width: 2px; border-left-width: 6px; background: var(--mp-paper-2); }
+.pdx-node--kind-provider { background: var(--mp-accent-cyan-tint); }
+.pdx-node--selected {
+    box-shadow: 0 0 0 3px var(--mp-accent-blue-tint), var(--mp-shadow-1);
+    border-color: var(--mp-accent-blue) !important;
+}
+
+/* --- ficha do nó (hover) --- */
+.pdx-nodecard {
+    position: absolute;
+    z-index: 20;
+    width: max-content;
+    max-width: min(420px, 60%);
+    padding: 10px 12px;
+    background: var(--mp-surface);
+    border: 2px solid var(--mp-line-strong);
+    border-radius: var(--mp-radius-md);
+    box-shadow: var(--mp-shadow-soft);
+    pointer-events: none;
+}
+.pdx-nodecard__head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.pdx-nodecard__kind {
     font-size: 9px;
     font-weight: 800;
     letter-spacing: .05em;
     text-transform: uppercase;
-    color: var(--mp-ink-3);
-    background: var(--mp-surface-2);
-    border: 1px solid var(--mp-line-faint);
-    border-radius: 3px;
-    padding: 0 4px;
-    margin-bottom: 4px;
+    color: var(--mp-muted);
 }
-.pdx-node--selected { border-color: var(--mp-accent-blue); box-shadow: 0 0 0 3px var(--mp-accent-blue-tint); }
-.pdx-node--package  { border-width: 2px; border-color: var(--mp-line-strong); background: var(--mp-paper-2); }
-.pdx-node--section  { background: var(--mp-paper-2); border-style: dashed; }
-.pdx-node--provider { background: var(--mp-accent-cyan-tint); }
+.pdx-nodecard__title {
+    font-family: var(--mp-font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--mp-ink);
+    overflow-wrap: anywhere;
+}
+/* Rótulo em cima, valor embaixo: valores técnicos são longos e não cabem numa
+   coluna estreita sem picotar letra a letra. */
+.pdx-nodecard__facts { margin: 0; }
+.pdx-nodecard__facts dt {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: var(--mp-muted);
+    margin-top: 6px;
+}
+.pdx-nodecard__facts dt:first-child { margin-top: 0; }
+.pdx-nodecard__facts dd {
+    margin: 1px 0 0;
+    font-family: var(--mp-font-mono);
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--mp-ink-2);
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.pdx-nodecard__hint {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid var(--mp-line-faint);
+    font-size: 11px;
+    color: var(--mp-accent-blue);
+}
 
 .pdx-legend {
     background: var(--mp-surface);

@@ -109,7 +109,10 @@ const PackageOverview = ({ model, onOpenSection, onOpenRef, onOpenTab, gitScope 
                 { identity.namespace &&
                     <><dt>namespace</dt><dd><CopyableCodeValue value={identity.namespace} type="reference" /></dd></> }
                 <dt>caminho</dt>
-                <dd><CopyableCodeValue value={identity.path} type="path" /></dd>
+                <dd>
+                    <CopyableCodeValue value={identity.relativePath || identity.path}
+                        copyValue={identity.path} title={identity.path} type="path" />
+                </dd>
             </dl>
         </Block>
 

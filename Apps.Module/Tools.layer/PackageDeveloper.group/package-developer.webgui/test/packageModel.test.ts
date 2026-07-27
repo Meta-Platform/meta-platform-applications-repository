@@ -1,4 +1,4 @@
-import { buildPackageModel, findItem, findSection } from "../src/Domain/packageModel"
+import { buildPackageModel, findItem, findSection, relativePackagePath } from "../src/Domain/packageModel"
 import { DEVELOPER_WEBAPP, GIT_STATUS_LIB, IEP_WEBSERVICE, PLAIN_LIB, TOOLKIT_CLI } from "./fixtures/packages"
 
 const model = (raw:any) => buildPackageModel({
@@ -122,5 +122,26 @@ describe("modelo do pacote — ruído de validação", () => {
     it("pacote COM startup-params.json incompleto continua acusando o que falta", () => {
         const m = model(DEVELOPER_WEBAPP)
         expect(m.issues.filter((i) => i.message.indexOf("workspaceStorageFilePath") > -1)).toHaveLength(1)
+    })
+})
+
+describe("caminho do pacote", () => {
+
+    it("o relativo começa no *.Module (o prefixo até a raiz do repo é ruído)", () => {
+        expect(relativePackagePath("/home/kadisk/repos/core/Main.Module/Libraries.layer/git-status.lib"))
+            .toBe("Main.Module/Libraries.layer/git-status.lib")
+        expect(relativePackagePath("/x/Apps.Module/Tools.layer/G.group/p.webgui"))
+            .toBe("Apps.Module/Tools.layer/G.group/p.webgui")
+    })
+
+    it("sem Module no caminho, não inventa relativo", () => {
+        expect(relativePackagePath("/tmp/solto/pacote.lib")).toBeUndefined()
+        expect(relativePackagePath(undefined)).toBeUndefined()
+    })
+
+    it("a identidade carrega absoluto e relativo", () => {
+        const m = model(GIT_STATUS_LIB)
+        expect(m.identity.path).toBe(GIT_STATUS_LIB.path)
+        expect(m.identity.relativePath).toBe("Main.Module/Libraries.layer/git-status.lib")
     })
 })

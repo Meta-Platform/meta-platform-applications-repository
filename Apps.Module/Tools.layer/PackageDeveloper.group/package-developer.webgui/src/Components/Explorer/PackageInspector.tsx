@@ -121,21 +121,17 @@ const PackageInspector = ({
                 <span className="pdx-ident__icon">
                     <PackageIcon workspace={workspace} name={identity.name} ext={identity.ext} size={30} />
                 </span>
-                <div className="pdx-ident__main">
-                    <div className="pdx-ident__name">
+                {/* Nome e situação na MESMA linha: tipo, versão e alertas são
+                    atributos do título, não um bloco à parte abaixo dele. */}
+                <div className="pdx-ident__titlerow">
+                    <span className="pdx-ident__name">
                         {identity.name}<span className="pdx-row__ext">.{identity.ext}</span>
-                    </div>
-                    <div className="pdx-ident__badges">
-                        <Badge tone="type">{identity.ext}</Badge>
-                        { identity.version && <Badge tone="version">v{identity.version}</Badge> }
-                        { gitScope && gitScope.files.length > 0 && <GitCounters counts={gitScope.counts} /> }
-                        { loading && <Loader active inline size="mini" /> }
-                        <IssueBadges issues={model.issues} />
-                    </div>
-                    <div className="pdx-ident__refs">
-                        { identity.namespace && <CopyableCodeValue value={identity.namespace} type="reference" /> }
-                        <CopyableCodeValue value={identity.path} type="path" title={identity.path} />
-                    </div>
+                    </span>
+                    <Badge tone="type">{identity.ext}</Badge>
+                    { identity.version && <Badge tone="version">v{identity.version}</Badge> }
+                    { gitScope && gitScope.files.length > 0 && <GitCounters counts={gitScope.counts} /> }
+                    { loading && <Loader active inline size="mini" /> }
+                    <IssueBadges issues={model.issues} />
                 </div>
                 <div className="pdx-ident__actions">
                     {
@@ -148,27 +144,39 @@ const PackageInspector = ({
                 </div>
             </div>
 
-            {
-                crumbs.length > 1 &&
-                <nav className="pdx-crumbs" aria-label="Trilha do recurso">
-                    {
-                        crumbs.map((crumb, i) =>
-                            <React.Fragment key={i}>
-                                { i > 0 && <span className="pdx-crumbs__sep">›</span> }
-                                {
-                                    i === crumbs.length - 1
-                                    ? <span className="pdx-crumbs__current" aria-current="true">{crumb.label}</span>
-                                    : <button type="button" onClick={() => {
-                                        if(!crumb.selection) return
-                                        if(crumb.selection.kind === "package") onSelectPackageRoot()
-                                        else if(crumb.selection.kind === "section") onSelectSection((crumb.selection as any).sectionId)
-                                        else if(crumb.selection.kind === "item") onSelectItem((crumb.selection as any).itemId)
-                                      }}>{crumb.label}</button>
-                                }
-                            </React.Fragment>)
-                    }
-                </nav>
-            }
+            {/* Linha de contexto: onde estou (trilha) e o que é isto (namespace +
+                caminho DENTRO do repositório — o prefixo até a raiz é ruído). */}
+            <div className="pdx-context">
+                {
+                    crumbs.length > 1 &&
+                    <nav className="pdx-crumbs" aria-label="Trilha do recurso">
+                        {
+                            crumbs.map((crumb, i) =>
+                                <React.Fragment key={i}>
+                                    { i > 0 && <span className="pdx-crumbs__sep">›</span> }
+                                    {
+                                        i === crumbs.length - 1
+                                        ? <span className="pdx-crumbs__current" aria-current="true">{crumb.label}</span>
+                                        : <button type="button" onClick={() => {
+                                            if(!crumb.selection) return
+                                            if(crumb.selection.kind === "package") onSelectPackageRoot()
+                                            else if(crumb.selection.kind === "section") onSelectSection((crumb.selection as any).sectionId)
+                                            else if(crumb.selection.kind === "item") onSelectItem((crumb.selection as any).itemId)
+                                          }}>{crumb.label}</button>
+                                    }
+                                </React.Fragment>)
+                        }
+                    </nav>
+                }
+                <div className="pdx-context__refs">
+                    { identity.namespace && <CopyableCodeValue value={identity.namespace} type="reference" /> }
+                    <CopyableCodeValue
+                        value={identity.relativePath || identity.path}
+                        copyValue={identity.path}
+                        title={identity.path}
+                        type="path" />
+                </div>
+            </div>
         </div>
 
         <InspectorTabs tabs={tabs} active={activeTab} onSelect={setTab} />

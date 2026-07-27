@@ -2,6 +2,7 @@ import * as React from "react"
 import { Icon } from "semantic-ui-react"
 
 import { IndexedPackage } from "../../Domain/packageIndex"
+import { relativePackagePath } from "../../Domain/packageModel"
 import CopyableCodeValue from "./ui/CopyableCodeValue"
 import PackageIcon from "../PackageIcon"
 import { Badge, CollapsibleSection, Metrics } from "./ui/Primitives"
@@ -39,7 +40,8 @@ const ContainerView = ({ kind, label, path, packages, onOpenPackage }:Props) => 
                         { !!issues && <Badge tone="warning">{issues} problema(s)</Badge> }
                     </div>
                     <div className="pdx-ident__badges" style={{marginTop:6}}>
-                        <CopyableCodeValue value={path} type="path" />
+                        <CopyableCodeValue value={relativePackagePath(path) || path} copyValue={path}
+                            title={path} type="path" />
                     </div>
                 </div>
             </div>

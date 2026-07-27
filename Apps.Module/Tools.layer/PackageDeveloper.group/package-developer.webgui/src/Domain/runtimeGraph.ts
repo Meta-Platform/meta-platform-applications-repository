@@ -18,6 +18,8 @@ export type GraphNodeKind =
     "boot-endpoint" | "boot-window" | "service" | "endpoint" | "command" |
     "startup-param" | "provider" | "controller" | "template" | "requirement" | "implementation"
 
+export type GraphDetail = { label: string, value: string }
+
 export type GraphNode = {
     id        : string
     kind      : GraphNodeKind
@@ -26,6 +28,11 @@ export type GraphNode = {
     itemId?   : string        // item do modelo (clique abre no Inspector)
     sectionId?: string
     ext?      : string        // tipo do pacote provedor (cor/legenda)
+    // Ficha do nó, mostrada ao passar o mouse. Vem do metadado, não do desenho.
+    details?  : GraphDetail[]
+    // Pacote que este nó representa (provider) — permite navegar a partir do
+    // diagrama para o pacote fornecedor.
+    packageRef? : string
 }
 
 export type GraphEdgeKind = "child" | "dep" | "bind" | "impl"
@@ -83,6 +90,25 @@ const boundInstances = (item:RuntimeItem):string[] => {
     }
     walk(item.raw)
     return out
+}
+
+// Ficha do item para o tooltip: as propriedades que ele já tem, achatadas, com
+// um teto para o cartão não virar um dump.
+const itemDetails = (item:RuntimeItem):GraphDetail[] => {
+    const out:GraphDetail[] = [{ label: "tipo", value: item.kind }]
+    item.groups.forEach((group) =>
+        group.entries.slice(0, 6).forEach((entry) =>
+            out.push({
+                // "identidade" é o grupo padrão: repetir o nome dele em cada
+                // linha só rouba espaço da ficha.
+                label: group.variant === "chips" ? group.label
+                     : group.label === "identidade" ? entry.label
+                     : `${group.label} · ${entry.label}`,
+                value: entry.value
+            })))
+    if(item.issues.length)
+        out.push({ label: "atenção", value: item.issues.map((i) => i.message).join(" · ") })
+    return out.slice(0, 10)
 }
 
 const shortName = (value:string):string => {
@@ -158,7 +184,13 @@ export const buildRuntimeGraph = (model:PackageModel | undefined, scope:GraphSco
     const builder = createBuilder()
     const instances = serviceInstances(model.sections)
     const providerOf = (target:string) => builder.add({
-        id: `provider:${target}`, kind: "provider", label: target, ext: extOf(target)
+        id: `provider:${target}`, kind: "provider", label: target, ext: extOf(target),
+        packageRef: target,
+        details: [
+            { label: "pacote", value: target },
+            { label: "tipo", value: extOf(target) || "—" },
+            { label: "abrir", value: "clique para inspecionar este pacote" }
+        ]
     })
 
     // Raiz: o pacote (boot) ou o próprio arquivo de grupo (seção única).
@@ -171,7 +203,8 @@ export const buildRuntimeGraph = (model:PackageModel | undefined, scope:GraphSco
             group.entries.forEach((entry) => {
                 const id = builder.add({
                     id: `req:${entry.value}`, kind: "requirement",
-                    label: entry.value, sublabel: group.label
+                    label: entry.value, sublabel: group.label,
+                    details: [{ label: group.label, value: entry.value }]
                 })
                 builder.link(id, root, "bind")
             }))
@@ -193,7 +226,8 @@ export const buildRuntimeGraph = (model:PackageModel | undefined, scope:GraphSco
                 label: item.title,
                 sublabel: item.subtitle,
                 itemId: item.id,
-                sectionId: section.id
+                sectionId: section.id,
+                details: itemDetails(item)
             })
             builder.link(parentId, itemNodeId, "child")
             linkItemRelations(builder, item, itemNodeId, instances, providerOf)
@@ -205,14 +239,16 @@ export const buildRuntimeGraph = (model:PackageModel | undefined, scope:GraphSco
                 if(params.controller){
                     const id = builder.add({
                         id: `controller:${params.controller}`, kind: "controller",
-                        label: shortName(params.controller), sublabel: params.controller
+                        label: shortName(params.controller), sublabel: params.controller,
+                        details: [{ label: "controller", value: params.controller }]
                     })
                     builder.link(itemNodeId, id, "impl")
                 }
                 if(params["api-template"]){
                     const id = builder.add({
                         id: `template:${params["api-template"]}`, kind: "template",
-                        label: shortName(params["api-template"]), sublabel: params["api-template"]
+                        label: shortName(params["api-template"]), sublabel: params["api-template"],
+                        details: [{ label: "api-template", value: params["api-template"] }]
                     })
                     builder.link(itemNodeId, id, "impl")
                 }
@@ -222,7 +258,8 @@ export const buildRuntimeGraph = (model:PackageModel | undefined, scope:GraphSco
             if((item.kind === "service" || item.kind === "command") && item.raw && item.raw.path){
                 const id = builder.add({
                     id: `impl:${item.raw.path}`, kind: "implementation",
-                    label: shortName(item.raw.path), sublabel: item.raw.path
+                    label: shortName(item.raw.path), sublabel: item.raw.path,
+                    details: [{ label: "implementação", value: item.raw.path }]
                 })
                 builder.link(itemNodeId, id, "impl")
             }
@@ -232,7 +269,8 @@ export const buildRuntimeGraph = (model:PackageModel | undefined, scope:GraphSco
                 if(!Array.isArray(list)) return
                 list.filter((v) => typeof v === "string").forEach((name:string) => {
                     const id = builder.add({
-                        id: `req:${name}`, kind: "requirement", label: name, sublabel: label
+                        id: `req:${name}`, kind: "requirement", label: name, sublabel: label,
+                        details: [{ label, value: name }]
                     })
                     builder.link(id, itemNodeId, "bind")
                 })

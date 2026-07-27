@@ -111,7 +111,7 @@ const RuntimeView = ({
                 ]} />
                 { asDiagram &&
                     <span className="pdx-muted" style={{fontSize:11}}>
-                        clique num nó para inspecioná-lo
+                        clique num nó para inspecionar · pacote provedor abre o pacote
                     </span> }
             </div>
         }
@@ -120,7 +120,8 @@ const RuntimeView = ({
             asDiagram
             ? <div>
                 <RuntimeDiagramView model={model} scope={active} selectedId={selectedId}
-                    onSelectItem={onSelectItem} emptyHint={DIAGRAM_HINT[active as string]} />
+                    onSelectItem={onSelectItem} onOpenRef={onOpenRef}
+                    emptyHint={DIAGRAM_HINT[active as string]} />
                 {detail}
               </div>
             : active === "boot"

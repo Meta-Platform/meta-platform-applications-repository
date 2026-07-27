@@ -68,7 +68,8 @@ export type PackageIdentity = {
     name        : string
     ext         : string
     dirname     : string
-    path        : string
+    path        : string           // absoluto, como veio do disco
+    relativePath?: string          // dentro do repositório (a partir do *.Module)
     namespace?  : string
     version?    : string
     description?: string
@@ -133,6 +134,17 @@ const fileError = (metadata:any, file:string):Issue | undefined => {
 }
 
 const asArray = (v:any):any[] => Array.isArray(v) ? v : []
+
+// Caminho DENTRO do repositório: tudo a partir do primeiro segmento "*.Module".
+// É o que identifica o pacote para quem lê (o prefixo até a raiz do repo é ruído
+// e muda de máquina para máquina). Sem Module no caminho, não há relativo.
+export const relativePackagePath = (absolutePath?:string):string | undefined => {
+    if(!absolutePath) return undefined
+    const parts = String(absolutePath).split("/")
+    for(let i = 0; i < parts.length; i++)
+        if(/\.Module$/.test(parts[i])) return parts.slice(i).join("/")
+    return undefined
+}
 
 // Propriedades comuns a quase todo registro de metadado: params e bound-params.
 const bindingGroups = (raw:any):PropertyGroup[] => ([] as PropertyGroup[])
@@ -408,6 +420,7 @@ export const buildPackageModel = ({ pkg, metadata, repository, packageJson }:Bui
         ext         : pkg.ext,
         dirname     : pkg.dirname || `${pkg.name}.${pkg.ext}`,
         path        : pkg.path,
+        relativePath: relativePackagePath(pkg.path),
         namespace   : metaPackage.namespace || pkg.namespace,
         version     : pkgJson.version,
         description : pkgJson.description,

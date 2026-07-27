@@ -21,16 +21,19 @@ type Props = {
     refTarget?: string
     onOpenRef?: (target:string) => void
     title?   : string
+    // O que vai para a área de transferência, quando difere do que é exibido
+    // (ex.: mostra o caminho relativo, copia o absoluto para colar no terminal).
+    copyValue? : string
 }
 
-const CopyableCodeValue = ({ value, type = "text", refTarget, onOpenRef, title }:Props) => {
+const CopyableCodeValue = ({ value, type = "text", refTarget, onOpenRef, title, copyValue }:Props) => {
 
     const [copied, setCopied] = useState(false)
     if(value === undefined || value === null || value === "") return null
 
     const handleCopy = (e:any) => {
         e.stopPropagation()
-        copy(String(value)).then(() => {
+        copy(String(copyValue || value)).then(() => {
             setCopied(true)
             window.setTimeout(() => setCopied(false), 1200)
         })
@@ -47,7 +50,8 @@ const CopyableCodeValue = ({ value, type = "text", refTarget, onOpenRef, title }
             : <span>{value}</span>
         }
         <button type="button" className="pdx-copy" onClick={handleCopy}
-            aria-label={copied ? "copiado" : `copiar ${value}`} title={copied ? "copiado" : "copiar"}>
+            aria-label={copied ? "copiado" : `copiar ${copyValue || value}`}
+            title={copied ? "copiado" : (copyValue ? `copiar ${copyValue}` : "copiar")}>
             <Icon name={copied ? "check" : "copy outline"} style={{margin:0, fontSize:"0.9em"}} />
         </button>
     </span>

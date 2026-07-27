@@ -31,10 +31,23 @@ type Props = {
     scope?       : GraphScope      // "boot" (padrão) ou uma seção do runtime
     selectedId?  : string          // id do item do modelo atualmente selecionado
     onSelectItem : (itemId:string) => void
+    onOpenRef?   : (target:string) => void   // navegar para o pacote de um nó
     emptyHint?   : string
 }
 
-const Canvas = ({ graph, selectedId, onSelectItem }:{ graph:RuntimeGraph, selectedId?:string, onSelectItem:(id:string) => void }) => {
+type CanvasProps = {
+    graph : RuntimeGraph
+    selectedId? : string
+    onSelectItem : (id:string) => void
+    onOpenRef? : (target:string) => void
+    fullscreen? : boolean
+    onToggleFullscreen? : () => void
+}
+
+const Canvas = ({ graph, selectedId, onSelectItem, onOpenRef, fullscreen, onToggleFullscreen }:CanvasProps) => {
+
+    // Ficha do nó sob o cursor (posição em coordenadas do contêiner).
+    const [hover, setHover] = useState<{ node:any, x:number, y:number } | undefined>()
 
     const [direction, setDirection] = useState<"LR" | "TB">("LR")
     const layouted = useMemo(() => layoutGraph(graph, direction), [graph, direction])
@@ -100,9 +113,20 @@ const Canvas = ({ graph, selectedId, onSelectItem }:{ graph:RuntimeGraph, select
         if(node) setCenter(node.position.x + 115, node.position.y + 36, { zoom: 1, duration: 250 })
     }, [selectedNodeId, nodesInitialized])
 
+    // Clique: item → seleciona no Inspector; pacote provedor → NAVEGA para ele.
     const onNodeClick = useCallback((_e:any, node:any) => {
-        if(node && node.data && node.data.itemId) onSelectItem(node.data.itemId)
-    }, [onSelectItem])
+        const data = node && node.data
+        if(!data) return
+        if(data.itemId) return onSelectItem(data.itemId)
+        if(data.packageRef && onOpenRef) onOpenRef(data.packageRef)
+    }, [onSelectItem, onOpenRef])
+
+    const onNodeMouseEnter = useCallback((event:any, node:any) => {
+        const box = event.currentTarget.closest(".pdx-diagram")
+        const rect = box ? box.getBoundingClientRect() : { left: 0, top: 0 }
+        setHover({ node, x: event.clientX - rect.left, y: event.clientY - rect.top })
+    }, [])
+    const onNodeMouseLeave = useCallback(() => setHover(undefined), [])
 
     const kinds = useMemo(() => collectNodeKinds(graph.nodes), [graph])
     const edgeKinds = useMemo(() => {
@@ -118,6 +142,9 @@ const Canvas = ({ graph, selectedId, onSelectItem }:{ graph:RuntimeGraph, select
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
+        onNodeMouseEnter={onNodeMouseEnter}
+        onNodeMouseLeave={onNodeMouseLeave}
+        onPaneClick={() => setHover(undefined)}
         connectionLineType={ConnectionLineType.SmoothStep}
         nodesConnectable={false}
         minZoom={0.15}
@@ -131,10 +158,17 @@ const Canvas = ({ graph, selectedId, onSelectItem }:{ graph:RuntimeGraph, select
 
         <Panel position="top-left">
             <div className="pdx-inline">
-                <IconButton icon="expand" label="Ajustar à tela" text="Ajustar" onClick={() => fitView(FIT_OPTIONS)} />
+                <IconButton icon="expand arrows alternate" label="Ajustar à tela" text="Ajustar" onClick={() => fitView(FIT_OPTIONS)} />
                 <IconButton icon="crosshairs" label="Centralizar seleção" text="Centralizar" onClick={centerSelection} disabled={!selectedNodeId} />
                 <Segmented ariaLabel="Direção do layout" value={direction} onChange={setDirection}
                     options={[{ value: "LR", label: "horizontal" }, { value: "TB", label: "vertical" }]} />
+                {
+                    onToggleFullscreen &&
+                    <IconButton icon={fullscreen ? "compress" : "expand"}
+                        label={fullscreen ? "Sair da tela cheia (Esc)" : "Ver o diagrama em tela cheia"}
+                        text={fullscreen ? "Recolher" : "Expandir"}
+                        onClick={onToggleFullscreen} />
+                }
             </div>
         </Panel>
 
@@ -165,21 +199,75 @@ const Canvas = ({ graph, selectedId, onSelectItem }:{ graph:RuntimeGraph, select
         </Panel>
 
         <Background color="var(--mp-grid-line)" gap={18} />
+
+        {
+            hover && hover.node && hover.node.data &&
+            <div className="pdx-nodecard" role="tooltip"
+                style={{ left: Math.min(hover.x + 16, 9999), top: hover.y + 16 }}>
+                <div className="pdx-nodecard__head">
+                    <span className="pdx-nodecard__kind">
+                        {(NODE_THEME[hover.node.data.kind] || NODE_THEME["section"]).label}
+                    </span>
+                    <span className="pdx-nodecard__title">{hover.node.data.label}</span>
+                </div>
+                {
+                    Array.isArray(hover.node.data.details) && hover.node.data.details.length > 0 &&
+                    <dl className="pdx-nodecard__facts">
+                        {
+                            hover.node.data.details.map((detail:any, i:number) =>
+                                <React.Fragment key={i}>
+                                    <dt>{detail.label}</dt>
+                                    <dd>{detail.value}</dd>
+                                </React.Fragment>)
+                        }
+                    </dl>
+                }
+                {
+                    (hover.node.data.itemId || hover.node.data.packageRef) &&
+                    <div className="pdx-nodecard__hint">
+                        { hover.node.data.packageRef ? "clique para abrir este pacote" : "clique para inspecionar" }
+                    </div>
+                }
+            </div>
+        }
     </ReactFlow>
 }
 
-const RuntimeDiagramView = ({ model, scope = "boot", selectedId, onSelectItem, emptyHint }:Props) => {
+const RuntimeDiagramView = ({ model, scope = "boot", selectedId, onSelectItem, onOpenRef, emptyHint }:Props) => {
 
     const graph = useMemo(() => buildRuntimeGraph(model, scope), [model, scope])
+    // Painel do Inspector é estreito por natureza; um grafo com dezenas de nós
+    // precisa da tela toda para ser lido. Esc sai.
+    const [fullscreen, setFullscreen] = useState(false)
+
+    useEffect(() => {
+        if(!fullscreen) return
+        const onKey = (e:KeyboardEvent) => { if(e.key === "Escape"){ e.stopPropagation(); setFullscreen(false) } }
+        document.addEventListener("keydown", onKey)
+        return () => document.removeEventListener("keydown", onKey)
+    }, [fullscreen])
 
     if(!graph.nodes.length)
         return <EmptyState icon="sitemap" title="Sem topologia para desenhar"
             hint={emptyHint || "Esta capacidade não declara nada que possa ser ligado num diagrama."} />
 
+    const canvas = <ReactFlowProvider>
+        <Canvas key={`${scope}:${fullscreen}`} graph={graph} selectedId={selectedId}
+            onSelectItem={onSelectItem} onOpenRef={onOpenRef}
+            fullscreen={fullscreen} onToggleFullscreen={() => setFullscreen(!fullscreen)} />
+    </ReactFlowProvider>
+
+    if(fullscreen)
+        return <>
+            <div className="pdx-diagram-scrim" onClick={() => setFullscreen(false)} aria-hidden="true" />
+            <div className="pdx-diagram pdx-diagram--full app-grid-bg" role="dialog" aria-modal="true"
+                aria-label="Diagrama em tela cheia">
+                {canvas}
+            </div>
+        </>
+
     return <div className="pdx-diagram app-grid-bg" style={{height:"calc(100vh - var(--pd-header-h) - 250px)", minHeight:400}}>
-        <ReactFlowProvider>
-            <Canvas key={String(scope)} graph={graph} selectedId={selectedId} onSelectItem={onSelectItem} />
-        </ReactFlowProvider>
+        {canvas}
     </div>
 }
 

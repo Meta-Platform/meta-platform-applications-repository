@@ -5,6 +5,7 @@ import { createStore } from "redux"
 
 import { MEDIUM_MIN, WIDE_MIN, modeForWidth } from "../src/Hooks/useResponsiveLayout"
 import ResponsiveInspectorDrawer from "../src/Components/Explorer/ResponsiveInspectorDrawer"
+import { fitWidths } from "../src/Components/Explorer/ExplorerColumns"
 import { REPOSITORY_INDEX, REPOSITORY_METADATA } from "./fixtures/packages"
 
 // O explorador conversa com o webservice por GetRequestByServer; aqui ele
@@ -152,5 +153,31 @@ describe("drawer — acessibilidade", () => {
         render(<ResponsiveInspectorDrawer open title="x" onClose={onClose}><div>c</div></ResponsiveInspectorDrawer>)
         fireEvent.click(document.querySelector(".pdx-drawer-scrim")!)
         expect(onClose).toHaveBeenCalled()
+    })
+})
+
+describe("largura mínima do Inspector", () => {
+
+    // 3 colunas fixas + Inspector. Divisores somam 27px (3 × 9).
+    const fit = (widths:number[], available:number) => fitWidths(widths, available, 180, 420, 27)
+
+    it("com espaço de sobra, respeita as larguras salvas", () => {
+        expect(fit([252, 268, 380], 1600)).toEqual([252, 268, 380])
+    })
+
+    it("quando falta espaço, as colunas fixas cedem (da última para a primeira)", () => {
+        // 252+268+790+27+420 = 1757 > 1600 → precisa devolver 157px
+        expect(fit([252, 268, 790], 1600)).toEqual([252, 268, 633])
+    })
+
+    it("cede em cadeia, sem passar do mínimo de cada coluna", () => {
+        const out = fit([400, 400, 400], 1100)
+        expect(out[2]).toBe(180)
+        expect(out.every((w) => w >= 180)).toBe(true)
+        expect(out.reduce((a, b) => a + b, 0) + 27 + 420).toBeLessThanOrEqual(1100 + 1)
+    })
+
+    it("sem medida ainda, não mexe nas larguras", () => {
+        expect(fit([252, 268, 380], 0)).toEqual([252, 268, 380])
     })
 })
