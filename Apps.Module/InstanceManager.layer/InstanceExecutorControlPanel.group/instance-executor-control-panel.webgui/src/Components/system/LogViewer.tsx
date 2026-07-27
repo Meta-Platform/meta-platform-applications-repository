@@ -26,6 +26,17 @@ import { FormatBytes } from "./Format"
 // é o lado velho.
 const MAX_LINES = 4000
 
+// O log é a saída de terminal do processo, e a plataforma escreve com cores
+// (colors/chalk). Sem limpar, os códigos ANSI aparecem crus no meio do texto
+// ("[2m[45m[30m[package-executor]") e tornam o log quase ilegível — foi o que
+// a primeira execução real mostrou. As cores são reconstruídas aqui pelo
+// realce por nível, que é o que importa numa tela.
+// O padrão exige o ESC — sem ele, "[info]" e "[daemon]" seriam comidos junto
+// com as cores.
+const ANSI_PATTERN = /\u001B\[[0-9;]*[A-Za-z]/g
+
+const _StripAnsi = (line: string) => line.replace(ANSI_PATTERN, "")
+
 const CLASS_BY_PATTERN = [
     { pattern: /\b(error|erro|exception|fatal|failed|falha)\b/i, className: "iep-log__line--error" },
     { pattern: /\b(warn|warning|aviso|deprecated)\b/i,           className: "iep-log__line--warn" },
@@ -54,8 +65,9 @@ const LogViewer = ({ instance, serverManagerInformation, height }: any) => {
         GetAPI({ apiName: "InstanceObservability", serverManagerInformation })
 
     const _Append = (incoming: string[], replace: boolean) => {
+        const clean = (incoming || []).map(_StripAnsi)
         setLines((current) => {
-            const merged = replace ? incoming : [...current, ...incoming]
+            const merged = replace ? clean : [...current, ...clean]
             if (merged.length <= MAX_LINES) return merged
             setDropped((count) => count + (merged.length - MAX_LINES))
             return merged.slice(merged.length - MAX_LINES)

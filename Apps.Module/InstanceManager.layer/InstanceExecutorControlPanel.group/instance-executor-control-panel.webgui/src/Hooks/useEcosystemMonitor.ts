@@ -189,6 +189,19 @@ const useEcosystemMonitor = (HTTPServerManager: any) => {
         })),
         [instanceList, metricsByInstance])
 
+    // Total de tarefas VISÍVEIS no painel. `taskList` só traz as do task-executor
+    // in-process do daemon (instâncias `app`); as de desktop/cli vivem no
+    // processo de cada instância e chegam pela contagem das métricas. Somar as
+    // duas fontes é o que evita o rodapé dizer "0 tarefas" enquanto a aba da
+    // instância mostra 24.
+    const taskCount = useMemo(() => {
+        const fromInstances = Array.from(metricsByInstance.values())
+            .filter((sample) => sample.kind !== "app" && sample.tasksByStatus)
+            .reduce((sum, sample) =>
+                sum + Object.keys(sample.tasksByStatus).reduce((acc, status) => acc + sample.tasksByStatus[status], 0), 0)
+        return taskList.length + fromInstances
+    }, [taskList, metricsByInstance])
+
     const totals = useMemo(() => {
         const samples = Array.from(metricsByInstance.values()).filter((sample) => sample.available)
         // Instância `app` roda dentro do daemon: somar a CPU dela com a do
@@ -204,6 +217,7 @@ const useEcosystemMonitor = (HTTPServerManager: any) => {
     return {
         instanceList: instances,
         taskList,
+        taskCount,
         kindCounts,
         metricsByInstance,
         historyByInstance,

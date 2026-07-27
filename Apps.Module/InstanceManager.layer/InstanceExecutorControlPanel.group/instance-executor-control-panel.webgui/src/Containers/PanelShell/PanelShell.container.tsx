@@ -82,8 +82,6 @@ const PanelShell = ({ HTTPServerManager }: any) => {
         if (instance.instanceId === selectedInstanceId) navigate("/instances")
     }
 
-    const taskCount = monitor.taskList.length
-
     return <div className="iep-shell">
         <nav className="iep-shell__nav">
             <div className="iep-brand">
@@ -178,7 +176,7 @@ const PanelShell = ({ HTTPServerManager }: any) => {
                 systemHistory={monitor.systemHistory}
                 totals={monitor.totals}
                 instanceCount={monitor.instanceList.length}
-                taskCount={taskCount}
+                taskCount={monitor.taskCount}
                 daemonOnline={monitor.daemonOnline}
                 metricsOnline={monitor.metricsOnline}/>
         </div>
