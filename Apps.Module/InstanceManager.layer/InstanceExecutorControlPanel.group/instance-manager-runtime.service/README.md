@@ -19,6 +19,8 @@ Cria o cliente do daemon uma vez e reexpõe a superfície aos controllers
 | `IsAvailable()` | daemon de pé? |
 | `RunPackage` / `StopPackage` / `ListPackages` / `OpenPackageListStream` | pacotes supervisionados |
 | `ListTasks` / `GetTask` / `OpenTaskStatusStream` / `StopTasks` | tarefas do task-executor do daemon |
+| `ReadInstanceLog` / `OpenInstanceLogStream` / `ListInstanceLogs` | log gravado pelo daemon para cada instância |
+| `ListInstanceMetrics` / `GetInstanceMetrics` / `OpenMetricsStream` | amostras de desempenho coletadas pelo daemon |
 
 ## Dependências
 

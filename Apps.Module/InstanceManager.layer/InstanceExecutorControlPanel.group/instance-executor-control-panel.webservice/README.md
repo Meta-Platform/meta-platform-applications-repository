@@ -25,5 +25,6 @@ Depende, via `bound-params`, de `serverService`, `taskExecutorMachineService`,
 | URL | Controller | Papel |
 |-----|-----------|-------|
 | `/task-executor-monitor` | TaskExecutorMonitor | Monitoramento da máquina de execução de tarefas. |
+| `/instance-observability` | InstanceObservability | Log e desempenho por instância (ponte para o daemon). |
 | `/repository-manager` | RepositoryManager | Operações sobre os repositórios instalados. |
 | `/ecosystem-manager` | EcosystemManager | Operações de orquestração do ecossistema. |

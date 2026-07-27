@@ -44,7 +44,17 @@ const InstanceManagerRuntimeService = (params) => {
         ListTasks: client.ListTasks,
         GetTask: client.GetTask,
         OpenTaskStatusStream: client.OpenTaskStatusStream,
-        StopTasks: client.StopTasks
+        StopTasks: client.StopTasks,
+
+        // Observabilidade: o log que o daemon grava por instância e as amostras
+        // de desempenho que ele coleta. O painel não mede nem grava nada — quem
+        // executa é quem sabe.
+        ReadInstanceLog: client.ReadInstanceLog,
+        OpenInstanceLogStream: client.OpenInstanceLogStream,
+        ListInstanceLogs: client.ListInstanceLogs,
+        ListInstanceMetrics: client.ListInstanceMetrics,
+        GetInstanceMetrics: client.GetInstanceMetrics,
+        OpenMetricsStream: client.OpenMetricsStream
     }
 }
 

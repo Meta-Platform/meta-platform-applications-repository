@@ -1,0 +1,77 @@
+{
+  "name": "InstanceObservability",
+  "endpoints": [
+    {
+      "summary": "ReadInstanceLog",
+      "method": "POST",
+      "path": "/instance-log",
+      "parameters": [
+				{
+					"name": "instanceId",
+					"in": "body",
+					"type": "string",
+					"required": true
+				},
+				{
+					"name": "tailLines",
+					"in": "body",
+					"type": "number",
+					"required": false
+				},
+				{
+					"name": "fromOffset",
+					"in": "body",
+					"type": "number",
+					"required": false
+				}
+      ]
+    },
+    {
+      "summary": "InstanceLogStream",
+      "method": "WS",
+      "path": "/instance-log-stream/:instanceId",
+      "parameters": [
+				{
+					"name": "instanceId",
+					"in": "path",
+					"type": "string",
+					"required": true
+				}
+      ]
+    },
+    {
+      "summary": "ListInstanceLogs",
+      "method": "GET",
+      "path": "/list-instance-logs"
+    },
+    {
+      "summary": "ListInstanceMetrics",
+      "method": "GET",
+      "path": "/list-instance-metrics"
+    },
+    {
+      "summary": "GetInstanceMetrics",
+      "method": "POST",
+      "path": "/instance-metrics",
+      "parameters": [
+				{
+					"name": "instanceId",
+					"in": "body",
+					"type": "string",
+					"required": true
+				},
+				{
+					"name": "limit",
+					"in": "body",
+					"type": "number",
+					"required": false
+				}
+      ]
+    },
+    {
+      "summary": "MetricsStream",
+      "method": "WS",
+      "path": "/metrics-stream"
+    }
+  ]
+}

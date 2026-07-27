@@ -12,6 +12,10 @@
 
 const CONTROLLER_MODULES = {
     TaskExecutorMonitor: { controller: "Controllers/TaskExecutorMonitor.controller", api: "APIs/TaskExecutorMonitor.api.json" },
+    // Log e desempenho por instância. Precisa estar AQUI e no endpoint-group.json
+    // da webservice: registrar só um lado faz o painel funcionar num transporte e
+    // falhar em silêncio no outro.
+    InstanceObservability: { controller: "Controllers/InstanceObservability.controller", api: "APIs/InstanceObservability.api.json" },
     RepositoryManager:   { controller: "Controllers/RepositoryManager.controller",   api: "APIs/RepositoryManager.api.json" },
     EcosystemManager:    { controller: "Controllers/EcosystemManager.controller",    api: "APIs/EcosystemManager.api.json" },
     CommandLineRuntime:  { controller: "Controllers/CommandLineRuntime.controller",   api: "APIs/CommandLineRuntime.api.json" }

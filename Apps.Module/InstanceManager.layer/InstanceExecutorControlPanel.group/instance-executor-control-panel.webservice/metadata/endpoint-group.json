@@ -21,6 +21,20 @@
             }
         },
         {
+            "url": "/instance-observability",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/InstanceObservability.api.json",
+                "controller": "Controllers/InstanceObservability.controller"
+            },
+            "bound-params": {
+                "controller-params":{
+                    "instanceManagerRuntimeService":"instanceManagerRuntimeService"
+                },
+                "serverService":"serverService"
+            }
+        },
+        {
             "url": "/repository-manager",
             "type": "controller",
             "params": {
