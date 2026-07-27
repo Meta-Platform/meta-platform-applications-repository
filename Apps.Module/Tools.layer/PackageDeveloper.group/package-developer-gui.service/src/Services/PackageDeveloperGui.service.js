@@ -28,6 +28,7 @@ const PackageDeveloperGuiService = (params) => {
         packageDeveloperLib,
         packageToolkitLib,
         packageDeveloperWebservice,
+        installDataDirPath,
         onReady
     } = params
 
@@ -38,7 +39,8 @@ const PackageDeveloperGuiService = (params) => {
         processManagerService,
         gitStatusManagerService,
         packageDeveloperLib,
-        packageToolkitLib
+        packageToolkitLib,
+        installDataDirPath
     }
 
     const registry = {}

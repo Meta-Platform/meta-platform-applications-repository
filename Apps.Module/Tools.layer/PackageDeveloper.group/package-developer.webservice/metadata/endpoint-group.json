@@ -13,7 +13,10 @@
             "type": "controller",
             "params": {
                 "api-template": "APIs/ModuleDeveloper.api.json",
-                "controller": "Controllers/ModuleDeveloper.controller"
+                "controller": "Controllers/ModuleDeveloper.controller",
+                "controller-params":{
+                    "installDataDirPath":"{{installDataDirPath}}"
+                }
             },
             "bound-params": {
                 "controller-params":{

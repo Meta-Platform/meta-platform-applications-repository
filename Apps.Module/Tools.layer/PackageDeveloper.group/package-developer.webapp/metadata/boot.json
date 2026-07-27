@@ -1,5 +1,6 @@
 {
     "params": [
+        "installDataDirPath",
         "port",
         "serverManagerUrl",
         "serverName",
@@ -48,6 +49,9 @@
         },
         {
             "dependency": "@/package-developer.webservice/endpoint-group",
+            "params": {
+                "installDataDirPath": "{{installDataDirPath}}"
+            },
             "bound-params": {
                 "serverService": "@@/server-service",
                 "packageHandlerManagerService": "@@/package-handler-service",

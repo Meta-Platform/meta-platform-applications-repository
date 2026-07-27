@@ -10,6 +10,6 @@
             "packageToolkitLib",
             "packageDeveloperWebservice"
         ],
-        "params": []
+        "params": ["installDataDirPath"]
     }
 ]

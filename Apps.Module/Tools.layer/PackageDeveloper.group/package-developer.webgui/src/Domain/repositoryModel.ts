@@ -12,6 +12,26 @@ export type RepositoryApplication = {
     packageNamespace? : string
     supervisorSocketFileName? : string
     resolvedPackage?  : IndexedPackage
+    // Declarada no repositório × registrada no ecossistema desta máquina.
+    declared    : boolean
+    installed   : boolean
+}
+
+export type TaskLoader = {
+    objectLoaderType? : string
+    package?  : string
+    path?     : string
+    entry?    : string
+    injectsDeps? : boolean
+    npmDependencies? : { [k:string]: string }
+}
+
+export type RepositoryInstall = {
+    installed        : boolean
+    installationPath?: string
+    sourceType?      : string
+    sourcePath?      : string
+    applications     : number
 }
 
 export type RepositoryModel = {
@@ -24,8 +44,10 @@ export type RepositoryModel = {
     remote?       : string
     dirtyCount?   : number
     metadataFiles : string[]
+    readme?       : string
     applications  : RepositoryApplication[]
-    taskLoaders   : any[]
+    taskLoaders   : TaskLoader[]
+    install       : RepositoryInstall
     counts        : { packages: number, modules: number, layers: number, groups: number }
     byType        : { ext: string, count: number }[]
     modules       : { name: string, layers: { name: string, packages: number }[] }[]
@@ -75,14 +97,28 @@ export const buildRepositoryModel = (
         moduleMap[p.module][layer] = (moduleMap[p.module][layer] || 0) + 1
     })
 
-    // Cada executável publicado deve apontar para um pacote existente.
-    const applications:RepositoryApplication[] = asArray(applicationsRaw).map((app:any) => {
+    // Estado de instalação: o que o `repo install` registrou nesta máquina.
+    const installRaw = metadata && metadata.install
+    const installedApps = asArray(installRaw && installRaw.installedApplications)
+    const isInstalled = (executable?:string) =>
+        !!executable && installedApps.some((app:any) => app.executable === executable)
+
+    // Cada executável publicado deve apontar para um pacote existente — e pode
+    // (ou não) estar instalado no ecossistema.
+    const declared:RepositoryApplication[] = asArray(applicationsRaw).map((app:any) => {
         const namespace = app.packageNamespace
         const resolved = namespace
             ? packages.filter((p) => p.path.indexOf(namespace) > -1)[0]
             : undefined
-        return { ...app, resolvedPackage: resolved }
+        return { ...app, resolvedPackage: resolved, declared: true, installed: isInstalled(app.executable) }
     })
+
+    // Instalado mas não declarado: sobra de uma versão anterior do repositório.
+    const orphans:RepositoryApplication[] = installedApps
+        .filter((app:any) => !declared.some((d) => d.executable === app.executable))
+        .map((app:any) => ({ ...app, declared: false, installed: true }))
+
+    const applications = declared.concat(orphans)
 
     const issues:Issue[] = ([] as Issue[])
         .concat(fileIssue(files, "metadata/repository.json"))
@@ -95,6 +131,14 @@ export const buildRepositoryModel = (
                 message: `executável "${a.executable}" aponta para um pacote inexistente`,
                 file: "metadata/applications.json",
                 where: a.packageNamespace
+            })))
+        .concat(installedApps
+            .filter((app:any) => !asArray(applicationsRaw).some((d:any) => d.executable === app.executable))
+            .map((app:any) => ({
+                level: "warning" as const,
+                message: `"${app.executable}" está instalado mas não é mais declarado pelo repositório`,
+                file: "metadata/applications.json",
+                where: app.packageNamespace
             })))
 
     const layerCount = Object.keys(moduleMap)
@@ -110,7 +154,15 @@ export const buildRepositoryModel = (
         remote      : git && git.remote,
         dirtyCount  : git && git.count,
         metadataFiles: (metadata && metadata.fileNames || []).map((f:string) => `metadata/${f}`),
+        readme      : metadata && metadata.readme,
         applications,
+        install     : {
+            installed        : !!installRaw,
+            installationPath : installRaw && installRaw.installationPath,
+            sourceType       : installRaw && installRaw.sourceData && installRaw.sourceData.sourceType,
+            sourcePath       : installRaw && installRaw.sourceData && installRaw.sourceData.path,
+            applications     : installedApps.length
+        },
         taskLoaders : asArray(taskLoadersRaw && taskLoadersRaw.taskLoaders ? taskLoadersRaw.taskLoaders : taskLoadersRaw),
         counts      : {
             packages: packages.length,

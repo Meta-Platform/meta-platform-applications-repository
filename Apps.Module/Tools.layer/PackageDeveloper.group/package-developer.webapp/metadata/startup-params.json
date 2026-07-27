@@ -1,4 +1,5 @@
 {
+    "installDataDirPath":"~/EcosystemData",
     "port":"8093",
     "serverName":"PackageDeveloperWebappInstance",
     "serverManagerUrl": "http://localhost:8093/server-manager/status",

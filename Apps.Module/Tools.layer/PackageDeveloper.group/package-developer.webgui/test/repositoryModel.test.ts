@@ -56,3 +56,73 @@ describe("modelo do workspace", () => {
         expect(m.repositories[1].packages).toBeUndefined()
     })
 })
+
+describe("estado de instalação do repositório", () => {
+
+    const withInstall = (install:any) => buildRepositoryModel({
+        name: "AppsRepo",
+        metadata: { ...REPOSITORY_METADATA, install, readme: "# Applications Repository" },
+        packages, git: GIT
+    })
+
+    const INSTALL = {
+        installationPath: "/home/kadisk/EcosystemData/repos/PlatformApplicationsRepo",
+        sourceData: { sourceType: "LOCAL_FS", path: "~/Workspaces/meta-platform-repo/repos/applications-repository" },
+        installedApplications: [
+            { appType: "APP", executable: "developer", packageNamespace: "Apps.Module/Tools.layer/PackageDeveloper.group/package-developer.webapp" },
+            { appType: "CLI", executable: "antigo", packageNamespace: "Apps.Module/Removido.layer/antigo.cli" }
+        ]
+    }
+
+    it("marca cada aplicação declarada como instalada ou não", () => {
+        const m = withInstall(INSTALL)
+        const developer = m.applications.filter((a) => a.executable === "developer")[0]
+        const fantasma  = m.applications.filter((a) => a.executable === "fantasma")[0]
+        expect(developer.installed).toBe(true)
+        expect(fantasma.installed).toBe(false)
+        expect(developer.declared).toBe(true)
+    })
+
+    it("mostra o que está instalado mas não é mais declarado, como aviso", () => {
+        const m = withInstall(INSTALL)
+        const orfao = m.applications.filter((a) => a.executable === "antigo")[0]
+        expect(orfao.declared).toBe(false)
+        expect(orfao.installed).toBe(true)
+        expect(m.issues.some((i) => i.message.indexOf("não é mais declarado") > -1)).toBe(true)
+    })
+
+    it("resume a instalação: caminho e fonte", () => {
+        const m = withInstall(INSTALL)
+        expect(m.install.installed).toBe(true)
+        expect(m.install.sourceType).toBe("LOCAL_FS")
+        expect(m.install.applications).toBe(2)
+        expect(m.readme).toContain("Applications Repository")
+    })
+
+    it("repositório não instalado não inventa estado", () => {
+        const m = buildRepositoryModel({ name: "AppsRepo", metadata: REPOSITORY_METADATA, packages, git: GIT })
+        expect(m.install.installed).toBe(false)
+        expect(m.install.installationPath).toBeUndefined()
+        expect(m.applications.every((a) => !a.installed)).toBe(true)
+    })
+
+    it("task loaders vêm do taskloaders.json", () => {
+        const m = buildRepositoryModel({
+            name: "AppsRepo",
+            metadata: {
+                ...REPOSITORY_METADATA,
+                files: {
+                    ...REPOSITORY_METADATA.files,
+                    "metadata/taskloaders.json": {
+                        taskLoaders: [{ objectLoaderType: "endpoint-instance", package: "@/endpoint-instance.taskLoader",
+                                        entry: "src/EndpointInstance.taskLoader", injectsDeps: true }]
+                    }
+                }
+            },
+            packages, git: GIT
+        })
+        expect(m.taskLoaders).toHaveLength(1)
+        expect(m.taskLoaders[0].objectLoaderType).toBe("endpoint-instance")
+        expect(m.taskLoaders[0].injectsDeps).toBe(true)
+    })
+})

@@ -20,7 +20,8 @@ const ModuleDeveloperController = (params) => {
         packageHandlerManagerService,
         packageDeveloperLib,
         packageToolkitLib,
-        gitStatusManagerService
+        gitStatusManagerService,
+        installDataDirPath
     } = params
 
     const GetPackage              = packageDeveloperLib.require("Manager.Functions/GetPackage.function")
@@ -30,6 +31,7 @@ const ModuleDeveloperController = (params) => {
     const GetRepositoryHierarchy  = packageDeveloperLib.require("Manager.Functions/GetRepositoryHierarchy.function")
     const GetRepositoryIndex      = packageDeveloperLib.require("Manager.Functions/GetRepositoryIndex.function")
     const GetRepositoryMetadata   = packageDeveloperLib.require("Manager.Functions/GetRepositoryMetadata.function")
+    const GetEcosystemInstallState = packageDeveloperLib.require("Manager.Functions/GetEcosystemInstallState.function")
     const RenameNode              = packageDeveloperLib.require("Manager.Functions/RenameNode.function")
     const DeleteNode              = packageDeveloperLib.require("Manager.Functions/DeleteNode.function")
     // Scaffold compartilhado com o CLI (package-toolkit.lib, ecosystem-core).
@@ -81,12 +83,25 @@ const ModuleDeveloperController = (params) => {
     }
 
     // Metadados do próprio repositório (<repo>/metadata/*.json: repository.json,
-    // applications.json, taskloaders.json…), como estão em disco.
+    // applications.json, taskloaders.json…) + README, como estão em disco, e o
+    // estado de INSTALAÇÃO deste repositório no ecossistema desta máquina.
     const _GetRepositoryMetadata = async (name) => {
         const repo = await packageHandlerManagerService.GetWorkspace({ name })
         if(!repo) throw `Repository "${name}" não encontrado`
         const metadata = await GetRepositoryMetadata(repo.path)
-        return { workspace: name, ...metadata }
+
+        // O ecossistema indexa por NAMESPACE do repositório, não pelo nome com
+        // que ele foi aberto na IDE.
+        const repositoryJson = metadata.files && metadata.files["metadata/repository.json"]
+        const namespace = repositoryJson && repositoryJson.namespace
+        const installState = await GetEcosystemInstallState(installDataDirPath)
+
+        return {
+            workspace: name,
+            ...metadata,
+            install: namespace ? (installState[namespace] || null) : null,
+            installDataDirPath: installDataDirPath || null
+        }
     }
 
     // Navegador de diretórios do picker. `path` vazio -> última pasta salva (ou
