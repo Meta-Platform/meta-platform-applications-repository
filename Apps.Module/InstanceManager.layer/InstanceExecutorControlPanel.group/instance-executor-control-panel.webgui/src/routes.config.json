@@ -2,5 +2,25 @@
     {
         "path":"/",
         "page":"ControlPanelPage"
+    },
+    {
+        "path":"/instances",
+        "page":"ControlPanelPage"
+    },
+    {
+        "path":"/instances/:instanceId",
+        "page":"ControlPanelPage"
+    },
+    {
+        "path":"/performance",
+        "page":"ControlPanelPage"
+    },
+    {
+        "path":"/logs",
+        "page":"ControlPanelPage"
+    },
+    {
+        "path":"/logs/:instanceId",
+        "page":"ControlPanelPage"
     }
 ]

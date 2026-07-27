@@ -1,0 +1,970 @@
+/*
+ * Instance Executor — camada de painel de sistema
+ * ------------------------------------------------------------------
+ * Estilos das telas de monitoramento: shell com navegação lateral, grid
+ * denso de processos, medidores, gráficos e visualizador de log.
+ *
+ * Vocabulário visual: ferramenta de sistema (Windows Server Manager, GNOME
+ * System Monitor, htop) escrita no design system retro-brutalist da
+ * plataforma — traço duro, sem gradiente, número em monoespaçada, cabeçalho
+ * em caixa alta.
+ *
+ * Regra: nenhuma cor hardcoded. Tudo referencia um token --mp-* de
+ * tokens.css, para o painel acompanhar a troca de tema (claro/escuro/etc.).
+ * As únicas cores declaradas aqui são a PALETA DE SÉRIE dos gráficos, que
+ * não existia no design system — e ela é validada, ver a seção 9.
+ *
+ * Prefixo: .iep-* (Instance Executor Panel).
+ */
+
+/* ============================================================ */
+/* 1. Shell                                                     */
+/* ============================================================ */
+
+.iep-shell {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: 1fr auto;
+    grid-template-areas:
+        "nav main"
+        "status status";
+    height: 100vh;
+    background: var(--mp-paper);
+    color: var(--mp-ink);
+    font-family: var(--mp-font-ui);
+    font-size: var(--mp-text-sm);
+    overflow: hidden;
+}
+
+.iep-shell__nav {
+    grid-area: nav;
+    width: 208px;
+    display: flex;
+    flex-direction: column;
+    background: var(--mp-paper-2);
+    border-right: var(--mp-border);
+    overflow: hidden;
+    transition: width .12s ease-out;
+}
+
+.iep-shell__nav--collapsed { width: 52px; }
+
+.iep-shell__main {
+    grid-area: main;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.iep-shell__status { grid-area: status; }
+
+/* Marca do painel, no topo da navegação */
+.iep-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-2);
+    padding: var(--mp-space-3);
+    border-bottom: var(--mp-border);
+    flex: 0 0 auto;
+    min-height: 46px;
+}
+
+.iep-brand__mark {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    background: var(--mp-ink);
+    color: var(--mp-paper);
+    border-radius: var(--mp-radius-sm);
+}
+
+/* Título e subtítulo empilhados: sem isto os dois saem na mesma linha e se
+   sobrepõem quando a navegação está estreita. */
+.iep-brand__text {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.iep-brand__title {
+    font-family: var(--mp-font-display);
+    font-weight: 700;
+    font-size: var(--mp-text-sm);
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.iep-brand__subtitle {
+    font-size: var(--mp-text-xs);
+    color: var(--mp-muted);
+    white-space: nowrap;
+}
+
+/* ---- Itens de navegação ---- */
+
+.iep-nav {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: var(--mp-space-2) 0;
+}
+
+.iep-nav__section {
+    padding: var(--mp-space-3) var(--mp-space-3) var(--mp-space-1);
+    font-size: var(--mp-text-xs);
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--mp-muted-2);
+    white-space: nowrap;
+}
+
+.iep-nav__item {
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-2);
+    width: 100%;
+    padding: 7px var(--mp-space-3);
+    border: 0;
+    border-left: 3px solid transparent;
+    background: transparent;
+    color: var(--mp-ink-2);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.iep-nav__item:hover { background: var(--mp-surface-2); color: var(--mp-ink); }
+
+.iep-nav__item--active {
+    background: var(--mp-accent-soft);
+    border-left-color: var(--mp-accent-blue);
+    color: var(--mp-ink);
+    font-weight: 600;
+}
+
+.iep-nav__icon { flex: 0 0 auto; width: 16px; text-align: center; }
+.iep-nav__label { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
+
+.iep-nav__count {
+    flex: 0 0 auto;
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-xs);
+    color: var(--mp-muted);
+    background: var(--mp-surface);
+    border: var(--mp-border-thin);
+    border-radius: var(--mp-radius-sm);
+    padding: 0 5px;
+}
+
+.iep-nav__foot {
+    flex: 0 0 auto;
+    padding: var(--mp-space-2);
+    border-top: var(--mp-border-thin);
+}
+
+/* ============================================================ */
+/* 2. Barra de ferramentas e cabeçalho de conteúdo              */
+/* ============================================================ */
+
+.iep-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-2);
+    padding: var(--mp-space-2) var(--mp-space-3);
+    background: var(--mp-surface);
+    border-bottom: var(--mp-border);
+    flex: 0 0 auto;
+    min-height: 42px;
+}
+
+.iep-toolbar__title {
+    font-family: var(--mp-font-display);
+    font-weight: 700;
+    font-size: var(--mp-text-md);
+    margin-right: var(--mp-space-2);
+    white-space: nowrap;
+}
+
+.iep-toolbar__subtitle {
+    color: var(--mp-muted);
+    font-size: var(--mp-text-xs);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.iep-toolbar__spacer { flex: 1 1 auto; min-width: var(--mp-space-2); }
+
+.iep-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--mp-paper);
+    border: var(--mp-border-thin);
+    border-radius: var(--mp-radius-sm);
+    padding: 3px var(--mp-space-2);
+    color: var(--mp-muted);
+}
+
+.iep-field input {
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--mp-ink);
+    font: inherit;
+    font-size: var(--mp-text-sm);
+    min-width: 120px;
+}
+
+.iep-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    background: var(--mp-surface);
+    border: var(--mp-border-thin);
+    border-radius: var(--mp-radius-sm);
+    color: var(--mp-ink-2);
+    font: inherit;
+    font-size: var(--mp-text-xs);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.iep-btn:hover:not(:disabled) { background: var(--mp-surface-2); color: var(--mp-ink); }
+.iep-btn:disabled { opacity: .45; cursor: default; }
+
+.iep-btn--active {
+    background: var(--mp-accent-soft);
+    border-color: var(--mp-accent-blue);
+    color: var(--mp-ink);
+    font-weight: 600;
+}
+
+.iep-btn--danger { color: var(--mp-danger); border-color: var(--mp-danger); }
+.iep-btn--danger:hover:not(:disabled) { background: var(--mp-danger-tint); }
+
+/* ============================================================ */
+/* 3. Abas                                                      */
+/* ============================================================ */
+
+.iep-tabs {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    padding: 0 var(--mp-space-3);
+    background: var(--mp-paper-2);
+    border-bottom: var(--mp-border);
+    flex: 0 0 auto;
+}
+
+.iep-tabs__tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px var(--mp-space-3);
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    color: var(--mp-muted);
+    font: inherit;
+    font-size: var(--mp-text-sm);
+    cursor: pointer;
+}
+
+.iep-tabs__tab:hover { color: var(--mp-ink); }
+
+.iep-tabs__tab--active {
+    color: var(--mp-ink);
+    font-weight: 700;
+    border-bottom-color: var(--mp-accent-blue);
+    background: var(--mp-surface);
+}
+
+.iep-tabs__count {
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-xs);
+    color: var(--mp-muted);
+}
+
+/* ============================================================ */
+/* 4. Grid de dados (processos, instâncias, tarefas)            */
+/* ------------------------------------------------------------ */
+/* Substitui a <Table> do semantic-ui: lá, o layout fixo cortava */
+/* o texto no meio e a página ganhava scroll horizontal. Aqui o  */
+/* grid é CSS grid com colunas redimensionáveis e uma coluna     */
+/* elástica que absorve a sobra.                                 */
+/* ============================================================ */
+
+.iep-grid {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1 1 auto;
+    background: var(--mp-surface);
+    border: var(--mp-border-thin);
+    border-radius: var(--mp-radius-sm);
+    overflow: hidden;
+}
+
+.iep-grid__scroll { overflow: auto; flex: 1 1 auto; min-height: 0; }
+
+.iep-grid__row {
+    display: grid;
+    align-items: center;
+    column-gap: var(--mp-space-2);
+    padding: 0 var(--mp-space-2);
+    border-bottom: 1px solid var(--mp-line-faint);
+    min-height: 26px;
+}
+
+.iep-grid__row--head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--mp-paper-3);
+    border-bottom: var(--mp-border);
+    font-size: var(--mp-text-xs);
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--mp-ink-3);
+    min-height: 28px;
+}
+
+.iep-grid__row--body { cursor: pointer; }
+.iep-grid__row--body:nth-child(even) { background: var(--mp-surface-2); }
+.iep-grid__row--body:hover { background: var(--mp-accent-soft); }
+
+.iep-grid__row--selected,
+.iep-grid__row--selected:nth-child(even) {
+    background: var(--mp-accent-blue-tint);
+    box-shadow: inset 3px 0 0 var(--mp-accent-blue);
+}
+
+.iep-grid__cell {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 3px 0;
+}
+
+.iep-grid__cell--num {
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-xs);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.iep-grid__cell--mono {
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-xs);
+    color: var(--mp-muted);
+}
+
+.iep-grid__head-cell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+    min-width: 0;
+    user-select: none;
+}
+
+.iep-grid__head-cell--sortable { cursor: pointer; }
+.iep-grid__head-cell--sortable:hover { color: var(--mp-ink); }
+.iep-grid__head-cell--num { justify-content: flex-end; }
+
+.iep-grid__sort { color: var(--mp-accent-blue); flex: 0 0 auto; }
+
+/* Alça de redimensionamento: fina, mas com área de clique confortável. */
+.iep-grid__resizer {
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    right: calc(var(--mp-space-2) / -2 - 2px);
+    width: 7px;
+    cursor: col-resize;
+    z-index: 3;
+}
+
+.iep-grid__resizer::after {
+    content: "";
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 3px;
+    width: 1px;
+    background: var(--mp-line-soft);
+}
+
+.iep-grid__resizer:hover::after,
+.iep-grid__resizer--active::after { background: var(--mp-accent-blue); width: 2px; }
+
+.iep-grid__empty {
+    padding: var(--mp-space-8) var(--mp-space-4);
+    text-align: center;
+    color: var(--mp-muted);
+}
+
+.iep-grid__empty-hint {
+    margin-top: var(--mp-space-1);
+    font-size: var(--mp-text-xs);
+    color: var(--mp-muted-2);
+}
+
+/* Recuo da árvore de tarefas dentro do grid */
+.iep-grid__twisty {
+    flex: 0 0 auto;
+    width: 14px;
+    text-align: center;
+    color: var(--mp-muted);
+    cursor: pointer;
+}
+
+.iep-grid__namecell {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+}
+
+/* O nome tem prioridade sobre o detalhe: encolher os dois igualmente cortava o
+   nome cedo demais (era o que acontecia com a tabela antiga). */
+.iep-grid__namecell strong {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.iep-grid__detail {
+    flex: 0 2 auto;
+    min-width: 0;
+    color: var(--mp-muted-2);
+    font-size: var(--mp-text-xs);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ============================================================ */
+/* 5. Selo de estado e de tipo                                  */
+/* ============================================================ */
+
+.iep-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid var(--mp-line);
+    flex: 0 0 auto;
+}
+
+.iep-dot--running  { background: var(--mp-success); }
+.iep-dot--starting { background: var(--mp-warning); }
+.iep-dot--failed   { background: var(--mp-danger); }
+.iep-dot--stopped  { background: var(--mp-neutral); }
+.iep-dot--idle     { background: var(--mp-surface-muted); }
+
+.iep-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: var(--mp-text-xs);
+    font-weight: 600;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.iep-state--running  { color: var(--mp-success); }
+.iep-state--starting { color: var(--mp-warning); }
+.iep-state--failed   { color: var(--mp-danger); }
+.iep-state--stopped  { color: var(--mp-muted); }
+
+.iep-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 6px;
+    border: var(--mp-border-thin);
+    border-radius: var(--mp-radius-sm);
+    background: var(--mp-paper);
+    color: var(--mp-ink-3);
+    font-size: var(--mp-text-xs);
+    font-family: var(--mp-font-mono);
+    white-space: nowrap;
+}
+
+.iep-tag--app     { border-color: var(--mp-accent-blue);   color: var(--mp-accent-blue); }
+.iep-tag--desktop { border-color: var(--mp-accent-violet); color: var(--mp-accent-violet); }
+.iep-tag--cli     { border-color: var(--mp-accent-cyan);   color: var(--mp-accent-cyan); }
+
+/* ============================================================ */
+/* 6. Medidor (barra de utilização)                             */
+/* ============================================================ */
+
+.iep-meter { display: flex; align-items: center; gap: var(--mp-space-2); min-width: 0; }
+
+.iep-meter__label {
+    font-size: var(--mp-text-xs);
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--mp-muted);
+    flex: 0 0 auto;
+}
+
+.iep-meter__track {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 40px;
+    height: 10px;
+    background: var(--mp-surface-muted);
+    border: 1px solid var(--mp-line-soft);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.iep-meter__fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--mp-accent-cyan);
+    transition: width .2s linear;
+}
+
+.iep-meter__fill--warning { background: var(--mp-warning); }
+.iep-meter__fill--danger  { background: var(--mp-danger); }
+
+.iep-meter__value {
+    flex: 0 0 auto;
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-xs);
+    font-variant-numeric: tabular-nums;
+    color: var(--mp-ink-2);
+    min-width: 46px;
+    text-align: right;
+}
+
+/* ============================================================ */
+/* 7. Cartões e listas de propriedades                          */
+/* ============================================================ */
+
+.iep-card {
+    background: var(--mp-surface);
+    border: var(--mp-border-thin);
+    border-radius: var(--mp-radius-sm);
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+}
+
+.iep-card__head {
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-2);
+    padding: 6px var(--mp-space-3);
+    border-bottom: var(--mp-border-thin);
+    background: var(--mp-paper-2);
+    font-size: var(--mp-text-xs);
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--mp-ink-3);
+    flex: 0 0 auto;
+}
+
+.iep-card__head .iep-toolbar__spacer { min-width: 0; }
+.iep-card__body { padding: var(--mp-space-3); min-height: 0; overflow: auto; }
+.iep-card__body--flush { padding: 0; }
+
+.iep-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: var(--mp-space-3);
+}
+
+.iep-stat__value {
+    font-family: var(--mp-font-display);
+    font-size: var(--mp-text-2xl);
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+}
+
+.iep-stat__unit { font-size: var(--mp-text-md); color: var(--mp-muted); margin-left: 3px; }
+.iep-stat__hint { margin-top: 3px; font-size: var(--mp-text-xs); color: var(--mp-muted); }
+
+.iep-kv {
+    display: grid;
+    grid-template-columns: minmax(90px, max-content) 1fr;
+    gap: 5px var(--mp-space-3);
+    align-items: baseline;
+}
+
+.iep-kv__k {
+    font-size: var(--mp-text-xs);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--mp-muted);
+    white-space: nowrap;
+}
+
+.iep-kv__v {
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-xs);
+    color: var(--mp-ink-2);
+    word-break: break-all;
+}
+
+/* ============================================================ */
+/* 8. Visualizador de log                                       */
+/* ============================================================ */
+
+.iep-log {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1 1 auto;
+    background: var(--mp-terminal-bg);
+    border: var(--mp-border);
+    border-top-width: 3px;
+    border-top-color: var(--mp-titlebar-runtime);
+    border-radius: var(--mp-radius-sm);
+    overflow: hidden;
+}
+
+.iep-log__bar {
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-2);
+    padding: 4px var(--mp-space-2);
+    background: var(--mp-terminal-bg-2);
+    border-bottom: 1px solid var(--mp-terminal-muted);
+    flex: 0 0 auto;
+}
+
+.iep-log__bar .iep-btn {
+    background: transparent;
+    border-color: var(--mp-terminal-muted);
+    color: var(--mp-terminal-fg);
+}
+
+.iep-log__bar .iep-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .08); }
+.iep-log__bar .iep-btn--active { background: rgba(255, 255, 255, .14); border-color: var(--mp-terminal-blue); }
+
+.iep-log__bar .iep-field {
+    background: transparent;
+    border-color: var(--mp-terminal-muted);
+    color: var(--mp-terminal-muted);
+}
+
+.iep-log__bar .iep-field input { color: var(--mp-terminal-fg); }
+
+.iep-log__meta {
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-xs);
+    color: var(--mp-terminal-muted);
+    white-space: nowrap;
+}
+
+.iep-log__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: var(--mp-space-2);
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-xs);
+    line-height: 1.55;
+    color: var(--mp-terminal-fg);
+}
+
+.iep-log__line {
+    display: flex;
+    gap: var(--mp-space-2);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.iep-log__gutter {
+    flex: 0 0 auto;
+    min-width: 44px;
+    text-align: right;
+    color: var(--mp-terminal-muted);
+    opacity: .6;
+    user-select: none;
+}
+
+.iep-log__text { flex: 1 1 auto; min-width: 0; }
+
+.iep-log__line--error  .iep-log__text { color: var(--mp-terminal-red); }
+.iep-log__line--warn   .iep-log__text { color: var(--mp-terminal-orange); }
+.iep-log__line--daemon .iep-log__text { color: var(--mp-terminal-blue); }
+.iep-log__line--match  { background: rgba(255, 255, 255, .1); }
+
+.iep-log__empty {
+    padding: var(--mp-space-6);
+    text-align: center;
+    color: var(--mp-terminal-muted);
+}
+
+/* ============================================================ */
+/* 9. Gráficos                                                  */
+/* ------------------------------------------------------------ */
+/* A paleta de SÉRIE é a única cor declarada fora dos tokens: o  */
+/* design system não tinha uma. Foi validada (banda de           */
+/* luminância, piso de croma, separação para daltonismo e        */
+/* contraste com a superfície) nos dois modos — trocar um valor  */
+/* exige revalidar, não é escolha de gosto.                      */
+/* ============================================================ */
+
+:root {
+    --iep-series-1: #009AA4;
+    --iep-series-2: #C4571B;
+    --iep-series-3: #2D6FC4;
+    --iep-series-4: #B03A6E;
+    --iep-series-5: #8F7A12;
+    --iep-series-6: #7A4FC0;
+
+    /* Papéis fixos: CPU e memória são sempre as mesmas cores em todo o
+       painel, para o olho não ter de reaprender a cada tela. */
+    --iep-cpu:    var(--iep-series-1);
+    --iep-memory: var(--iep-series-3);
+    --iep-io:     var(--iep-series-2);
+    --iep-thread: var(--iep-series-6);
+}
+
+:root[data-theme="dark"] {
+    --iep-series-1: #1C9CA6;
+    --iep-series-2: #C46A30;
+    --iep-series-3: #4F8CE0;
+    --iep-series-4: #C55F8B;
+    --iep-series-5: #A68F28;
+    --iep-series-6: #8A74C8;
+}
+
+.iep-chart { position: relative; width: 100%; min-width: 0; }
+.iep-chart svg { display: block; width: 100%; overflow: hidden; }
+
+.iep-chart__grid   { stroke: var(--mp-line-faint); stroke-width: 1; }
+.iep-chart__axis   { stroke: var(--mp-line-soft); stroke-width: 1; }
+.iep-chart__label  { fill: var(--mp-muted); font-size: 10px; font-family: var(--mp-font-mono); }
+.iep-chart__line   { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.iep-chart__area   { stroke: none; opacity: .14; }
+.iep-chart__cursor { stroke: var(--mp-muted); stroke-width: 1; stroke-dasharray: 3 3; }
+
+.iep-chart__marker { stroke: var(--mp-surface); stroke-width: 2; }
+
+.iep-chart__tip {
+    position: absolute;
+    z-index: 5;
+    pointer-events: none;
+    background: var(--mp-ink);
+    color: var(--mp-paper);
+    border-radius: var(--mp-radius-sm);
+    padding: 5px 8px;
+    font-size: var(--mp-text-xs);
+    font-family: var(--mp-font-mono);
+    white-space: nowrap;
+    box-shadow: var(--mp-shadow-1);
+}
+
+.iep-chart__tip-row { display: flex; align-items: center; gap: 6px; }
+.iep-chart__tip-swatch { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; }
+
+.iep-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--mp-space-1) var(--mp-space-3);
+    padding-top: var(--mp-space-2);
+}
+
+.iep-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: var(--mp-text-xs);
+    color: var(--mp-muted);
+    min-width: 0;
+}
+
+.iep-legend__swatch { width: 9px; height: 9px; border-radius: 2px; flex: 0 0 auto; }
+.iep-legend__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
+
+.iep-sparkline { display: block; }
+
+/* ============================================================ */
+/* 10. Barra de status (rodapé permanente)                      */
+/* ============================================================ */
+
+.iep-statusbar {
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-4);
+    padding: 3px var(--mp-space-3);
+    background: var(--mp-paper-3);
+    border-top: var(--mp-border);
+    font-size: var(--mp-text-xs);
+    min-height: 30px;
+    overflow-x: auto;
+}
+
+.iep-statusbar__group {
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-2);
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+
+.iep-statusbar__label {
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--mp-muted);
+}
+
+.iep-statusbar__value {
+    font-family: var(--mp-font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--mp-ink-2);
+}
+
+.iep-statusbar__spacer { flex: 1 1 auto; }
+
+/* O estado do daemon é a informação que não pode sumir da barra: numa janela
+   estreita, o que sai são os indicadores secundários, não ele. */
+@media (max-width: 1180px) {
+    .iep-statusbar { gap: var(--mp-space-3); }
+    .iep-statusbar__group--secondary { display: none; }
+}
+
+.iep-statusbar__daemon { display: inline-flex; align-items: center; gap: 5px; }
+.iep-statusbar__daemon--offline { color: var(--mp-danger); font-weight: 700; }
+
+/* ============================================================ */
+/* 11. Layouts de conteúdo                                      */
+/* ============================================================ */
+
+.iep-view {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.iep-view__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: var(--mp-space-3);
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--mp-space-3);
+}
+
+/* Conteúdo mais alto que a área deve ROLAR, não encolher. Sem isto, os filhos
+   flex espremem-se para caber e o corte cai justamente no rodapé de cada
+   cartão — sumindo com a legenda e o eixo de tempo dos gráficos. */
+.iep-view__body > * { flex-shrink: 0; }
+
+/* As exceções são os componentes que devem ocupar a altura restante. */
+.iep-view__body > .iep-grid,
+.iep-view__body > .iep-log { flex: 1 1 auto; min-height: 0; }
+
+.iep-view__body--flush { padding: 0; gap: 0; }
+
+/* Mestre-detalhe: lista à esquerda, workspace à direita. */
+.iep-split {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    gap: var(--mp-space-2);
+    padding: var(--mp-space-2);
+    overflow: hidden;
+}
+
+.iep-split__master {
+    flex: 1 1 40%;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.iep-split__detail {
+    flex: 1 1 60%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--mp-surface);
+    border: var(--mp-border-thin);
+    border-radius: var(--mp-radius-sm);
+    overflow: hidden;
+}
+
+.iep-split--wide .iep-split__master { flex-basis: 100%; }
+
+.iep-entity {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--mp-space-2);
+    padding: var(--mp-space-3);
+    border-bottom: var(--mp-border-thin);
+    background: var(--mp-paper-2);
+    flex: 0 0 auto;
+}
+
+.iep-entity__body { flex: 1 1 auto; min-width: 0; }
+
+.iep-entity__title {
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-2);
+    font-family: var(--mp-font-display);
+    font-size: var(--mp-text-md);
+    font-weight: 700;
+    min-width: 0;
+}
+
+.iep-entity__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.iep-entity__meta {
+    margin-top: 3px;
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-xs);
+    color: var(--mp-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.iep-entity__actions { display: flex; gap: 5px; flex: 0 0 auto; }
+
+.iep-panelgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--mp-space-3);
+}
+
+.iep-empty {
+    flex: 1 1 auto;
+    display: grid;
+    place-items: center;
+    padding: var(--mp-space-8);
+    text-align: center;
+    color: var(--mp-muted);
+}
+
+.iep-empty__title { font-weight: 700; margin-bottom: var(--mp-space-1); }
+.iep-empty__hint { font-size: var(--mp-text-xs); color: var(--mp-muted-2); max-width: 380px; }

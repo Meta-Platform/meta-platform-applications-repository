@@ -9,6 +9,8 @@ import "./Styles/tokens.css"
 import "./Styles/CorporateTheme.css"
 import "./Styles/theme-retro-brutalist.css"
 import "./Styles/components.css"
+// Camada de painel de sistema (shell, grid denso, medidores, gráficos, log).
+import "./Styles/system-panel.css"
 import "./Styles/themes.css"
 
 import { applySavedTheme } from "./Utils/theme"
