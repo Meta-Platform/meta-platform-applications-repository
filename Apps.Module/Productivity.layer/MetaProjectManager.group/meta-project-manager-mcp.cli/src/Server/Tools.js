@@ -42,7 +42,7 @@ const RISK_STATUSES = ["open","mitigating","accepted","closed","occurred"]
 const PLANNING_DOC_STATUSES = ["draft","review","approved","archived"]
 
 const { INSTRUCTIONS } = require("./Instructions")
-const { MutationResult, ListEnvelope, ITEM_LIST_FIELDS, RunBatch, Pick } = require("./Envelopes")
+const { MutationResult, ListEnvelope, ITEM_LIST_FIELDS, PROJECT_LIST_FIELDS, RunBatch, Pick } = require("./Envelopes")
 
 const BuildTools = ({ store, actor }) => {
 
@@ -528,7 +528,7 @@ const BuildTools = ({ store, actor }) => {
         // ou remove algo passa pelo gate e BLOQUEIA até a decisão humana.
         {
             name: "update_project",
-            description: "Atualiza um projeto. Campos operacionais (icon, color, repositoryUrl, localPath) são LIVRES. GATE (bloqueia até aprovação): name, slug, shortDescription, description, status — reescrever o texto ou mudar o ciclo de vida do projeto o humano revisa antes.",
+            description: "Atualiza um projeto. Campos operacionais (icon, color, repositoryUrl, localPath) são LIVRES. GATE (bloqueia até aprovação): name, slug, shortDescription, description, status — reescrever o texto ou mudar o ciclo de vida do projeto o humano revisa antes. PROJETO EM `planning`: toda escrita é recusada (PROJECT_IN_PLANNING), EXCETO esta tool enviando SÓ `status` — é assim que se propõe tirar o projeto do planejamento (ainda sob aprovação humana). `status` junto de qualquer outro campo volta a ser recusado.",
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"),
                 name: S.str("Novo nome"),
@@ -1144,9 +1144,26 @@ const BuildTools = ({ store, actor }) => {
         // ───────────── Acompanhar / contexto ─────────────
         {
             name: "list_projects",
-            description: "Lista os projetos.",
-            inputSchema: Obj({ status: S.str("Filtrar por status"), includeArchived: S.bool("Incluir arquivados") }),
-            handler: (i) => store.ListProjects({ status: i.status, includeArchived: i.includeArchived })
+            description: "Lista os projetos. Retorno ENXUTO por padrão: identidade, status, keyPrefix e caminho — SEM a descrição longa e SEM o relatório final (que sozinhos passavam de 5 mil caracteres por projeto). Use `fields` para pedir campos específicos, `view:\"full\"` para o registro inteiro e get_project/get_project_report quando precisar de UM texto completo.",
+            inputSchema: Obj({
+                status: S.str("Filtrar por status"),
+                includeArchived: S.bool("Incluir arquivados"),
+                ...FIELDS_FIELD,
+                ...VIEW_FIELD_FOR("project", "identidade, status, keyPrefix e caminho (sem description/finalReport)")
+            }),
+            handler: async (i) => {
+                const limit = Number(i.limit) > 0 ? Number(i.limit) : 100
+                const offset = Number(i.offset) > 0 ? Number(i.offset) : 0
+                const rows = await store.ListProjects({ status: i.status, includeArchived: i.includeArchived })
+                const page = rows.slice(offset, offset + limit)
+                // view:"full" = registro inteiro (inclusive os textos longos).
+                if(i.view === "full")
+                    return { items: page, total: rows.length, limit, offset, returned: page.length, hasMore: offset + page.length < rows.length }
+                return ListEnvelope({
+                    rows: page, total: rows.length, limit, offset, fields: i.fields,
+                    defaultFields: PROJECT_LIST_FIELDS
+                })
+            }
         },
         {
             name: "get_project",
@@ -1180,9 +1197,29 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "roadmap",
-            description: "Roadmap do projeto por horizonte (inbox/now/next/later/maybe) — visão de planejamento.",
-            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }, ["project"]),
-            handler: (i) => store.RoadmapByHorizon({ project: i.project })
+            description: "Roadmap do projeto por horizonte (inbox/now/next/later/maybe/archived/unassigned) — visão de planejamento. Retorno ENXUTO e PAGINADO POR HORIZONTE: cada balde vira `{ items, total, limit, offset, hasMore }` com o MESMO resumo de list_items (sem a descrição longa). `horizon` traz um balde só; `fields` projeta; `limit`/`offset` valem por balde. Um projeto de 87 itens devolvia 84 mil caracteres e era cortado — peça um horizonte por vez para ler o plano inteiro.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                horizon: S.enum([...HORIZONS, "unassigned"], "Só este horizonte (omitido = todos, cada um paginado)"),
+                ...FIELDS_FIELD
+            }, ["project"]),
+            handler: async (i) => {
+                const limit = Number(i.limit) > 0 ? Number(i.limit) : 25
+                const offset = Number(i.offset) > 0 ? Number(i.offset) : 0
+                const buckets = await store.RoadmapByHorizon({ project: i.project })
+                const wanted = i.horizon ? [i.horizon] : Object.keys(buckets)
+                const out = {}
+                for(const name of wanted){
+                    const rows = buckets[name] || []
+                    out[name] = ListEnvelope({
+                        rows: rows.slice(offset, offset + limit),
+                        total: rows.length, limit, offset, fields: i.fields,
+                        defaultFields: ITEM_LIST_FIELDS
+                    })
+                }
+                // O totalizador evita uma segunda chamada só para saber onde está o volume.
+                return { horizons: out, totals: Object.fromEntries(Object.entries(buckets).map(([k, v]) => [k, v.length])) }
+            }
         },
         {
             name: "project_flow",

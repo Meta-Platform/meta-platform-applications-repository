@@ -7,6 +7,13 @@ export type ID = string
 export type ProjectStatus =
     "planning" | "candidate" | "active" | "paused" | "completed" | "archived" | string
 
+// Ciclo de vida EDITÁVEL do projeto. `archived` fica de fora de propósito: ele tem
+// fluxo próprio (arquivar/restaurar, que também carimba archivedAt e liga o modo
+// somente-leitura) — mudá-lo por um seletor de status deixaria o registro
+// inconsistente e criaria um segundo caminho para a mesma decisão.
+export const PROJECT_LIFECYCLE_STATUSES: ProjectStatus[] =
+    ["planning", "candidate", "active", "paused", "completed"]
+
 export interface Project {
     id: ID
     name: string
@@ -376,6 +383,26 @@ export interface ApprovalImpact {
     counts: Record<string, number>
 }
 
+// Uma mudança que o pedido fará no alvo: de → para (já resolvida pelo backend,
+// que é quem conhece o estado atual).
+export interface ApprovalChange {
+    field: string
+    from: any
+    to: any
+}
+
+// "O QUE" está sendo pedido: o alvo por nome (nunca por uuid), o projeto em que
+// ele vive, o estado atual dos campos relevantes e o de-para da ação. Vem em
+// TODO pedido que já tem alvo (create ainda não tem — lá o payload é a descrição).
+export interface ApprovalSubject {
+    kind: string
+    label: string
+    projectId?: ID
+    projectLabel?: string
+    current?: Record<string, any>
+    changes?: ApprovalChange[]
+}
+
 export interface CreationRequest {
     id: ID
     type: CreationRequestType
@@ -391,6 +418,7 @@ export interface CreationRequest {
     session?: CreationRequestSession
     who?: ApprovalWho        // identidade do agente que pediu
     impact?: ApprovalImpact  // presente em pedidos de delete
+    subject?: ApprovalSubject // o alvo legível + o de-para (toda ação com alvo)
 }
 
 export interface ApproveCreationResult {

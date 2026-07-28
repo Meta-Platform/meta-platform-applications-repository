@@ -61,7 +61,7 @@
                     "namespace": "ProjectUpdate",
                     "path": "Commands/ProjectUpdate.command",
                     "command": "update [project]",
-                    "description": "Atualizar projeto",
+                    "description": "Atualizar projeto (nome, textos, status e metadados)",
                     "parameters": [
                         {
                             "key": "project",
@@ -70,10 +70,70 @@
                             "describe": "id|slug|key"
                         },
                         {
+                            "key": "name",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "novo nome do projeto"
+                        },
+                        {
+                            "key": "slug",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "novo slug (único; conflito vira erro)"
+                        },
+                        {
                             "key": "short-description",
                             "paramType": "option",
                             "valueType": "string",
                             "describe": "descrição curta (<=240 chars), usada em cards e listas"
+                        },
+                        {
+                            "key": "description",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "descrição longa (markdown)"
+                        },
+                        {
+                            "key": "final-report",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "relatório final de conclusão (markdown)"
+                        },
+                        {
+                            "key": "status",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "ciclo de vida: planning|candidate|active|paused|completed|archived"
+                        },
+                        {
+                            "key": "icon",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "ícone (emoji)"
+                        },
+                        {
+                            "key": "color",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "cor (hex)"
+                        },
+                        {
+                            "key": "repository-url",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "URL do repositório"
+                        },
+                        {
+                            "key": "local-path",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "caminho local do projeto"
+                        },
+                        {
+                            "key": "owner",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "dono do projeto (id|handle)"
                         }
                     ],
                     "parametersToLoad": [

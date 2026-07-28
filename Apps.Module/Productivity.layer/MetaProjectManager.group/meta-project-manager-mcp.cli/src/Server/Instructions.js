@@ -80,6 +80,12 @@ HUMANO; você só atua depois que ele mover o projeto para \`active\`. Leituras
 (\`list_*\`, \`get_*\`, \`search_items\`, \`list_feedback\`) seguem liberadas — use
 esse tempo para investigar. NÃO tente contornar criando em outro projeto.
 
+ÚNICA saída: \`update_project\` com **apenas** \`status\` (ex.: \`active\`) é aceito
+mesmo em \`planning\` — é a proposta de tirar o projeto do planejamento, e ela
+BLOQUEIA até um humano aprovar. Mandar \`status\` junto de qualquer outro campo
+volta a ser recusado. Não use isto para destravar por conta própria um projeto
+que o humano ainda está montando: proponha e explique por quê.
+
 LIVRE (faça direto, em projeto que NÃO está em planejamento): criar/atualizar
 itens, atribuir, bloquear, vincular, comentar, anexar, anotar.
 
@@ -212,7 +218,7 @@ num passo só.
 | Código | O que fazer |
 |---|---|
 | \`AGENT_SESSION_CONFIRMATION_REQUIRED\` | Avise o humano e aguarde a aprovação. |
-| \`PROJECT_IN_PLANNING\` | Projeto em planejamento: você não escreve nele. Peça ao humano para movê-lo para \`active\`. Só leituras. |
+| \`PROJECT_IN_PLANNING\` | Projeto em planejamento: você não escreve nele. Só leituras — ou proponha a saída com \`update_project\` mandando SÓ \`status\` (aguarda aprovação humana). |
 | \`AGENT_ACTION_REQUIRES_HUMAN\` | Iniciar/concluir (ou criar item já iniciado) exige solicitação explícita do humano. Proponha e aguarde. |
 | \`REJECTED_BY_HUMAN\` | O humano recusou. Leia \`details.reason\` e NÃO reenvie. |
 | \`APPROVAL_TIMEOUT\` | Ninguém decidiu a tempo. Pergunte ao humano. |

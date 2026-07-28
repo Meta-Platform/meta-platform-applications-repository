@@ -912,6 +912,12 @@ html, body, #gui { height: 100%; margin: 0; }
 }
 .mpm-input:focus, .mpm-textarea:focus, .mpm-select:focus { border-color: var(--mp-accent-blue); }
 .mpm-textarea { resize: vertical; min-height: 72px; font-family: var(--mp-font-mono); }
+/* Seletor que mora numa barra de ações (não num formulário): acompanha os botões
+   ao lado em vez de esticar pela linha inteira. */
+.mpm-select--status {
+    width: auto; padding: 4px var(--mp-space-2);
+    font-size: var(--mp-text-xs); text-transform: lowercase;
+}
 .mpm-input::placeholder, .mpm-textarea::placeholder { color: var(--mp-muted-2); }
 
 /* ============================================================ */
@@ -1586,6 +1592,19 @@ html, body, #gui { height: 100%; margin: 0; }
 }
 .mpm-approval__facts b { color: var(--mp-muted); font-weight: 700; margin-right: 4px; }
 .mpm-approval__section { display: flex; flex-direction: column; gap: var(--mp-space-2); }
+/* Onde o alvo vive (projeto, tipo, status atual) — contexto em uma linha. */
+.mpm-approval__context {
+    display: flex; flex-wrap: wrap; gap: var(--mp-space-3);
+    font-size: var(--mp-text-xs); color: var(--mp-muted);
+}
+/* "de → para": o valor pretendido tem peso; o atual fica apagado ao lado. */
+.mpm-approval__change {
+    display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--mp-space-2);
+    padding: 2px 0;
+}
+.mpm-approval__change .mpm-field__label { min-width: 120px; }
+.mpm-approval__from { color: var(--mp-muted); text-decoration: line-through; word-break: break-word; }
+.mpm-approval__to { color: var(--mp-ink); word-break: break-word; }
 /* A descrição longa nunca domina o modal: rola dentro da própria caixa. */
 .mpm-approval__scroll {
     max-height: 240px; overflow-y: auto;

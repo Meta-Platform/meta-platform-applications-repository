@@ -7,7 +7,7 @@ import useApi from "../Hooks/useApi"
 import useLiveReload from "../Hooks/useLiveReload"
 import { useReadOnly } from "../Hooks/useReadOnly"
 import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
-import { Project, ProjectMetrics, Board, ActivityEntry, User, WorkItem } from "../api/types"
+import { Project, ProjectMetrics, Board, ActivityEntry, User, WorkItem, PROJECT_LIFECYCLE_STATUSES } from "../api/types"
 import AppShell from "../Components/AppShell"
 import PageFeedbackButton from "../Components/PageFeedbackButton"
 import NewBoardModal from "../Components/NewBoardModal"
@@ -18,6 +18,7 @@ import Markdown from "../Components/Markdown"
 import DescriptionEditor from "../Components/DescriptionEditor"
 import { Metric, Progress, StatusChip, TypeBadge, Loading, ErrorBanner } from "../Components/Primitives"
 import { formatDateTime } from "../Utils/format"
+import { statusLabel } from "../Utils/labels"
 import { activityTitle, activityDetail, activityIcon, activityItemId } from "../Utils/activity"
 import downloadJson from "../Utils/downloadJson"
 import { feedbackTarget } from "../Utils/feedbackTarget"
@@ -125,6 +126,13 @@ const ProjectPage = () => {
     const restore = async () => {
         try { await api.projects.restore(projectId); await reloadProject() } catch (e: any) { setError(e.message) }
     }
+    // Ciclo de vida do projeto: a API já aceitava `status`, mas nenhuma superfície o
+    // expunha — um projeto criado em `planning` ficava sem saída (MPMX3-1).
+    const changeStatus = async (status: string) => {
+        if (!project || status === project.status) return
+        try { setProject(await api.projects.update(project.id, { status })) }
+        catch (e: any) { setError(e.message) }
+    }
     const doRemoveProject = async () => {
         setDeleting(true); setError(null)
         try { await api.projects.remove(projectId); navigate("/") }
@@ -139,7 +147,20 @@ const ProjectPage = () => {
     // Ações do projeto: vivem no header. As de risco ficam atrás do menu "Mais".
     const headerActions = project
         ? <>
-            <StatusChip status={project.status} />
+            {/* Arquivado é somente-leitura: lá o status volta a ser só um selo. */}
+            {readOnly
+                ? <StatusChip status={project.status} />
+                : <select className="mpm-select mpm-select--status" value={project.status}
+                    title="Estágio do projeto no ciclo de vida (arquivar fica em 'Mais')"
+                    aria-label="Status do projeto"
+                    onChange={(e) => changeStatus(e.target.value)}>
+                    {/* Um status fora do ciclo editável (ex.: legado) segue selecionável
+                        até que o humano escolha outro — não some da lista em silêncio. */}
+                    {(PROJECT_LIFECYCLE_STATUSES.includes(project.status)
+                        ? PROJECT_LIFECYCLE_STATUSES
+                        : [project.status, ...PROJECT_LIFECYCLE_STATUSES]
+                    ).map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
+                </select>}
             {!readOnly ? <PageFeedbackButton scope="project" projectId={projectId} label="Projeto inteiro" /> : null}
             <button className="mpm-btn" title="Abrir o board padrão do projeto" onClick={() => openBoard(project.defaultBoardId)}>
                 <Icon name="columns" /> Abrir board

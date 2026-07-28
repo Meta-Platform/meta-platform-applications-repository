@@ -50,6 +50,14 @@ const ITEM_LIST_FIELDS = [
     "effort", "confidence", "value", "parentId", "updatedAt"
 ]
 
+// Idem para PROJETOS. `description` e sobretudo `finalReport` (relatórios de
+// vários milhares de caracteres) ficam de fora: um list_projects de rotina não
+// pode custar o contexto de meia dúzia de relatórios de conclusão.
+const PROJECT_LIST_FIELDS = [
+    "id", "name", "slug", "shortDescription", "status", "keyPrefix",
+    "localPath", "counts", "updatedAt"
+]
+
 // Envelope paginado com projeção. `fields` vazio = os campos padrão da entidade.
 const ListEnvelope = ({ rows, total, limit, offset, fields, defaultFields }) => {
     const projection = Array.isArray(fields) && fields.length ? fields : defaultFields
@@ -99,4 +107,4 @@ const RunBatch = async (entries, run, describe) => {
     return { total: results.length, succeeded, failed: results.length - succeeded, results }
 }
 
-module.exports = { Pick, SUMMARY_FIELDS, MutationResult, ListEnvelope, ITEM_LIST_FIELDS, RunBatch }
+module.exports = { Pick, SUMMARY_FIELDS, MutationResult, ListEnvelope, ITEM_LIST_FIELDS, PROJECT_LIST_FIELDS, RunBatch }

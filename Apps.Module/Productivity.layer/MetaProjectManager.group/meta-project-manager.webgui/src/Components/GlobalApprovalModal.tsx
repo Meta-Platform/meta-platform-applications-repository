@@ -5,16 +5,17 @@ import { Icon } from "semantic-ui-react"
 
 import useApi from "../Hooks/useApi"
 import useApprovalQueue from "../Hooks/useApprovalQueue"
-import { CreationRequest } from "../api/types"
+import { ApprovalChange, CreationRequest } from "../api/types"
 import Markdown from "./Markdown"
 import { ErrorBanner } from "./Primitives"
 import { formatDateTime } from "../Utils/format"
+import { statusLabel } from "../Utils/labels"
 
 // Rótulos legíveis por tipo de alvo (nomes da interface, não do jargão técnico).
 const TYPE_LABEL: Record<string, string> = {
     project: "projeto", board: "board", milestone: "entrega", sprint: "sprint", item: "item",
     column: "coluna", "checklist-item": "passo de checklist", "acceptance-criteria": "critério de aceite",
-    "work-item": "item"
+    "work-item": "item", risk: "risco", "doc-page": "página de documentação", "planning-doc": "documento de planejamento"
 }
 const COUNT_LABEL: Record<string, string> = {
     boards: "boards", items: "itens", attachments: "anexos", comments: "comentários", children: "subitens"
@@ -29,18 +30,52 @@ const ACTION_STYLE: Record<string, ActionStyle> = {
     archive:       { verb: "Arquivar",  title: "Arquivamento solicitado por agente", icon: "archive",    danger: true },
     restore:       { verb: "Restaurar", title: "Restauração solicitada por agente",  icon: "undo",       danger: false },
     move:          { verb: "Mover",     title: "Reordenação solicitada por agente",  icon: "arrows alternate horizontal", danger: false },
+    "set-status":  { verb: "Mudar status de", title: "Mudança de status solicitada por agente", icon: "exchange", danger: false },
     "set-default": { verb: "Tornar padrão", title: "Troca de board padrão solicitada por agente", icon: "star", danger: false }
 }
-const styleOf = (actionName: string): ActionStyle =>
-    ACTION_STYLE[actionName] || { verb: actionName, title: "Ação solicitada por agente", icon: "shield", danger: false }
+
+// Iniciar e concluir tarefa são as duas transições que passam pelo gate — e são
+// decisões DIFERENTES para quem aprova. O verbo genérico "mudar status" escondia
+// isso; aqui a própria transição pretendida escolhe o rótulo.
+const STATUS_ACTION_STYLE: Record<string, ActionStyle> = {
+    "in-progress": { verb: "Iniciar", title: "Início de tarefa solicitado por agente",    icon: "play",  danger: false },
+    done:          { verb: "Concluir", title: "Conclusão de tarefa solicitada por agente", icon: "check circle", danger: false },
+    completed:     { verb: "Concluir", title: "Conclusão de tarefa solicitada por agente", icon: "check circle", danger: false }
+}
+
+const styleOf = (actionName: string, statusTo?: string): ActionStyle =>
+    (actionName === "set-status" && statusTo && STATUS_ACTION_STYLE[statusTo])
+    || ACTION_STYLE[actionName]
+    || { verb: actionName, title: "Ação solicitada por agente", icon: "shield", danger: false }
 
 // Campos do payload que valem mostrar ao humano, na ordem em que ele lê.
 const FIELD_LABEL: Record<string, string> = {
     name: "nome", slug: "slug", shortDescription: "resumo", description: "descrição",
-    status: "status", statusKey: "chave de status", order: "posição", color: "cor",
+    status: "status", statusKey: "status", order: "posição", color: "cor",
     wipLimit: "limite de WIP", isDoneColumn: "coluna de concluído", targetDate: "data-alvo",
-    goal: "objetivo", repositoryUrl: "repositório", localPath: "caminho local", keyPrefix: "prefixo de key"
+    goal: "objetivo", repositoryUrl: "repositório", localPath: "caminho local", keyPrefix: "prefixo de key",
+    isDefault: "board padrão", title: "título", text: "texto", met: "atendido", done: "feito",
+    priority: "prioridade", type: "tipo", icon: "ícone", probability: "probabilidade", impact: "impacto"
 }
+
+// Valor de um campo como o humano lê: status por extenso, booleano em português,
+// texto longo aparado (o corpo inteiro tem lugar próprio, recolhido).
+const formatValue = (field: string, value: any): string => {
+    if (value === undefined || value === null || value === "") return "—"
+    if (typeof value === "boolean") return value ? "sim" : "não"
+    const text = String(value)
+    if (field === "status" || field === "statusKey") return statusLabel(text)
+    return text.length > 180 ? `${text.slice(0, 180)}…` : text
+}
+
+// Uma mudança em uma linha: rótulo, valor atual, seta, valor pretendido.
+const ChangeRow = ({ change }: { change: ApprovalChange }) =>
+    <div className="mpm-approval__change">
+        <span className="mpm-field__label">{FIELD_LABEL[change.field] || change.field}</span>
+        <span className="mpm-approval__from">{formatValue(change.field, change.from)}</span>
+        <Icon name="long arrow alternate right" className="mpm-muted" />
+        <strong className="mpm-approval__to">{formatValue(change.field, change.to)}</strong>
+    </div>
 
 const kv = (label: string, value?: React.ReactNode) =>
     (value === undefined || value === null || value === "")
@@ -80,18 +115,28 @@ const GlobalApprovalModal = () => {
     const actionName = req.actionName || "create"
     const isDelete = actionName === "delete"
     const isCreate = actionName === "create"
-    const action = styleOf(actionName)
     const who = req.who || {}
     const s = req.session || {}
     const payload = req.payload || {}
-    const targetKind = TYPE_LABEL[req.type] || req.type
+    const subject = req.subject
+    const targetKind = TYPE_LABEL[subject?.kind || req.type] || subject?.kind || req.type
+
+    // O QUE muda, já resolvido pelo backend (de → para, com o estado ATUAL do alvo).
+    // Em criação não há "de": o próprio payload é a descrição do que vai nascer.
+    const changes: ApprovalChange[] = subject?.changes || []
+    const statusTo = changes.find((c) => c.field === "statusKey" || c.field === "status")?.to
+    const action = styleOf(actionName, actionName === "set-status" ? String(statusTo || "") : undefined)
+
+    // Alvo pelo NOME: key + título do item, prefixo + nome do projeto… O uuid só
+    // aparece se nada mais existir (alvo já removido, tipo sem loader no backend).
     const targetName = isCreate
         ? (payload.name || payload.title || "(sem nome)")
-        : (req.impact?.targetLabel || payload.name || `${targetKind} ${req.targetId || ""}`)
+        : (subject?.label || req.impact?.targetLabel || payload.name || `${targetKind} ${req.targetId || ""}`)
 
-    // "update" precisa mostrar O QUE muda — é o texto/estrutura que o humano revisa.
-    const changedFields = actionName === "update"
-        ? Object.keys(payload).filter((k) => payload[k] !== undefined && k !== "project")
+    // Criação: o payload inteiro é o que o humano revisa (não há estado anterior).
+    const createdFields = isCreate
+        ? Object.keys(payload).filter((k) => payload[k] !== undefined && payload[k] !== null && payload[k] !== ""
+            && !["project", "description", "shortDescription", "name", "title", "actor"].includes(k))
         : []
 
     const approve = async () => {
@@ -145,22 +190,52 @@ const GlobalApprovalModal = () => {
                         : <span className="mpm-chip mpm-chip--warning"><Icon name="clock" /> pendente</span>}
                 </div>
 
-                {/* Resumo em uma linha (quando o agente informou shortDescription) */}
-                {isCreate && payload.shortDescription
-                    ? <p className="mpm-approval__lead">{payload.shortDescription}</p>
+                {/* ONDE vive o alvo + o que ele é hoje: contexto para decidir sem
+                    abrir outra tela. */}
+                {subject
+                    ? <div className="mpm-approval__context">
+                        {subject.projectLabel
+                            ? <span><Icon name="folder outline" /> {subject.projectLabel}</span>
+                            : null}
+                        {subject.current?.type
+                            ? <span><Icon name="tag" /> {String(subject.current.type)}</span>
+                            : null}
+                        {subject.current?.statusKey && !statusTo
+                            ? <span><Icon name="circle outline" /> {formatValue("statusKey", subject.current.statusKey)}</span>
+                            : null}
+                    </div>
                     : null}
 
-                {/* ALTERAÇÃO: o humano precisa ver exatamente o que vai mudar. */}
-                {changedFields.length > 0
+                {/* Resumo em uma linha: do payload em criação, do próprio alvo nas demais. */}
+                {(isCreate ? payload.shortDescription : subject?.current?.shortDescription)
+                    ? <p className="mpm-approval__lead">{isCreate ? payload.shortDescription : subject?.current?.shortDescription}</p>
+                    : null}
+
+                {/* O QUE MUDA: de → para, para qualquer ação que altere o alvo. */}
+                {changes.length > 0
                     ? <div className="mpm-panel">
                         <div className="mpm-section-title"><Icon name="pencil" /> O que muda</div>
                         <div className="mpm-col mpm-gap-2">
-                            {changedFields.map((field) =>
-                                <div key={field} className="mpm-field">
+                            {changes.map((change) =>
+                                change.field === "description"
+                                    ? <div key={change.field} className="mpm-field">
+                                        <span className="mpm-field__label">{FIELD_LABEL[change.field]} (novo texto)</span>
+                                        <div className="mpm-approval__scroll"><Markdown>{String(change.to)}</Markdown></div>
+                                    </div>
+                                    : <ChangeRow key={change.field} change={change} />)}
+                        </div>
+                    </div>
+                    : null}
+
+                {/* CRIAÇÃO: os campos com que o alvo vai nascer. */}
+                {createdFields.length > 0
+                    ? <div className="mpm-panel">
+                        <div className="mpm-section-title"><Icon name="plus" /> Com que valores</div>
+                        <div className="mpm-col mpm-gap-2">
+                            {createdFields.map((field) =>
+                                <div key={field} className="mpm-approval__change">
                                     <span className="mpm-field__label">{FIELD_LABEL[field] || field}</span>
-                                    {field === "description"
-                                        ? <div className="mpm-approval__scroll"><Markdown>{String(payload[field])}</Markdown></div>
-                                        : <div style={{ wordBreak: "break-word" }}>{String(payload[field])}</div>}
+                                    <strong className="mpm-approval__to">{formatValue(field, payload[field])}</strong>
                                 </div>)}
                         </div>
                     </div>

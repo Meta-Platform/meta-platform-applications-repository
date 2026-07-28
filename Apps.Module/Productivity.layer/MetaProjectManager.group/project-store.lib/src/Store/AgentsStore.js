@@ -125,7 +125,8 @@ const AgentsStore = (ctx) => {
     // mudança de status NÃO passam pelo gate. A criação vira um pedido PENDENTE;
     // ao ser aprovada, é executada de fato.
 
-    const { CreationRequest, Project, Board, WorkItem, Attachment, Comment } = models
+    const { CreationRequest, Project, Board, BoardColumn, WorkItem, Attachment, Comment,
+        Milestone, Sprint, WorkItemChecklistItem, WorkItemAcceptanceCriteria, RiskItem, DocPage, PlanningDoc } = models
 
     // Resolve (ou cria) o usuário-agente para uma identidade inline.
     const _resolveAgentUserForIdentity = async ({ provider = "other", agent, owner }) => {
@@ -284,6 +285,131 @@ const AgentsStore = (ctx) => {
         return undefined
     }
 
+    // ───────────── O QUE está sendo pedido (assunto do pedido) ─────────────
+    //
+    // O impacto acima responde "o que se perde" numa remoção. Faltava o resto:
+    // para toda AÇÃO gated, quem aprova precisa saber QUAL é o alvo (pela key/nome,
+    // não pelo uuid) e O QUE acontece com ele (de → para). Sem isto o modal exibia
+    // "set-status item 2d8a0fcd-…" e a decisão exigia abrir outra tela (MPMX3-7).
+    //
+    // Cada loader devolve o alvo já legível + o ESTADO ATUAL dos campos que as ações
+    // gated mexem — é o "de" do de-para. Alvo inexistente/tipo sem loader => undefined
+    // (a GUI cai no que já sabe, sem quebrar).
+    const _SUBJECT_LOADERS = {
+        project: async (id) => {
+            const p = await Project.findOne({ where: { id } })
+            return p && { kind: "project", label: `${p.keyPrefix} · ${p.name}`, projectId: p.id,
+                current: { name: p.name, slug: p.slug, status: p.status, shortDescription: p.shortDescription, description: p.description, icon: p.icon, color: p.color, repositoryUrl: p.repositoryUrl, localPath: p.localPath } }
+        },
+        board: async (id) => {
+            const b = await Board.findOne({ where: { id } })
+            return b && { kind: "board", label: b.name, projectId: b.projectId,
+                current: { name: b.name, isDefault: b.isDefault, type: b.type } }
+        },
+        column: async (id) => {
+            const c = await BoardColumn.findOne({ where: { id } })
+            if(!c) return undefined
+            const board = await Board.findOne({ where: { id: c.boardId } })
+            return { kind: "column", label: board ? `${c.name} (board ${board.name})` : c.name,
+                projectId: board && board.projectId,
+                current: { name: c.name, statusKey: c.statusKey, order: c.order, wipLimit: c.wipLimit, isDoneColumn: c.isDoneColumn, color: c.color } }
+        },
+        milestone: async (id) => {
+            const m = await Milestone.findOne({ where: { id } })
+            return m && { kind: "milestone", label: m.name, projectId: m.projectId,
+                current: { name: m.name, status: m.status, targetDate: m.targetDate } }
+        },
+        sprint: async (id) => {
+            const s = await Sprint.findOne({ where: { id } })
+            return s && { kind: "sprint", label: s.name, projectId: s.projectId,
+                current: { name: s.name, status: s.status, startDate: s.startDate, endDate: s.endDate } }
+        },
+        risk: async (id) => {
+            const r = await RiskItem.findOne({ where: { id } })
+            return r && { kind: "risk", label: r.title, projectId: r.projectId,
+                current: { title: r.title, status: r.status, probability: r.probability, impact: r.impact } }
+        },
+        "doc-page": async (id) => {
+            const d = await DocPage.findOne({ where: { id } })
+            return d && { kind: "doc-page", label: d.title, projectId: d.projectId, current: { title: d.title } }
+        },
+        "planning-doc": async (id) => {
+            const d = await PlanningDoc.findOne({ where: { id } })
+            return d && { kind: "planning-doc", label: d.title, projectId: d.projectId,
+                current: { title: d.title, status: d.status, version: d.version } }
+        },
+        "checklist-item": async (id) => {
+            const c = await WorkItemChecklistItem.findOne({ where: { id } })
+            if(!c) return undefined
+            const owner = await WorkItem.findOne({ where: { id: c.workItemId } })
+            return { kind: "checklist-item", label: owner ? `${c.text} (em ${owner.key})` : c.text,
+                projectId: owner && owner.projectId, current: { text: c.text, done: c.done } }
+        },
+        "acceptance-criteria": async (id) => {
+            const a = await WorkItemAcceptanceCriteria.findOne({ where: { id } })
+            if(!a) return undefined
+            const owner = await WorkItem.findOne({ where: { id: a.workItemId } })
+            return { kind: "acceptance-criteria", label: owner ? `${a.text} (em ${owner.key})` : a.text,
+                projectId: owner && owner.projectId, current: { text: a.text, met: a.met } }
+        }
+    }
+    const _loadWorkItemSubject = async (id) => {
+        const it = await WorkItem.findOne({ where: { id } })
+        return it && { kind: "item", label: `${it.key} · ${it.title}`, projectId: it.projectId,
+            current: { key: it.key, title: it.title, type: it.type, statusKey: it.statusKey, priority: it.priority, shortDescription: it.shortDescription } }
+    }
+    _SUBJECT_LOADERS.item = _loadWorkItemSubject
+    _SUBJECT_LOADERS["work-item"] = _loadWorkItemSubject
+
+    // Campo do PAYLOAD → campo do ALVO, por (ação:tipo). É este mapa que permite
+    // montar o "de → para" sem a GUI adivinhar de que campo o payload fala (o
+    // `status` de set-status é o `statusKey` do item; o de update:project não é).
+    const _CHANGE_MAP = {
+        "set-status:work-item": { status: "statusKey" },
+        "set-status:item":      { status: "statusKey" },
+        "update:project":       { name: "name", slug: "slug", shortDescription: "shortDescription", description: "description", status: "status", icon: "icon", color: "color", repositoryUrl: "repositoryUrl", localPath: "localPath" },
+        "update:column":        { name: "name", statusKey: "statusKey", color: "color", wipLimit: "wipLimit", isDoneColumn: "isDoneColumn" },
+        "move:column":          { order: "order" }
+    }
+
+    // Mudanças IMPLÍCITAS: a ação não carrega payload, mas altera um campo conhecido.
+    const _IMPLICIT_CHANGES = {
+        "archive:project":   (current) => [{ field: "status", from: current.status, to: "archived" }],
+        "restore:project":   (current) => [{ field: "status", from: current.status, to: "active" }],
+        "set-default:board": (current) => [{ field: "isDefault", from: !!current.isDefault, to: true }]
+    }
+
+    const _describeChanges = ({ actionName, type, payload = {}, current = {} }) => {
+        const implicit = _IMPLICIT_CHANGES[`${actionName}:${type}`]
+        if(implicit) return implicit(current)
+        const map = _CHANGE_MAP[`${actionName}:${type}`]
+        if(!map) return []
+        const changes = []
+        for(const [payloadKey, targetField] of Object.entries(map)){
+            if(payload[payloadKey] === undefined) continue
+            const from = current[targetField]
+            const to = payload[payloadKey]
+            if(from === to) continue   // não é mudança: não polui a leitura
+            changes.push({ field: targetField, from: from === undefined ? null : from, to })
+        }
+        return changes
+    }
+
+    // Assunto do pedido: alvo legível + estado atual + de-para. Usado por TODA ação
+    // (create não tem alvo ainda — aí o payload já é a descrição completa).
+    const DescribeApprovalSubject = async ({ actionName = "create", type, targetId, payload = {} } = {}) => {
+        const loader = _SUBJECT_LOADERS[type]
+        if(!loader || !targetId) return undefined
+        const subject = await loader(targetId).catch(() => undefined)
+        if(!subject) return undefined
+        if(subject.projectId){
+            const project = await Project.findOne({ where: { id: subject.projectId } }).catch(() => undefined)
+            if(project) subject.projectLabel = `${project.keyPrefix} · ${project.name}`
+        }
+        subject.changes = _describeChanges({ actionName, type, payload, current: subject.current || {} })
+        return subject
+    }
+
     // "Quem" fez o pedido: identidade do agente (provider/modelo/sessão/objetivo).
     const _describeWho = (session, req) => session ? {
         agentUserId: session.agentUserId, provider: session.provider, model: session.modelName,
@@ -413,15 +539,18 @@ const AgentsStore = (ctx) => {
         }
     }
 
-    // Detalhe completo de um pedido: payload + sessão + "quem" + impacto (se delete).
+    // Detalhe completo de um pedido: payload + sessão + "quem" + o QUE (assunto com
+    // alvo legível e de-para) + impacto (se delete).
     const DescribeCreationRequest = async ({ request } = {}) => {
         const req = await ResolveCreationRequest(request)
         const session = req.agentSessionId ? await AgentSession.findOne({ where: { id: req.agentSessionId } }) : undefined
         const payload = req.payloadJson ? JSON.parse(req.payloadJson) : {}
+        const actionName = req.actionName || "create"
         let impact
-        if((req.actionName || "create") === "delete")
+        if(actionName === "delete")
             impact = await DescribeDeletionImpact({ type: req.type, targetId: req.targetId }).catch(() => undefined)
-        return { ...Serialize(req), payload, session: session ? Serialize(session) : undefined, who: _describeWho(session, req), impact }
+        const subject = await DescribeApprovalSubject({ actionName, type: req.type, targetId: req.targetId, payload }).catch(() => undefined)
+        return { ...Serialize(req), payload, session: session ? Serialize(session) : undefined, who: _describeWho(session, req), impact, subject }
     }
 
     // status "all" (ou vazio) => histórico completo. `agent` filtra pelo usuário-agente
@@ -440,14 +569,18 @@ const AgentsStore = (ctx) => {
             where.agentSessionId = sessions.map((s) => s.id)
         }
         const rows = await CreationRequest.findAll({ where, order: [["requestedAt", "DESC"]], limit: Number(limit), offset: Number(offset) })
-        // Enriquecer com sessão, "quem" e (p/ delete) o impacto — a GUI mostra o QUE e QUEM.
+        // Enriquecer com sessão, "quem", o QUE (assunto: alvo legível + de-para) e,
+        // em delete, o impacto — a GUI decide sem precisar de outra chamada.
         const out = []
         for(const r of rows){
             const s = r.agentSessionId ? await AgentSession.findOne({ where: { id: r.agentSessionId } }) : undefined
+            const actionName = r.actionName || "create"
+            const payload = r.payloadJson ? JSON.parse(r.payloadJson) : {}
             let impact
-            if((r.actionName || "create") === "delete")
+            if(actionName === "delete")
                 impact = await DescribeDeletionImpact({ type: r.type, targetId: r.targetId }).catch(() => undefined)
-            out.push({ ...Serialize(r), payload: r.payloadJson ? JSON.parse(r.payloadJson) : {}, session: s ? Serialize(s) : undefined, who: _describeWho(s, r), impact })
+            const subject = await DescribeApprovalSubject({ actionName, type: r.type, targetId: r.targetId, payload }).catch(() => undefined)
+            out.push({ ...Serialize(r), payload, session: s ? Serialize(s) : undefined, who: _describeWho(s, r), impact, subject })
         }
         return out
     }
@@ -474,7 +607,7 @@ const AgentsStore = (ctx) => {
         ResolveOrCreateSessionByIdentity, IsAgentActor, IsAgentCreation,
         RequestApproval, RequestCreation, GateAgentAction,
         ApproveRequest, ApproveCreation, RejectRequest, RejectCreation,
-        WaitForApproval, DescribeCreationRequest, DescribeDeletionImpact,
+        WaitForApproval, DescribeCreationRequest, DescribeDeletionImpact, DescribeApprovalSubject,
         ListCreationRequests
     }
 }

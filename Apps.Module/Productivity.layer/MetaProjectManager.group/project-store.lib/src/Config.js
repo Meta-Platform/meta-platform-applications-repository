@@ -162,6 +162,27 @@ const AGENT_GATE_POLICY = {
 const IsAgentGatedAction = ({ actionName, type } = {}) =>
     Array.isArray(AGENT_GATE_POLICY[actionName]) && AGENT_GATE_POLICY[actionName].includes(type)
 
+// EXCEÇÕES da trava de PLANEJAMENTO (agentPlanningLock). A trava existe para que o
+// agente não trabalhe num projeto que o humano ainda está montando — mas recusar
+// TAMBÉM a saída de `planning` a transformava em armadilha: o agente não podia
+// destravar o projeto, e não havia superfície humana que o fizesse (MPMX3-1).
+//
+// Cada regra libera UMA escrita, e só quando ela é exatamente o que tira o projeto
+// do planejamento: `onlyFields` é o conjunto MÁXIMO de campos que o patch pode
+// tocar. Um update que mexa em status E descrição não passa — não é "destravar".
+// A exceção não afasta o gate de aprovação: `update`/`project` segue em
+// AGENT_GATE_POLICY, então o humano continua decidindo.
+const PLANNING_LOCK_EXEMPTIONS = [
+    { actionName: "update", type: "project", onlyFields: ["status"] }
+]
+
+// Esta escrita está isenta da trava de planejamento? `fields` = campos do patch.
+const IsPlanningLockExempt = ({ actionName, type, fields } = {}) =>
+    Array.isArray(fields) && fields.length > 0 &&
+    PLANNING_LOCK_EXEMPTIONS.some((rule) =>
+        rule.actionName === actionName && rule.type === type &&
+        fields.every((field) => rule.onlyFields.includes(field)))
+
 // Limite padrão de tamanho de anexo (bytes). Configurável via startup-params.
 const DEFAULT_MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024
 
@@ -171,6 +192,8 @@ module.exports = {
     AGENT_GATED_DONE_STATUSES,
     AGENT_GATE_POLICY,
     IsAgentGatedAction,
+    PLANNING_LOCK_EXEMPTIONS,
+    IsPlanningLockExempt,
     WORK_ITEM_TYPES,
     WORK_ITEM_PRIORITIES,
     WORK_ITEM_HORIZONS,

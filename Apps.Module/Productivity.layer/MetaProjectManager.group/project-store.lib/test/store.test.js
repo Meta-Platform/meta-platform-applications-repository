@@ -1538,3 +1538,58 @@ test("MPMX2-16 estado do índice de pacotes é leitura pura e diz o que falta in
     assert.ok(depois.lastIndexedAt)
     assert.deepEqual(depois.notIndexedRepositories, [])
 })
+
+// ───────────── MPMX3: sair do planejamento e enxergar o pedido (rodada 3) ─────────────
+
+test("MPMX3-4 trava de planejamento libera SÓ a mudança de status do projeto", async () => {
+    const TMP4 = path.join(process.env.MPM_TEST_DIR || os.tmpdir(), `mpm-plock3-${process.pid}`)
+    fs.mkdirSync(TMP4, { recursive: true })
+    const DB = path.join(TMP4, "s.sqlite"), ATT = path.join(TMP4, "att")
+
+    const setup = InitializeProjectStore({ storage: DB, attachmentsDirPath: ATT, onEvent: () => {} })
+    await setup.ConnectAndSync()
+    const proj = await setup.CreateProject({ name: "Sai do Plano", actor: { source: "cli" } })
+    assert.equal(proj.status, "planning")
+
+    const mcp = InitializeProjectStore({ storage: DB, attachmentsDirPath: ATT, agentPlanningLock: true, onEvent: () => {} })
+    await mcp.ConnectAndSync()
+    const planning = (e) => e.code === "PROJECT_IN_PLANNING"
+
+    // Só-status passa (é o que destrava o projeto).
+    const ativo = await mcp.UpdateProject({ project: proj.id, status: "active", actor: { source: "cli" } })
+    assert.equal(ativo.status, "active")
+
+    // Status JUNTO com outro campo não é "destravar": continua recusado.
+    const outro = await setup.CreateProject({ name: "Segue no Plano", actor: { source: "cli" } })
+    await assert.rejects(() => mcp.UpdateProject({ project: outro.id, status: "active", name: "Renomeado" }), planning)
+    // E nenhuma outra escrita foi liberada de carona.
+    await assert.rejects(() => mcp.UpdateProject({ project: outro.id, description: "texto" }), planning)
+    await assert.rejects(() => mcp.CreateItem({ project: outro.id, type: "task", title: "X" }), planning)
+})
+
+test("MPMX3-7 pedido de aprovação descreve o alvo pelo nome e o de-para da ação", async () => {
+    const p = await store.CreateProject({ name: "Gate Legível", keyPrefix: "GTL", status: "active", actor: { source: "cli" } })
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Tarefa observada" })
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "t-gate-1" } }
+
+    // Iniciar tarefa por agente = pedido pendente.
+    await assert.rejects(() => store.SetStatus({ item: item.id, status: "in-progress", actor: agente }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+
+    const [pedido] = await store.ListCreationRequests({ actionName: "set-status", status: "pending" })
+    assert.ok(pedido.subject, "todo pedido com alvo traz o assunto")
+    assert.equal(pedido.subject.label, `${item.key} · Tarefa observada`)
+    assert.equal(pedido.subject.projectLabel, "GTL · Gate Legível")
+    assert.deepEqual(pedido.subject.changes, [{ field: "statusKey", from: "backlog", to: "in-progress" }])
+
+    // O mesmo vale no detalhe de um pedido.
+    const detalhe = await store.DescribeCreationRequest({ request: pedido.id })
+    assert.equal(detalhe.subject.label, `${item.key} · Tarefa observada`)
+
+    // Ação sem payload (arquivar projeto) também tem de-para.
+    await assert.rejects(() => store.ArchiveProject({ project: p.id, actor: agente }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const [arquivar] = await store.ListCreationRequests({ actionName: "archive", status: "pending" })
+    assert.equal(arquivar.subject.label, "GTL · Gate Legível")
+    assert.deepEqual(arquivar.subject.changes, [{ field: "status", from: "active", to: "archived" }])
+})

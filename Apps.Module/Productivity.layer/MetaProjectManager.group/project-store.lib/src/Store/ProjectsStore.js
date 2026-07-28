@@ -1,7 +1,7 @@
 const { Op } = require("sequelize")
 const { NewId, Slugify, DeriveKeyPrefix, Serialize, SerializeMany } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
-const { PROJECT_STATUSES, SHORT_DESCRIPTION_MAX, KEY_PREFIX_MAX } = require("../Config")
+const { PROJECT_STATUSES, SHORT_DESCRIPTION_MAX, KEY_PREFIX_MAX, IsPlanningLockExempt } = require("../Config")
 
 // keyPrefix informado EXPLICITAMENTE é validado, nunca truncado em silêncio:
 // caracteres inválidos ou tamanho acima do limite viram VALIDATION_ERROR com a
@@ -57,7 +57,13 @@ const ProjectsStore = (ctx) => {
     // pacotes, anotações, feedback). Fonte da verdade — vale para humano e agente.
     // Exceções deliberadas: RestoreProject e DeleteProject operam sobre arquivado.
     // Aceita um id/slug/keyPrefix de projeto OU uma instância já resolvida.
-    const AssertProjectWritable = async ({ project } = {}) => {
+    //
+    // `intent` ({ actionName, type, fields }) descreve a escrita que está sendo
+    // tentada. Só a trava de PLANEJAMENTO o consulta, para liberar as escritas que
+    // tiram o projeto de `planning` (Config.PLANNING_LOCK_EXEMPTIONS). Quem não
+    // passa `intent` continua sujeito à trava inteira — nada muda para os ~60 call
+    // sites existentes.
+    const AssertProjectWritable = async ({ project, intent } = {}) => {
         const instance = project && typeof project === "object" && project.status !== undefined
             ? project
             : await ResolveProject(project)
@@ -71,9 +77,12 @@ const ProjectsStore = (ctx) => {
         // mover o projeto para outro status (ex.: active). Como AssertProjectWritable
         // roda no topo de TODA escrita, a cobertura é completa, sem varrer call sites.
         // Humanos (GUI/CLI/webservice) usam stores SEM o flag → planejam livremente.
-        if(instance.status === "planning" && config.agentPlanningLock)
+        // MPMX3-4: a saída do planejamento é a exceção — sem ela a trava não tinha
+        // como ser desfeita por ninguém (o gate de aprovação humana continua valendo
+        // para ela, então isto não abre brecha: quem decide segue sendo o humano).
+        if(instance.status === "planning" && config.agentPlanningLock && !IsPlanningLockExempt(intent))
             throw new DomainError("PROJECT_IN_PLANNING",
-                "Projeto em planejamento: agentes não podem alterá-lo. Peça a um humano para movê-lo para 'active' antes de executar.",
+                "Projeto em planejamento: agentes não podem alterá-lo. Mova-o para 'active' (update_project com apenas `status`, sob aprovação humana) ou peça a um humano para fazê-lo.",
                 { projectId: instance.id, status: instance.status })
         return instance
     }
@@ -142,12 +151,21 @@ const ProjectsStore = (ctx) => {
 
     const UpdateProject = async ({ project, actor, ...fields } = {}) => {
         const instance = await ResolveProject(project)
-        // Projeto arquivado é imutável — restaurar (RestoreProject) é o caminho.
-        await AssertProjectWritable({ project: instance })
         const allowed = ["name", "shortDescription", "description", "finalReport", "icon", "color", "status", "repositoryUrl", "localPath", "defaultBoardId", "ownerUserId",
             "contextRepository", "contextModule", "contextLayer", "contextGroup"]
         const patch = {}
         for(const key of allowed) if(fields[key] !== undefined) patch[key] = fields[key]
+
+        // O guard vem DEPOIS de montar o patch porque a trava de planejamento
+        // depende de QUAIS campos a escrita toca (só-status destrava; ver
+        // Config.PLANNING_LOCK_EXEMPTIONS). Projeto arquivado segue imutável —
+        // restaurar (RestoreProject) é o caminho.
+        const touchedFields = [...Object.keys(patch), ...(fields.slug !== undefined ? ["slug"] : [])]
+        await AssertProjectWritable({
+            project: instance,
+            intent: { actionName: "update", type: "project", fields: touchedFields }
+        })
+
         if(patch.shortDescription !== undefined) _assertShortDescription(patch.shortDescription)
         if(fields.slug !== undefined){
             const newSlug = Slugify(fields.slug)
