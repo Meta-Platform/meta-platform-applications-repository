@@ -1,6 +1,4 @@
 const path = require("path")
-const EventEmitter = require("node:events")
-
 // Gestão de FONTES e REPOSITÓRIOS a partir do MyDesktop. Espelha o
 // Sources.controller do Ecosystem Control Panel, porém com métodos de argumento
 // ÚNICO (objeto) — compatível tanto com o transporte IPC (GUI-host) quanto HTTP.
@@ -47,10 +45,24 @@ const SourcesController = (params) => {
         throw new Error(`ecosystem-install-utilities.lib (${relativeModulePath}) não encontrado.`)
     }
 
-    const _BuildLoggerEmitter = (origin) => {
-        const loggerEmitter = new EventEmitter()
-        loggerEmitter.on("log", (dataLog) => NotifyEvent({ origin, type: "log", content: dataLog }))
-        return loggerEmitter
+    // O NotificationHub segue existindo — ele é o barramento de eventos do
+    // PAINEL, não o log do ecossistema — e passa a ser alimentado PELO logger:
+    // durante a operação, um ouvinte encaminha cada registro para o hub.
+    // Ver a decisão LOGS-32. O ouvinte é global enquanto está registrado, então
+    // é removido no `finally`.
+    const _WithLogNotification = async (origin, Executar) => {
+        const RemoverOuvinte = Log.AddSink({
+            Write : (record) => NotifyEvent({
+                origin,
+                type    : "log",
+                content : { sourceName : record.source, type : record.level, message : record.message }
+            })
+        })
+        try {
+            return await Executar()
+        } finally {
+            RemoverOuvinte()
+        }
     }
 
     const _NotifyStructured = ({ origin, type, title, message, data }) =>
@@ -121,14 +133,13 @@ const SourcesController = (params) => {
         const ecosystemDefaults = await _GetEcosystemDefaults()
         const InstallRepositoryLib = await _RequireInstallUtility("InstallRepository")
 
-        await InstallRepositoryLib({
+        await _WithLogNotification("SourcesController.InstallRepository", () => InstallRepositoryLib({
             repositoryNamespace,
             sourceData,
             executablesToInstall: executables,
             installDataDirPath: ecosystemdataHandlerService.GetEcosystemDataPath(),
-            ecosystemDefaults,
-            loggerEmitter: _BuildLoggerEmitter("SourcesController.InstallRepository")
-        })
+            ecosystemDefaults
+        }))
         _NotifyStructured({ origin: "SourcesController.InstallRepository", type: "package", title: "Repositório instalado", message: `${repositoryNamespace} instalado pela fonte ${sourceType}.`, data: { repositoryNamespace, sourceType } })
         return { installed: true, repositoryNamespace, sourceType }
     }
@@ -142,13 +153,12 @@ const SourcesController = (params) => {
         const ecosystemDefaults = await _GetEcosystemDefaults()
         const UpdateRepositoryLib = await _RequireInstallUtility("UpdateRepository")
 
-        await UpdateRepositoryLib({
+        await _WithLogNotification("SourcesController.UpdateRepository", () => UpdateRepositoryLib({
             repositoryNamespace,
             sourceData: record.sourceData,
             installDataDirPath: ecosystemdataHandlerService.GetEcosystemDataPath(),
-            ecosystemDefaults,
-            loggerEmitter: _BuildLoggerEmitter("SourcesController.UpdateRepository")
-        })
+            ecosystemDefaults
+        }))
         _NotifyStructured({ origin: "SourcesController.UpdateRepository", type: "package", title: "Repositório atualizado", message: `${repositoryNamespace} atualizado.`, data: { repositoryNamespace } })
         return { updated: true, repositoryNamespace }
     }

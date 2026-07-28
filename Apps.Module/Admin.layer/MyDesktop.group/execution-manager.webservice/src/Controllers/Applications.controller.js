@@ -1,5 +1,4 @@
 const path = require("path")
-const EventEmitter = require("node:events")
 const { access, readdir, readFile } = require("node:fs/promises")
 
 const PACKAGE_ICON_FILENAMES = ["icon.svg", "icon.png", "icon.jpg", "icon.jpeg", "icon.webp"]
@@ -46,10 +45,24 @@ const ApplicationsController = (params) => {
 
     // Encaminha os logs de progresso das operações para o NotificationHub,
     // exatamente como o comando `repo` faz no terminal.
-    const _BuildLoggerEmitter = (origin) => {
-        const loggerEmitter = new EventEmitter()
-        loggerEmitter.on("log", (dataLog) => NotifyEvent({ origin, type: "log", content: dataLog }))
-        return loggerEmitter
+    // O NotificationHub segue existindo — ele é o barramento de eventos do
+    // PAINEL, não o log do ecossistema — e passa a ser alimentado PELO logger:
+    // durante a operação, um ouvinte encaminha cada registro para o hub.
+    // Ver a decisão LOGS-32. O ouvinte é global enquanto está registrado, então
+    // é removido no `finally`.
+    const _WithLogNotification = async (origin, Executar) => {
+        const RemoverOuvinte = Log.AddSink({
+            Write : (record) => NotifyEvent({
+                origin,
+                type    : "log",
+                content : { sourceName : record.source, type : record.level, message : record.message }
+            })
+        })
+        try {
+            return await Executar()
+        } finally {
+            RemoverOuvinte()
+        }
     }
 
     const _NotifyStructured = ({ origin, type, title, message, data }) =>
@@ -223,7 +236,7 @@ const ApplicationsController = (params) => {
 
         const InstallApplicationLib = await _RequireInstallUtility("Install/InstallApplication")
 
-        await InstallApplicationLib({
+        await _WithLogNotification("ApplicationsController.InstallApplication", () => InstallApplicationLib({
             namespace: declared.repositoryNamespace,
             deployedRepoPath: declared.repositoryPath,
             applicationData: {
@@ -235,9 +248,8 @@ const ApplicationsController = (params) => {
             installDataDirPath: ecosystemDataPath,
             ECOSYSTEMDATA_CONF_DIRNAME_GLOBAL_EXECUTABLES_DIR: ecosystemDefaults.ECOSYSTEMDATA_CONF_DIRNAME_GLOBAL_EXECUTABLES_DIR,
             REPOS_CONF_FILENAME_REPOS_DATA: ecosystemDefaults.REPOS_CONF_FILENAME_REPOS_DATA,
-            supervisorSocketDirPath,
-            loggerEmitter: _BuildLoggerEmitter("ApplicationsController.InstallApplication")
-        })
+            supervisorSocketDirPath
+        }))
 
         _NotifyStructured({
             origin: "ApplicationsController.InstallApplication",
@@ -273,13 +285,12 @@ const ApplicationsController = (params) => {
         const ecosystemDefaults = await _GetEcosystemDefaults()
         const UninstallApplicationLib = await _RequireInstallUtility("UninstallApplication")
 
-        await UninstallApplicationLib({
+        await _WithLogNotification("ApplicationsController.UninstallApplication", () => UninstallApplicationLib({
             repositoryNamespace,
             executable: executableName,
             installDataDirPath: ecosystemdataHandlerService.GetEcosystemDataPath(),
-            ecosystemDefaults,
-            loggerEmitter: _BuildLoggerEmitter("ApplicationsController.UninstallApplication")
-        })
+            ecosystemDefaults
+        }))
 
         _NotifyStructured({
             origin: "ApplicationsController.UninstallApplication",
@@ -302,13 +313,12 @@ const ApplicationsController = (params) => {
         for(const repositoryNamespace of Object.keys(repositoriesData)) {
             const { sourceData } = repositoriesData[repositoryNamespace] || {}
             try {
-                await UpdateRepositoryLib({
+                await _WithLogNotification("ApplicationsController.UpdateAllRepositories", () => UpdateRepositoryLib({
                     repositoryNamespace,
                     sourceData,
                     installDataDirPath: ecosystemdataHandlerService.GetEcosystemDataPath(),
-                    ecosystemDefaults,
-                    loggerEmitter: _BuildLoggerEmitter("ApplicationsController.UpdateAllRepositories")
-                })
+                    ecosystemDefaults
+                }))
                 results.push({ repositoryNamespace, updated: true })
             } catch(e) {
                 results.push({ repositoryNamespace, updated: false, error: (typeof e === "string" ? e : e && e.message) || "erro" })
