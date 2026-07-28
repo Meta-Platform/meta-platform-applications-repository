@@ -1,5 +1,5 @@
 import * as React from "react"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { Provider } from "react-redux"
 import { createStore } from "redux"
 
@@ -40,18 +40,18 @@ const store = createStore(() => ({ HTTPServerManager: { list_web_servers_running
 
 const setAppState = jest.fn(() => Promise.resolve(undefined))
 
-const renderExplorer = () => {
+const renderExplorer = (workspace = "PlatformApplicationsRepo", onSwitchRepository = () => {}) => {
     (window as any).innerWidth = 1440
     return render(
         <Provider store={store}>
             <PackageExplorer
-                workspace="PlatformApplicationsRepo"
+                workspace={workspace}
                 hierarchy={HIERARCHY}
                 openRepositories={["PlatformApplicationsRepo", "EcosystemCoreRepo"]}
                 gitRepositories={{}}
                 gitStatusByPath={{}}
                 recentPackages={[]}
-                onSwitchRepository={() => {}}
+                onSwitchRepository={onSwitchRepository}
                 onCloseRepository={() => {}}
                 onAddRepository={() => {}}
                 onEditPackage={() => {}}
@@ -119,6 +119,69 @@ describe("favoritos", () => {
 
         expect(setAppState).toHaveBeenLastCalledWith("ide:favorite-packages", JSON.stringify([]))
         expect(screen.queryByText("Favoritos")).toBeNull()
+    })
+})
+
+describe("clicar num repositório na coluna de workspace", () => {
+
+    it("mostra os detalhes com UM clique, mesmo trocando o repositório ativo", async () => {
+        const onSwitchRepository = jest.fn()
+        const { rerender } = renderExplorer("PlatformApplicationsRepo", onSwitchRepository)
+        await waitFor(() => expect(screen.getByText("git-status")).toBeInTheDocument())
+
+        // clique no OUTRO repositório: ativa e seleciona no mesmo gesto
+        const repos = screen.getByRole("tree", { name: "Repositórios abertos" })
+        fireEvent.click(within(repos).getByText("EcosystemCoreRepo"))
+        expect(onSwitchRepository).toHaveBeenCalledWith("EcosystemCoreRepo")
+
+        // o pai troca o repositório ativo — a seleção do novo repo tem de sobreviver
+        rerender(
+            <Provider store={store}>
+                <PackageExplorer
+                    workspace="EcosystemCoreRepo"
+                    hierarchy={HIERARCHY}
+                    openRepositories={["PlatformApplicationsRepo", "EcosystemCoreRepo"]}
+                    gitRepositories={{}}
+                    gitStatusByPath={{}}
+                    recentPackages={[]}
+                    onSwitchRepository={onSwitchRepository}
+                    onCloseRepository={() => {}}
+                    onAddRepository={() => {}}
+                    onEditPackage={() => {}}
+                    onOpenRecent={() => {}}
+                    getAppState={() => Promise.resolve(undefined)}
+                    setAppState={setAppState} />
+            </Provider>)
+
+        await waitFor(() =>
+            expect(screen.getByRole("tab", { name: /Visão geral/ })).toBeInTheDocument())
+        expect(screen.queryByText("Nenhum recurso selecionado")).toBeNull()
+    })
+
+    it("a seleção de um pacote do repositório antigo não sobrevive à troca", async () => {
+        const { rerender } = renderExplorer()
+        await waitFor(() => expect(screen.getByText("git-status")).toBeInTheDocument())
+        fireEvent.click(screen.getByText("git-status"))
+
+        rerender(
+            <Provider store={store}>
+                <PackageExplorer
+                    workspace="EcosystemCoreRepo"
+                    hierarchy={HIERARCHY}
+                    openRepositories={["PlatformApplicationsRepo", "EcosystemCoreRepo"]}
+                    gitRepositories={{}}
+                    gitStatusByPath={{}}
+                    recentPackages={[]}
+                    onSwitchRepository={() => {}}
+                    onCloseRepository={() => {}}
+                    onAddRepository={() => {}}
+                    onEditPackage={() => {}}
+                    onOpenRecent={() => {}}
+                    getAppState={() => Promise.resolve(undefined)}
+                    setAppState={setAppState} />
+            </Provider>)
+
+        await waitFor(() => expect(screen.getByText("Nenhum recurso selecionado")).toBeInTheDocument())
     })
 })
 

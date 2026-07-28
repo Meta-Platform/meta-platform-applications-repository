@@ -50,7 +50,7 @@ const DataStoreNavigatorController = (params) => {
                     resolve(count+"")
                 })
             }catch(e){
-                console.log(e)
+                Log.error("DataStoreNavigator", e)
                 reject()
             }
             

@@ -35,7 +35,7 @@ const EcosystemManagerController = (params) => {
             await instanceManagerRuntimeService.RunPackage({ packagePath: path, startupParams, launchedBy })
             return { started: true, packagePath: path }
         } catch(e){
-            console.log(e)
+            Log.error("EcosystemManager", e)
             throw e
         }
     }
@@ -47,7 +47,7 @@ const EcosystemManagerController = (params) => {
             const result = await instanceManagerRuntimeService.StopPackage({ packagePath: path })
             return { ...result, packagePath: path }
         } catch(e){
-            console.log(e)
+            Log.error("EcosystemManager", e)
             throw e
         }
     }
@@ -59,7 +59,7 @@ const EcosystemManagerController = (params) => {
         try {
             return await instanceManagerRuntimeService.StopInstance({ instanceId })
         } catch(e){
-            console.log(e)
+            Log.error("EcosystemManager", e)
             throw e
         }
     }

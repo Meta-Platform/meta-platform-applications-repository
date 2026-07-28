@@ -547,7 +547,7 @@ const CreateGuiHostWindow = async () => {
     try {
         config = JSON.parse(fs.readFileSync(process.env.DESKTOP_GUI_CONFIG_PATH, "utf8"))
     } catch(e) {
-        console.error("Falha ao ler DESKTOP_GUI_CONFIG_PATH:", e)
+        Log.error("electron-main", "Falha ao ler DESKTOP_GUI_CONFIG_PATH:", e)
         app.exit(1)
         return
     }
@@ -589,7 +589,7 @@ const CreateGuiHostWindow = async () => {
     try {
         guiServices = BootstrapGuiServices(config)
     } catch(e) {
-        console.error("Falha ao inicializar os services de GUI:", e)
+        Log.error("electron-main", "Falha ao inicializar os services de GUI:", e)
     }
 
     ipcMain.handle("metaGui:invoke", async (_event, { serviceName, method, args } = {}) => {
@@ -639,7 +639,7 @@ const CreateGuiHostWindow = async () => {
         try {
             guiServices.InvokeStream(serviceName, method, args, wsShim)
         } catch(e) {
-            console.error("Falha ao abrir stream", serviceName, method, e)
+            Log.error("ElectronMain", "falha ao abrir stream", { serviceName, method, error: e })
             _StreamSend(event.sender, streamId, "error")
         }
     })
@@ -712,10 +712,10 @@ const CreateGuiHostWindow = async () => {
 
         if(BuildCache.IsWebInterfaceFresh({ output, fingerprint })){
             // Front-end já montado e sem atualização: carrega direto.
-            console.log(`[webgui] bundle atualizado — reaproveitando (sem build): ${output}`)
+            Log.info("electron-main", `[webgui] bundle atualizado — reaproveitando (sem build): ${output}`)
             _LoadBundle(output)
         } else {
-            console.log(`[webgui] montando front-end (build necessário): ${config.webgui.serverAppName}`)
+            Log.info("electron-main", `[webgui] montando front-end (build necessário): ${config.webgui.serverAppName}`)
             // Primeira vez ou entradas alteradas: builda com webpack. Reporta o
             // progresso ao daemon apenas quando o inteiro muda, para não inundar
             // o socket com frações intermediárias.
@@ -747,7 +747,7 @@ const CreateGuiHostWindow = async () => {
             _LoadBundle(output)
         }
     } catch(e) {
-        console.error("Falha ao compilar o webgui:", e)
+        Log.error("electron-main", "Falha ao compilar o webgui:", e)
     }
 }
 

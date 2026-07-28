@@ -71,7 +71,7 @@ const PackageHandlerManager = (params) => {
              .forEach((serviceParams) => _LoadService({ ...serviceParams, workspaceName: name }))
         }catch(e){
             if(e.code === "ENOENT"){
-                console.error(`O caminho "${path}" da Workspace "${name}" não foi encontrado!`)
+                Log.error("PackageHandler", `O caminho "${path}" da Workspace "${name}" não foi encontrado!`)
             } else {
                 throw e
             }

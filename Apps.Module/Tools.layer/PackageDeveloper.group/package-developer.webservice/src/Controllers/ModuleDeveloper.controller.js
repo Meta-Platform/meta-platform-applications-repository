@@ -255,7 +255,7 @@ const ModuleDeveloperController = (params) => {
             return GetIcon(packageDevelopmentService.path)
         }catch(e){
             //TODO temporario
-            console.log("GetIcon Error!", packageName, workspace)
+            Log.error("ModuleDeveloper", "falha ao obter o ícone do pacote", { packageName, workspace })
             return undefined
         }
     }

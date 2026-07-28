@@ -94,8 +94,17 @@ const PackageExplorer = ({
         }).catch(() => {})
     }, [])
 
-    // Troca de repositório: zera seleção e escopo, mantém filtros de busca.
-    useEffect(() => { setSelection(undefined); setScope(undefined); setDrawerOpen(false) }, [workspace])
+    // Troca de repositório: o escopo (container) é do repositório anterior e cai.
+    // A SELEÇÃO só cai se pertencer ao repositório antigo — clicar num repositório
+    // na coluna de workspace o ativa E o seleciona no mesmo gesto; apagar aqui
+    // exigiria um segundo clique para ver os detalhes.
+    useEffect(() => {
+        setScope(undefined)
+        setSelection((current) => {
+            if(!current || current.kind === "workspace") return current
+            return (current as any).repository === workspace ? current : undefined
+        })
+    }, [workspace])
 
     // Escopo em três níveis: container selecionado → repositório ativo → workspace.
     const basePackages = scopeMode === "workspace" ? allPackages : packages
