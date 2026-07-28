@@ -10,7 +10,7 @@ const CreateOpenElectronWindow = (runtimeDeps) => {
 
     const { SmartRequire, paths } = runtimeDeps
 
-    const OpenElectronWindow = ({ url, file, rootPath, title, width, height, iconPath, guiConfigPath, wmClass }) => {
+    const OpenElectronWindow = ({ url, file, rootPath, title, width, height, iconPath, guiConfigPath, wmClass, logsDirPath }) => {
         const electronBinaryPath = SmartRequire("electron")
 
         // Três modos:
@@ -35,6 +35,11 @@ const CreateOpenElectronWindow = (runtimeDeps) => {
                 // por PATH — o subprocesso não recebe módulos injetados.
                 ...paths && paths.smartRequire ? { META_SMART_REQUIRE_PATH: paths.smartRequire } : {},
                 ...paths && paths.webInterfaceBuilder ? { META_WEB_INTERFACE_BUILDER_PATH: paths.webInterfaceBuilder } : {},
+                // O processo do Electron instala o SEU próprio globalThis.Log: é
+                // processo separado, e sem isto todo log de app desktop ficaria
+                // fora do padrão. Grava no logs/ do ambiente da execução.
+                ...paths && paths.installGlobalLogger ? { META_INSTALL_GLOBAL_LOGGER_PATH: paths.installGlobalLogger } : {},
+                ...logsDirPath ? { META_LOGS_DIR: String(logsDirPath) } : {},
                 ...title  !== undefined ? { DESKTOP_WINDOW_TITLE:  String(title) }  : {},
                 ...width  !== undefined ? { DESKTOP_WINDOW_WIDTH:  String(width) }  : {},
                 ...height !== undefined ? { DESKTOP_WINDOW_HEIGHT: String(height) } : {},

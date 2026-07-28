@@ -80,6 +80,17 @@ const _BuildGuiConfig = (loaderParams) => {
     }
 }
 
+// No modo GUI-host o ambiente não vem em loaderParams: quem o conhece é o
+// handle do webgui. É de lá que sai o destino do log do processo Electron.
+const _GetGuiHostEnvironmentPath = (loaderParams) => {
+    try {
+        const webguiHandle = loaderParams[loaderParams.guiHost.webgui]
+        return webguiHandle && webguiHandle.getEnvironmentPath()
+    } catch (error) {
+        return null
+    }
+}
+
 const _WriteGuiConfigFile = (config, serverName) => {
     const safeName = String(serverName || "gui").replace(/[^a-zA-Z0-9._-]/g, "_")
     const configPath = join(os.tmpdir(), `meta-gui-config-${safeName}-${process.pid}.json`)
@@ -94,6 +105,21 @@ const DesktopWindowInstanceTaskLoader = (runtimeDeps) => {
   const EnsureAppDesktopEntry = require("./EnsureAppDesktopEntry")
 
   return (loaderParams, executorChannel) => {
+
+    // Carimba a execução — ver logging-standard.md.
+    const log = Log
+        .child({
+            instanceId     : process.env.META_LAUNCH_ID || null,
+            environmentPath: loaderParams.environmentPath || null
+        })
+        .source("DesktopWindowInstance")
+
+    // O log do processo do Electron mora no logs/ do ambiente daquela execução.
+    const _ResolveLogsDirPath = () => {
+        const environmentPath = loaderParams.environmentPath
+            || (loaderParams.guiHost && _GetGuiHostEnvironmentPath(loaderParams))
+        return environmentPath ? join(environmentPath, "logs") : null
+    }
 
     let windowProcess
     let wasStopped = false
@@ -130,12 +156,12 @@ const DesktopWindowInstanceTaskLoader = (runtimeDeps) => {
                 // Registra o app na barra de tarefas (StartupWMClass) para que o
                 // KDE não agrupe todos os desktopapps pelo binário Electron comum.
                 EnsureAppDesktopEntry({ wmClass, name: config.window.title, iconPath: config.window.iconPath })
-                windowProcess = OpenElectronWindow({ guiConfigPath, wmClass })
+                windowProcess = OpenElectronWindow({ guiConfigPath, wmClass, logsDirPath: _ResolveLogsDirPath() })
             } else {
                 const wmClass  = _ResolveWmClass(rootPath ? basename(rootPath) : title)
                 const iconPath = ResolveIconPath(rootPath)
                 EnsureAppDesktopEntry({ wmClass, name: title, iconPath })
-                windowProcess = OpenElectronWindow({ url, file, rootPath, title, width, height, iconPath, wmClass })
+                windowProcess = OpenElectronWindow({ url, file, rootPath, title, width, height, iconPath, wmClass, logsDirPath: _ResolveLogsDirPath() })
             }
 
             windowProcess.on("exit", () => {
@@ -148,7 +174,7 @@ const DesktopWindowInstanceTaskLoader = (runtimeDeps) => {
 
             executorChannel.emit(CommandChannelEventTypes.CHANGE_TASK_STATUS, TaskStatusTypes.ACTIVE)
         }catch(e){
-            console.error(e)
+            log.error("falha ao abrir a janela", e)
             executorChannel.emit(CommandChannelEventTypes.CHANGE_TASK_STATUS, TaskStatusTypes.FAILURE)
         }
     }

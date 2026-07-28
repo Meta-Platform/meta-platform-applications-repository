@@ -6,6 +6,27 @@ const fs = require("fs")
 const { join, dirname } = require("path")
 const { pathToFileURL } = require("url")
 
+// `globalThis.Log` deste processo. O Electron é um processo SEPARADO: sem esta
+// instalação, todo log de app desktop existiria apenas como texto no stdout que
+// o daemon captura — fora do padrão e sem estrutura. O caminho da lib e o
+// destino do log chegam por env, porque o subprocesso não recebe módulos.
+// Ver: meta-platform-open-standard/specifications/logging-standard.md
+const InstallElectronLogger = () => {
+    try {
+        const installGlobalLoggerPath = process.env.META_INSTALL_GLOBAL_LOGGER_PATH
+        if(!installGlobalLoggerPath) return
+        require(installGlobalLoggerPath)({
+            origin      : "electron",
+            package     : process.env.DESKTOP_WINDOW_WM_CLASS || null,
+            instanceId  : process.env.META_LAUNCH_ID || null,
+            logsDirPath : process.env.META_LOGS_DIR || null
+        })
+    } catch (error) {
+        /* Log é observabilidade, não caminho crítico: a janela abre mesmo assim. */
+    }
+}
+InstallElectronLogger()
+
 const DEFAULT_WIDTH  = 1024
 const DEFAULT_HEIGHT = 768
 const POLL_INTERVAL_MS   = 800
