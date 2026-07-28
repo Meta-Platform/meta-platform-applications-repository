@@ -22,6 +22,33 @@ import { summarize } from "../Utils/summary"
 // Status terminais: um item aqui já saiu do backlog (foi concluído/arquivado).
 const DONE_STATUSES = new Set(["done", "archived", "completed"])
 
+// Backlog = o que ainda NÃO foi escolhido para fazer. Um item deixa de pertencer
+// aqui assim que alguém o move — seja mudando o status (triado, em execução,
+// concluído), seja alocando-o a uma rodada. Mostrá-lo nos dois lugares faz a fila
+// de escolha parecer maior do que é.
+const IsInBacklog = (item: WorkItem) => item.statusKey === "backlog" && !item.sprintId
+
+// Por que este item saiu — na ordem em que a razão é verificada. O status manda:
+// "em revisão" diz mais do que "em rodada" para um item que está nos dois.
+const HIDDEN_REASONS: { key: string; label: (n: number) => string; match: (i: WorkItem) => boolean }[] = [
+    { key: "done",     label: (n) => `${n} concluído${n > 1 ? "s" : ""}`,   match: (i) => DONE_STATUSES.has(i.statusKey) },
+    { key: "ready",    label: (n) => `${n} pronto${n > 1 ? "s" : ""}`,      match: (i) => i.statusKey === "ready" },
+    { key: "progress", label: (n) => `${n} em progresso`,                   match: (i) => i.statusKey === "in-progress" },
+    { key: "review",   label: (n) => `${n} em revisão`,                     match: (i) => i.statusKey === "review" },
+    { key: "blocked",  label: (n) => `${n} bloqueado${n > 1 ? "s" : ""}`,   match: (i) => i.statusKey === "blocked" },
+    { key: "sprint",   label: (n) => `${n} em rodada`,                      match: (i) => !!i.sprintId },
+    { key: "other",    label: (n) => `${n} fora do backlog`,                match: () => true }
+]
+
+const summarizeHidden = (hidden: WorkItem[]): string => {
+    const counts: { [key: string]: number } = {}
+    for (const item of hidden) {
+        const reason = HIDDEN_REASONS.find((r) => r.match(item))
+        if (reason) counts[reason.key] = (counts[reason.key] || 0) + 1
+    }
+    return HIDDEN_REASONS.filter((r) => counts[r.key]).map((r) => r.label(counts[r.key])).join(" · ")
+}
+
 // BacklogPage: backlog priorizado por VALOR (sort=value).
 //
 // É uma LISTA, não uma tabela: quem prioriza precisa LER o item, e as colunas de
@@ -41,6 +68,8 @@ const BacklogPage = () => {
     const [sprints, setSprints] = useState<Sprint[]>([])
     const [selected, setSelected] = useState<string | null>(null)
     const [draft, setDraft] = useState("")
+    // Escape hatch da regra acima: ver tudo sem sair da página nem mexer em filtro.
+    const [showAll, setShowAll] = useState(false)
     const [busy, setBusy] = useState(false)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -94,11 +123,18 @@ const BacklogPage = () => {
         catch (e: any) { setError(e.message) } finally { setBusy(false) }
     }
 
-    // Backlog = trabalho POR FAZER: itens concluídos não pertencem aqui. Só
-    // aparecem se o usuário filtrar explicitamente por um status terminal.
+    // Backlog = trabalho AINDA POR ESCOLHER. Quem filtra por status ou por sprint
+    // está pedindo outro recorte explicitamente — aí a regra sai da frente.
+    const filteringByOther = !!(filters.status || filters.sprint)
     const visibleItems = useMemo(
-        () => filters.status ? items : items.filter((it) => !DONE_STATUSES.has(it.statusKey)),
-        [items, filters.status]
+        () => (filteringByOther || showAll) ? items : items.filter(IsInBacklog),
+        [items, filteringByOther, showAll]
+    )
+    // O que foi escondido, para a tela dizer o que sumiu em vez de simplesmente
+    // encolher (uma lista que encolhe sem explicação parece dado faltando).
+    const hiddenSummary = useMemo(
+        () => (filteringByOther || showAll) ? "" : summarizeHidden(items.filter((it) => !IsInBacklog(it))),
+        [items, filteringByOther, showAll]
     )
 
     const inspector = selected
@@ -116,7 +152,7 @@ const BacklogPage = () => {
                 { label: "Backlog" }
             ]}
             title={project ? project.name : "Projeto"}
-            subtitle="Backlog · priorizado por valor"
+            subtitle="Backlog · o que ainda não entrou em execução, priorizado por valor"
             actions={readOnly ? undefined : <PageFeedbackButton scope="backlog" projectId={projectId} label="Todo o backlog" />}
             onInspectorClose={() => setSelected(null)}>
 
@@ -137,11 +173,33 @@ const BacklogPage = () => {
 
         <ErrorBanner error={error} />
 
+        {/* O que a regra tirou da frente — e como trazer de volta. */}
+        {hiddenSummary
+            ? <div className="mpm-backlog__hidden">
+                <Icon name="eye slash outline" />
+                <span>Fora do backlog, ocultados: {hiddenSummary}</span>
+                <button className="mpm-btn mpm-btn--ghost mpm-btn--sm" onClick={() => setShowAll(true)}>
+                    mostrar todos
+                </button>
+            </div>
+            : null}
+        {showAll
+            ? <div className="mpm-backlog__hidden">
+                <Icon name="eye" />
+                <span>Mostrando também o que já saiu do backlog.</span>
+                <button className="mpm-btn mpm-btn--ghost mpm-btn--sm" onClick={() => setShowAll(false)}>
+                    só o backlog
+                </button>
+            </div>
+            : null}
+
         {loading
             ? <Loading />
             : visibleItems.length === 0
-                ? <EmptyState icon="clipboard list" title="Nada por fazer no backlog"
-                    hint={items.length > 0 ? "Todos os itens já foram concluídos. Ajuste os filtros para ver outros." : "Adicione itens acima ou ajuste os filtros."} />
+                ? <EmptyState icon="clipboard list" title="Nada por escolher no backlog"
+                    hint={items.length > 0
+                        ? "Todo o trabalho já foi triado, alocado a uma rodada ou concluído."
+                        : "Adicione itens acima ou ajuste os filtros."} />
                 : <div className="mpm-backlog">
                     {visibleItems.map((it) => {
                         const assignee = it.assigneeUserId ? usersById[it.assigneeUserId] : undefined

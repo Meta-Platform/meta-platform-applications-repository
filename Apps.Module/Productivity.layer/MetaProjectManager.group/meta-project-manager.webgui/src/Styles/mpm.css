@@ -2059,6 +2059,18 @@ html, body, #gui { height: 100%; margin: 0; }
 /* ============================================================ */
 .mpm-backlog { display: flex; flex-direction: column; gap: var(--mp-space-3); }
 
+/* Aviso do que a regra do backlog tirou da frente: discreto, mas presente —
+   uma lista que encolhe sem explicação parece dado faltando. */
+.mpm-backlog__hidden {
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    margin-bottom: var(--mp-space-3);
+    padding: var(--mp-space-2) var(--mp-space-3);
+    background: var(--mp-surface-2); border: 1px solid var(--mp-line-soft);
+    border-radius: var(--mp-radius-sm);
+    font-size: var(--mp-text-xs); color: var(--mp-muted);
+}
+.mpm-backlog__hidden .mpm-btn { margin-left: auto; }
+
 .mpm-backlog__item {
     display: flex; flex-direction: column; gap: var(--mp-space-2);
     padding: var(--mp-space-3) var(--mp-space-4);
