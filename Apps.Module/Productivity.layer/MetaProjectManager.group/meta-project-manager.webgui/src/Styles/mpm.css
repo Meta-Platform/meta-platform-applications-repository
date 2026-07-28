@@ -2065,6 +2065,19 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-gantt__key--real { background: var(--mp-accent, #6366f1); border: 1px solid var(--mp-ink-3); }
 .mpm-gantt__key--round { background: rgba(14, 165, 233, .18); border: 1px solid #0284c7; }
 
+/* Explorador de ideia: campos de exploração + rodadas de refinamento. */
+.mpm-idea__field { margin-top: var(--mp-space-3); }
+.mpm-idea__questions { margin: var(--mp-space-1) 0 0; padding-left: var(--mp-space-4); }
+.mpm-idea__questions li { margin-bottom: 2px; }
+.mpm-idea__ask,
+.mpm-idea__answer {
+    display: flex; align-items: baseline; gap: var(--mp-space-2);
+    font-size: var(--mp-text-sm);
+}
+.mpm-idea__answer { color: var(--mp-ink-2); padding-left: var(--mp-space-3); }
+.mpm-idea__ask .mpm-exec__when,
+.mpm-idea__answer .mpm-exec__when { margin-left: auto; }
+
 /* ============================================================ */
 /* Execução: em curso, fila, bloqueado e concluído da rodada    */
 /* ============================================================ */

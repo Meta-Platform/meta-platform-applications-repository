@@ -7,10 +7,11 @@ import useApi from "../Hooks/useApi"
 import useLiveReload from "../Hooks/useLiveReload"
 import { useReadOnly } from "../Hooks/useReadOnly"
 import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
-import { Project, WorkItem, User, CLARITY_STATES } from "../api/types"
+import { Project, WorkItem, User, Milestone, Sprint, CLARITY_STATES } from "../api/types"
 import AppShell from "../Components/AppShell"
 import PageFeedbackButton from "../Components/PageFeedbackButton"
 import WorkItemInspector from "../Components/WorkItemInspector"
+import IdeaExplorer from "../Components/IdeaExplorer"
 import { ValueBadge, EffortBadge, AreaBadge, Loading, EmptyState, ErrorBanner } from "../Components/Primitives"
 
 // Horizontes de triagem (para onde uma ideia da inbox pode ir).
@@ -38,6 +39,10 @@ const InboxPage = () => {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [selected, setSelected] = useState<string | null>(null)
+    // Ideia aberta para EXPLORAR (o que faltava: a tela só capturava e promovia).
+    const [exploring, setExploring] = useState<string | null>(null)
+    const [milestones, setMilestones] = useState<Milestone[]>([])
+    const [sprints, setSprints] = useState<Sprint[]>([])
 
     const usersById = useMemo(() => {
         const m: { [id: string]: User } = {}
@@ -58,8 +63,9 @@ const InboxPage = () => {
     useEffect(() => {
         if (!projectId) return
         setLoading(true); setError(null)
-        Promise.all([api.projects.get(projectId), api.users.list({})])
-            .then(([p, u]) => { setProject(p); setUsers(u || []) })
+        Promise.all([api.projects.get(projectId), api.users.list({}),
+            api.planning.listMilestones(projectId), api.planning.listSprints(projectId)])
+            .then(([p, u, ms, sp]) => { setProject(p); setUsers(u || []); setMilestones(ms || []); setSprints(sp || []) })
             .catch((e) => setError(e.message))
         loadItems().then(() => setLoading(false))
     }, [projectId, api])
@@ -166,7 +172,13 @@ const InboxPage = () => {
                                 <AreaBadge area={it.area} />
                                 <span className="mpm-mono mpm-muted">{it.key}</span>
                                 {it.ideaOrigin ? <span className="mpm-muted" style={{ fontSize: "12px" }}>de {it.ideaOrigin}</span> : null}
-                                <span style={{ fontWeight: 600, cursor: "pointer", flex: 1 }} onClick={() => setSelected(it.id)}>{it.title}</span>
+                                <span style={{ fontWeight: 600, cursor: "pointer", flex: 1 }}
+                                    title="Explorar esta ideia"
+                                    onClick={() => setExploring(exploring === it.id ? null : it.id)}>{it.title}</span>
+                                <button className="mpm-btn mpm-btn--sm" title="Explorar, refinar com a IA e promover"
+                                    onClick={() => setExploring(exploring === it.id ? null : it.id)}>
+                                    <Icon name={exploring === it.id ? "caret down" : "caret right"} /> explorar
+                                </button>
                             </div>
                             {readOnly ? null : <div className="mpm-row mpm-wrap">
                                 <span className="mpm-field__label">Clareza</span>
@@ -193,6 +205,15 @@ const InboxPage = () => {
                                     <option value="decision">decisão</option>
                                 </select>
                             </div>}
+
+                            {/* EXPLORAR: problema, hipótese, perguntas em aberto,
+                                rodadas de refinamento com a IA e promoção. */}
+                            {exploring === it.id
+                                ? <IdeaExplorer idea={it} milestones={milestones} sprints={sprints}
+                                    readOnly={readOnly}
+                                    onChanged={loadItems}
+                                    onOpenItem={(id) => { setExploring(null); setSelected(id) }} />
+                                : null}
                         </div>)}
                 </div>}
         </AppShell>
