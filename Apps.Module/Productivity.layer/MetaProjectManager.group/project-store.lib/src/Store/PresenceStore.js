@@ -178,6 +178,12 @@ const PresenceStore = (ctx) => {
         const now = new Date()
         const idleCutoff = _minutesAgo(AGENT_PRESENCE_IDLE_MINUTES)
         const goneCutoff = _minutesAgo(AGENT_PRESENCE_GONE_MINUTES)
+        // Saída só é NOTÍCIA se a sessão ainda era recente. Sem isto, a primeira
+        // varredura anuncia de uma vez toda sessão histórica que nunca teve
+        // presença — foi o que aconteceu ao ligar o recurso: dezenas de "[saiu]"
+        // de sessões mortas há dias, afogando os avisos que importam. Elas viram
+        // `gone` em silêncio, que é a verdade sobre elas.
+        const announceCutoff = _minutesAgo(AGENT_PRESENCE_GONE_MINUTES * 6)
 
         const candidates = await AgentSession.findAll({
             where: { presence: { [Op.in]: ["here", "idle"] } }
@@ -187,11 +193,12 @@ const PresenceStore = (ctx) => {
             const last = session.lastActivityAt || session.updatedAt || session.createdAt
             if(last <= goneCutoff && session.presence !== "gone"){
                 await session.update({ presence: "gone", presenceChangedAt: now })
-                await CreateNotice({
-                    kind: "left", fromSessionId: session.id,
-                    body: `[saiu] ${_label(session)} — sem sinal há ${AGENT_PRESENCE_GONE_MINUTES} min. As reivindicações dela expiram sozinhas.`,
-                    metadata: { sessionId: session.id, reason: "timeout" }
-                })
+                if(last > announceCutoff)
+                    await CreateNotice({
+                        kind: "left", fromSessionId: session.id,
+                        body: `[saiu] ${_label(session)} — sem sinal há ${AGENT_PRESENCE_GONE_MINUTES} min. As reivindicações dela expiram sozinhas.`,
+                        metadata: { sessionId: session.id, reason: "timeout" }
+                    })
                 emit("agent.presence.changed", { sessionId: session.id, presence: "gone" })
                 changed.push({ sessionId: session.id, presence: "gone" })
             } else if(last <= idleCutoff && session.presence === "here"){

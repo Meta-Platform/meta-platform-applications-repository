@@ -2216,3 +2216,22 @@ test("MPMX3-23 get_activity_context vem enxuto por padrão", async () => {
     assert.ok(inteiro.notes[0].body.length > 3000, "fullText traz tudo para quem precisa")
     assert.equal(inteiro._trimmed, undefined)
 })
+
+test("MPMX3 varredura não anuncia a saída de sessão antiga (só marca gone)", async () => {
+    const antiga = { source: "agent", session: { provider: "codex", modelName: "gpt-6", traceId: "velha-1" } }
+    const testemunha = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "velha-2" } }
+    const s = await store.ResolveOrCreateSessionByIdentity(antiga.session, "test")
+    await store.ResolveOrCreateSessionByIdentity(testemunha.session, "test")
+    await store.CollectNotices({ actor: testemunha })
+
+    // Parada há dias: virar `gone` é a verdade, mas não é notícia para ninguém.
+    await store.models.AgentSession.update(
+        { lastActivityAt: new Date(Date.now() - 72 * 3600 * 1000), presence: "here" },
+        { where: { id: s.id } }
+    )
+    await store.SweepPresence()
+    assert.equal((await store.GetSession({ session: s.id })).presence, "gone")
+    const avisos = await store.CollectNotices({ actor: testemunha })
+    assert.ok(!avisos.some((n) => n.kind === "left" && /gpt-6/.test(n.body)),
+        "sessão morta há dias não vira aviso — senão a primeira varredura afoga o canal")
+})
