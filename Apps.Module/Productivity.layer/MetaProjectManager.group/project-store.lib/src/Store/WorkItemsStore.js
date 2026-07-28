@@ -371,6 +371,58 @@ const WorkItemsStore = (ctx) => {
         return data
     }
 
+    /**
+     * Conclui um ÉPICO e tudo que pende dele, numa autorização só.
+     *
+     * Fechar um épico de 8 filhos custava 8 aprovações idênticas — e humano que
+     * carimba não lê. Aqui o pedido é UM, carregando a lista do que será
+     * concluído junto (inclusive os filhos ainda abertos, para a decisão ser
+     * informada). Rejeitar não conclui nada.
+     *
+     * Não é autorização guarda-chuva: vale para este pedido, não para o futuro.
+     */
+    const CompleteEpic = async ({ item, status = "done", actor } = {}) => {
+        const epic = await ResolveItem(item)
+        await store.AssertProjectWritable({ project: epic.projectId })
+
+        // Descendentes (a hierarquia é epic → feature → story/task → subtask,
+        // então a varredura é em profundidade, com guarda contra ciclo).
+        const descendants = []
+        const visit = async (parentId, depth) => {
+            if(depth > 6) return
+            const children = await WorkItem.findAll({ where: { parentId, deletedAt: null } })
+            for(const child of children){
+                descendants.push(child)
+                await visit(child.id, depth + 1)
+            }
+        }
+        await visit(epic.id, 0)
+
+        const pending = descendants.filter((i) => !DONE_STATUS_SET.has(i.statusKey))
+
+        await store.GateAgentAction({
+            actionName: "complete-epic", type: "work-item", targetId: epic.id,
+            projectId: epic.projectId,
+            payload: { item: epic.id, status },
+            reason: `Concluir o épico ${epic.key} e ${pending.length} item(ns) ainda abertos por agente requer aprovação humana.`,
+            actor
+        })
+
+        // Aprovado (ou humano direto): conclui os descendentes abertos e o épico.
+        //
+        // As conclusões internas usam um ator SEM sessão: o gate já foi aplicado
+        // uma vez, aqui em cima. Mantê-la faria cada filho abrir o próprio pedido
+        // — exatamente o que esta operação existe para evitar.
+        const executor = { ...actor, session: undefined }
+        const completed = []
+        for(const child of pending){
+            await SetStatus({ item: child.id, status, actor: executor })
+            completed.push(child.key)
+        }
+        const result = await SetStatus({ item: epic.id, status, actor: executor })
+        return { ...result, completedChildren: completed, totalChildren: descendants.length }
+    }
+
     const SetStatus = async ({ item, status, actor } = {}) => {
         if(!status) throw new DomainError("VALIDATION_ERROR", "Status é obrigatório.", { field: "status" })
         const instance = await ResolveItem(item)
@@ -635,7 +687,7 @@ const WorkItemsStore = (ctx) => {
         ResolveItem,
         ListProjectAreas, ListProjectLabels,
         CreateItem, ListItems, CountItems, GetItem, UpdateItem, SetStatus, Assign,
-        MoveItem, MoveToBoard, ReorderItem, ConvertItem, ConvertIdea, SetBlocked,
+        MoveItem, MoveToBoard, ReorderItem, ConvertItem, ConvertIdea, SetBlocked, CompleteEpic,
         LinkItem, UnlinkItem, DeleteItem,
         AddChecklistItem, UpdateChecklistItem, RemoveChecklistItem,
         AddAcceptanceCriteria, UpdateAcceptanceCriteria, RemoveAcceptanceCriteria

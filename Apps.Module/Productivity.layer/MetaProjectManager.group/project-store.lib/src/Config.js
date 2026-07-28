@@ -154,6 +154,10 @@ const AGENT_GATE_POLICY = {
     // Só as transições de INICIAR/CONCLUIR (ver AGENT_GATED_*_STATUSES); as demais
     // mudanças de status não chegam a chamar o gate.
     "set-status":  ["work-item"],
+    // Concluir um ÉPICO inteiro numa autorização só. Existe porque fechar um
+    // épico de 8 filhos custava 8 aprovações idênticas — e humano que carimba
+    // não lê. O pedido carrega a lista do que será concluído junto.
+    "complete-epic": ["work-item"],
     delete:        ["project", "board", "item", "milestone", "sprint", "column",
                     "checklist-item", "acceptance-criteria", "risk", "doc-page", "planning-doc"]
 }

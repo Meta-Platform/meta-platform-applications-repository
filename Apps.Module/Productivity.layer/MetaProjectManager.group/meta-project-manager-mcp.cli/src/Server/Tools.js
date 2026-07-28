@@ -1627,6 +1627,20 @@ const BuildTools = ({ store, actor }) => {
             })
         },
         {
+            name: "complete_epic",
+            description: "Conclui um ÉPICO e todos os itens que pendem dele numa AUTORIZAÇÃO SÓ. Use quando o épico terminou: em vez de N pedidos de `set_item_status` (um por filho), o humano vê UMA vez a lista do que será concluído junto — inclusive os filhos ainda abertos — e decide. GATE: bloqueia até a decisão; rejeitar não conclui nada. Não é autorização guarda-chuva: vale só para este pedido.",
+            inputSchema: Obj({
+                epic: S.str("Épico (id|key)"),
+                status: S.str("Status de conclusão (padrão: done)"),
+                ...WAIT_FIELDS
+            }, ["epic"]),
+            handler: (i) => GatedAction({
+                actionName: "complete-epic", type: "work-item", ref: i.epic,
+                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (actor) => store.CompleteEpic({ item: i.epic, status: i.status || "done", actor })
+            })
+        },
+        {
             name: "declare_session",
             description: "DECLARA quem você é: provedor e modelo REAIS desta sessão (ex.: provider \"claude\", model \"claude-opus-5\"). Chame ANTES de qualquer escrita, na primeira interação com o projeto. Por que existe: o provedor/modelo vinham de variável de ambiente fixa na configuração do cliente, que envelhece e ninguém revisa — o registro dizia `claude-opus-4` numa sessão Opus 5. Declare o modelo que você É, não o que a configuração diz. Um humano vê a declaração, corrige se preciso e libera a sessão. LIVRE (e permitido mesmo com a sessão ainda pendente).",
             inputSchema: Obj({

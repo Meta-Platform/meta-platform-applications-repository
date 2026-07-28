@@ -1739,3 +1739,37 @@ test("MPME-28/29 sessão nova entra pendente, só lê, declara identidade e é l
     await assert.rejects(() => mcp.AssertSessionApproved({ actor: outro, action: "create_item" }),
         (e) => e.code === "AGENT_SESSION_REJECTED")
 })
+
+test("MPME-30 concluir épico fecha os filhos abertos numa autorização só", async () => {
+    const p = await store.CreateProject({ name: "Epico", keyPrefix: "EPC", status: "active", actor: { source: "cli" } })
+    const epico = await store.CreateItem({ project: p.id, type: "epic", title: "E1" })
+    const f1 = await store.CreateItem({ project: p.id, type: "feature", title: "F1", parent: epico.id })
+    const f2 = await store.CreateItem({ project: p.id, type: "feature", title: "F2", parent: epico.id })
+    const sub = await store.CreateItem({ project: p.id, type: "task", title: "T1", parent: f1.id })
+    await store.SetStatus({ item: f2.id, status: "done" })   // já concluído antes
+
+    const resultado = await store.CompleteEpic({ item: epico.id, actor: { source: "cli" } })
+
+    assert.equal((await store.GetItem({ item: epico.id })).statusKey, "done")
+    assert.equal((await store.GetItem({ item: f1.id })).statusKey, "done")
+    assert.equal((await store.GetItem({ item: sub.id })).statusKey, "done", "conclui em profundidade")
+    assert.equal(resultado.totalChildren, 3)
+    assert.deepEqual(resultado.completedChildren.sort(), [f1.key, sub.key].sort(), "só os que estavam abertos")
+
+    // Por AGENTE: vira UM pedido, e o pedido diz o que será concluído junto.
+    const p2 = await store.CreateProject({ name: "Epico Gate", keyPrefix: "EPG", status: "active", actor: { source: "cli" } })
+    const e2 = await store.CreateItem({ project: p2.id, type: "epic", title: "E2" })
+    await store.CreateItem({ project: p2.id, type: "task", title: "T-a", parent: e2.id })
+    await store.CreateItem({ project: p2.id, type: "task", title: "T-b", parent: e2.id })
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "epico-1" } }
+    await assert.rejects(() => store.CompleteEpic({ item: e2.id, actor: agente }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+
+    const [pedido] = await store.ListCreationRequests({ actionName: "complete-epic", status: "pending" })
+    assert.equal(pedido.subject.children.length, 2, "o pedido lista os filhos")
+    assert.equal(pedido.subject.childrenOpen.length, 2, "e destaca os que ainda estão abertos")
+
+    // Aprovar executa tudo de uma vez.
+    await store.ApproveRequest({ request: pedido.id, actor: { source: "gui" } })
+    assert.equal((await store.GetItem({ item: e2.id })).statusKey, "done")
+})

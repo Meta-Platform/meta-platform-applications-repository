@@ -31,7 +31,8 @@ const ACTION_STYLE: Record<string, ActionStyle> = {
     restore:       { verb: "Restaurar", title: "Restauração solicitada por agente",  icon: "undo",       danger: false },
     move:          { verb: "Mover",     title: "Reordenação solicitada por agente",  icon: "arrows alternate horizontal", danger: false },
     "set-status":  { verb: "Mudar status de", title: "Mudança de status solicitada por agente", icon: "exchange", danger: false },
-    "set-default": { verb: "Tornar padrão", title: "Troca de board padrão solicitada por agente", icon: "star", danger: false }
+    "set-default": { verb: "Tornar padrão", title: "Troca de board padrão solicitada por agente", icon: "star", danger: false },
+    "complete-epic": { verb: "Concluir", title: "Conclusão de épico solicitada por agente", icon: "check circle", danger: false }
 }
 
 // Iniciar e concluir tarefa são as duas transições que passam pelo gate — e são
@@ -223,6 +224,34 @@ const GlobalApprovalModal = () => {
                                         <div className="mpm-approval__scroll"><Markdown>{String(change.to)}</Markdown></div>
                                     </div>
                                     : <ChangeRow key={change.field} change={change} />)}
+                        </div>
+                    </div>
+                    : null}
+
+                {/* CONCLUSÃO DE ÉPICO: uma aprovação fecha vários itens, então a
+                    lista do que vai junto é a informação principal — e o que
+                    ainda está aberto precisa saltar aos olhos. */}
+                {subject && subject.children && subject.children.length > 0
+                    ? <div className="mpm-panel">
+                        <div className="mpm-section-title">
+                            <Icon name="check circle" /> Será concluído junto ({subject.children.length})
+                            {subject.childrenOpen && subject.childrenOpen.length > 0
+                                ? <span className="mpm-chip mpm-chip--warning" style={{ marginLeft: "var(--mp-space-2)" }}>
+                                    {subject.childrenOpen.length} ainda em aberto
+                                </span>
+                                : null}
+                        </div>
+                        <div className="mpm-approval__scroll">
+                            {subject.children.map((child) => {
+                                const open = (subject.childrenOpen || []).some((c) => c.key === child.key)
+                                return <div key={child.key} className="mpm-approval__change">
+                                    <span className="mpm-mono mpm-muted" style={{ minWidth: 90 }}>{child.key}</span>
+                                    <span className="mpm-exec__title">{child.title}</span>
+                                    <span className={`mpm-chip ${open ? "mpm-chip--warning" : "mpm-chip--neutral"}`}>
+                                        {statusLabel(child.statusKey)}
+                                    </span>
+                                </div>
+                            })}
                         </div>
                     </div>
                     : null}

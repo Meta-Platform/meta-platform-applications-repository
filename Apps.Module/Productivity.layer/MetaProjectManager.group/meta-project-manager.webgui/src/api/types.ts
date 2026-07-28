@@ -411,6 +411,9 @@ export interface ApprovalSubject {
     projectLabel?: string
     current?: Record<string, any>
     changes?: ApprovalChange[]
+    // Conclusão de épico: o que será concluído junto (e o que ainda está aberto).
+    children?: { key: string; title: string; statusKey: string; type: string }[]
+    childrenOpen?: { key: string; title: string; statusKey: string; type: string }[]
 }
 
 export interface CreationRequest {

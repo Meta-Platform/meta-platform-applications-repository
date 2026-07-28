@@ -488,6 +488,24 @@ const AgentsStore = (ctx) => {
             if(project) subject.projectLabel = `${project.keyPrefix} · ${project.name}`
         }
         subject.changes = _describeChanges({ actionName, type, payload, current: subject.current || {} })
+
+        // Conclusão de épico: o pedido só é decidível se disser O QUE MAIS será
+        // concluído junto — inclusive o que ainda está aberto.
+        if(actionName === "complete-epic"){
+            const children = []
+            const visit = async (parentId, depth) => {
+                if(depth > 6) return
+                const rows = await WorkItem.findAll({ where: { parentId, deletedAt: null } })
+                for(const row of rows){
+                    children.push({ key: row.key, title: row.title, statusKey: row.statusKey, type: row.type })
+                    await visit(row.id, depth + 1)
+                }
+            }
+            await visit(targetId, 0).catch(() => {})
+            const DONE = new Set(["done", "completed", "archived"])
+            subject.children = children
+            subject.childrenOpen = children.filter((c) => !DONE.has(c.statusKey))
+        }
         return subject
     }
 
@@ -526,6 +544,9 @@ const AgentsStore = (ctx) => {
         // Iniciar/concluir tarefa: aprovada, reexecuta o SetStatus (actor sem
         // session → não redispara o gate).
         "set-status:work-item": ({ payload, actor }) => store.SetStatus({ item: payload.item, status: payload.status, actor }),
+
+        // Conclusão de ÉPICO: uma aprovação fecha o épico e os filhos abertos.
+        "complete-epic:work-item": ({ payload, actor }) => store.CompleteEpic({ item: payload.item, status: payload.status, actor }),
 
         // Estrutura do board: colunas e board padrão.
         "create:column":    ({ payload, actor }) => store.AddColumn({ ...payload, actor }),
