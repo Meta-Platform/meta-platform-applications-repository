@@ -75,6 +75,41 @@ Aponte o cliente para ele passando o subcomando `serve`:
 
 Garanta o executável no `PATH` da sessão (ou use o caminho completo).
 
+### Aparecer no Instance Executor Manager (recomendado)
+
+Do jeito acima, quem sobe o processo é o cliente de IA — o daemon de execução
+nunca soube dele, então o servidor **não aparece no monitor** e não há como
+saber se o que está no ar é a versão mais nova. O wrapper `executor attach`
+resolve isso: registra a execução no daemon (versão do pacote, origem do
+binário, branch/commit, início) e só então executa o MCP, herdando stdio.
+
+```json
+{
+  "mcpServers": {
+    "meta-project-manager": {
+      "command": "executor",
+      "args": [
+        "attach",
+        "~/EcosystemData/repos/PlatformApplicationsRepo/Apps.Module/Productivity.layer/MetaProjectManager.group/meta-project-manager-mcp.cli",
+        "--",
+        "meta-project-manager-mcp",
+        "serve"
+      ]
+    }
+  }
+}
+```
+
+O primeiro argumento depois de `attach` é o **pacote** que está sendo executado
+(é dele que saem versão e commit); tudo depois de `--` é o comando real.
+
+- O daemon **não passa a controlar** o processo: encerrar continua sendo de quem
+  o iniciou. No painel a instância aparece com o selo **externa**.
+- Daemon fora do ar **não impede** o MCP de subir — o attach degrada com um aviso
+  no stderr.
+- Ao encerrar a sessão, o registro sai do monitor (e, se o processo morrer sem
+  avisar, o daemon o limpa pelo pid).
+
 ## Orientação do agente (`instructions` + `get_guidance`)
 
 O servidor devolve, no `InitializeResult` do MCP, o campo **`instructions`** — um

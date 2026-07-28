@@ -46,7 +46,46 @@ export const StateLabel = ({ status, reason }: any) => {
 const KIND_META: any = {
     app:     { icon: "cube",                    label: "app" },
     desktop: { icon: "window maximize outline", label: "desktop" },
-    cli:     { icon: "terminal",                label: "cli" }
+    cli:     { icon: "terminal",                label: "cli" },
+    // Processo que se anunciou ao daemon sem ter sido lançado por ele (ex.: o
+    // servidor MCP, subido pelo cliente de IA). O daemon observa, não controla.
+    external: { icon: "plug",                   label: "externa" }
+}
+
+/**
+ * "A versão que está rodando é a que está no disco?"
+ *
+ * O painel mostrava o pacote no ar sem dizer QUAL versão dele — e a pergunta
+ * que se faz depois de um `repo update` é justamente essa. O daemon grava a
+ * identidade da execução no attach; aqui ela vira um selo legível.
+ */
+export const VersionTag = ({ identity, installedVersion }: any) => {
+    if(!identity) return null
+    const running = identity.version
+    if(!running) return <span className="iep-tag" title="o pacote não declara versão">sem versão</span>
+    const outdated = installedVersion && installedVersion !== running
+    return <span className={`iep-tag ${outdated ? "iep-tag--warn" : ""}`}
+        title={outdated
+            ? `em execução: ${running} · instalada agora: ${installedVersion} — reinicie para pegar a nova`
+            : `versão em execução: ${running}`}>
+        <Icon name={outdated ? "warning sign" : "tag"} style={{ margin: 0 }}/>
+        v{running}{outdated ? ` (disco: ${installedVersion})` : ""}
+    </span>
+}
+
+// De onde o processo está rodando: fonte provisionada, binário empacotado ou
+// release baixado. É o que denuncia "está rodando o binário velho".
+const ORIGIN_LABEL: any = {
+    source: "fonte provisionada",
+    "pkg-binary": "binário empacotado",
+    release: "release"
+}
+export const OriginTag = ({ identity }: any) => {
+    if(!identity || !identity.origin) return null
+    return <span className="iep-tag" title={identity.executablePath || identity.packagePath}>
+        <Icon name="hdd outline" style={{ margin: 0 }}/>
+        {ORIGIN_LABEL[identity.origin] || identity.origin}
+    </span>
 }
 
 export const KindTag = ({ kind }: any) => {

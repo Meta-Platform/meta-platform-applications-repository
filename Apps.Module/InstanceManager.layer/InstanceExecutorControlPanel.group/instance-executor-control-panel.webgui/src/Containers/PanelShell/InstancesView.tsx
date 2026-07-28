@@ -8,6 +8,7 @@ import {
     GridColumn,
     KindIcon,
     KindTag,
+    VersionTag,
     SearchField,
     Sparkline,
     StateLabel,
@@ -81,6 +82,18 @@ export const InstancesView = ({
                 <KindIcon kind={row.kind} style={{ margin: 0, color: "var(--mp-muted)" }}/>
                 <strong>{PackageName(row.packagePath)}</strong>
             </span>
+        },
+        {
+            // Versão em execução — e o alerta quando o disco já tem outra. É a
+            // pergunta que se faz depois de um `repo update` (IEXP-28).
+            key: "version",
+            label: "versão",
+            width: 132,
+            sortable: true,
+            value: (row: any) => (row.identity && row.identity.version) || "",
+            render: (row: any) => row.identity
+                ? <VersionTag identity={row.identity} installedVersion={row.installedVersion}/>
+                : <span style={{ color: "var(--mp-muted)" }}>—</span>
         },
         {
             key: "pid",

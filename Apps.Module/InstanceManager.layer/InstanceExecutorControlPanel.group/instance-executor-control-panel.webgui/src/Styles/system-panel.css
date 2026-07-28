@@ -565,6 +565,10 @@
 .iep-tag--app     { border-color: var(--mp-accent-blue);   color: var(--mp-accent-blue); }
 .iep-tag--desktop { border-color: var(--mp-accent-violet); color: var(--mp-accent-violet); }
 .iep-tag--cli     { border-color: var(--mp-accent-cyan);   color: var(--mp-accent-cyan); }
+/* Externa: o daemon observa, mas não controla — cor distinta das que ele lança. */
+.iep-tag--external { border-color: var(--mp-accent-amber, #d97706); color: var(--mp-accent-amber, #d97706); }
+/* Versão em execução diferente da instalada no disco. */
+.iep-tag--warn     { border-color: var(--mp-danger, #dc2626); color: var(--mp-danger, #dc2626); }
 
 /* ============================================================ */
 /* 6. Medidor (barra de utilização)                             */

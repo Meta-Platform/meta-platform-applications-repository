@@ -7,6 +7,8 @@ import {
     Card,
     KeyValueList,
     KindTag,
+    VersionTag,
+    OriginTag,
     LogViewer,
     Meter,
     StateLabel,
@@ -58,6 +60,8 @@ export const SummaryTab = ({ instance, sample, history, systemSample, onStopInst
                             {PackageName(instance.packagePath)}
                         </span>
                         <KindTag kind={instance.kind}/>
+                        <VersionTag identity={instance.identity} installedVersion={instance.installedVersion}/>
+                        <OriginTag identity={instance.identity}/>
                         <StateLabel status={instance.status}/>
                     </div>
                     <div className="iep-entity__meta">
@@ -74,10 +78,20 @@ export const SummaryTab = ({ instance, sample, history, systemSample, onStopInst
                         </button>
                     }
                     {
-                        onStopInstance &&
+                        // Instância externa não foi lançada pelo daemon: ele não
+                        // tem o processo para encerrar. Oferecer o botão seria
+                        // prometer uma ação que falha.
+                        onStopInstance && instance.kind !== "external" &&
                         <button type="button" className="iep-btn iep-btn--danger" title="encerrar instância" onClick={() => onStopInstance(instance)}>
                             <Icon name="stop" style={{ margin: 0 }}/> encerrar
                         </button>
+                    }
+                    {
+                        instance.kind === "external" &&
+                        <span style={{ fontSize: "var(--mp-text-xs)", color: "var(--mp-muted)" }}
+                            title="Quem iniciou este processo (ex.: o cliente de IA que subiu o MCP) é quem o encerra.">
+                            <Icon name="info circle"/> processo externo — encerrado por quem o iniciou
+                        </span>
                     }
                 </div>
             </div>
@@ -96,7 +110,18 @@ export const SummaryTab = ({ instance, sample, history, systemSample, onStopInst
                     { label: "execução",  value: instance.executionId },
                     { label: "lançado por", value: instance.launchedBy },
                     { label: "início",    value: FormatDateTime(instance.startedAt) },
-                    { label: "no ar há",  value: sample ? FormatDuration(sample.uptimeSeconds) : undefined }
+                    { label: "no ar há",  value: sample ? FormatDuration(sample.uptimeSeconds) : undefined },
+                    // Identidade da execução: responde "esta é a versão nova?".
+                    { label: "versão",    value: instance.identity
+                        ? <VersionTag identity={instance.identity} installedVersion={instance.installedVersion}/>
+                        : undefined },
+                    { label: "origem",    value: instance.identity ? <OriginTag identity={instance.identity}/> : undefined },
+                    { label: "executável", value: instance.identity && instance.identity.executablePath
+                        ? <CopyableMonoText value={instance.identity.executablePath} maxChars={26}/>
+                        : undefined },
+                    { label: "código",    value: instance.identity && instance.identity.commit
+                        ? `${instance.identity.branch || "?"} · ${instance.identity.commit}`
+                        : undefined }
                 ]}/>
             </Card>
 

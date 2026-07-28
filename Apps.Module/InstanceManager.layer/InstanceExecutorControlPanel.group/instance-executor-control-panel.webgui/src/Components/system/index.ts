@@ -13,6 +13,8 @@ export {
     GetStateFamily,
     KindTag,
     KindIcon,
+    VersionTag,
+    OriginTag,
     Meter,
     KeyValueList,
     Card,
