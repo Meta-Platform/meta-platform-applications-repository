@@ -12,7 +12,14 @@ const AgentsController = (params) => {
     const CreateAgentSession = async (p = {}) => Guard(async () => { await ctx.ready; return store.RegisterSession({ agent: p.agentId, model: p.model, modelProvider: p.modelProvider, sessionName: p.sessionName, description: p.description, sessionUrl: p.sessionUrl, traceId: p.traceId, workingDirectory: p.workingDirectory, repositoryUrl: p.repositoryUrl, branchName: p.branchName, objective: p.objective, confirm: !!p.confirm, actor: Actor(p) }) })
     const ListAgentSessions = async (p = {}) => Guard(async () => { await ctx.ready; return store.ListSessions({ agent: p.agent, status: p.status }) })
     const GetAgentSession = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "sessionId"); return store.GetSession({ session: id }) })
-    const ConfirmAgentSession = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "sessionId"); return store.ConfirmSession({ session: id, actor: { source: "api" } }) })
+    // A liberação aceita CORRIGIR provedor/modelo declarados: é o momento em que
+    // o humano vê quem está entrando e conserta o que a configuração do cliente
+    // errou (ela é fixa e envelhece). A correção vale para a sessão inteira.
+    const ConfirmAgentSession = async (arg = {}) => Guard(async () => {
+        await ctx.ready
+        const id = idOf(arg, "sessionId")
+        return store.ConfirmSession({ session: id, provider: arg.provider, model: arg.model, actor: { source: "api" } })
+    })
     const RejectAgentSession = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "sessionId"); return store.RejectSession({ session: id, actor: { source: "api" } }) })
     const CloseAgentSession = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "sessionId"); return store.CloseSession({ session: id, actor: { source: "api" } }) })
 

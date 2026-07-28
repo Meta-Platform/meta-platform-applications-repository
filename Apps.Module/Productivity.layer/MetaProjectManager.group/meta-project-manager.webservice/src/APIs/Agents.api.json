@@ -123,6 +123,18 @@
                     "in": "path",
                     "type": "string",
                     "required": true
+                },
+                {
+                    "name": "provider",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "model",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
                 }
             ]
         },

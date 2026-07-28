@@ -33,8 +33,10 @@ const CreateAgentsApi = (call: Caller) => ({
     getSession: (sessionId: string): Promise<AgentSession> =>
         call("Agents", "GetAgentSession", { sessionId }),
 
-    confirmSession: (sessionId: string): Promise<AgentSession> =>
-        call("Agents", "ConfirmAgentSession", { sessionId }),
+    // A liberação pode CORRIGIR provedor/modelo declarados pelo agente — a
+    // configuração do cliente é fixa e envelhece (registra Opus 5 como opus-4).
+    confirmSession: (sessionId: string, fix?: { provider?: string; model?: string }): Promise<AgentSession> =>
+        call("Agents", "ConfirmAgentSession", { sessionId, ...(fix || {}) }),
 
     rejectSession: (sessionId: string): Promise<AgentSession> =>
         call("Agents", "RejectAgentSession", { sessionId }),

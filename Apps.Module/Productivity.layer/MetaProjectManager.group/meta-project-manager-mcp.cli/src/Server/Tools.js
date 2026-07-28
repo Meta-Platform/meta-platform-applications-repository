@@ -164,7 +164,7 @@ const BuildTools = ({ store, actor }) => {
 
     const DeleteDesc = (alvo) => `Remove (SOFT delete) ${alvo}. AÇÃO DESTRUTIVA sob gate: cria um pedido e AGUARDA aprovação humana (a interface mostra O QUE será removido e QUEM pediu). Aprovado → executa e retorna o resultado; rejeitado → { ok:false, code:"REJECTED_BY_HUMAN" }. NÃO tente burlar o gate.`
 
-    return [
+    const TOOLS = [
         // ───────────── Estruturar o projeto (projeto/board: GATE de aprovação humana) ─────────────
         {
             name: "create_project",
@@ -1625,8 +1625,60 @@ const BuildTools = ({ store, actor }) => {
                     traceId: actor && actor.session && actor.session.traceId
                 }
             })
+        },
+        {
+            name: "declare_session",
+            description: "DECLARA quem você é: provedor e modelo REAIS desta sessão (ex.: provider \"claude\", model \"claude-opus-5\"). Chame ANTES de qualquer escrita, na primeira interação com o projeto. Por que existe: o provedor/modelo vinham de variável de ambiente fixa na configuração do cliente, que envelhece e ninguém revisa — o registro dizia `claude-opus-4` numa sessão Opus 5. Declare o modelo que você É, não o que a configuração diz. Um humano vê a declaração, corrige se preciso e libera a sessão. LIVRE (e permitido mesmo com a sessão ainda pendente).",
+            inputSchema: Obj({
+                provider: S.enum(["claude", "codex", "chatgpt", "other"], "Provedor real desta sessão"),
+                model: S.str("Modelo real (ex.: claude-opus-5, gpt-6). Não repita o que veio da configuração se ele estiver errado."),
+                objective: S.str("O que você veio fazer nesta sessão — é o que o humano lê para decidir se libera."),
+                sessionName: S.str("Nome curto para identificar a sessão na interface")
+            }),
+            handler: (i) => store.DeclareSession(A({
+                provider: i.provider, model: i.model, objective: i.objective, sessionName: i.sessionName
+            }))
         }
     ]
+
+    // ───────────── Portão de ENTRADA da sessão (MPME-28) ─────────────
+    //
+    // Uma sessão desconhecida não escreve antes de um humano liberar. O portão
+    // fica AQUI, na camada de transporte, e não espalhado pelo domínio: é o
+    // ponto por onde toda tool passa, então a cobertura é completa sem varrer os
+    // ~60 call sites de escrita do store.
+    //
+    // LEITURA continua livre de propósito: um agente parado no portão deve
+    // investigar o projeto enquanto espera — é justamente o que o torna útil
+    // quando a liberação chega.
+    const READ_ONLY_TOOLS = new Set([
+        "roadmap", "project_status", "project_flow", "project_changes", "project_pulse",
+        "ecosystem_index_status", "declare_session", "get_guidance", "report_blocked",
+        "report_overdue", "report_ready", "list_ecosystem_packages"
+    ])
+    const IsReadOnlyTool = (name) =>
+        READ_ONLY_TOOLS.has(name) || /^(list_|get_|search_)/.test(name)
+
+    // Quando o portão barra, o agente BLOQUEIA aqui (como no gate de ação) em vez
+    // de tentar de novo em laço: quem decide é o humano, e o agente espera.
+    const SessionGate = async (toolName) => {
+        try {
+            await store.AssertSessionApproved({ actor, action: toolName })
+            return
+        } catch(e){
+            if(e.code !== "AGENT_SESSION_PENDING_APPROVAL") throw e
+            const sessionId = e.details && e.details.sessionId
+            const final = await store.WaitForSessionDecision({ session: sessionId, timeoutMs: 0 })
+            if(final.status === "active") return
+            throw McpError("AGENT_SESSION_REJECTED",
+                `Entrada da sessão ${final.status === "rejected" ? "recusada" : "encerrada"} pelo humano.`,
+                { sessionId, status: final.status })
+        }
+    }
+
+    return TOOLS.map((tool) => IsReadOnlyTool(tool.name)
+        ? tool
+        : { ...tool, handler: async (input) => { await SessionGate(tool.name); return tool.handler(input) } })
 }
 
 module.exports = { BuildTools }

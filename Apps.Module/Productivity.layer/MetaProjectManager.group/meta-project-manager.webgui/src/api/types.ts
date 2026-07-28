@@ -330,11 +330,19 @@ export interface AgentSession {
     modelName: string
     traceId?: string
     host?: string
+    osUser?: string
     workingDirectory?: string
+    repositoryUrl?: string
+    branchName?: string
+    commitHash?: string
     sessionName?: string
     description?: string
     objective?: string
     status: AgentSessionStatus
+    // Quando e com que ação a sessão bateu na porta pela primeira vez — é o que
+    // o humano lê para decidir se libera a entrada.
+    firstAttemptAt?: string
+    firstAttemptAction?: string
     confirmedAt?: string | null
     closedAt?: string | null
     createdAt?: string

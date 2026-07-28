@@ -6,7 +6,7 @@ const {
 } = require("../Config")
 
 const AgentsStore = (ctx) => {
-    const { models, writeAudit, emit, store } = ctx
+    const { models, writeAudit, emit, store, config } = ctx
     const { AgentProfile, AgentSession, User } = models
 
     // Cria um usuário-agente + seu AgentProfile (spec §5.2). Dois agentes do mesmo
@@ -96,9 +96,15 @@ const AgentsStore = (ctx) => {
 
     const GetSession = async ({ session } = {}) => Serialize(await ResolveSession(session))
 
-    const ConfirmSession = async ({ session, actor } = {}) => {
+    // Liberar a entrada. `provider`/`model` permitem CORRIGIR o que o agente
+    // declarou (ou o que a configuração errou) — a correção vale para a sessão
+    // inteira, então a auditoria a partir daqui aponta para quem realmente é.
+    const ConfirmSession = async ({ session, provider, model, actor } = {}) => {
         const instance = await ResolveSession(session)
-        await instance.update({ status: "active", confirmedAt: new Date() })
+        const patch = { status: "active", confirmedAt: new Date() }
+        if(provider) patch.provider = provider
+        if(model) patch.modelName = model
+        await instance.update(patch)
         const data = Serialize(instance)
         await writeAudit({ entityType: "agent-session", entityId: instance.id, action: "confirm", actor })
         emit("agent.session.confirmed", data)
@@ -178,10 +184,85 @@ const AgentsStore = (ctx) => {
             firstAttemptAction: action,
             actionCount: 0,
             lastActivityAt: now,
-            status: "active"
+            // ENTRADA SOB AUTORIZAÇÃO (MPME-28): no servidor MCP
+            // (config.requireSessionApproval), uma sessão desconhecida NÃO começa
+            // a escrever — ela nasce pendente e espera um humano liberar. Antes
+            // disso qualquer agente que apontasse para o socket já escrevia, e a
+            // auditoria registrava um "quem" que ninguém tinha autorizado.
+            // Sessões antigas seguem `active`: só as novas passam pelo portão.
+            status: config && config.requireSessionApproval ? "pending_confirmation" : "active"
         })
         await writeAudit({ entityType: "agent-session", entityId: session.id, action: "detected", actor: { source: "agent", actorSessionId: session.id }, metadata: { identityKey, firstAttemptAction: action } })
+        // A GUI abre o pedido de entrada com isto (mesmo canal do gate de ação).
+        if(session.status === "pending_confirmation")
+            emit("agent.session.pending", { session: Serialize(session) })
         return session
+    }
+
+    /**
+     * Esta sessão pode ESCREVER?
+     *
+     * Chamado pela camada MCP antes de toda tool de escrita. Leitura nunca passa
+     * por aqui — um agente parado no portão ainda pode investigar, que é
+     * justamente o que ele deve fazer enquanto espera.
+     *
+     * Devolve a sessão quando liberada; lança quando não.
+     */
+    const AssertSessionApproved = async ({ actor, action } = {}) => {
+        if(!IsAgentActor(actor)) return undefined
+        const session = await ResolveOrCreateSessionByIdentity(actor.session || {}, action)
+        if(session.status === "active") return session
+        if(session.status === "pending_confirmation")
+            throw new DomainError("AGENT_SESSION_PENDING_APPROVAL",
+                "Sessão de agente aguardando liberação humana. Declare sua identidade real com `declare_session` (provedor e modelo) e aguarde a liberação; até lá você só pode LER.",
+                { sessionId: session.id, provider: session.provider, model: session.modelName, status: session.status })
+        throw new DomainError("AGENT_SESSION_REJECTED",
+            `Sessão ${session.status === "rejected" ? "recusada" : "encerrada"} por um humano. Não insista: peça uma nova autorização.`,
+            { sessionId: session.id, status: session.status })
+    }
+
+    /**
+     * O agente declara QUEM ELE É de fato.
+     *
+     * O provedor/modelo vinham de variável de ambiente fixa na configuração do
+     * cliente — que envelhece e ninguém revisa: o registro dizia `claude-opus-4`
+     * numa sessão Opus 5 e `GPT 5.5` num GPT 6. Quem sabe o modelo é o próprio
+     * agente; aqui ele corrige o que a configuração errou, antes da liberação.
+     *
+     * Só vale enquanto a sessão está pendente: depois de liberada, a identidade
+     * está auditada e mudá-la reescreveria o passado.
+     */
+    const DeclareSession = async ({ actor, provider, model, objective, sessionName } = {}) => {
+        if(!IsAgentActor(actor))
+            throw new DomainError("VALIDATION_ERROR", "declare_session só faz sentido para uma sessão de agente.", {})
+        const session = await ResolveOrCreateSessionByIdentity(actor.session || {}, "declare-session")
+        if(session.status !== "pending_confirmation")
+            throw new DomainError("VALIDATION_ERROR",
+                `Sessão já ${session.status}: a identidade está auditada e não muda mais.`, { status: session.status })
+        const patch = {}
+        if(provider) patch.provider = provider
+        if(model) patch.modelName = model
+        if(objective) patch.objective = objective
+        if(sessionName) patch.sessionName = sessionName
+        await session.update(patch)
+        await writeAudit({ entityType: "agent-session", entityId: session.id, action: "declare", actor: { source: "agent", actorSessionId: session.id }, metadata: patch })
+        const data = Serialize(session)
+        emit("agent.session.pending", { session: data })
+        return data
+    }
+
+    // Aguarda (polling; processos separados via WAL) a decisão humana sobre a
+    // entrada da sessão. Mesmo desenho do WaitForApproval — é o que faz o agente
+    // PARAR no portão em vez de tentar de novo em laço.
+    const WaitForSessionDecision = async ({ session, timeoutMs = 0, pollMs = 1000 } = {}) => {
+        const started = Date.now()
+        for(;;){
+            const current = await AgentSession.findOne({ where: { id: session } })
+            if(!current) throw new DomainError("NOT_FOUND", `Sessão "${session}" não encontrada.`, { ref: session })
+            if(current.status !== "pending_confirmation") return Serialize(current)
+            if(timeoutMs > 0 && Date.now() - started >= timeoutMs) return { ...Serialize(current), timedOut: true }
+            await new Promise((resolve) => setTimeout(resolve, pollMs))
+        }
     }
 
     // Um actor é "agente inline" (sujeito ao gate) quando traz identidade de sessão.
@@ -604,6 +685,7 @@ const AgentsStore = (ctx) => {
         CreateAgent, ResolveAgent, ListAgents, GetAgent,
         RegisterSession, ResolveSession, ListSessions, GetSession,
         ConfirmSession, RejectSession, CloseSession,
+        AssertSessionApproved, DeclareSession, WaitForSessionDecision,
         ResolveOrCreateSessionByIdentity, IsAgentActor, IsAgentCreation,
         RequestApproval, RequestCreation, GateAgentAction,
         ApproveRequest, ApproveCreation, RejectRequest, RejectCreation,

@@ -10,6 +10,7 @@ import ProjectColumn from "./ProjectColumn"
 import CommandBar from "./CommandBar"
 import ThemeMenu from "./ThemeMenu"
 import GlobalApprovalModal from "./GlobalApprovalModal"
+import GlobalSessionGateModal from "./GlobalSessionGateModal"
 import ToastStack from "./ToastStack"
 import { TooltipLayer } from "./Tooltip"
 import useApprovalQueue from "../Hooks/useApprovalQueue"
@@ -241,6 +242,10 @@ const AppShell = ({ active, activeProjectId, activeProjectName, breadcrumb, titl
         {/* Aprovação de agente é GLOBAL: surge sobre QUALQUER tela e sobre qualquer
             outro modal — é a única coisa que prende o agente do outro lado. */}
         <GlobalApprovalModal />
+
+        {/* ENTRADA de agente: vem antes de qualquer ação dele. Um agente parado
+            no portão é tão bloqueante quanto um pedido de ação pendente. */}
+        <GlobalSessionGateModal />
 
         {/* Camada única de tooltip: lê `data-tip` de qualquer elemento (inclusive
             dentro de modais/tabelas) e mostra o balão acessível em portal. */}

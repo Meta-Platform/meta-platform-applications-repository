@@ -70,6 +70,24 @@ devolvem \`{ items, total, limit, offset, hasMore }\` sem os textos longos; use
 assim a resposta passar do teto, ela vem DEGRADADA com \`_truncated\`
 (explicando o que foi cortado) em vez de falhar.
 
+## 3.9. ENTRADA DA SESSÃO (antes de escrever qualquer coisa)
+
+Sua sessão começa **pendente**: você pode LER tudo, mas a primeira ESCRITA
+BLOQUEIA até um humano liberar a entrada.
+
+Faça isto, nesta ordem, ao começar:
+
+1. \`declare_session({ provider, model, objective })\` — declare o modelo que
+   você **É** (ex.: \`claude-opus-5\`), não o que veio na configuração do cliente:
+   essa variável é fixa, envelhece, e hoje registra sessões Opus 5 como
+   \`claude-opus-4\` e GPT 6 como \`GPT 5.5\`. O humano lê a declaração, corrige se
+   for o caso e libera.
+2. Enquanto espera, **investigue** (\`list_*\`, \`get_*\`, \`search_items\`) — é para
+   isso que a leitura fica aberta.
+
+\`AGENT_SESSION_PENDING_APPROVAL\` = você tentou escrever antes da liberação.
+\`AGENT_SESSION_REJECTED\` = o humano recusou: pare, não tente outro caminho.
+
 ## 4. O que é LIVRE e o que exige aprovação
 
 ### 4.0. TRAVA DE PLANEJAMENTO (leia primeiro)
@@ -219,6 +237,8 @@ num passo só.
 |---|---|
 | \`AGENT_SESSION_CONFIRMATION_REQUIRED\` | Avise o humano e aguarde a aprovação. |
 | \`PROJECT_IN_PLANNING\` | Projeto em planejamento: você não escreve nele. Só leituras — ou proponha a saída com \`update_project\` mandando SÓ \`status\` (aguarda aprovação humana). |
+| \`AGENT_SESSION_PENDING_APPROVAL\` | Sua entrada ainda não foi liberada. Chame \`declare_session\` e aguarde; só leituras até lá. |
+| \`AGENT_SESSION_REJECTED\` | O humano recusou a sessão. Pare de escrever e avise. |
 | \`AGENT_ACTION_REQUIRES_HUMAN\` | Iniciar/concluir (ou criar item já iniciado) exige solicitação explícita do humano. Proponha e aguarde. |
 | \`REJECTED_BY_HUMAN\` | O humano recusou. Leia \`details.reason\` e NÃO reenvie. |
 | \`APPROVAL_TIMEOUT\` | Ninguém decidiu a tempo. Pergunte ao humano. |

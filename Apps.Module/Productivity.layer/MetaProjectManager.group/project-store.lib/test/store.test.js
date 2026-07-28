@@ -1686,3 +1686,56 @@ test("MPME-4 entrega e rodada expõem o andamento DERIVADO dos itens", async () 
     // O status declarado continua o que era: derivado não sobrescreve intenção.
     assert.equal(ms[0].status, "planning")
 })
+
+// ───────────── MPME: identidade do agente (entrada e modelo) ─────────────
+
+test("MPME-28/29 sessão nova entra pendente, só lê, declara identidade e é liberada com correção", async () => {
+    const TMP5 = path.join(process.env.MPM_TEST_DIR || os.tmpdir(), `mpm-sessao-${process.pid}`)
+    fs.mkdirSync(TMP5, { recursive: true })
+    const DB = path.join(TMP5, "s.sqlite"), ATT = path.join(TMP5, "att")
+
+    // Store do MCP: exige liberação de entrada (como o runtime do servidor).
+    const mcp = InitializeProjectStore({ storage: DB, attachmentsDirPath: ATT, requireSessionApproval: true, onEvent: () => {} })
+    await mcp.ConnectAndSync()
+    // Store humano (GUI/CLI): sem o flag — é quem libera.
+    const humano = InitializeProjectStore({ storage: DB, attachmentsDirPath: ATT, onEvent: () => {} })
+    await humano.ConnectAndSync()
+
+    const projeto = await humano.CreateProject({ name: "Portao", keyPrefix: "PRT", status: "active", actor: { source: "cli" } })
+
+    // A configuração do cliente mente sobre o modelo (é o caso real: opus-4 numa sessão opus-5).
+    const agente = { source: "agent", session: { provider: "claude", model: "claude-opus-4", traceId: "sessao-nova-1", host: "h", pid: 42 } }
+
+    // 1. A entrada nasce pendente e a escrita é recusada.
+    await assert.rejects(() => mcp.AssertSessionApproved({ actor: agente, action: "create_item" }),
+        (e) => e.code === "AGENT_SESSION_PENDING_APPROVAL")
+
+    // 2. Leitura continua livre (é o que o agente deve fazer enquanto espera).
+    assert.ok((await mcp.GetProject({ project: projeto.id })).id)
+
+    // 3. O agente declara quem É de fato.
+    const declarada = await mcp.DeclareSession({ actor: agente, provider: "claude", model: "claude-opus-5", objective: "implementar PRT-1" })
+    assert.equal(declarada.modelName, "claude-opus-5", "a declaração corrige o que a configuração errou")
+    assert.equal(declarada.status, "pending_confirmation", "declarar não libera — quem libera é o humano")
+
+    // 4. O humano vê a sessão pendente e libera, corrigindo o provedor.
+    const [pendente] = await humano.ListSessions({ status: "pending_confirmation" })
+    assert.equal(pendente.id, declarada.id)
+    const liberada = await humano.ConfirmSession({ session: pendente.id, model: "claude-opus-5.1", actor: { source: "gui" } })
+    assert.equal(liberada.status, "active")
+    assert.equal(liberada.modelName, "claude-opus-5.1", "a correção do humano vale para a sessão inteira")
+
+    // 5. Agora a escrita passa.
+    assert.ok(await mcp.AssertSessionApproved({ actor: agente, action: "create_item" }))
+    const item = await mcp.CreateItem({ project: projeto.id, type: "task", title: "agora pode", actor: agente })
+    assert.ok(item.key)
+
+    // 6. Sessão recusada não escreve mais.
+    const outro = { source: "agent", session: { provider: "codex", model: "gpt-6", traceId: "sessao-nova-2" } }
+    await assert.rejects(() => mcp.AssertSessionApproved({ actor: outro, action: "create_item" }),
+        (e) => e.code === "AGENT_SESSION_PENDING_APPROVAL")
+    const [pendente2] = await humano.ListSessions({ status: "pending_confirmation" })
+    await humano.RejectSession({ session: pendente2.id, actor: { source: "gui" } })
+    await assert.rejects(() => mcp.AssertSessionApproved({ actor: outro, action: "create_item" }),
+        (e) => e.code === "AGENT_SESSION_REJECTED")
+})
