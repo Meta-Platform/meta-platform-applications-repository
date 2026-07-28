@@ -156,7 +156,68 @@ const AnalyticsStore = (ctx) => {
         }
     }
 
-    return { ProjectFlow }
+    // Quando cada item COMEÇOU e TERMINOU de fato — reconstruído do audit log.
+    //
+    // Existe porque ninguém preenche data por item: o cronograma dependia de
+    // `startDate`/`dueDate` digitados e ficava vazio. O histórico de status já
+    // responde isso sem pedir nada: início = primeira transição para um status de
+    // execução; fim = primeira transição para um status de conclusão (ou o
+    // `completedAt` do registro, quando o item foi concluído antes da auditoria).
+    //
+    // Item sem início real não vira barra: melhor uma lacuna honesta do que uma
+    // barra inventada (mesma regra do `hasData` do ProjectFlow).
+    const ItemTimeline = async ({ project, items: preloaded } = {}) => {
+        const projectInstance = await store.ResolveProject(project)
+        const items = preloaded || await WorkItem.findAll({ where: { projectId: projectInstance.id, deletedAt: null } })
+
+        const rawEvents = await AuditEvent.findAll({
+            where: { projectId: projectInstance.id, entityType: "work-item", action: "set-status" },
+            order: [["createdAt", "ASC"]]
+        })
+        const events = rawEvents.map((e) => ({
+            entityId: e.entityId,
+            createdAt: e.createdAt,
+            before: e.beforeJson ? JSON.parse(e.beforeJson) : undefined,
+            after: e.afterJson ? JSON.parse(e.afterJson) : undefined
+        }))
+
+        // Status que contam como "trabalho em curso": qualquer um que não seja de
+        // espera nem de conclusão. Assim um board customizado não fica de fora.
+        const WAITING = new Set(["backlog", "ready"])
+        const out = []
+        for(const item of items){
+            const points = _timeline(item, events)
+            let startedAt = null
+            let completedAt = null
+            for(const p of points){
+                if(!startedAt && !WAITING.has(p.status) && !DONE.has(p.status)) startedAt = p.t
+                if(!completedAt && DONE.has(p.status)) completedAt = p.t
+            }
+            // Concluído sem transição registrada (importado, ou concluído direto):
+            // o registro guarda quando, e é melhor dado que nenhum.
+            if(!completedAt && item.completedAt) completedAt = new Date(item.completedAt).getTime()
+            // Terminou sem nunca ter "começado": conta o começo como o próprio fim,
+            // senão o item some do gráfico justamente por ter sido rápido.
+            if(!startedAt && completedAt) startedAt = completedAt
+            if(!startedAt) continue
+            out.push({
+                id: item.id, key: item.key, title: item.title, type: item.type,
+                statusKey: item.statusKey, milestoneId: item.milestoneId, sprintId: item.sprintId,
+                actualStart: new Date(startedAt).toISOString(),
+                actualEnd: completedAt ? new Date(completedAt).toISOString() : null,
+                inProgress: !completedAt
+            })
+        }
+        return {
+            projectId: projectInstance.id,
+            items: out,
+            // Sem nenhuma barra real, a GUI diz "sem histórico" em vez de desenhar nada.
+            hasData: out.length > 0,
+            totalItems: items.length
+        }
+    }
+
+    return { ProjectFlow, ItemTimeline }
 }
 
 module.exports = AnalyticsStore

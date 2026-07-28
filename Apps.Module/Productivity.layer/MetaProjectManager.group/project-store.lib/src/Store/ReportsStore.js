@@ -128,6 +128,71 @@ const ReportsStore = (ctx) => {
         return Number(limit) > 0 ? ready.slice(0, Number(limit)) : ready
     }
 
+    // "Em que pé está o projeto AGORA" — numa chamada só.
+    //
+    // As peças existiam espalhadas (Ready, Blocked, ProjectStatus, ListSprints),
+    // e responder "o que está sendo executado, o que vem em seguida e o que já
+    // saiu nesta rodada" exigia quatro chamadas e recombinação no cliente. Aqui a
+    // resposta vem pronta, com a RODADA CORRENTE como recorte do que é "agora".
+    //
+    // A rodada corrente é a primeira que estiver `active`; sem nenhuma ativa, a
+    // primeira não concluída (ordem de planejamento). Sem rodada nenhuma, o
+    // recorte é o projeto inteiro — o painel continua útil em projeto simples.
+    const ExecutionOverview = async ({ project, queueLimit = 20 } = {}) => {
+        const { projectInstance, items } = await _projectItems(project)
+        const sprints = await store.ListSprints({ project: projectInstance.id })
+
+        const currentRound =
+            sprints.find((s) => s.status === "active") ||
+            sprints.find((s) => s.status !== "completed" && s.status !== "archived") ||
+            null
+
+        const inRound = (item) => !currentRound || item.sprintId === currentRound.id
+
+        // Em execução = saiu da espera e ainda não concluiu. Independe de rodada:
+        // esconder trabalho em curso porque não foi alocado seria mentir.
+        const now = items.filter((i) =>
+            !READY_STATUSES.has(i.statusKey) && !DONE.has(i.statusKey) &&
+            i.statusKey !== "blocked" && !i.blockedReason)
+
+        const blocked = items.filter((i) => (i.statusKey === "blocked" || i.blockedReason) && !DONE.has(i.statusKey))
+
+        // Concluído NA RODADA — e não os 115 de sempre.
+        const doneInRound = items.filter((i) => DONE.has(i.statusKey) && inRound(i))
+
+        // A fila é o Ready (dependências satisfeitas, ordenado pelo que mais
+        // destrava): o que a próxima pessoa — ou o próximo agente — vai pegar.
+        const queue = await Ready({ project: projectInstance.id, limit: queueLimit })
+
+        const open = items.filter((i) => !DONE.has(i.statusKey))
+        return {
+            projectId: projectInstance.id,
+            name: projectInstance.name,
+            round: currentRound
+                ? { id: currentRound.id, name: currentRound.name, status: currentRound.status,
+                    startDate: currentRound.startDate, endDate: currentRound.endDate,
+                    goal: currentRound.goal, progress: currentRound.progress,
+                    totalItems: currentRound.totalItems, doneItems: currentRound.doneItems }
+                : null,
+            now: SerializeMany(now),
+            queue,
+            doneInRound: SerializeMany(doneInRound),
+            blocked: SerializeMany(blocked),
+            counts: {
+                total: items.length,
+                done: items.filter((i) => DONE.has(i.statusKey)).length,
+                open: open.length,
+                now: now.length,
+                queue: queue.length,
+                blocked: blocked.length,
+                doneInRound: doneInRound.length,
+                // Quanto do que falta ainda nem está pronto para pegar: é o que
+                // diz se a fila vai secar (refinamento pendente).
+                notReady: open.filter((i) => READY_STATUSES.has(i.statusKey)).length - queue.length
+            }
+        }
+    }
+
     const _groupBy = async ({ project }, field) => {
         const { items } = await _projectItems(project)
         const groups = {}
@@ -156,7 +221,7 @@ const ReportsStore = (ctx) => {
         return groups.filter((g) => agentUsers.has(g.userId))
     }
 
-    return { ProjectStatus, Blocked, Overdue, Ready, ByAssignee, ByAgent }
+    return { ProjectStatus, Blocked, Overdue, Ready, ExecutionOverview, ByAssignee, ByAgent }
 }
 
 module.exports = ReportsStore

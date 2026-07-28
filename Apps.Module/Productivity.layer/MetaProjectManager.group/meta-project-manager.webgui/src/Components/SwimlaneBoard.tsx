@@ -2,7 +2,7 @@ import * as React from "react"
 import { useMemo, useState } from "react"
 import { Icon } from "semantic-ui-react"
 
-import { Board, BoardColumn, WorkItem, User } from "../api/types"
+import { Board, BoardColumn, WorkItem, User, Sprint } from "../api/types"
 import WorkItemCard from "./WorkItemCard"
 import { StatusChip } from "./Primitives"
 import useAgentActivity from "../Hooks/useAgentActivity"
@@ -11,6 +11,9 @@ interface SwimlaneBoardProps {
     board: Board
     items: WorkItem[]
     usersById: { [id: string]: User }
+    // Eixo das faixas: o que o item É (épico) ou QUANDO será executado (rodada).
+    laneBy?: "epic" | "round"
+    sprints?: Sprint[]
     onOpenItem: (id: string) => void
     onMoveItem?: (itemId: string, statusKey: string) => void
     // criar item nesta coluna, já sob o épico da faixa (epicId undefined = topo)
@@ -26,7 +29,7 @@ const DONE = new Set(["done", "archived", "completed"])
 // faixa por épico (linha) com as tarefas nas colunas de status. Como é um grid só,
 // as colunas alinham perfeitamente entre todas as faixas. Épicos são cabeçalhos de
 // faixa (com progresso), não cards. Soltar um card numa célula muda só o STATUS.
-const SwimlaneBoard = ({ board, items, usersById, onOpenItem, onMoveItem, onQuickAdd,
+const SwimlaneBoard = ({ board, items, usersById, laneBy = "epic", sprints = [], onOpenItem, onMoveItem, onQuickAdd,
     selectedIds, onToggleSelect }: SwimlaneBoardProps) => {
     const [draggingId, setDraggingId] = useState<string | null>(null)
     const [over, setOver] = useState<string | null>(null)   // "laneId::statusKey"
@@ -70,9 +73,14 @@ const SwimlaneBoard = ({ board, items, usersById, onOpenItem, onMoveItem, onQuic
         const cardsBy: Record<string, Record<string, WorkItem[]>> = {}
         const statusTotals: Record<string, number> = {}
         let hasOrphan = false
+        // Por rodada, a faixa é o sprintId do próprio item (não se herda de pai):
+        // é ele que diz quando aquele trabalho será feito.
+        const laneOf = (it: WorkItem) => laneBy === "round"
+            ? (it.sprintId || NO_EPIC)
+            : (epicOf(it)?.id || NO_EPIC)
         for (const it of items) {
-            if (it.type === "epic") continue
-            const laneId = epicOf(it)?.id || NO_EPIC
+            if (laneBy === "epic" && it.type === "epic") continue
+            const laneId = laneOf(it)
             if (laneId === NO_EPIC) hasOrphan = true
             if (!cardsBy[laneId]) cardsBy[laneId] = {}
             if (!cardsBy[laneId][it.statusKey]) cardsBy[laneId][it.statusKey] = []
@@ -82,12 +90,23 @@ const SwimlaneBoard = ({ board, items, usersById, onOpenItem, onMoveItem, onQuic
         Object.values(cardsBy).forEach((byStatus) =>
             Object.values(byStatus).forEach((list) => list.sort((a, b) => (a.order || 0) - (b.order || 0))))
 
+        if (laneBy === "round") {
+            // Ordem das faixas = ordem de EXECUÇÃO das rodadas.
+            const ordered = sprints.slice().sort((a, b) =>
+                (a.order || 0) - (b.order || 0) || String(a.name).localeCompare(String(b.name)))
+            const lanes: { id: string; epic?: WorkItem; round?: Sprint }[] = ordered
+                .filter((s) => cardsBy[s.id])
+                .map((s) => ({ id: s.id, round: s }))
+            if (hasOrphan) lanes.push({ id: NO_EPIC })
+            return { lanes, cardsBy, statusTotals }
+        }
+
         const epics = items.filter((i) => i.type === "epic")
             .sort((a, b) => (a.order || 0) - (b.order || 0) || a.key.localeCompare(b.key))
-        const lanes: { id: string; epic?: WorkItem }[] = epics.map((e) => ({ id: e.id, epic: e }))
+        const lanes: { id: string; epic?: WorkItem; round?: Sprint }[] = epics.map((e) => ({ id: e.id, epic: e }))
         if (hasOrphan) lanes.push({ id: NO_EPIC })
         return { lanes, cardsBy, statusTotals }
-    }, [items, byId])
+    }, [items, byId, laneBy, sprints])
 
     const canDrag = !!onMoveItem
     const handleDrop = (statusKey: string) => {
@@ -135,7 +154,15 @@ const SwimlaneBoard = ({ board, items, usersById, onOpenItem, onMoveItem, onQuic
                                 <span className="mpm-swim__lanetitle" title={epic.title}>{epic.title}</span>
                                 <StatusChip status={epic.statusKey} />
                             </>
-                            : <span className="mpm-swim__lanetitle mpm-muted"><Icon name="inbox" /> Sem épico</span>}
+                            : lane.round
+                            ? <>
+                                <span className="mpm-swim__epicbadge"><Icon name="rocket" /> RODADA</span>
+                                <span className="mpm-swim__lanetitle" title={lane.round.goal || lane.round.name}>{lane.round.name}</span>
+                                <StatusChip status={lane.round.status} />
+                            </>
+                            : <span className="mpm-swim__lanetitle mpm-muted">
+                                <Icon name="inbox" /> {laneBy === "round" ? "Sem rodada" : "Sem épico"}
+                            </span>}
                         {/* progresso da faixa */}
                         <div className="mpm-swim__progress" title={`${st.done}/${st.total} concluídos`}>
                             <div className="mpm-swim__progress-bar"><span style={{ width: `${st.pct}%` }} /></div>

@@ -48,7 +48,17 @@ const PlanningStore = (ctx) => {
             effort,
             // Progresso por ESFORÇO (não por contagem): null quando nada foi estimado.
             effortProgress: effort.total ? Math.round((effort.done / effort.total) * 100) : null,
-            confidence
+            confidence,
+            // Estado DERIVADO dos itens (MPME-4). O status gravado é uma intenção
+            // que envelhece — entregas 100% concluídas ficavam eternamente em
+            // "planejamento" porque ninguém volta para trocar o campo. Aqui o
+            // andamento sai do que os itens dizem; quem lê decide qual mostrar.
+            derivedStatus:
+                items.length === 0                                        ? "empty"
+                : done === items.length                                   ? "completed"
+                : items.some((i) => !DONE.has(i.statusKey) && !["backlog", "ready"].includes(i.statusKey)) ? "active"
+                : done > 0                                                ? "active"
+                : "planned"
         }
     }
 

@@ -56,6 +56,12 @@ const ProjectWorkspace = () => {
     const [density, setDensity] = useAppState<string>(`mpm.density:${projectId || "_"}`, "comfortable")
     // Board em swimlanes por épico (padrão; persistido por projeto).
     const [swimlanes, setSwimlanes] = useAppState<boolean>(`mpm.swimlanes:${projectId || "_"}`, true)
+    // Eixo das faixas: épico (o que é) ou rodada (quando será executado).
+    const [laneBy, setLaneBy] = useAppState<"epic" | "round">(`mpm.lanes:${projectId || "_"}`, "epic")
+    // O passado não pode disputar espaço com o que falta: num projeto maduro o
+    // "concluído" é a maior coluna do board e empurra o trabalho aberto para fora
+    // da tela. Fica escondido por padrão, com a contagem à mão (MPME-9).
+    const [hideDone, setHideDone] = useAppState<boolean>(`mpm.hidedone:${projectId || "_"}`, true)
     const saveCurrentView = (name: string) => {
         const id = `v${savedViews.length + 1}-${name.toLowerCase().replace(/\s+/g, "-").slice(0, 24)}`
         setSavedViews([...savedViews.filter((v) => v.name !== name), { id, name, filters: { ...filters }, group: (group || "none") as GroupBy }])
@@ -108,6 +114,29 @@ const ProjectWorkspace = () => {
         (board && board.columns ? board.columns.slice().sort((a, b) => a.order - b.order) : [])
             .map((c) => ({ statusKey: c.statusKey, name: c.name })),
         [board])
+
+    // Colunas de conclusão do board (isDoneColumn, mais os status terminais do
+    // domínio): é o que sai da frente quando "esconder concluídos" está ligado.
+    const doneStatuses = useMemo(() => {
+        const set = new Set(["done", "archived", "completed"])
+        ;(board && board.columns ? board.columns : []).forEach((c) => { if (c.isDoneColumn) set.add(c.statusKey) })
+        return set
+    }, [board])
+
+    // Um filtro explícito de status vence a regra: quem pediu "só concluídos"
+    // quer vê-los. Fora isso, o board mostra o trabalho vivo.
+    const hidingDone = hideDone && !filters.status
+    const doneCount = useMemo(() => items.filter((i) => doneStatuses.has(i.statusKey)).length, [items, doneStatuses])
+    const boardItems = useMemo(
+        () => hidingDone ? items.filter((i) => !doneStatuses.has(i.statusKey)) : items,
+        [items, hidingDone, doneStatuses])
+    // Esconder os cards sem esconder a coluna deixaria uma coluna vazia gritando
+    // "faltou dado" — some a coluna inteira, e a contagem vai para o botão.
+    const boardForView = useMemo(() => {
+        if (!board) return board
+        if (!hidingDone) return board
+        return { ...board, columns: (board.columns || []).filter((c) => !doneStatuses.has(c.statusKey)) }
+    }, [board, hidingDone, doneStatuses])
 
     // usa os filtros atuais (via ref) para manter a função estável — o polling
     // e a resolução inicial reaproveitam a mesma referência.
@@ -319,9 +348,29 @@ const ProjectWorkspace = () => {
                 </div>
                 {view === "board"
                     ? <button className={`mpm-btn ${swimlanes ? "mpm-btn--primary" : ""}`}
-                        title={swimlanes ? "Voltar ao board plano (por status)" : "Agrupar o board em faixas por épico"}
+                        title={swimlanes
+                            ? "Voltar ao board plano (por status)"
+                            : `Agrupar o board em faixas por ${laneBy === "round" ? "rodada" : "épico"}`}
                         onClick={() => setSwimlanes(!swimlanes)}>
-                        <Icon name="sitemap" /> Por épico
+                        <Icon name="sitemap" /> Por {laneBy === "round" ? "rodada" : "épico"}
+                    </button>
+                    : null}
+                {/* Eixo das faixas: o que É (épico) ou QUANDO será feito (rodada). */}
+                {view === "board" && swimlanes
+                    ? <div className="mpm-seg">
+                        <button className={`mpm-seg__btn ${laneBy === "epic" ? "is-active" : ""}`}
+                            title="Faixas por épico" onClick={() => setLaneBy("epic")}>épico</button>
+                        <button className={`mpm-seg__btn ${laneBy === "round" ? "is-active" : ""}`}
+                            title="Faixas por rodada de execução" onClick={() => setLaneBy("round")}>rodada</button>
+                    </div>
+                    : null}
+                {view === "board" && doneCount > 0
+                    ? <button className="mpm-btn" onClick={() => setHideDone(!hideDone)}
+                        title={hidingDone
+                            ? "Mostrar as colunas de conclusão e os itens já concluídos"
+                            : "Esconder o que já foi concluído para sobrar espaço ao que falta"}>
+                        <Icon name={hidingDone ? "eye" : "eye slash"} />
+                        {hidingDone ? `mostrar ${doneCount} concluído${doneCount > 1 ? "s" : ""}` : "esconder concluídos"}
                     </button>
                     : null}
                 <button className="mpm-btn" title="Exportar o projeto inteiro (.json)" onClick={exportProject}><Icon name="download" /> Exportar projeto</button>
@@ -367,20 +416,22 @@ const ProjectWorkspace = () => {
         {loading
             ? <Loading />
             : view === "board"
-                ? (board
+                ? (boardForView
                     ? (swimlanes
                         ? <SwimlaneBoard
-                            board={board}
-                            items={items}
+                            board={boardForView}
+                            items={boardItems}
                             usersById={usersById}
+                            laneBy={laneBy}
+                            sprints={sprints}
                             onOpenItem={setSelected}
                             onMoveItem={readOnly ? undefined : moveItem}
                             onQuickAdd={readOnly ? undefined : openQuickAdd}
                             selectedIds={selectedIds}
                             onToggleSelect={readOnly ? undefined : toggleSelect} />
                         : <KanbanBoard
-                        board={board}
-                        items={items}
+                        board={boardForView}
+                        items={boardItems}
                         usersById={usersById}
                         onOpenItem={setSelected}
                         onMoveItem={readOnly ? undefined : moveItem}

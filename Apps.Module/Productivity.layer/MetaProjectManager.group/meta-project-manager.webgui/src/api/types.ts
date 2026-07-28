@@ -243,6 +243,8 @@ export interface WorkItem {
     progress?: number
     startDate?: string | null
     dueDate?: string | null
+    // Quando o item foi concluído de fato (carimbado pelo domínio na transição).
+    completedAt?: string | null
     estimatePoints?: number | null
     estimateMinutes?: number | null
     blockedReason?: string | null
@@ -472,6 +474,56 @@ export interface FlowReport {
     totals: { items: number; done: number; created: number; completed: number }
 }
 
+// Painel de EXECUÇÃO: o estado do trabalho agora, com a rodada corrente como
+// recorte. Os itens da fila vêm do relatório de prontidão, então trazem também
+// `unblocks`/`unblocksKeys` — quanto cada um destrava.
+export interface ExecutionRound {
+    id: ID
+    name: string
+    status: string
+    startDate?: string | null
+    endDate?: string | null
+    goal?: string | null
+    progress?: number
+    totalItems?: number
+    doneItems?: number
+}
+export interface ExecutionOverview {
+    projectId: ID
+    name: string
+    round: ExecutionRound | null
+    now: WorkItem[]
+    queue: (WorkItem & { unblocks?: number; unblocksKeys?: string[] })[]
+    doneInRound: WorkItem[]
+    blocked: WorkItem[]
+    counts: {
+        total: number; done: number; open: number
+        now: number; queue: number; blocked: number; doneInRound: number
+        notReady: number
+    }
+}
+
+// Início/fim REAIS por item (reconstruídos do audit log), para o cronograma não
+// depender de datas digitadas item a item.
+export interface ItemTimelineEntry {
+    id: ID
+    key: string
+    title: string
+    type: string
+    statusKey: string
+    milestoneId?: ID | null
+    sprintId?: ID | null
+    actualStart: string
+    actualEnd: string | null
+    inProgress: boolean
+}
+export interface ItemTimelineReport {
+    projectId: ID
+    items: ItemTimelineEntry[]
+    hasData: boolean
+    totalItems: number
+}
+
 // Anotação de atividade (humana / usuario-desktop), distinta de Comment e AuditEvent.
 export interface ActivityNote {
     id: ID
@@ -532,9 +584,14 @@ export interface Milestone {
     totalItems?: number
     doneItems?: number
     progress?: number
+    // Andamento DERIVADO dos itens (empty|planned|active|completed). O `status`
+    // acima é intenção declarada e envelhece; este acompanha o trabalho.
+    derivedStatus?: DerivedStatus
     createdAt?: string
     updatedAt?: string
 }
+
+export type DerivedStatus = "empty" | "planned" | "active" | "completed" | string
 
 export type SprintStatus = "planned" | "active" | "completed" | "archived" | string
 
@@ -549,6 +606,8 @@ export interface Sprint {
     totalItems?: number
     doneItems?: number
     progress?: number
+    derivedStatus?: DerivedStatus
+    order?: number
     createdAt?: string
     updatedAt?: string
 }

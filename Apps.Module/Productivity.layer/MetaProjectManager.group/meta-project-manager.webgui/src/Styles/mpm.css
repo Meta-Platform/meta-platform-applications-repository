@@ -2054,6 +2054,58 @@ html, body, #gui { height: 100%; margin: 0; }
     .mpm-overview { grid-template-columns: 1fr; }
 }
 
+/* Legenda do cronograma: o que cada forma significa. */
+.mpm-gantt__legend {
+    display: flex; flex-wrap: wrap; gap: var(--mp-space-4);
+    margin-top: var(--mp-space-3); font-size: var(--mp-text-xs);
+}
+.mpm-gantt__legend span { display: inline-flex; align-items: center; gap: 6px; }
+.mpm-gantt__key { display: inline-block; width: 22px; height: 10px; border-radius: 3px; }
+.mpm-gantt__key--plan { border: 1px dashed var(--mp-ink-3); background: transparent; }
+.mpm-gantt__key--real { background: var(--mp-accent, #6366f1); border: 1px solid var(--mp-ink-3); }
+.mpm-gantt__key--round { background: rgba(14, 165, 233, .18); border: 1px solid #0284c7; }
+
+/* ============================================================ */
+/* Execução: em curso, fila, bloqueado e concluído da rodada    */
+/* ============================================================ */
+.mpm-exec__counts {
+    display: flex; flex-wrap: wrap; gap: var(--mp-space-4);
+    margin-top: var(--mp-space-3); padding-top: var(--mp-space-3);
+    border-top: 1px solid var(--mp-line-faint);
+    font-size: var(--mp-text-sm); color: var(--mp-ink-2);
+}
+.mpm-exec__counts strong { font-family: var(--mp-font-mono); }
+
+.mpm-exec__list { display: flex; flex-direction: column; }
+.mpm-exec__row {
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    width: 100%; padding: var(--mp-space-2) var(--mp-space-1);
+    background: none; border: none; border-bottom: 1px solid var(--mp-line-faint);
+    font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+.mpm-exec__row:last-child { border-bottom: none; }
+.mpm-exec__row:hover { background: var(--mp-surface-2); }
+/* Posição na fila: o número é a informação, então tem peso de dado. */
+.mpm-exec__pos {
+    min-width: 22px; text-align: right;
+    font-family: var(--mp-font-mono); font-size: var(--mp-text-xs); color: var(--mp-muted);
+}
+.mpm-exec__title {
+    flex: 1; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mpm-exec__trailing {
+    display: flex; align-items: center; gap: var(--mp-space-2);
+    flex-shrink: 0; max-width: 55%;
+}
+/* O porquê da posição: presente, mas subordinado ao título. */
+.mpm-exec__why {
+    font-size: var(--mp-text-xs); color: var(--mp-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mpm-exec__when { font-size: var(--mp-text-xs); white-space: nowrap; }
+.mpm-exec__blocked { border-color: var(--mp-danger); }
+
 /* ============================================================ */
 /* Backlog: lista para LER e priorizar (não uma planilha)       */
 /* ============================================================ */

@@ -4,6 +4,7 @@ import ProjectPage from "../Pages/Project.page"
 import BoardPage   from "../Pages/Board.page"
 import ListPage    from "../Pages/List.page"
 import BacklogPage from "../Pages/Backlog.page"
+import ExecutionPage from "../Pages/Execution.page"
 import InboxPage   from "../Pages/Inbox.page"
 import RoadmapPage from "../Pages/Roadmap.page"
 import GanttPage   from "../Pages/Gantt.page"
@@ -25,6 +26,7 @@ export default {
     BoardPage,
     ListPage,
     BacklogPage,
+    ExecutionPage,
     InboxPage,
     RoadmapPage,
     GanttPage,

@@ -60,7 +60,7 @@ const BulkActionBar = (p: BulkActionBarProps) => {
             {p.milestones.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
         <select className="mpm-inline-select" value="" onChange={pick(p.onSetSprint)}>
-            <option value="">Sprint…</option>
+            <option value="">Rodada…</option>
             <option value="none">— remover —</option>
             {p.sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>

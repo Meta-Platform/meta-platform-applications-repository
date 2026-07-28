@@ -1593,3 +1593,96 @@ test("MPMX3-7 pedido de aprovação descreve o alvo pelo nome e o de-para da aç
     assert.equal(arquivar.subject.label, "GTL · Gate Legível")
     assert.deepEqual(arquivar.subject.changes, [{ field: "status", from: "active", to: "archived" }])
 })
+
+// ───────────── MPME: execução, rodadas e visões agregadoras ─────────────
+
+test("MPME-6/7 ExecutionOverview separa em execução, fila, bloqueado e concluído da rodada", async () => {
+    const p = await store.CreateProject({ name: "Execucao", keyPrefix: "EXE", status: "active", actor: { source: "cli" } })
+    const rodada = await store.CreateSprint({ project: p.id, name: "Rodada 1", status: "active", actor: { source: "cli" } })
+
+    const emCurso = await store.CreateItem({ project: p.id, type: "task", title: "Fazendo" })
+    const naFila  = await store.CreateItem({ project: p.id, type: "task", title: "Livre para pegar" })
+    const travado = await store.CreateItem({ project: p.id, type: "task", title: "Travado" })
+    const pronto  = await store.CreateItem({ project: p.id, type: "task", title: "Já entregue" })
+    const dependente = await store.CreateItem({ project: p.id, type: "task", title: "Depende do travado" })
+
+    await store.SetStatus({ item: emCurso.id, status: "in-progress" })
+    await store.SetBlocked({ item: travado.id, reason: "esperando terceiro" })
+    await store.LinkItem({ item: dependente.id, relation: "depends", target: travado.id })
+    await store.AssignItemPlanning({ item: pronto.id, sprint: rodada.id })
+    await store.SetStatus({ item: pronto.id, status: "done" })
+
+    const view = await store.ExecutionOverview({ project: p.id })
+    assert.equal(view.round.id, rodada.id, "usa a rodada ativa como recorte")
+    assert.deepEqual(view.now.map((i) => i.id), [emCurso.id])
+    assert.deepEqual(view.blocked.map((i) => i.id), [travado.id])
+    assert.deepEqual(view.doneInRound.map((i) => i.id), [pronto.id])
+    // Na fila entra o que está livre; o que depende de item aberto NÃO entra.
+    const filaIds = view.queue.map((i) => i.id)
+    assert.ok(filaIds.includes(naFila.id), "item sem dependência está na fila")
+    assert.ok(!filaIds.includes(dependente.id), "item que depende de aberto fica fora da fila")
+    assert.ok(!filaIds.includes(travado.id), "bloqueado fica fora da fila")
+    assert.equal(view.counts.now, 1)
+    assert.equal(view.counts.blocked, 1)
+})
+
+test("MPME-13 ItemTimeline reconstrói início e fim reais do audit log", async () => {
+    const p = await store.CreateProject({ name: "Linha do tempo", keyPrefix: "LTP", status: "active", actor: { source: "cli" } })
+    const feito = await store.CreateItem({ project: p.id, type: "task", title: "Começou e terminou" })
+    const andando = await store.CreateItem({ project: p.id, type: "task", title: "Só começou" })
+    await store.CreateItem({ project: p.id, type: "task", title: "Nunca começou" })
+
+    await store.SetStatus({ item: feito.id, status: "in-progress" })
+    await store.SetStatus({ item: feito.id, status: "done" })
+    await store.SetStatus({ item: andando.id, status: "in-progress" })
+
+    const timeline = await store.ItemTimeline({ project: p.id })
+    assert.equal(timeline.hasData, true)
+    const byId = {}
+    timeline.items.forEach((i) => { byId[i.id] = i })
+
+    assert.ok(byId[feito.id].actualStart, "concluído tem início real")
+    assert.ok(byId[feito.id].actualEnd, "concluído tem fim real")
+    assert.equal(byId[feito.id].inProgress, false)
+
+    assert.ok(byId[andando.id].actualStart)
+    assert.equal(byId[andando.id].actualEnd, null, "em curso não tem fim")
+    assert.equal(byId[andando.id].inProgress, true)
+
+    // Item que nunca saiu do backlog não vira barra (lacuna honesta).
+    assert.equal(timeline.items.length, 2)
+    assert.equal(timeline.totalItems, 3)
+})
+
+test("MPME-4 entrega e rodada expõem o andamento DERIVADO dos itens", async () => {
+    const p = await store.CreateProject({ name: "Derivado", keyPrefix: "DRV", status: "active", actor: { source: "cli" } })
+    const entrega = await store.CreateMilestone({ project: p.id, name: "F1", actor: { source: "cli" } })
+    const rodada = await store.CreateSprint({ project: p.id, name: "R1", actor: { source: "cli" } })
+
+    // Entrega sem item: "empty" — e não "planejamento" para sempre.
+    let ms = await store.ListMilestones({ project: p.id })
+    assert.equal(ms[0].derivedStatus, "empty")
+
+    const a = await store.CreateItem({ project: p.id, type: "task", title: "A" })
+    const b = await store.CreateItem({ project: p.id, type: "task", title: "B" })
+    await store.AssignItemPlanning({ item: a.id, milestone: entrega.id, sprint: rodada.id })
+    await store.AssignItemPlanning({ item: b.id, milestone: entrega.id, sprint: rodada.id })
+
+    ms = await store.ListMilestones({ project: p.id })
+    assert.equal(ms[0].derivedStatus, "planned", "com itens parados, ainda não começou")
+
+    await store.SetStatus({ item: a.id, status: "in-progress" })
+    ms = await store.ListMilestones({ project: p.id })
+    assert.equal(ms[0].derivedStatus, "active")
+    let sp = await store.ListSprints({ project: p.id })
+    assert.equal(sp[0].derivedStatus, "active")
+
+    await store.SetStatus({ item: a.id, status: "done" })
+    await store.SetStatus({ item: b.id, status: "done" })
+    ms = await store.ListMilestones({ project: p.id })
+    sp = await store.ListSprints({ project: p.id })
+    assert.equal(ms[0].derivedStatus, "completed")
+    assert.equal(sp[0].derivedStatus, "completed")
+    // O status declarado continua o que era: derivado não sobrescreve intenção.
+    assert.equal(ms[0].status, "planning")
+})

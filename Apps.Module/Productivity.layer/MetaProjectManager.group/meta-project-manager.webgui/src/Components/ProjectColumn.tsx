@@ -14,6 +14,7 @@ const PROJECT_NAV: { key: string; label: string; icon: any; path: (id: string) =
     { key: "overview", label: "Visão geral", icon: "home",    path: (id) => `/projects/${id}`,         hint: "Resumo do projeto: progresso, boards e atividade recente." },
     { key: "board",    label: "Board",       icon: "columns", path: (id) => `/projects/${id}/board`,   hint: "Quadro Kanban: colunas de status por onde o trabalho flui." },
     { key: "list",     label: "Lista",       icon: "list",    path: (id) => `/projects/${id}/list`,    hint: "Lista hierárquica dos itens, com filtros e agrupamento." },
+    { key: "execution", label: "Execução",   icon: "play circle", path: (id) => `/projects/${id}/execution`, hint: "O que está sendo executado agora, a fila na ordem em que será pega, o que travou e o que saiu nesta rodada." },
     { key: "backlog",  label: "Backlog",     icon: "clipboard list", path: (id) => `/projects/${id}/backlog`, hint: "Trabalho priorizado ainda não em execução (valor/esforço/clareza)." },
     { key: "inbox",    label: "Ideias",      icon: "inbox",   path: (id) => `/projects/${id}/inbox`,   hint: "Ideias cruas anotadas rápido, para triar depois (inbox, no jargão técnico)." },
     { key: "roadmap",  label: "Planejamento", icon: "road",   path: (id) => `/projects/${id}/roadmap`, hint: "O plano no tempo: entregas (por data) e horizontes (agora/próximo/depois)." },
@@ -76,7 +77,7 @@ const ProjectColumn = ({ active, activeProjectId, onCreateProject }: ProjectColu
     // riscos, planos, docs). Enquanto o status não carregou, mostra tudo (sem flicker).
     const activeStatus = switcherProjects.find((p) => p.id === activeProjectId)?.status
     const planningPhase = activeStatus === "planning" || activeStatus === "candidate"
-    const EXECUTION_ONLY = new Set(["board", "list"])
+    const EXECUTION_ONLY = new Set(["board", "list", "execution"])
     const projectNav = PROJECT_NAV.filter((n) => !(planningPhase && EXECUTION_ONLY.has(n.key)))
 
     return <aside className="mpm-projcol">

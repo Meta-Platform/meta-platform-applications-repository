@@ -14,6 +14,9 @@ export interface SprintInput {
     startDate?: string
     endDate?: string
     status?: string
+    // Posição da rodada na sequência de execução. É o eixo primário: datas são
+    // opcionais, a ordem é o que diz o que vem antes.
+    order?: number
 }
 
 // PlanningController: milestones, sprints, roadmap e atribuição a itens.

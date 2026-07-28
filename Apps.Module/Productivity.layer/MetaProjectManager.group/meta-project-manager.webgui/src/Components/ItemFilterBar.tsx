@@ -103,7 +103,7 @@ const ItemFilterBar = ({ filters, setFilter, group, setGroup, reset, activeCount
         {pill("area", "Área", areaList.map((a) => ({ value: a, label: a })))}
         {pill("assignee", "Responsável", users.map((u) => ({ value: u.id, label: u.displayName })))}
         {pill("milestone", "Entrega", milestones.map((m) => ({ value: m.id, label: m.name })))}
-        {pill("sprint", "Sprint", sprints.map((s) => ({ value: s.id, label: s.name })))}
+        {pill("sprint", "Rodada", sprints.map((s) => ({ value: s.id, label: s.name })))}
         {packages.length > 0
             ? pill("package", "Pacote", packages.map((p) => ({
                 value: p.ref,

@@ -42,6 +42,12 @@ const ReportsController = (params) => {
     const ReportByAgent = async (p = {}) => Guard(async () => { await ctx.ready; return store.ByAgent({ project: p.project }) })
     // Fluxo temporal (CFD + throughput) reconstruído do audit log (MPMB-69).
     const ReportFlow = async (p = {}) => Guard(async () => { await ctx.ready; return store.ProjectFlow({ project: p.project }) })
+    // "Em que pé está agora": rodada corrente, em execução, fila, concluído na
+    // rodada e bloqueado — numa chamada só (MPME-6/7).
+    const ReportExecution = async (p = {}) => Guard(async () => { await ctx.ready; return store.ExecutionOverview({ project: p.project, queueLimit: p.queueLimit }) })
+    // Início/fim REAIS por item, reconstruídos da auditoria (MPME-13).
+    const ReportItemTimeline = async (p = {}) => Guard(async () => { await ctx.ready; return store.ItemTimeline({ project: p.project }) })
+    const ReportReady = async (p = {}) => Guard(async () => { await ctx.ready; return store.Ready({ project: p.project, limit: p.limit }) })
 
     return {
         controllerName: "ReportsController",
@@ -56,7 +62,10 @@ const ReportsController = (params) => {
         ReportOverdue,
         ReportByAssignee,
         ReportByAgent,
-        ReportFlow
+        ReportFlow,
+        ReportExecution,
+        ReportItemTimeline,
+        ReportReady
     }
 }
 

@@ -24,6 +24,10 @@
         "page": "ListPage"
     },
     {
+        "path": "/projects/:projectId/execution",
+        "page": "ExecutionPage"
+    },
+    {
         "path": "/projects/:projectId/backlog",
         "page": "BacklogPage"
     },

@@ -364,7 +364,7 @@ const WorkItemInspector = ({ itemId, projectId, users, statusOptions, onClose, o
                 </select>
             </div>)}
             {optional(!!item.sprintId, <div className="mpm-field">
-                <span className="mpm-field__label" title="Janela de tempo fixa (iteração)">Sprint</span>
+                <span className="mpm-field__label" title="Rodada de execução: a leva de trabalho em que este item entra">Rodada</span>
                 <select className="mpm-inline-select" value={item.sprintId || ""}
                     onChange={(e) => patch(() => api.planning.assignItemPlanning(item.id, { sprint: e.target.value || "none" }))}>
                     <option value="">— nenhum —</option>

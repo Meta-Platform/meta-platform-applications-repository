@@ -1,5 +1,5 @@
 import { Caller } from "./client"
-import { ActivityEntry, FlowReport } from "./types"
+import { ActivityEntry, ExecutionOverview, FlowReport, ItemTimelineReport, WorkItem } from "./types"
 
 const CreateReportsApi = (call: Caller) => ({
     activity: (query: { project?: string; limit?: string } = {}): Promise<ActivityEntry[]> =>
@@ -8,6 +8,18 @@ const CreateReportsApi = (call: Caller) => ({
     // Fluxo temporal (CFD + throughput) reconstruído do audit log.
     flow: (project?: string): Promise<FlowReport> =>
         call("Reports", "ReportFlow", { project }),
+
+    // "Em que pé está agora": rodada corrente + em execução, fila, concluído e bloqueado.
+    execution: (project?: string, queueLimit?: number): Promise<ExecutionOverview> =>
+        call("Reports", "ReportExecution", { project, queueLimit }),
+
+    // Início/fim REAIS por item, reconstruídos da auditoria (não de datas digitadas).
+    itemTimeline: (project?: string): Promise<ItemTimelineReport> =>
+        call("Reports", "ReportItemTimeline", { project }),
+
+    // Fila: o que está pronto para pegar, ordenado pelo que mais destrava.
+    ready: (project?: string, limit?: number): Promise<WorkItem[]> =>
+        call("Reports", "ReportReady", { project, limit }),
 
     projectStatus: (project?: string): Promise<any> =>
         call("Reports", "ReportProjectStatus", { project }),

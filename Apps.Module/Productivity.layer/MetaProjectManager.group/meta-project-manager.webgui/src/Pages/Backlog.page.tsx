@@ -241,7 +241,7 @@ const BacklogPage = () => {
                                     ? <span className="mpm-backlog__tag" title="Entrega"><Icon name="flag" />{milestone.name}</span>
                                     : null}
                                 {sprint
-                                    ? <span className="mpm-backlog__tag" title="Sprint"><Icon name="rocket" />{sprint.name}</span>
+                                    ? <span className="mpm-backlog__tag" title="Rodada"><Icon name="rocket" />{sprint.name}</span>
                                     : null}
                                 <span className="mpm-backlog__spacer" />
                                 <ItemMeta item={it} />
