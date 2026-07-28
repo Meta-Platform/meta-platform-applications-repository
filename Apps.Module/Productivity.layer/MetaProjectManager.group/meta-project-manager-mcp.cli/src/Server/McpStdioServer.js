@@ -15,7 +15,7 @@ const { GuardResponseSize } = require("./ResponseGuard")
 const PROTOCOL_VERSION = "2024-11-05"
 const SUPPORTED_PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"]
 
-const CreateMcpStdioServer = ({ name, version, tools, logger, instructions }) => {
+const CreateMcpStdioServer = ({ name, version, tools, logger, instructions, collectNotices }) => {
 
     const toolsByName = {}
     for(const t of tools) toolsByName[t.name] = t
@@ -56,6 +56,26 @@ const CreateMcpStdioServer = ({ name, version, tools, logger, instructions }) =>
         })
     }
 
+    /**
+     * Avisos que a sessão ainda não recebeu, anexados FORA de `data`.
+     *
+     * Ficam no envelope, e não dentro do resultado, porque `data` pertence à
+     * tool (pode ser lista, número, o que for) e o aviso não é resposta à
+     * pergunta que foi feita — é o que o agente precisa saber de qualquer jeito.
+     * Nunca derruba a chamada: sem aviso é pior que sem resposta, mas perder a
+     * resposta por causa de um aviso seria pior ainda.
+     */
+    const Notices = async () => {
+        if(typeof collectNotices !== "function") return undefined
+        try {
+            const list = await collectNotices()
+            return Array.isArray(list) && list.length ? list.map((n) => n.body || n) : undefined
+        } catch(e){
+            logger.warn("falha ao coletar avisos entre sessões:", e && e.message)
+            return undefined
+        }
+    }
+
     const HandleToolsCall = async (id, params) => {
         const name = params && params.name
         const input = (params && params.arguments) || {}
@@ -70,7 +90,8 @@ const CreateMcpStdioServer = ({ name, version, tools, logger, instructions }) =>
             // do cliente e fazer a chamada falhar por completo.
             const { data, degraded } = GuardResponseSize(raw, { toolName: name })
             if(degraded) logger.warn(`tool ${name}: resposta degradada para caber no teto de tamanho`)
-            Reply(id, { content: [{ type: "text", text: JSON.stringify({ ok: true, data }, null, 2) }] })
+            const notices = await Notices()
+            Reply(id, { content: [{ type: "text", text: JSON.stringify({ ok: true, data, ...(notices ? { _notices: notices } : {}) }, null, 2) }] })
         } catch(e){
             // Erros de DOMÍNIO (gate de aprovação, validação, não-encontrado) não
             // são erros de PROTOCOLO: devolvemos um result com isError=true e o
@@ -80,7 +101,10 @@ const CreateMcpStdioServer = ({ name, version, tools, logger, instructions }) =>
                 ? { ok: false, code: e.code, message: e.message, details: e.details }
                 : { ok: false, code: "INTERNAL_ERROR", message: (e && e.message) || String(e) }
             logger.warn(`tool ${name} falhou: [${body.code}] ${body.message}`)
-            Reply(id, { content: [{ type: "text", text: JSON.stringify(body, null, 2) }], isError: true })
+            // O aviso também viaja no erro: às vezes é ele que EXPLICA a falha
+            // (ITEM_CLAIMED logo depois de "entrou fulano", por exemplo).
+            const notices = await Notices()
+            Reply(id, { content: [{ type: "text", text: JSON.stringify({ ...body, ...(notices ? { _notices: notices } : {}) }, null, 2) }], isError: true })
         }
     }
 
@@ -121,7 +145,9 @@ const CreateMcpStdioServer = ({ name, version, tools, logger, instructions }) =>
         logger.info(`servidor MCP "${name}" v${version} pronto (${tools.length} tools) — aguardando initialize`)
     }
 
-    return { Start }
+    // `Dispatch` sai junto do `Start` para que o roteamento (e o envelope com os
+    // avisos) possa ser exercitado sem um processo real com stdio.
+    return { Start, Dispatch }
 }
 
 module.exports = { CreateMcpStdioServer }

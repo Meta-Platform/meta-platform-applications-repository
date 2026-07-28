@@ -112,12 +112,18 @@ const ActivityStore = (ctx) => {
         let claim
         if(item && store.RenewItemClaim)
             claim = await store.RenewItemClaim({ item, actor }).catch(() => undefined)
+        // O relato também é o foco ATUAL da sessão: quem olha a lista de agentes
+        // ativos passa a ver o que cada um está fazendo agora, e não o objetivo
+        // declarado na entrada — que envelhece na primeira virada de etapa
+        // (MPMX3-17). Falhar aqui não pode derrubar o reporte.
+        if(store.UpdateSessionFocus)
+            await store.UpdateSessionFocus({ currentFocus: content, actor }).catch(() => undefined)
         return { ...created, claim }
     }
 
     // Lista notas por escopo. Sem projeto e sem escopo => consulta GLOBAL (permissão).
     const ListActivityNotes = async ({
-        project, board, sprint, milestone, item, scopeType,
+        project, board, sprint, milestone, item, scopeType, kind,
         from, to, actor, limit = 50, offset = 0
     } = {}) => {
         const hasScope = !!(project || board || sprint || milestone || item)
@@ -134,6 +140,10 @@ const ActivityStore = (ctx) => {
                 throw new DomainError("VALIDATION_ERROR", `Escopo inválido: ${scopeType}.`, { field: "scopeType", allowed: ACTIVITY_SCOPES })
             where.scopeType = scopeType
         }
+        // Filtrar por TIPO de nota: sem isto, o registro de ambiente (quem subiu
+        // ou derrubou o quê) se perde no meio das notas gerais e deixa de ser
+        // consultável — que é o único motivo de existir (MPMX3-21).
+        if(kind) where.kind = kind
         if(from || to){
             where.createdAt = {}
             if(from) where.createdAt[Op.gte] = new Date(from)

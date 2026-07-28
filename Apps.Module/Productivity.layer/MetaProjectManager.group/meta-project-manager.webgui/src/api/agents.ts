@@ -1,5 +1,5 @@
 import { Caller } from "./client"
-import { Agent, AgentSession, CreationRequest, ApproveCreationResult } from "./types"
+import { Agent, AgentSession, CreationRequest, ApproveCreationResult, AgentPresenceResult, AgentNotice, ActivityNote } from "./types"
 
 export interface CreateAgentInput {
     provider: string
@@ -56,7 +56,23 @@ const CreateAgentsApi = (call: Caller) => ({
         call("Agents", "ApproveCreation", { requestId, actorUserId }),
 
     rejectCreation: (requestId: string, reason?: string, actorUserId?: string): Promise<CreationRequest> =>
-        call("Agents", "RejectCreation", { requestId, reason, actorUserId })
+        call("Agents", "RejectCreation", { requestId, reason, actorUserId }),
+
+    // ── Coordenação entre sessões (MPMX3) ─────────────────────────────────
+    // Presença: quem está trabalhando AGORA, com que itens e pacotes. É a
+    // leitura que o humano precisa para arbitrar quando dois agentes colidem.
+    whoIsHere: (query: { project?: string; includeGone?: boolean } = {}): Promise<AgentPresenceResult> =>
+        call("Agents", "WhoIsHere", query),
+
+    listNotices: (query: { project?: string; session?: string; kind?: string; limit?: number } = {}): Promise<AgentNotice[]> =>
+        call("Agents", "ListAgentNotices", query),
+
+    // O humano também fala com um agente: mesmo canal dos avisos entre sessões.
+    sendNotice: (input: { toSession?: string; item?: string; project?: string; body: string }): Promise<AgentNotice> =>
+        call("Agents", "SendAgentNotice", input),
+
+    listEnvironmentActions: (query: { project?: string; limit?: number } = {}): Promise<ActivityNote[]> =>
+        call("Agents", "ListEnvironmentActions", query)
 })
 
 export default CreateAgentsApi

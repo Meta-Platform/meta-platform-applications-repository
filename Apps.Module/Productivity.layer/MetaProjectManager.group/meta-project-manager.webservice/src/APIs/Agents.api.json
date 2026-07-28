@@ -263,6 +263,106 @@
                     "required": false
                 }
             ]
+        },
+        {
+            "summary": "WhoIsHere",
+            "method": "GET",
+            "path": "/agent-presence",
+            "parameters": [
+                {
+                    "name": "project",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "includeGone",
+                    "in": "query",
+                    "type": "boolean",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "ListAgentNotices",
+            "method": "GET",
+            "path": "/agent-notices",
+            "parameters": [
+                {
+                    "name": "project",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "session",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "kind",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "limit",
+                    "in": "query",
+                    "type": "number",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "SendAgentNotice",
+            "method": "POST",
+            "path": "/agent-notices",
+            "parameters": [
+                {
+                    "name": "toSession",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "item",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "project",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "body",
+                    "in": "body",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "ListEnvironmentActions",
+            "method": "GET",
+            "path": "/environment-actions",
+            "parameters": [
+                {
+                    "name": "project",
+                    "in": "query",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "limit",
+                    "in": "query",
+                    "type": "number",
+                    "required": false
+                }
+            ]
         }
     ]
 }

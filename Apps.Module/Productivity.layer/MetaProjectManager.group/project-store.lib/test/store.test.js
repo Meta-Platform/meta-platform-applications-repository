@@ -1848,3 +1848,208 @@ test("MPME-21 sequência diz o estado de cada item e de quem ele espera", async 
     assert.equal(dep.state, "ready", "sem dependência aberta, vira pronto")
     assert.deepEqual(dep.waitingFor, [])
 })
+
+// ─────────────── MPMX3: coordenação entre agentes ───────────────
+//
+// O atrito que estes testes travam é o de sessões simultâneas no MESMO
+// checkout: pegar o mesmo item, não saber quem chegou/saiu, avisar o outro sem
+// que ele leia, e o board mentindo enquanto a aprovação não vem.
+
+test("MPMX3-15/16 quem está aqui, e o aviso de companhia chega na primeira escrita", async () => {
+    const p = await store.CreateProject({ name: "Coordenacao", keyPrefix: "COORD", status: "active", actor: { source: "cli" } })
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Alvo" })
+
+    const um = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "coord-1" } }
+    const dois = { source: "agent", session: { provider: "codex", modelName: "gpt-6", traceId: "coord-2" } }
+
+    await store.ClaimItem({ item: item.id, actor: um })
+    await store.ReportProgress({ item: item.id, note: "lendo o PresenceStore", phase: "investigando", actor: um })
+
+    const aqui = await store.WhoIsHere({ project: p.id, actor: dois })
+    const outro = aqui.sessions.find((s) => s.model === "claude-opus-5")
+    assert.ok(outro, "a sessão vizinha aparece")
+    assert.deepEqual(outro.claimedItems.map((i) => i.key), [item.key], "diz COM O QUE ela está")
+    assert.equal(outro.lastProgress.note, "lendo o PresenceStore", "e o que ela relatou por último")
+    assert.equal(outro.presence, "here")
+
+    // Primeira ESCRITA da segunda sessão: ela é avisada da companhia sem ter perguntado.
+    const sessao2 = await store.ResolveOrCreateSessionByIdentity(dois.session, "test")
+    await store.WarnAboutCompany({ session: await store.models.AgentSession.findOne({ where: { id: sessao2.id } }) })
+    const avisos = await store.CollectNotices({ actor: dois })
+    assert.ok(avisos.some((n) => /outra\(s\) sessão\(ões\) ativa\(s\)/.test(n.body)), "o aviso de companhia chega")
+    assert.ok(avisos.some((n) => /git add/.test(n.body)), "e diz o que fazer com a informação")
+
+    // Entregue é lido: não se repete indefinidamente.
+    const denovo = await store.CollectNotices({ actor: dois })
+    assert.ok(!denovo.some((n) => /outra\(s\) sessão\(ões\)/.test(n.body)), "aviso lido não volta")
+})
+
+test("MPMX3 entrada e saída de agente viram aviso para quem já está trabalhando", async () => {
+    const p = await store.CreateProject({ name: "EntraSai", keyPrefix: "ESAI", status: "active", actor: { source: "cli" } })
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Item da casa" })
+
+    const veterano = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "esai-1" } }
+    const novato = { source: "agent", session: { provider: "codex", modelName: "gpt-6", traceId: "esai-2" } }
+
+    await store.ClaimItem({ item: item.id, actor: veterano })
+    await store.CollectNotices({ actor: veterano })   // zera o que já havia
+
+    // O novato entra em cena (liberação da sessão = entrada).
+    const nova = await store.ResolveOrCreateSessionByIdentity(novato.session, "test")
+    await store.AnnounceArrival({ session: await store.models.AgentSession.findOne({ where: { id: nova.id } }) })
+
+    const aoEntrar = await store.CollectNotices({ actor: veterano })
+    assert.ok(aoEntrar.some((n) => n.kind === "joined" && /gpt-6/.test(n.body)), "quem já trabalhava fica sabendo da entrada")
+
+    // E a saída também avisa — liberando o que a sessão segurava.
+    const outroItem = await store.CreateItem({ project: p.id, type: "task", title: "Item do novato" })
+    await store.ClaimItem({ item: outroItem.id, actor: novato })
+    const fim = await store.EndSession({ note: "terminei a fatia", actor: novato })
+    assert.deepEqual(fim.releasedItems, [outroItem.key], "sair devolve os itens à fila na hora")
+
+    const aoSair = await store.CollectNotices({ actor: veterano })
+    assert.ok(aoSair.some((n) => n.kind === "left" && /gpt-6/.test(n.body)), "e a saída também é anunciada")
+    const claimDepois = await store.GetItemClaim({ item: outroItem.id })
+    assert.equal(claimDepois, undefined, "o item do agente que saiu não fica travado")
+})
+
+test("MPMX3-19 recado dirigido chega a quem reivindicou o item", async () => {
+    const p = await store.CreateProject({ name: "Recado", keyPrefix: "RECAD", status: "active", actor: { source: "cli" } })
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Arquivo disputado" })
+    const dono = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "recad-1" } }
+    const vizinho = { source: "agent", session: { provider: "codex", modelName: "gpt-6", traceId: "recad-2" } }
+
+    await store.ClaimItem({ item: item.id, actor: dono })
+    await store.CollectNotices({ actor: dono })
+
+    // Endereçado pelo ITEM: quem manda não precisa descobrir o id da sessão.
+    await store.SendSessionMessage({ item: item.key, project: p.id, body: "varri um arquivo teu para o meu commit", actor: vizinho })
+
+    const recebidos = await store.CollectNotices({ actor: dono })
+    const recado = recebidos.find((n) => n.kind === "message")
+    assert.ok(recado, "o recado chega sem que o alvo tenha consultado nada")
+    assert.match(recado.body, /varri um arquivo teu/)
+    assert.ok(!(await store.CollectNotices({ actor: dono })).some((n) => n.kind === "message"), "recado lido não se repete")
+
+    // Item sem dono não tem a quem falar.
+    const orfao = await store.CreateItem({ project: p.id, type: "task", title: "Sem dono" })
+    await assert.rejects(() => store.SendSessionMessage({ item: orfao.id, body: "oi", actor: vizinho }), (e) => e.code === "NOT_FOUND")
+})
+
+test("MPMX3-22/next_task fila limpa: item tomado sai, e pegar tarefa já reivindica", async () => {
+    const p = await store.CreateProject({ name: "FilaLimpa", keyPrefix: "FILA", status: "active", actor: { source: "cli" } })
+    const a = await store.CreateItem({ project: p.id, type: "task", title: "Primeira" })
+    const b = await store.CreateItem({ project: p.id, type: "task", title: "Segunda" })
+    const um = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "fila-1" } }
+    const dois = { source: "agent", session: { provider: "codex", modelName: "gpt-6", traceId: "fila-2" } }
+
+    // Pegar tarefa é uma chamada só: escolhe e reivindica.
+    const pego = await store.NextTask({ project: p.id, actor: um })
+    assert.ok(pego.item, "veio uma tarefa")
+    assert.ok(pego.claim.expiresAt, "e ela já está reivindicada")
+
+    // O segundo agente não vê o item tomado na fila, e pega outro.
+    const fila = await store.ListItems({ project: p.id, actor: dois })
+    assert.ok(!fila.some((i) => i.id === pego.item.id), "item com dono sai da fila dos outros")
+    const outro = await store.NextTask({ project: p.id, actor: dois })
+    assert.notEqual(outro.item.id, pego.item.id, "dois agentes nunca pegam o mesmo item")
+
+    // Quem quer o quadro completo pede — e enxerga a reivindicação.
+    const tudo = await store.ListItems({ project: p.id, includeClaimed: true, actor: dois })
+    const tomado = tudo.find((i) => i.id === pego.item.id)
+    assert.ok(tomado, "includeClaimed mostra tudo")
+    assert.ok(tomado.claim && tomado.claim.sessionId, "e a reivindicação aparece no resumo")
+
+    // A minha própria reivindicação continua visível para mim.
+    const minhaFila = await store.ListItems({ project: p.id, actor: um })
+    assert.ok(minhaFila.some((i) => i.id === pego.item.id), "vejo o que eu mesmo peguei")
+
+    // Fila esgotada responde POR QUÊ, em vez de devolver vazio sem explicação.
+    const seca = await store.NextTask({ project: p.id, actor: um })
+    assert.equal(seca.item, undefined)
+    assert.match(seca.message, /reivindicad|vazia/)
+    assert.ok([a.id, b.id].includes(pego.item.id))
+})
+
+test("MPMX3-24 status pedido e não aprovado fica visível no item", async () => {
+    const p = await store.CreateProject({ name: "Pendente", keyPrefix: "PEND", status: "active", actor: { source: "cli" } })
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Em curso" })
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "pend-1" } }
+
+    await assert.rejects(
+        () => store.SetStatus({ item: item.id, status: "in-progress", actor: agente }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED"
+    )
+    const depois = await store.GetItem({ item: item.id })
+    assert.equal(depois.statusKey, "backlog", "o status real só muda com a aprovação")
+    assert.equal(depois.pendingStatusKey, "in-progress", "mas o quadro para de mentir: há trabalho pedido aqui")
+
+    // Aprovado, o pendente some (o status real assume).
+    const pedidos = await store.ListCreationRequests({ status: "pending", projectId: p.id })
+    const pedido = pedidos.find((r) => r.actionName === "set-status")
+    await store.ApproveRequest({ request: pedido.id, actor: { source: "cli", actorUserId: null } })
+    const aprovado = await store.GetItem({ item: item.id })
+    assert.equal(aprovado.statusKey, "in-progress")
+    assert.equal(aprovado.pendingStatusKey, null, "aprovado, não há mais nada pendente")
+})
+
+test("MPMX3-17/21 foco da sessão é editável e ambiente compartilhado fica registrado", async () => {
+    const p = await store.CreateProject({ name: "Ambiente", keyPrefix: "AMBI", status: "active", actor: { source: "cli" } })
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "ambi-1" } }
+
+    const sessao = await store.ResolveOrCreateSessionByIdentity(agente.session, "test")
+    await store.ConfirmSession({ session: sessao.id, actor: { source: "cli" } })
+
+    // Identidade não muda depois de liberada; intenção muda.
+    await assert.rejects(
+        () => store.DeclareSession({ provider: "codex", actor: agente }),
+        (e) => e.code === "VALIDATION_ERROR"
+    )
+    const atualizada = await store.DeclareSession({ objective: "resolver os feedbacks", actor: agente })
+    assert.equal(atualizada.objective, "resolver os feedbacks", "redeclarar só o objetivo é aceito")
+
+    // Reportar progresso mantém o foco atual em dia, sem chamada extra.
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Trabalho" })
+    await store.ReportProgress({ item: item.id, note: "subindo o orquestrador", actor: agente })
+    const comFoco = await store.GetSession({ session: sessao.id })
+    assert.equal(comFoco.currentFocus, "subindo o orquestrador")
+
+    // Ação sobre ambiente compartilhado: histórico consultável POR TIPO + aviso.
+    // O vizinho precisa já estar em cena: broadcast alcança quem está presente
+    // quando ele acontece, não quem chega depois (ninguém recebe histórico).
+    const vizinho = { source: "agent", session: { provider: "codex", modelName: "gpt-6", traceId: "ambi-2" } }
+    await store.ResolveOrCreateSessionByIdentity(vizinho.session, "test")
+    await store.RecordEnvironmentAction({ project: p.id, action: "up", target: "service-orchestrator", note: "não derrube", actor: agente })
+    const registros = await store.ListEnvironmentActions({ project: p.id, actor: { source: "cli" } })
+    assert.equal(registros.length, 1)
+    assert.match(registros[0].body, /\[up\] service-orchestrator/)
+    const notas = await store.ListActivityNotes({ project: p.id, actor: { source: "cli" } })
+    assert.ok(notas.length > registros.length, "o filtro por tipo separa ambiente do resto")
+
+    const avisos = await store.CollectNotices({ actor: vizinho })
+    assert.ok(avisos.some((n) => n.kind === "environment" && /service-orchestrator/.test(n.body)), "quem depende do processo é avisado")
+})
+
+test("MPMX3 presença envelhece: sessão sem sinal sai sozinha e avisa", async () => {
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "sweep-1" } }
+    const testemunha = { source: "agent", session: { provider: "codex", modelName: "gpt-6", traceId: "sweep-2" } }
+    const sessao = await store.ResolveOrCreateSessionByIdentity(agente.session, "test")
+    await store.ResolveOrCreateSessionByIdentity(testemunha.session, "test")
+    await store.CollectNotices({ actor: testemunha })
+
+    // Empurra a última atividade para trás do limite de "sumiu".
+    await store.models.AgentSession.update(
+        { lastActivityAt: new Date(Date.now() - 90 * 60000), presence: "here" },
+        { where: { id: sessao.id } }
+    )
+    const mudou = await store.SweepPresence()
+    assert.ok(mudou.some((m) => m.sessionId === sessao.id && m.presence === "gone"), "sessão sem sinal deixa de constar presente")
+
+    const avisos = await store.CollectNotices({ actor: testemunha })
+    assert.ok(avisos.some((n) => n.kind === "left" && /sem sinal/.test(n.body)), "a saída por silêncio também é anunciada")
+
+    // Voltar a agir traz a sessão de volta — e anuncia o retorno.
+    await store.TouchSession({ actor: agente, action: "test" })
+    const viva = await store.GetSession({ session: sessao.id })
+    assert.equal(viva.presence, "here")
+})

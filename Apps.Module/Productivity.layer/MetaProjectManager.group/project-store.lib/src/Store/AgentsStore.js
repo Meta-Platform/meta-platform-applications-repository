@@ -101,13 +101,16 @@ const AgentsStore = (ctx) => {
     // inteira, então a auditoria a partir daqui aponta para quem realmente é.
     const ConfirmSession = async ({ session, provider, model, actor } = {}) => {
         const instance = await ResolveSession(session)
-        const patch = { status: "active", confirmedAt: new Date() }
+        const patch = { status: "active", confirmedAt: new Date(), presence: "here", presenceChangedAt: new Date() }
         if(provider) patch.provider = provider
         if(model) patch.modelName = model
         await instance.update(patch)
         const data = Serialize(instance)
         await writeAudit({ entityType: "agent-session", entityId: instance.id, action: "confirm", actor })
         emit("agent.session.confirmed", data)
+        // A liberação é o momento em que a sessão de fato ENTRA em cena — quem já
+        // está trabalhando fica sabendo agora, e não ao colidir (MPMX3-16).
+        if(store.AnnounceArrival) await store.AnnounceArrival({ session: instance }).catch(() => undefined)
         return data
     }
 
@@ -150,6 +153,12 @@ const AgentsStore = (ctx) => {
     // Chave estável de identidade da sessão (provider + externalSessionId||traceId||host:pid).
     const _identityKey = (s) =>
         `${s.provider || "other"}:${s.externalSessionId || s.traceId || `${s.host || "?"}:${s.pid || "?"}`}`
+
+    // Encontra a sessão pela identidade SEM criar. É o que a LEITURA usa: uma
+    // consulta ("quem está aqui?", "tenho aviso novo?") não pode ter como efeito
+    // colateral registrar uma sessão que nunca escreveu nada.
+    const FindSessionByIdentity = async (identity = {}) =>
+        AgentSession.findOne({ where: { identityKey: _identityKey(identity) } })
 
     // Encontra a sessão pela identidade; cria se nova, capturando todo o contexto.
     const ResolveOrCreateSessionByIdentity = async (identity = {}, action) => {
@@ -196,6 +205,10 @@ const AgentsStore = (ctx) => {
         // A GUI abre o pedido de entrada com isto (mesmo canal do gate de ação).
         if(session.status === "pending_confirmation")
             emit("agent.session.pending", { session: Serialize(session) })
+        // Sem portão de entrada (config sem requireSessionApproval), a sessão já
+        // nasce liberada: o anúncio de chegada é aqui, senão ela entra em silêncio.
+        else if(store.AnnounceArrival)
+            await store.AnnounceArrival({ session }).catch(() => undefined)
         return session
     }
 
@@ -211,7 +224,15 @@ const AgentsStore = (ctx) => {
     const AssertSessionApproved = async ({ actor, action } = {}) => {
         if(!IsAgentActor(actor)) return undefined
         const session = await ResolveOrCreateSessionByIdentity(actor.session || {}, action)
-        if(session.status === "active") return session
+        if(session.status === "active"){
+            // Toda escrita marca presença (é o heartbeat que faz uma sessão morta
+            // parar de constar como presente) e, na PRIMEIRA delas, entrega o
+            // aviso de que há companhia no workspace. Chegar tarde com esse aviso
+            // é o mesmo que não dar: quem descobre depois já commitou (MPMX3-16).
+            if(store.TouchSession) await store.TouchSession({ actor, action }).catch(() => undefined)
+            if(store.WarnAboutCompany) await store.WarnAboutCompany({ session }).catch(() => undefined)
+            return session
+        }
         if(session.status === "pending_confirmation")
             throw new DomainError("AGENT_SESSION_PENDING_APPROVAL",
                 "Sessão de agente aguardando liberação humana. Declare sua identidade real com `declare_session` (provedor e modelo) e aguarde a liberação; até lá você só pode LER.",
@@ -232,17 +253,26 @@ const AgentsStore = (ctx) => {
      * Só vale enquanto a sessão está pendente: depois de liberada, a identidade
      * está auditada e mudá-la reescreveria o passado.
      */
-    const DeclareSession = async ({ actor, provider, model, objective, sessionName } = {}) => {
+    const DeclareSession = async ({ actor, provider, model, objective, currentFocus, sessionName } = {}) => {
         if(!IsAgentActor(actor))
             throw new DomainError("VALIDATION_ERROR", "declare_session só faz sentido para uma sessão de agente.", {})
         const session = await ResolveOrCreateSessionByIdentity(actor.session || {}, "declare-session")
-        if(session.status !== "pending_confirmation")
-            throw new DomainError("VALIDATION_ERROR",
-                `Sessão já ${session.status}: a identidade está auditada e não muda mais.`, { status: session.status })
+        // Sessão já liberada: a IDENTIDADE está auditada e não muda mais — mas a
+        // INTENÇÃO muda o tempo todo, e recusar as duas juntas congelava o
+        // objetivo na entrada (MPMX3-17). Redeclarar só objetivo/foco/nome passa
+        // a ser aceito e vai para o mesmo caminho de UpdateSessionFocus.
+        if(session.status !== "pending_confirmation"){
+            if(provider || model)
+                throw new DomainError("VALIDATION_ERROR",
+                    `Sessão já ${session.status}: provedor e modelo estão auditados e não mudam mais. Objetivo e foco, sim — mande só eles.`,
+                    { status: session.status, editable: ["objective", "currentFocus", "sessionName"] })
+            return store.UpdateSessionFocus({ objective, currentFocus, sessionName, actor })
+        }
         const patch = {}
         if(provider) patch.provider = provider
         if(model) patch.modelName = model
         if(objective) patch.objective = objective
+        if(currentFocus) patch.currentFocus = currentFocus
         if(sessionName) patch.sessionName = sessionName
         await session.update(patch)
         await writeAudit({ entityType: "agent-session", entityId: session.id, action: "declare", actor: { source: "agent", actorSessionId: session.id }, metadata: patch })
@@ -292,6 +322,15 @@ const AgentsStore = (ctx) => {
             resumeToken,
             status: "pending", payloadJson: JSON.stringify(payload), requestedAt: new Date()
         })
+        // Pedido de mudança de status: o ITEM passa a apontar para o pedido, para
+        // o board mostrar "aguardando aprovação para X" e para a rejeição saber o
+        // que limpar (MPMX3-24).
+        if(actionName === "set-status" && (type === "work-item" || type === "item") && targetId)
+            await WorkItem.update(
+                { pendingStatusKey: payload.status, pendingStatusRequestId: request.id, pendingStatusAt: new Date() },
+                { where: { id: targetId } }
+            ).catch(() => undefined)
+
         await writeAudit({ projectId, entityType: "creation-request", entityId: request.id, action: "request", actor: { source: "agent", actorSessionId: session.id }, metadata: { actionName, type, targetId, risk, payload } })
         const wire = { type, actionName, request: Serialize(request), session: Serialize(session), payload }
         emit("agent.session.pending", wire) // retrocompat (GUI recarrega em 'pending')
@@ -614,6 +653,12 @@ const AgentsStore = (ctx) => {
         if(req.status !== "pending")
             throw new DomainError("VALIDATION_ERROR", `Pedido já ${req.status}.`, { status: req.status })
         const decider = await _resolveDecider(actor)
+        // Recusado: o item para de anunciar um status que não vai acontecer.
+        if(req.actionName === "set-status" && req.targetId)
+            await WorkItem.update(
+                { pendingStatusKey: null, pendingStatusRequestId: null, pendingStatusAt: null },
+                { where: { id: req.targetId, pendingStatusRequestId: req.id } }
+            ).catch(() => undefined)
         await req.update({ status: "rejected", decidedAt: new Date(), decidedByUserId: decider.actorUserId, rejectionReason: reason })
         await writeAudit({ projectId: req.projectId, entityType: "creation-request", entityId: req.id, action: "reject", actor: decider, metadata: { reason } })
         const data = Serialize(await req.reload())
@@ -707,7 +752,7 @@ const AgentsStore = (ctx) => {
         RegisterSession, ResolveSession, ListSessions, GetSession,
         ConfirmSession, RejectSession, CloseSession,
         AssertSessionApproved, DeclareSession, WaitForSessionDecision,
-        ResolveOrCreateSessionByIdentity, IsAgentActor, IsAgentCreation,
+        ResolveOrCreateSessionByIdentity, FindSessionByIdentity, IsAgentActor, IsAgentCreation,
         RequestApproval, RequestCreation, GateAgentAction,
         ApproveRequest, ApproveCreation, RejectRequest, RejectCreation,
         WaitForApproval, DescribeCreationRequest, DescribeDeletionImpact, DescribeApprovalSubject,

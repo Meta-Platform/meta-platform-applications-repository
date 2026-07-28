@@ -57,6 +57,27 @@ const AGENT_PROVIDERS    = ["claude", "codex", "chatgpt", "other"]
 
 const AGENT_SESSION_STATUSES = ["pending_confirmation", "active", "closed", "rejected"]
 
+// PRESENÇA de uma sessão (eixo separado do status/gate): ela ainda está aí?
+//  - here: agiu há pouco;
+//  - idle: sem ação há AGENT_PRESENCE_IDLE_MINUTES — provavelmente pensando/parada;
+//  - gone: saiu (`end_session`) ou sumiu há AGENT_PRESENCE_GONE_MINUTES.
+// A varredura que aplica isto (SweepPresence) roda por demanda, na leitura de
+// presença — não há processo de fundo, e a informação nunca fica velha na tela.
+const AGENT_PRESENCE_STATES = ["here", "idle", "gone"]
+const AGENT_PRESENCE_IDLE_MINUTES = 15
+const AGENT_PRESENCE_GONE_MINUTES = 60
+
+// Tipos de aviso entregues entre sessões (AgentNotice):
+//  - joined/left: entrada e saída de outro agente no workspace;
+//  - message: recado dirigido de uma sessão a outra;
+//  - environment: alguém subiu/derrubou/reprovisionou recurso compartilhado;
+//  - item-touched: mexeram num item que VOCÊ reivindicou.
+const AGENT_NOTICE_KINDS = ["joined", "left", "message", "environment", "item-touched"]
+
+// Ações sobre ambiente COMPARTILHADO que uma sessão registra para as outras
+// (MPMX3-21). Não é monitoração: é histórico de intenção entre agentes.
+const ENVIRONMENT_ACTIONS = ["up", "down", "restart", "provision", "build", "other"]
+
 const AUDIT_SOURCES      = ["gui", "cli", "api", "agent", "mcp", "desktop"]
 
 // Escopos aos quais uma nota de atividade pode ser associada.
@@ -221,6 +242,11 @@ module.exports = {
     DESKTOP_USER_DISPLAYNAME,
     AGENT_PROVIDERS,
     AGENT_SESSION_STATUSES,
+    AGENT_PRESENCE_STATES,
+    AGENT_PRESENCE_IDLE_MINUTES,
+    AGENT_PRESENCE_GONE_MINUTES,
+    AGENT_NOTICE_KINDS,
+    ENVIRONMENT_ACTIONS,
     AUDIT_SOURCES,
     ACTIVITY_SCOPES,
     PERMISSIONS,

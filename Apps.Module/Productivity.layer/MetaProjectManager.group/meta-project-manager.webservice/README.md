@@ -41,6 +41,12 @@ Um controller por área, espelhando os `src/APIs/*.api.json`: `Projects`,
 `items` (CRUD+move+status+links) · `comments` · `attachments` (+`/download`, `typeResponse:file`) ·
 `users` · `agents` (+`/sessions`, confirm/reject/close) · `activity` · `reports/*`.
 
+Coordenação multiagente: **`GET /agent-presence`** (quem está trabalhando agora —
+itens e pacotes reivindicados, foco e último sinal de cada sessão),
+**`GET|POST /agent-notices`** (avisos entre sessões; o POST deixa o humano falar
+com um agente pelo mesmo canal) e **`GET /environment-actions`** (quem subiu ou
+derrubou o quê no ambiente compartilhado).
+
 Realtime (spec §8.2): **`GET /events?since=<cursor>`** (polling do browser, retorna
 `{ cursor, events }`) e **`ws /events/stream`** (push; `method:"ws"` → `(ws, params)`).
 No desktop, o push vem do GUI-host por IPC (ver `meta-project-manager-gui.service`).

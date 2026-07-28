@@ -944,7 +944,7 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "list_items",
-            description: "Lista itens do projeto com filtros (status, tipo, responsável, prioridade, milestone, sprint, horizon, label, área, esforço, confiança, texto…). Retorno ENXUTO (sem a descrição longa) e PAGINADO: `{ items, total, limit, offset, hasMore }` — MESMO contrato do search_items. Peça campos específicos com `fields`; `sort:\"triage\"` ordena por valor e esforço (leitura de inbox/backlog).",
+            description: "Lista itens do projeto com filtros (status, tipo, responsável, prioridade, milestone, sprint, horizon, label, área, esforço, confiança, texto…). Retorno ENXUTO (sem a descrição longa) e PAGINADO: `{ items, total, limit, offset, hasMore }` — MESMO contrato do search_items. Peça campos específicos com `fields`; `sort:\"triage\"` ordena por valor e esforço (leitura de inbox/backlog). FILA LIMPA: item com reivindicação VIVA de outra sessão NÃO vem (é o que `claim_item` promete); passe `includeClaimed: true` para ver o quadro completo — aí cada item tomado traz `claim`.",
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"),
                 type: S.enum(WORK_ITEM_TYPES, "Filtrar por tipo"),
@@ -965,6 +965,7 @@ const BuildTools = ({ store, actor }) => {
                 value: S.enum(VALUES, "Valor"),
                 text: S.str("Busca textual"),
                 sort: S.enum(["order","created","priority","value","effort","triage"], "Ordenação (padrão: order). triage = mais valor e menos esforço primeiro."),
+                includeClaimed: S.bool("Mostrar também os itens reivindicados por outra sessão (padrão: false — item tomado sai da fila)"),
                 ...FIELDS_FIELD
             }, ["project"]),
             handler: async (i) => {
@@ -974,7 +975,8 @@ const BuildTools = ({ store, actor }) => {
                     project: i.project, type: i.type, status: i.status, parent: i.parent, board: i.board,
                     assignee: i.assignee, priority: i.priority, milestone: i.milestone, sprint: i.sprint,
                     horizon: i.horizon, text: i.text, package: i.package, release: i.release,
-                    label: i.label, area: i.area, effort: i.effort, confidence: i.confidence, value: i.value
+                    label: i.label, area: i.area, effort: i.effort, confidence: i.confidence, value: i.value,
+                    includeClaimed: i.includeClaimed, actor
                 }
                 const [rows, total] = await Promise.all([
                     store.ListItems({ ...filters, limit, offset, sort: i.sort }),
@@ -1243,6 +1245,7 @@ const BuildTools = ({ store, actor }) => {
                 effort: S.enum(EFFORTS, "Estimativa (xs|s|m|l|xl)"),
                 confidence: S.enum(CONFIDENCE, "Confiança (low|medium|high)"),
                 release: S.str("Filtrar pelo release/tag do item (ex.: v0.0.29)"),
+                includeClaimed: S.bool("Incluir itens reivindicados por outra sessão (padrão: false)"),
                 fields: { type: "array", items: { type: "string" }, description: "Projeção: SÓ estes campos por item (ex.: [\"key\",\"title\",\"statusKey\"]). Omitido = resumo padrão (sem a descrição)." },
                 limit: S.num("Máx. de itens por página (padrão 50)"),
                 offset: S.num("Deslocamento para paginar (padrão 0)")
@@ -1250,7 +1253,7 @@ const BuildTools = ({ store, actor }) => {
             handler: async (i) => {
                 const limit = Number(i.limit) > 0 ? Number(i.limit) : 50
                 const offset = Number(i.offset) > 0 ? Number(i.offset) : 0
-                const filters = { text: i.text, project: i.project, type: i.type, status: i.status, assignee: i.assignee, area: i.area, label: i.label, effort: i.effort, confidence: i.confidence, release: i.release }
+                const filters = { text: i.text, project: i.project, type: i.type, status: i.status, assignee: i.assignee, area: i.area, label: i.label, effort: i.effort, confidence: i.confidence, release: i.release, includeClaimed: i.includeClaimed, actor }
                 const [rows, total] = await Promise.all([
                     store.ListItems({ ...filters, limit, offset, sort: "created" }),
                     store.CountItems(filters)
@@ -1584,6 +1587,12 @@ const BuildTools = ({ store, actor }) => {
                 // Parte já é imposta por gate (iniciar/concluir tarefa); as demais são
                 // disciplina que o agente carrega sem instrução externa.
                 workflowPolicies: [
+                    "Ao entrar num projeto, pergunte quem mais está ativo (who_is_here) ANTES de escolher trabalho.",
+                    "Pegue trabalho reivindicando (next_task, ou report_ready + claim_item) e relate a cada virada de etapa (report_progress é o heartbeat).",
+                    "Em checkout compartilhado, `git add` por caminho explícito — nunca -A: o commit sai com arquivo de outra sessão dentro.",
+                    "Mexeu em ambiente compartilhado (subir/derrubar serviço, reprovisionar), registre com record_environment_action.",
+                    "Encostou no trabalho de outra sessão, avise ela (send_agent_message) — mural não notifica ninguém.",
+                    "Ao terminar, release_item e end_session: sem isso seus itens ficam fora da fila dos outros até expirar.",
                     "Nunca mova um item para done/completed sem aprovação humana explícita — deixe em review e proponha (imposto por gate no set_item_status).",
                     "Nunca dê algo por entregue nem registre commit/PR/release sem autorização explícita do humano.",
                     "Higiene de board antes de trabalhar: o item deve estar num board, com planejamento (milestone/sprint) e movido para in-progress (iniciar exige aprovação humana).",
@@ -1651,12 +1660,95 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "claim_item",
-            description: "REIVINDICA um item antes de trabalhar nele: enquanto sua reivindicação vive, os outros agentes veem que ele está tomado e ele SAI da fila deles. Faça isto ANTES de começar (e antes de pedir para iniciar a tarefa). A reivindicação tem validade e é renovada por `report_progress` — se sua sessão morrer, ela expira sozinha e o item volta à fila (nada fica travado para sempre). Item já reivindicado por outra sessão responde `ITEM_CLAIMED`: pegue outro. LIVRE.",
+            description: "REIVINDICA um item antes de trabalhar nele: enquanto sua reivindicação vive, os outros agentes veem que ele está tomado e ele SAI da fila deles (list_items/search_items/report_ready deixam de oferecê-lo). Faça isto ANTES de começar (e antes de pedir para iniciar a tarefa). A reivindicação tem validade e é renovada por `report_progress` — se sua sessão morrer, ela expira sozinha e o item volta à fila. Item já reivindicado por outra sessão responde `ITEM_CLAIMED`: pegue outro. Declare em `packages` os pacotes que você vai TOCAR: a resposta avisa (`warnings`) se outra sessão já está com um deles — a colisão real entre agentes é de ARQUIVO, não de card. LIVRE.",
             inputSchema: Obj({
                 item: S.str("Item (id|key)"),
-                minutes: S.num("Validade em minutos (padrão 45)")
+                minutes: S.num("Validade em minutos (padrão 45)"),
+                packages: { type: "array", items: { type: "string" }, description: "Pacotes que você vai tocar (ref|namespace|nome) — vira aviso de colisão para as outras sessões" }
             }, ["item"]),
-            handler: (i) => store.ClaimItem(A({ item: i.item, minutes: i.minutes }))
+            handler: (i) => store.ClaimItem(A({ item: i.item, minutes: i.minutes, packages: i.packages }))
+        },
+        {
+            name: "next_task",
+            description: "PEGUE a próxima tarefa da fila: escolhe o item mais desimpedido (mesma regra do `report_ready`) e JÁ REIVINDICA para você, numa chamada. Use isto em vez de ler a fila e reivindicar depois — entre as duas chamadas cabe outro agente pegando o mesmo item. Devolve o item completo, a validade da reivindicação, quem mais está por aqui (`alsoHere`) e avisos de pacote em disputa. Fila vazia ou toda tomada → `item` ausente e uma mensagem dizendo qual dos dois. Iniciar a tarefa (in-progress) continua exigindo aprovação humana. LIVRE.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                minutes: S.num("Validade da reivindicação em minutos (padrão 45)"),
+                area: S.str("Só tarefas desta área"),
+                label: S.str("Só tarefas com este rótulo"),
+                type: S.enum(WORK_ITEM_TYPES, "Só tarefas deste tipo")
+            }, ["project"]),
+            handler: (i) => store.NextTask(A({ project: i.project, minutes: i.minutes, area: i.area, label: i.label, type: i.type }))
+        },
+        {
+            name: "who_is_here",
+            description: "QUEM MAIS ESTÁ TRABALHANDO AQUI AGORA. Primeira pergunta ao entrar num projeto: devolve, numa chamada, as sessões vivas — provedor/modelo, objetivo, foco atual, presença (here|idle), os ITENS que cada uma reivindicou, os PACOTES em jogo e o último progresso relatado. É a leitura que evita descobrir a companhia colidindo com ela. LIVRE.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key) — restringe a quem tem trabalho aqui"),
+                includeGone: S.bool("Incluir também as sessões que já saíram (padrão: false)")
+            }),
+            handler: (i) => store.WhoIsHere(A({ project: i.project, includeGone: i.includeGone }))
+        },
+        {
+            name: "send_agent_message",
+            description: "Manda um recado DIRIGIDO a outra sessão de agente — ela o recebe na próxima resposta dela (em `_notices`), sem precisar consultar nada. Use quando a informação é urgente e específica: \"varri um arquivo teu para o meu commit\", \"subi o orquestrador, não derrube\", \"estou neste pacote, espere antes de reprovisionar\". Endereço: `toSession` (id, veja `who_is_here`) ou `item` (fala com quem reivindicou aquele item). Não é mural: nota de projeto é para contexto, isto é para quem PRECISA saber agora.",
+            inputSchema: Obj({
+                toSession: S.str("Sessão alvo (id) — veja who_is_here"),
+                item: S.str("Ou o item (id|key): fala com a sessão que o reivindicou"),
+                project: S.str("Projeto de contexto (id|slug|key)"),
+                body: S.str("O recado, direto e curto")
+            }, ["body"]),
+            handler: (i) => store.SendSessionMessage(A({ toSession: i.toSession, item: i.item, project: i.project, body: i.body }))
+        },
+        {
+            name: "agent_inbox",
+            description: "Seus avisos entre sessões (quem entrou, quem saiu, recados dirigidos a você, mexidas em ambiente compartilhado). Normalmente você NÃO precisa chamar: os avisos novos já viajam em `_notices` nas respostas das outras tools. Use para reler o histórico ou conferir o que chegou enquanto você não estava escrevendo. LIVRE.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                kind: S.enum(["joined", "left", "message", "environment", "item-touched"], "Só avisos deste tipo"),
+                unreadOnly: S.bool("Só os ainda não lidos"),
+                limit: S.num("Máx. de avisos (padrão 30)")
+            }),
+            handler: async (i) => {
+                const session = await store.FindSessionByIdentity((actor && actor.session) || {}).catch(() => undefined)
+                return store.ListNotices({ session: session && session.id, project: i.project, kind: i.kind, unreadOnly: i.unreadOnly, limit: i.limit })
+            }
+        },
+        {
+            name: "update_session_focus",
+            description: "Atualiza O QUE VOCÊ ESTÁ FAZENDO nesta sessão (`currentFocus`) e/ou o objetivo dela. Provedor e modelo NÃO mudam depois da liberação (identidade auditada), mas intenção muda o tempo todo: numa sessão você troca de foco várias vezes, e um objetivo congelado na entrada mostra você trabalhando em algo que abandonou horas atrás. `report_progress` já atualiza o foco sozinho — use esta tool quando o OBJETIVO da sessão mudou. LIVRE.",
+            inputSchema: Obj({
+                objective: S.str("O que você veio fazer (novo objetivo da sessão)"),
+                currentFocus: S.str("O que você está fazendo agora, em uma linha"),
+                sessionName: S.str("Nome curto da sessão na interface")
+            }),
+            handler: (i) => store.UpdateSessionFocus(A({ objective: i.objective, currentFocus: i.currentFocus, sessionName: i.sessionName }))
+        },
+        {
+            name: "record_environment_action",
+            description: "REGISTRA que você mexeu em recurso COMPARTILHADO: subiu/derrubou/reiniciou um serviço, reprovisionou um pacote, ocupou uma porta. Vira histórico consultável (`list_environment_actions`) E aviso entregue às outras sessões. Por que importa: o conflito entre agentes não é só de item e de arquivo — se outra sessão derruba o processo que você subiu no meio do seu ciclo, o trabalho quebra sem explicação. LIVRE.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                action: S.enum(["up", "down", "restart", "provision", "build", "other"], "O que você fez"),
+                target: S.str("Sobre o quê: serviço, processo, porta, pacote"),
+                note: S.str("Detalhe curto (por que, até quando, o que não derrubar)")
+            }, ["action", "target"]),
+            handler: (i) => store.RecordEnvironmentAction(A({ project: i.project, action: i.action, target: i.target, note: i.note }))
+        },
+        {
+            name: "list_environment_actions",
+            description: "O que subiu, caiu ou foi reprovisionado no ambiente compartilhado, e por quem. Leia antes de derrubar/reiniciar qualquer coisa: pode haver outra sessão dependendo daquele processo. LIVRE.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                limit: S.num("Máx. de registros (padrão 30)")
+            }),
+            handler: (i) => store.ListEnvironmentActions(A({ project: i.project, limit: i.limit }))
+        },
+        {
+            name: "end_session",
+            description: "ENCERRA sua sessão: libera na hora todos os itens que você reivindicou e avisa as outras sessões de que você saiu. Chame ao terminar o trabalho — sem isto sua saída só é notada por tempo (uma hora sem sinal), e até lá os seus itens ficam fora da fila dos outros sem ninguém trabalhando neles. Depois disto você não escreve mais nesta sessão.",
+            inputSchema: Obj({ note: S.str("Recado de saída (o que ficou pendente, o que não derrubar)") }),
+            handler: (i) => store.EndSession(A({ note: i.note }))
         },
         {
             name: "release_item",
@@ -1706,7 +1798,14 @@ const BuildTools = ({ store, actor }) => {
     const READ_ONLY_TOOLS = new Set([
         "roadmap", "project_status", "project_flow", "project_changes", "project_pulse",
         "ecosystem_index_status", "declare_session", "get_guidance", "report_blocked",
-        "report_overdue", "report_ready", "list_ecosystem_packages"
+        "report_overdue", "report_ready", "list_ecosystem_packages",
+        // Coordenação: saber quem está aqui e ler os próprios avisos é LEITURA —
+        // e é o que um agente parado no portão mais precisa fazer.
+        "who_is_here", "agent_inbox",
+        // Sobre a PRÓPRIA sessão: dizer no que está e sair não podem depender da
+        // liberação, senão uma sessão pendente que desiste fica presa esperando
+        // aprovação para se despedir.
+        "update_session_focus", "end_session"
     ])
     const IsReadOnlyTool = (name) =>
         READ_ONLY_TOOLS.has(name) || /^(list_|get_|search_)/.test(name)

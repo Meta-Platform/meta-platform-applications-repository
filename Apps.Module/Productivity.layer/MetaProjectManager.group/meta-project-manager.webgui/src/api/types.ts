@@ -346,6 +346,51 @@ export interface AgentSession {
     confirmedAt?: string | null
     closedAt?: string | null
     createdAt?: string
+    // Presença (MPMX3): `status` diz se a sessão PODE escrever; isto diz se ela
+    // ainda ESTÁ aí. Uma sessão liberada que morreu continua `active` para sempre.
+    presence?: "here" | "idle" | "gone" | string
+    currentFocus?: string
+    lastActivityAt?: string
+}
+
+// Uma sessão VIVA e o que ela está segurando — resposta de WhoIsHere. É o que
+// o humano lê para arbitrar quando duas sessões se atropelam.
+export interface AgentPresence {
+    sessionId: ID
+    isYou?: boolean
+    label: string
+    provider?: string
+    model?: string
+    sessionName?: string
+    objective?: string
+    currentFocus?: string
+    presence: "here" | "idle" | "gone" | string
+    lastActivityAt?: string
+    host?: string
+    workingDirectory?: string
+    branchName?: string
+    claimedItems: { key: string; title: string; statusKey: string; until?: string }[]
+    claimedPackages: string[]
+    lastProgress?: { at: string; phase?: string; note: string }
+}
+
+export interface AgentPresenceResult {
+    projectId?: ID
+    total: number
+    others: number
+    sessions: AgentPresence[]
+}
+
+// Aviso entregue entre sessões: entrada/saída, recado dirigido, ambiente.
+export interface AgentNotice {
+    id: ID
+    projectId?: ID
+    kind: "joined" | "left" | "message" | "environment" | "item-touched" | string
+    fromSessionId?: ID
+    toSessionId?: ID
+    body: string
+    readAt?: string | null
+    createdAt: string
 }
 
 // Detalhes da sessão do agente que originou um pedido de criação (forense).

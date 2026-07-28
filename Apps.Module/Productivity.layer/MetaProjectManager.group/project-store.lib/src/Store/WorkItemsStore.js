@@ -210,8 +210,30 @@ const WorkItemsStore = (ctx) => {
     // Monta a cláusula WHERE de itens a partir dos filtros. Extraída para ser
     // compartilhada por ListItems e CountItems — assim search_items devolve `total`
     // sem baixar todas as linhas (MPMX-2).
-    const _buildItemWhere = async ({ project, type, status, parent, board, assignee, text, priority, milestone, sprint, horizon, clarityState, effort, confidence, value, area, label, release, package: pkg } = {}) => {
+    const _buildItemWhere = async ({ project, type, status, parent, board, assignee, text, priority, milestone, sprint, horizon, clarityState, effort, confidence, value, area, label, release, package: pkg, includeClaimed, actor } = {}) => {
         const where = { deletedAt: null }
+        // ITEM TOMADO SAI DA FILA (MPMX3-22).
+        //
+        // `claim_item` sempre prometeu que o item reivindicado "SAI da fila dos
+        // outros", e a fila devolvia tudo — o segundo agente escolhia trabalho por
+        // aqui, pegava um item com dono e a reivindicação não protegia de nada.
+        // Fora ficam só as claims VIVAS de OUTRA sessão: a minha continua visível
+        // (preciso ver o que estou fazendo) e a expirada volta à fila sozinha.
+        // `includeClaimed: true` mostra tudo, para quem quer o quadro completo.
+        if(!includeClaimed){
+            const mySessionId = await _sessionIdOf(actor).catch(() => undefined)
+            where[Op.and] = [
+                ...(where[Op.and] || []),
+                {
+                    [Op.or]: [
+                        { claimedBySessionId: null },
+                        { claimExpiresAt: null },
+                        { claimExpiresAt: { [Op.lte]: new Date() } },
+                        ...(mySessionId ? [{ claimedBySessionId: mySessionId }] : [])
+                    ]
+                }
+            ]
+        }
         // "o que está aberto no meta-project-manager.webgui?"
         if(pkg) where.id = { [Op.in]: await store.ItemIdsByPackage(pkg) }
         if(project) where.projectId = (await store.ResolveProject(project)).id
@@ -271,6 +293,13 @@ const WorkItemsStore = (ctx) => {
         // Contadores para os cards (clipe de anexos, balão de comentários).
         const { att, com } = await _countsByItem(list.map((i) => i.id))
         list.forEach((i) => { i.attachmentCount = att[i.id] || 0; i.commentCount = com[i.id] || 0 })
+        // Reivindicação viva no resumo: quando o chamador pede para ver os itens
+        // tomados (`includeClaimed`), ele precisa VER que estão tomados — antes,
+        // o campo só aparecia para quem adivinhasse o nome `claimedBySessionId`.
+        rows.forEach((row, index) => {
+            const claim = _claimOf(row)
+            if(claim) list[index].claim = claim
+        })
         return list
     }
 
@@ -399,7 +428,44 @@ const WorkItemsStore = (ctx) => {
         return undefined
     }
 
-    const ClaimItem = async ({ item, minutes, actor } = {}) => {
+    /**
+     * Pacotes que OUTRA sessão já está segurando e que este item também toca.
+     *
+     * O claim protege o item no board; a colisão real acontece nos ARQUIVOS. Duas
+     * sessões podem reivindicar itens diferentes e editar o mesmo pacote sem
+     * nenhum aviso — foi o que aconteceu (MPMX3-18). Isto INFORMA, não bloqueia:
+     * às vezes trabalhar no mesmo pacote é legítimo, e o que faltava era saber.
+     */
+    const _packageCollisions = async ({ item, sessionId }) => {
+        if(!store.ListItemPackages) return []
+        const mine = await store.ListItemPackages({ item: item.id }).catch(() => [])
+        const myNames = mine.map((p) => p.ref || p.namespace || p.packageName).filter(Boolean)
+        if(!myNames.length) return []
+
+        const rows = await WorkItem.findAll({
+            where: {
+                id: { [Op.ne]: item.id }, deletedAt: null,
+                claimExpiresAt: { [Op.gt]: new Date() }
+            },
+            attributes: ["id", "key", "claimedBySessionId"]
+        })
+        // Dono diferente do meu, e dono existente: o filtro fica em JS porque
+        // `<> NULL` em SQL é NULL (não casa), e a lista de itens com claim viva
+        // é curta por natureza.
+        const others = rows.filter((r) => r.claimedBySessionId && r.claimedBySessionId !== sessionId)
+        const collisions = []
+        for(const other of others){
+            const list = await store.ListItemPackages({ item: other.id }).catch(() => [])
+            for(const pkg of list){
+                const name = pkg.ref || pkg.namespace || pkg.packageName
+                if(name && myNames.includes(name) && !collisions.some((c) => c.package === name && c.itemKey === other.key))
+                    collisions.push({ package: name, itemKey: other.key, sessionId: other.claimedBySessionId })
+            }
+        }
+        return collisions
+    }
+
+    const ClaimItem = async ({ item, minutes, packages, actor } = {}) => {
         const instance = await ResolveItem(item)
         await store.AssertProjectWritable({ project: instance.projectId })
         const sessionId = await _sessionIdOf(actor)
@@ -412,12 +478,75 @@ const WorkItemsStore = (ctx) => {
                 `Item já reivindicado por outra sessão até ${new Date(current.expiresAt).toISOString()}. Pegue outro da fila.`,
                 { itemId: instance.id, claim: current })
 
+        // Declarar os pacotes em jogo faz parte de reivindicar: é o que permite ao
+        // próximo agente saber onde NÃO encostar (e ao `git add` sair por caminho).
+        if(Array.isArray(packages) && packages.length && store.AddItemPackage)
+            for(const ref of packages)
+                await store.AddItemPackage({ item: instance.id, package: ref, actor }).catch(() => undefined)
+
         const ttl = Number(minutes) > 0 ? Number(minutes) : CLAIM_DEFAULT_MINUTES
         const expiresAt = new Date(Date.now() + ttl * 60000)
         await instance.update({ claimedBySessionId: sessionId, claimedAt: new Date(), claimExpiresAt: expiresAt })
         await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "claim", actor, metadata: { expiresAt, minutes: ttl } })
         emit("item.updated", Serialize(instance))
-        return { ...Serialize(instance), claim: _claimOf(instance) }
+
+        const collisions = await _packageCollisions({ item: instance, sessionId }).catch(() => [])
+        const warnings = collisions.map((c) =>
+            `O pacote ${c.package} também está em jogo em ${c.itemKey}, reivindicado por outra sessão. Combine antes de editar — e use \`git add <caminho>\`, nunca -A.`)
+        return { ...Serialize(instance), claim: _claimOf(instance), packageCollisions: collisions, warnings: warnings.length ? warnings : undefined }
+    }
+
+    /**
+     * PEGAR a próxima tarefa: escolher e reivindicar num passo só.
+     *
+     * Escolher pela fila e reivindicar depois deixa uma janela entre as duas
+     * chamadas — e é exatamente nela que dois agentes pegam o mesmo item. Aqui a
+     * escolha percorre a fila de prontos e para no primeiro item que a
+     * reivindicação REALMENTE conseguiu tomar: quem perder a corrida recebe
+     * ITEM_CLAIMED internamente e segue para o próximo, sem nada devolvido a dois
+     * donos.
+     */
+    const NextTask = async ({ project, minutes, area, label, type, actor } = {}) => {
+        const sessionId = await _sessionIdOf(actor)
+        if(!sessionId)
+            throw new DomainError("VALIDATION_ERROR", "Só uma sessão de agente pega tarefa da fila.", { field: "actor" })
+
+        // A fila é a MESMA do report_ready (desimpedido: sem bloqueio, dependências
+        // fechadas, entrega liberada) — não uma segunda regra que diverge dela.
+        const ready = await store.Ready({ project, limit: 50 })
+        const queue = (ready && ready.items) || ready || []
+        for(const candidate of queue){
+            if(area && candidate.area !== area) continue
+            if(label && !(candidate.labels || []).includes(label)) continue
+            if(type && candidate.type !== type) continue
+            const instance = await ResolveItem(candidate.key || candidate.id).catch(() => undefined)
+            if(!instance) continue
+            const claim = _claimOf(instance)
+            if(claim && claim.sessionId !== sessionId) continue
+            const taken = await ClaimItem({ item: instance.id, minutes, actor }).catch((e) => {
+                if(e.code === "ITEM_CLAIMED") return undefined
+                throw e
+            })
+            if(!taken) continue
+            const item = await GetItem({ item: instance.id })
+            const here = store.WhoIsHere ? await store.WhoIsHere({ project, actor }).catch(() => undefined) : undefined
+            return {
+                item, claim: taken.claim,
+                warnings: taken.warnings,
+                packageCollisions: taken.packageCollisions,
+                // Quem mais está por aqui vem junto: pegar tarefa é o momento em
+                // que essa informação muda a decisão, não depois.
+                alsoHere: here ? here.sessions.filter((s) => !s.isYou).map((s) =>
+                    `${s.label}${s.claimedItems.length ? ` em ${s.claimedItems.map((i) => i.key).join(", ")}` : ""}`) : undefined,
+                queueSize: queue.length
+            }
+        }
+        return {
+            item: undefined, queueSize: queue.length,
+            message: queue.length
+                ? "Todo item pronto da fila já está reivindicado por outra sessão. Veja `who_is_here` e combine, ou refine algo do backlog."
+                : "A fila de prontos está vazia: nada desimpedido para pegar agora."
+        }
     }
 
     // Renovar é o heartbeat: quem está reportando progresso está vivo.
@@ -514,6 +643,12 @@ const WorkItemsStore = (ctx) => {
             const done = await _isDoneStatus(instance, status)
             const start = START_STATUS_SET.has(status)
             if(start || done){
+                // MARCA o status PEDIDO antes de bater no gate (MPMX3-24). O gate
+                // lança, então o que vier depois não roda; e sem esta marca o
+                // board segue mostrando `backlog` enquanto o agente já trabalha —
+                // é o que faz um segundo agente pegar o mesmo item.
+                await instance.update({ pendingStatusKey: status, pendingStatusAt: new Date() })
+                emit("item.updated", Serialize(instance))
                 await store.GateAgentAction({
                     actionName: "set-status", type: "work-item", targetId: instance.id,
                     projectId: instance.projectId, payload: { item: instance.id, status }, risk: "normal",
@@ -526,7 +661,9 @@ const WorkItemsStore = (ctx) => {
         }
 
         const doneStatuses = new Set(["done", "archived", "completed"])
-        const patch = { statusKey: status }
+        // Chegou aqui = a mudança aconteceu de fato (aprovada, ou por humano):
+        // o pedido pendente deixa de existir.
+        const patch = { statusKey: status, pendingStatusKey: null, pendingStatusRequestId: null, pendingStatusAt: null }
         // Um item concluído não pode continuar "bloqueado": limpa o motivo residual
         // para não aparecer em "Requer atenção" / contagem de bloqueados.
         if(doneStatuses.has(status)){ patch.completedAt = new Date(); patch.progress = 100; patch.blockedReason = null }
@@ -765,7 +902,7 @@ const WorkItemsStore = (ctx) => {
         ListProjectAreas, ListProjectLabels,
         CreateItem, ListItems, CountItems, GetItem, UpdateItem, SetStatus, Assign,
         MoveItem, MoveToBoard, ReorderItem, ConvertItem, ConvertIdea, SetBlocked, CompleteEpic,
-        ClaimItem, RenewItemClaim, ReleaseItem, GetItemClaim,
+        ClaimItem, RenewItemClaim, ReleaseItem, GetItemClaim, NextTask,
         LinkItem, UnlinkItem, DeleteItem,
         AddChecklistItem, UpdateChecklistItem, RemoveChecklistItem,
         AddAcceptanceCriteria, UpdateAcceptanceCriteria, RemoveAcceptanceCriteria

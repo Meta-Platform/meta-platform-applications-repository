@@ -43,7 +43,13 @@ const ServeCommand = async ({ args = {}, startupParams, params }) => {
             version: pkg.version || "0.0.1",
             tools,
             logger,
-            instructions: INSTRUCTIONS
+            instructions: INSTRUCTIONS,
+            // AVISOS ENTREGUES, não consultados: entrou/saiu um agente, chegou um
+            // recado dirigido, alguém mexeu no ambiente. Vai junto de CADA resposta
+            // porque o agente que precisa da informação é justamente o que não sabe
+            // que precisa perguntar (MPMX3-16/19). Falhar aqui não pode derrubar a
+            // resposta da tool — o aviso continua pendente para a próxima.
+            collectNotices: () => store.CollectNotices({ actor, limit: 10 }).catch(() => [])
         })
         server.Start()
     } catch(e){

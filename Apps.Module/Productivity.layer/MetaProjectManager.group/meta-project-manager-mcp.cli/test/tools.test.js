@@ -696,3 +696,74 @@ test("MPMX2-17 waitApproval:false devolve o pedido sem esperar; transição livr
     assert.equal(livre.statusKey, "review")
     assert.equal(livre.pendingFeedbackCount, 0)
 })
+
+// ─────────── MPMX3: coordenação multiagente na camada MCP ───────────
+
+test("MPMX3 tools de coordenação existem e as de leitura não passam pelo portão", () => {
+    for(const name of ["who_is_here", "next_task", "send_agent_message", "agent_inbox",
+        "update_session_focus", "record_environment_action", "list_environment_actions", "end_session"])
+        assert.ok(byName(name), `tool ${name} deveria existir`)
+    // As de coordenação precisam dizer POR QUE existem: é a descrição que o
+    // agente lê para saber que elas resolvem um problema que ele ainda não teve.
+    for(const name of ["who_is_here", "next_task", "send_agent_message", "end_session"])
+        assert.ok(byName(name).description.length > 120, `tool ${name} sem descrição útil`)
+})
+
+test("MPMX3-22 list_items não oferece item reivindicado por outra sessão", async () => {
+    const it = await store.CreateItem({ project: "MCP", type: "task", title: "Disputado" })
+    const outra = { source: "agent", session: { provider: "codex", model: "gpt-6", traceId: "MCP-OUTRO" } }
+    await store.ClaimItem({ item: it.id, actor: outra })
+
+    const fila = await byName("list_items").handler({ project: "MCP", limit: 200 })
+    assert.ok(!fila.items.some((i) => i.id === it.id), "item com dono sai da fila")
+
+    const tudo = await byName("list_items").handler({ project: "MCP", includeClaimed: true, limit: 200 })
+    const tomado = tudo.items.find((i) => i.id === it.id)
+    assert.ok(tomado, "includeClaimed mostra o quadro completo")
+    assert.ok(tomado.claim, "e a reivindicação vem no resumo padrão, sem precisar pedir o campo")
+})
+
+test("MPMX3 who_is_here descreve a sessão vizinha, e next_task pega com dono", async () => {
+    const it = await store.CreateItem({ project: "MCP", type: "task", title: "Para pegar", statusKey: "ready" })
+    const aqui = await byName("who_is_here").handler({ project: "MCP" })
+    assert.ok(Array.isArray(aqui.sessions))
+    assert.ok(aqui.sessions.some((s) => s.model === "gpt-6"), "a sessão que reivindicou algo aparece")
+
+    const pego = await byName("next_task").handler({ project: "MCP" })
+    if(pego.item){
+        assert.ok(pego.claim && pego.claim.expiresAt, "pegar tarefa já reivindica")
+        const claim = await store.GetItemClaim({ item: pego.item.id })
+        assert.ok(claim, "a reivindicação está viva no store")
+    } else {
+        assert.ok(pego.message, "fila vazia explica o porquê")
+    }
+    assert.ok(it.id)
+})
+
+test("MPMX3-19 recado dirigido e caixa de entrada da sessão", async () => {
+    const it = await store.CreateItem({ project: "MCP", type: "task", title: "Alvo do recado" })
+    const outra = { source: "agent", session: { provider: "codex", model: "gpt-6", traceId: "MCP-OUTRO" } }
+    await store.ClaimItem({ item: it.id, actor: outra })
+
+    await byName("send_agent_message").handler({ item: it.key, project: "MCP", body: "não reprovisione agora" })
+    const recebidos = await store.CollectNotices({ actor: outra })
+    assert.ok(recebidos.some((n) => /não reprovisione agora/.test(n.body)), "o alvo recebe sem ter perguntado")
+
+    const inbox = await byName("agent_inbox").handler({ limit: 10 })
+    assert.ok(Array.isArray(inbox), "a caixa de entrada relê o histórico")
+})
+
+test("MPMX3-17 foco da sessão muda; identidade, não", async () => {
+    const atualizada = await byName("update_session_focus").handler({ currentFocus: "revisando o PresenceStore" })
+    assert.equal(atualizada.currentFocus, "revisando o PresenceStore")
+    const aqui = await byName("who_is_here").handler({})
+    const eu = aqui.sessions.find((s) => s.isYou)
+    assert.ok(eu, "a própria sessão aparece na presença")
+    assert.equal(eu.currentFocus, "revisando o PresenceStore")
+})
+
+test("MPMX3-21 ação de ambiente vira registro consultável", async () => {
+    await byName("record_environment_action").handler({ project: "MCP", action: "up", target: "service-orchestrator", note: "não derrube" })
+    const lista = await byName("list_environment_actions").handler({ project: "MCP" })
+    assert.ok(lista.some((n) => /service-orchestrator/.test(n.body)))
+})

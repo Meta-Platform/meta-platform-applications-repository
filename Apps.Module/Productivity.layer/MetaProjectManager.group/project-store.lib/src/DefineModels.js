@@ -124,6 +124,13 @@ const DefineModels = (sequelize) => {
         claimedBySessionId: { type: DataTypes.STRING },
         claimedAt:          { type: DataTypes.DATE },
         claimExpiresAt:     { type: DataTypes.DATE },
+        // Status PEDIDO e ainda não aprovado (MPMX3-24). Iniciar/concluir por
+        // agente vira um pedido pendente; sem isto o board segue mostrando
+        // `backlog` enquanto o agente já trabalha, e o segundo agente pega o
+        // mesmo item por achar que ninguém está nele.
+        pendingStatusKey:   { type: DataTypes.STRING },
+        pendingStatusRequestId: { type: DataTypes.STRING },
+        pendingStatusAt:    { type: DataTypes.DATE },
         deletedAt:          { type: DataTypes.DATE }
     }, { tableName: "work_items", indexes: [
         { fields: ["projectId"] }, { fields: ["boardId"] }, { fields: ["parentId"] },
@@ -225,6 +232,10 @@ const DefineModels = (sequelize) => {
         branchName:        { type: DataTypes.STRING },
         commitHash:        { type: DataTypes.STRING },
         objective:         { type: DataTypes.TEXT },
+        // O que a sessão está fazendo AGORA (uma linha). Diferente de `objective`,
+        // que é o que ela veio fazer: o foco muda várias vezes na mesma sessão, e
+        // um objetivo congelado na entrada mente sobre o presente (MPMX3-17).
+        currentFocus:      { type: DataTypes.STRING },
         // Chave de identidade para find-or-create por identidade inline
         // (provider + externalSessionId||traceId). Única quando presente.
         identityKey:       { type: DataTypes.STRING },
@@ -240,8 +251,50 @@ const DefineModels = (sequelize) => {
         lastActivityAt:     { type: DataTypes.DATE },
         status:            { type: DataTypes.STRING, allowNull: false, defaultValue: "pending_confirmation" },
         confirmedAt:       { type: DataTypes.DATE },
-        closedAt:          { type: DataTypes.DATE }
-    }, { tableName: "agent_sessions", indexes: [{ fields: ["agentUserId"] }, { fields: ["status"] }, { fields: ["identityKey"] }] })
+        closedAt:          { type: DataTypes.DATE },
+        // ── PRESENÇA (MPMX3-15/16) ────────────────────────────────────────────
+        // `status` responde "esta sessão pode escrever?" (é o gate). Presença
+        // responde outra pergunta: "ela ainda está aí?". São eixos distintos —
+        // uma sessão liberada que morreu no meio continua `active` para sempre,
+        // e é justamente ela que faz o quadro mentir para os outros agentes.
+        // here → idle (sem atividade há IDLE_MINUTES) → gone (saiu ou sumiu).
+        presence:          { type: DataTypes.STRING, allowNull: false, defaultValue: "here" },
+        presenceChangedAt: { type: DataTypes.DATE },
+        // Cursor de leitura dos avisos: até onde esta sessão já foi informada.
+        // Um aviso não lido é reentregue; lido, não volta (ver AgentNotice).
+        noticeCursorAt:    { type: DataTypes.DATE },
+        // Quando esta sessão foi avisada, pela primeira vez, de que havia
+        // companhia no workspace. Só acontece uma vez por sessão.
+        companyWarnedAt:   { type: DataTypes.DATE }
+    }, { tableName: "agent_sessions", indexes: [{ fields: ["agentUserId"] }, { fields: ["status"] }, { fields: ["identityKey"] }, { fields: ["presence"] }] })
+
+    /**
+     * AVISO entre sessões — o que uma sessão precisa saber SEM ter perguntado.
+     *
+     * O mural (`ActivityNote`) já existia e não resolve: quem não lista as notas
+     * nunca fica sabendo, e o caso que motiva isto é justamente o agente que não
+     * sabe que precisa perguntar. Aqui o aviso é ENTREGUE — a camada MCP o
+     * anexa (`_notices`) à próxima resposta da sessão alvo.
+     *
+     * `toSessionId` nulo = broadcast (entra para toda sessão viva cujo cursor
+     * ainda não passou por ele); preenchido = mensagem dirigida, que só some
+     * quando a alvo confirma (`readAt`), no mesmo ciclo do feedback humano.
+     *
+     * kind: joined | left | message | environment | item-touched
+     */
+    const AgentNotice = sequelize.define("AgentNotice", {
+        id:             idField,
+        projectId:      { type: DataTypes.STRING },
+        kind:           { type: DataTypes.STRING, allowNull: false, defaultValue: "message" },
+        fromSessionId:  { type: DataTypes.STRING },
+        toSessionId:    { type: DataTypes.STRING },
+        body:           { type: DataTypes.TEXT, allowNull: false },
+        metadata:       { type: DataTypes.JSON, defaultValue: {} },
+        readAt:         { type: DataTypes.DATE },
+        readBySessionId:{ type: DataTypes.STRING }
+    }, { tableName: "agent_notices", indexes: [
+        { fields: ["projectId"] }, { fields: ["toSessionId"] }, { fields: ["kind"] }, { fields: ["createdAt"] }
+    ] })
 
     // Pedido de APROVAÇÃO feito por um agente. Generaliza o antigo "creation request":
     // toda AÇÃO sensível de agente (criar projeto/board/milestone/sprint, ou DELETAR
@@ -580,7 +633,7 @@ const DefineModels = (sequelize) => {
     return {
         Project, Board, BoardColumn, WorkItem, WorkItemLink,
         WorkItemChecklistItem, WorkItemAcceptanceCriteria,
-        Attachment, Comment, User, AgentProfile, AgentSession,
+        Attachment, Comment, User, AgentProfile, AgentSession, AgentNotice,
         CreationRequest, Milestone, Sprint, AuditEvent, ActivityNote, AgentFeedback,
         EcosystemPackage, WorkItemPackage, AppState, DocPage, DocPageAttachment, RiskItem, PlanningDoc,
         RiskItemLink, MilestoneLink

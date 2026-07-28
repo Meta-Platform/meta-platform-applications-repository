@@ -31,6 +31,16 @@ const AgentsController = (params) => {
     const ApproveCreation = async (p = {}) => Guard(async () => { await ctx.ready; return store.ApproveRequest({ request: p.requestId, actor: Actor(p) }) })
     const RejectCreation = async (p = {}) => Guard(async () => { await ctx.ready; return store.RejectRequest({ request: p.requestId, reason: p.reason, actor: Actor(p) }) })
 
+    // ── Coordenação entre agentes (MPMX3) ──────────────────────────────────
+    // A GUI precisa administrar o que o MCP passou a expor aos agentes: quem
+    // está presente agora, o que já foi avisado entre sessões e o que anda
+    // subindo/caindo no ambiente compartilhado. O humano é quem arbitra quando
+    // duas sessões se atropelam — sem enxergar isso, ele arbitra às cegas.
+    const WhoIsHere = async (p = {}) => Guard(async () => { await ctx.ready; return store.WhoIsHere({ project: p.project, includeGone: !!p.includeGone, actor: Actor(p) }) })
+    const ListAgentNotices = async (p = {}) => Guard(async () => { await ctx.ready; return store.ListNotices({ project: p.project, session: p.session, kind: p.kind, limit: p.limit }) })
+    const SendAgentNotice = async (p = {}) => Guard(async () => { await ctx.ready; return store.SendSessionMessage({ toSession: p.toSession, item: p.item, project: p.project, body: p.body, actor: Actor(p) }) })
+    const ListEnvironmentActions = async (p = {}) => Guard(async () => { await ctx.ready; return store.ListEnvironmentActions({ project: p.project, limit: p.limit, actor: Actor(p) }) })
+
     return {
         controllerName: "AgentsController",
         ListAgents,
@@ -45,7 +55,11 @@ const AgentsController = (params) => {
         ListCreationRequests,
         GetCreationRequest,
         ApproveCreation,
-        RejectCreation
+        RejectCreation,
+        WhoIsHere,
+        ListAgentNotices,
+        SendAgentNotice,
+        ListEnvironmentActions
     }
 }
 

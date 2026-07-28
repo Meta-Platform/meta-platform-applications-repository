@@ -44,10 +44,13 @@ const MutationResult = (data, view, entity) => {
 
 // Campos padrão de uma listagem de itens: identidade, estado e planejamento —
 // tudo menos a descrição longa, que é o que estourava o contexto.
+// `claim` e `pendingStatusKey` entram no padrão porque respondem "posso pegar
+// isto?": um item tomado por outra sessão, ou já pedido para in-progress e
+// esperando o humano, parecia livre para quem só via o statusKey (MPMX3-22/24).
 const ITEM_LIST_FIELDS = [
     "id", "key", "title", "shortDescription", "type", "statusKey", "priority",
     "assigneeUserId", "milestoneId", "sprintId", "horizon", "area", "labels",
-    "effort", "confidence", "value", "parentId", "updatedAt"
+    "effort", "confidence", "value", "parentId", "claim", "pendingStatusKey", "updatedAt"
 ]
 
 // Idem para PROJETOS. `description` e sobretudo `finalReport` (relatórios de

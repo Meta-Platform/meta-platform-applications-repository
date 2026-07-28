@@ -26,6 +26,7 @@ retorna métodos async; `sequelize.sync()` cria/atualiza o schema (sem migration
 | `Store/DocsStore.js` · `DocAttachmentsStore.js` · `DocsExportStore.js` | Wiki de páginas, anexos por página e exportação HTML/ZIP. |
 | `Store/CommentsStore.js` · `AttachmentsStore.js` · `FeedbackStore.js` | Comentários, anexos de item e a fila de feedback para agentes. |
 | `Store/AgentsStore.js` · `AuditStore.js` · `ActivityStore.js` | Sessões de agente, auditoria e notas de atividade. |
+| `Store/PresenceStore.js` | Coordenação entre sessões: quem está aqui, entrada/saída, avisos entregues e ambiente compartilhado. |
 | `Store/ReportsStore.js` · `AnalyticsStore.js` | Relatórios e métricas. |
 | `Store/EcosystemStore.js` | Catálogo de pacotes reais do ecossistema e o vínculo item↔pacote. |
 | `Store/UsersStore.js` · `ImportExportStore.js` | Usuários e importação/exportação. |
@@ -105,6 +106,29 @@ que um humano aprova (a ação é executada de fato) ou rejeita.
   (`SHORT_DESCRIPTION_MAX`, validado por `AssertShortDescription`), **aceita vazio** e **nunca
   grava fallback** derivado da `description`.
 
+## Coordenação entre agentes (`PresenceStore`)
+
+Vários agentes atuam no mesmo workspace — e no mesmo checkout — ao mesmo tempo. O que já
+existia respondia *quem pode escrever* (status da sessão) e *quem está com qual item*
+(claim). Faltavam duas coisas, e as duas custaram trabalho jogado fora:
+
+- **Presença**: `AgentSession.presence` (`here` → `idle` após 15 min → `gone` após 60) é um
+  eixo separado do `status`. Sessão liberada que morreu continua `active` para sempre, e é
+  ela que faz o quadro mentir. `SweepPresence()` roda **na leitura** (sem processo de fundo);
+  `WhoIsHere({ project })` devolve, numa chamada, cada sessão viva com os itens e **pacotes**
+  que segura, o foco atual e o último progresso relatado.
+- **Avisos entregues** (`AgentNotice`): entrada/saída de agente, recado dirigido de uma sessão
+  a outra e mexida em ambiente compartilhado. `CollectNotices({ actor })` é chamado pela camada
+  de transporte a cada resposta — o aviso **chega** em vez de esperar consulta, porque quem
+  precisa dele é justamente quem não sabe que precisa perguntar. Broadcast usa o cursor
+  `noticeCursorAt` da sessão (sem tabela de entrega N:M); dirigido fecha com `readAt`.
+
+Na mesma frente: `NextTask` (escolhe da fila de `Ready` **e reivindica** na mesma chamada,
+fechando a janela em que dois agentes pegam o mesmo item), `ListItems` que **omite** item com
+claim viva de outra sessão (`includeClaimed:true` mostra tudo, com `claim` no resumo),
+`WorkItem.pendingStatusKey` (status pedido e ainda não aprovado, para o board não mentir) e
+`RecordEnvironmentAction` (nota de tipo `environment`, consultável por tipo).
+
 ## Planejamento consultável
 
 O que classifica, dimensiona ou sequencia o trabalho é **campo**, não texto na descrição —
@@ -137,7 +161,8 @@ src/
   Store/
     ProjectsStore.js  BoardsStore.js  WorkItemsStore.js  PlanningStore.js
     AttachmentsStore.js  CommentsStore.js  UsersStore.js
-    AgentsStore.js  ActivityStore.js  ReportsStore.js  AuditStore.js  ImportExportStore.js
+    AgentsStore.js  ActivityStore.js  PresenceStore.js  ReportsStore.js  AuditStore.js
+    ImportExportStore.js
     DocsStore.js  RisksStore.js  PlanningDocsStore.js  EcosystemStore.js  FeedbackStore.js
 test/store.test.js            # node --test (spec §14.1)
 ```

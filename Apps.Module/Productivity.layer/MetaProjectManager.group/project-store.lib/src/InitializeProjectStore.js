@@ -22,6 +22,7 @@ const PlanningDocsStore = require("./Store/PlanningDocsStore")
 const FeedbackStore   = require("./Store/FeedbackStore")
 const EcosystemStore  = require("./Store/EcosystemStore")
 const ActivityStore   = require("./Store/ActivityStore")
+const PresenceStore   = require("./Store/PresenceStore")
 const ImportExport    = require("./Store/ImportExportStore")
 
 /**
@@ -115,7 +116,18 @@ const InitializeProjectStore = (options = {}) => {
         // Resumo de uma linha do item (o que o humano lê no card) e confiança na
         // estimativa — o esforço já existia em `effort`.
         ["work_items",        "shortDescription", "VARCHAR(255)"],
-        ["work_items",        "confidence",       "VARCHAR(255)"]
+        ["work_items",        "confidence",       "VARCHAR(255)"],
+        // Status pedido e ainda não aprovado (MPMX3-24): o board mostra que a
+        // tarefa já está sendo trabalhada, mesmo antes da aprovação chegar.
+        ["work_items",        "pendingStatusKey",       "VARCHAR(255)"],
+        ["work_items",        "pendingStatusRequestId", "VARCHAR(255)"],
+        ["work_items",        "pendingStatusAt",        "DATETIME"],
+        // Presença e avisos entre sessões de agente (MPMX3-15/16/17/19).
+        ["agent_sessions",    "currentFocus",     "VARCHAR(255)"],
+        ["agent_sessions",    "presence",         "VARCHAR(255) NOT NULL DEFAULT 'here'"],
+        ["agent_sessions",    "presenceChangedAt","DATETIME"],
+        ["agent_sessions",    "noticeCursorAt",   "DATETIME"],
+        ["agent_sessions",    "companyWarnedAt",  "DATETIME"]
     ]
     const MigrateAddedColumns = async () => {
         for(const [table, column, type] of ADDED_COLUMNS){
@@ -179,6 +191,10 @@ const InitializeProjectStore = (options = {}) => {
     // ActivityStore depende de resolvers (item/board/sprint/milestone/projeto) e
     // de EnsureDesktopUser — por isso entra depois do Object.assign acima.
     Object.assign(store, ActivityStore(ctx))
+    // PresenceStore fecha o ciclo entre sessões (quem está aqui, quem entrou/saiu,
+    // recado dirigido): usa AddActivityNote, ResolveItem/GetItemClaim e as sessões,
+    // então entra depois de Activity/WorkItems/Agents.
+    Object.assign(store, PresenceStore(ctx))
     // FeedbackStore usa ResolveItem/ResolveProject e AddComment (espelho do
     // feedback no item) — precisa do store já povoado.
     Object.assign(store, FeedbackStore(ctx))

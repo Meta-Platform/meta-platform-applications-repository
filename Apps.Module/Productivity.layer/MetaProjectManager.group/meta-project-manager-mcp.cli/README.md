@@ -203,6 +203,31 @@ topologicamente e alimenta `dependenciesMet`.
 `report_ready` (o que está desimpedido, ordenado por quanto cada item destrava) e
 `ecosystem_index_status` (estado do catálogo de pacotes, sem escrever nada).
 
+**Coordenar com os outros agentes:** vários trabalham no mesmo workspace — e no
+mesmo checkout — ao mesmo tempo.
+
+| Tool | Para quê |
+|---|---|
+| `who_is_here` | quem está trabalhando AGORA: sessões vivas, itens e **pacotes** reivindicados, foco atual e último progresso |
+| `next_task` | pega a próxima tarefa desimpedida **e já reivindica**, numa chamada (sem a corrida entre ler a fila e reivindicar) |
+| `claim_item` / `release_item` | dono declarado do item; `packages` avisa quem já está naquele pacote |
+| `report_progress` | heartbeat: renova a reivindicação e atualiza o foco visível da sessão |
+| `send_agent_message` | recado **dirigido** a outra sessão (por `toSession` ou pelo `item` que ela reivindicou) |
+| `agent_inbox` | relê os avisos recebidos |
+| `update_session_focus` | muda objetivo/foco sem tocar na identidade (que fica auditada) |
+| `record_environment_action` / `list_environment_actions` | quem subiu/derrubou/reprovisionou o quê |
+| `end_session` | sai limpo: libera os itens na hora e anuncia a saída |
+
+**A fila é limpa:** item com reivindicação **viva de outra sessão** não aparece em
+`list_items`, `search_items` nem `report_ready` — `includeClaimed:true` mostra o
+quadro completo, e aí cada item traz `claim`. Item pedido para `in-progress` e
+ainda não aprovado carrega `pendingStatusKey`, para o board não mentir enquanto a
+aprovação não vem.
+
+**Presença**: uma sessão é `here`, vira `idle` após 15 min sem ação e `gone` após
+60 min — a passagem para `gone` **anuncia a saída**, que é o caso de quem morre
+sem se despedir.
+
 ### Contrato de retorno
 
 | Forma | Regra |
@@ -211,6 +236,21 @@ topologicamente e alimenta `dependenciesMet`.
 | Listagem | envelope `{ items, total, limit, offset, returned, hasMore }`, sem textos longos; `fields` projeta colunas |
 | Lote | `{ total, succeeded, failed, results:[{ index, ok, … }] }` |
 | Estouro | a resposta **degrada** (campos longos fora, lista cortada) e carrega `_truncated` explicando — a tool não falha |
+| Avisos | quando há novidade entre sessões (entrou/saiu alguém, recado dirigido, ambiente), o envelope ganha `_notices` **fora de `data`** — inclusive nas respostas de erro |
+
+```jsonc
+{
+  "ok": true,
+  "data": { /* … resposta da tool … */ },
+  "_notices": [
+    "[entrou] codex/gpt-6 · 3f2a1c04 · migrar loaders",
+    "[msg de 3f2a1c04] varri um arquivo teu para o meu commit"
+  ]
+}
+```
+
+> O aviso é **entregue**, não consultado: o agente que precisa da informação é
+> justamente o que não sabe que precisa perguntar.
 
 O teto vive em `Server/ResponseGuard.js` e vale para **toda** tool, inclusive as
 que forem adicionadas depois; os envelopes ficam em `Server/Envelopes.js`.
