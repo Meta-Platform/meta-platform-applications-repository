@@ -528,6 +528,25 @@ const AgentsStore = (ctx) => {
         }
         subject.changes = _describeChanges({ actionName, type, payload, current: subject.current || {} })
 
+        // CONCLUIR: quem aprova precisa ver o que a definição de pronto ainda não
+        // cobre. Sem isto o modal mostrava título e descrição, e o critério em
+        // aberto passava batido (MPMX3-10).
+        if(actionName === "set-status" && Array.isArray(payload.unmetCriteria) && payload.unmetCriteria.length)
+            subject.unmetCriteria = payload.unmetCriteria
+
+        // LOTE de mudanças de status: o alvo não é um item, é o CONJUNTO. O
+        // pedido carrega a lista para a decisão continuar informada (MPMX3-8).
+        if(actionName === "set-status-batch" && Array.isArray(payload.detail)){
+            subject.kind = "item-batch"
+            subject.label = `${payload.detail.length} tarefa(s) → "${payload.status}"`
+            subject.batch = payload.detail.map((d) => ({
+                key: d.key, title: d.title, from: d.fromStatus, to: payload.status,
+                unmetCriteria: d.unmetCriteria || []
+            }))
+            subject.unmetCriteria = payload.detail.flatMap((d) => d.unmetCriteria || [])
+            subject.changes = []
+        }
+
         // Conclusão de épico: o pedido só é decidível se disser O QUE MAIS será
         // concluído junto — inclusive o que ainda está aberto.
         if(actionName === "complete-epic"){
@@ -584,6 +603,11 @@ const AgentsStore = (ctx) => {
         // session → não redispara o gate).
         "set-status:work-item": ({ payload, actor }) => store.SetStatus({ item: payload.item, status: payload.status, actor }),
 
+        // O MESMO, para o conjunto: uma decisão humana move todos os itens do
+        // pedido (MPMX3-8).
+        "set-status-batch:work-item": ({ payload, actor }) =>
+            store.SetStatusBatch({ items: payload.items, status: payload.status, actor }),
+
         // Conclusão de ÉPICO: uma aprovação fecha o épico e os filhos abertos.
         "complete-epic:work-item": ({ payload, actor }) => store.CompleteEpic({ item: payload.item, status: payload.status, actor }),
 
@@ -609,11 +633,46 @@ const AgentsStore = (ctx) => {
         return { ...actor, actorUserId: desktop.id, actorType: "desktop" }
     }
 
+    /**
+     * O pedido ainda faz sentido? (MPMX3-9)
+     *
+     * O pedido sobrevive ao `APPROVAL_TIMEOUT` do cliente: o agente desiste, segue
+     * por outro caminho e o item termina em `review`/`done`. Horas depois o humano
+     * encontra o pedido antigo na fila, aprova — e o item VOLTA para `in-progress`,
+     * desfazendo em silêncio o estado atual (aconteceu com 5 itens do projeto LOGS).
+     *
+     * Em vez de expirar o pedido (que apagaria o rastro), comparamos com o estado
+     * de agora: se o alvo já saiu do status de origem, a aprovação é recusada com
+     * `STALE_APPROVAL` explicando que a mudança não se aplica mais.
+     */
+    const _assertNotStale = async (req, payload) => {
+        if((req.actionName || "create") !== "set-status" || !req.targetId) return
+        const from = payload.fromStatus
+        if(!from) return   // pedido antigo, sem o estado de origem registrado
+        const item = await WorkItem.findOne({ where: { id: req.targetId } })
+        if(!item) return
+        if(item.statusKey === from || item.statusKey === payload.status) return
+        // Fora da fila, mas preservado: vira `expired` (com o porquê na auditoria)
+        // em vez de continuar pendente para sempre esperando uma decisão que já
+        // não faz sentido.
+        await req.update({ status: "expired", decidedAt: new Date(), rejectionReason: `estado mudou para "${item.statusKey}" depois do pedido` })
+        await writeAudit({
+            projectId: req.projectId, entityType: "creation-request", entityId: req.id, action: "expire",
+            actor: { source: "system" }, metadata: { requestedFrom: from, requestedTo: payload.status, currentStatus: item.statusKey }
+        })
+        emit("approval.expired", { request: Serialize(await req.reload()) })
+        throw new DomainError("STALE_APPROVAL",
+            `Este pedido não se aplica mais: ${item.key} estava em "${from}" quando foi pedido e agora está em "${item.statusKey}". `
+            + `Aprovar o traria de volta para "${payload.status}", desfazendo o estado atual.`,
+            { itemKey: item.key, requestedFrom: from, requestedTo: payload.status, currentStatus: item.statusKey })
+    }
+
     const ApproveRequest = async ({ request, actor } = {}) => {
         const req = await ResolveCreationRequest(request)
         if(req.status !== "pending")
             throw new DomainError("VALIDATION_ERROR", `Pedido já ${req.status}.`, { status: req.status })
         const payload = req.payloadJson ? JSON.parse(req.payloadJson) : {}
+        await _assertNotStale(req, payload)
         const actionName = req.actionName || "create"
         const decider = await _resolveDecider(actor)
         const execActor = { source: "agent", actorSessionId: req.agentSessionId, actorUserId: decider.actorUserId }
@@ -647,6 +706,36 @@ const AgentsStore = (ctx) => {
         return { request: data, result }
     }
     const ApproveCreation = ApproveRequest // alias retrocompatível
+
+    /**
+     * Decidir VÁRIOS pedidos de uma vez (MPMX3-8, lado do humano).
+     *
+     * Um projeto de 74 itens gerou ~150 diálogos de aprovação — e humano que
+     * carimba não lê, que é exatamente o que o gate existe para evitar. Aqui a
+     * decisão é uma só para o conjunto que o humano escolheu; cada pedido é
+     * executado de forma independente e devolve o próprio resultado, para uma
+     * falha isolada (ou um pedido obsoleto) não derrubar os outros.
+     */
+    const DecideRequests = async ({ requests = [], decision = "approve", reason, actor } = {}) => {
+        if(!Array.isArray(requests) || requests.length === 0)
+            throw new DomainError("VALIDATION_ERROR", "Informe ao menos um pedido.", { field: "requests" })
+        const results = []
+        for(const ref of requests){
+            try {
+                const out = decision === "reject"
+                    ? await RejectRequest({ request: ref, reason, actor })
+                    : await ApproveRequest({ request: ref, actor })
+                results.push({ request: ref, ok: true, result: out })
+            } catch(error){
+                results.push({
+                    request: ref, ok: false,
+                    error: { code: error && error.code || "INTERNAL_ERROR", message: error && error.message }
+                })
+            }
+        }
+        const succeeded = results.filter((r) => r.ok).length
+        return { total: results.length, succeeded, failed: results.length - succeeded, decision, results }
+    }
 
     const RejectRequest = async ({ request, reason, actor } = {}) => {
         const req = await ResolveCreationRequest(request)
@@ -754,7 +843,7 @@ const AgentsStore = (ctx) => {
         AssertSessionApproved, DeclareSession, WaitForSessionDecision,
         ResolveOrCreateSessionByIdentity, FindSessionByIdentity, IsAgentActor, IsAgentCreation,
         RequestApproval, RequestCreation, GateAgentAction,
-        ApproveRequest, ApproveCreation, RejectRequest, RejectCreation,
+        ApproveRequest, ApproveCreation, RejectRequest, RejectCreation, DecideRequests,
         WaitForApproval, DescribeCreationRequest, DescribeDeletionImpact, DescribeApprovalSubject,
         ListCreationRequests
     }

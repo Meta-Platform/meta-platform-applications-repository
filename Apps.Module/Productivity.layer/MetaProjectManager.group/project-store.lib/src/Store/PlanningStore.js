@@ -63,12 +63,27 @@ const PlanningStore = (ctx) => {
     }
 
     // ---------------- Milestones ----------------
-    const ResolveMilestone = async (ref) => {
-        if(!ref) throw new DomainError("VALIDATION_ERROR", "Referência de milestone é obrigatória.", { field: "milestone" })
-        const m = await Milestone.findOne({ where: { id: ref, deletedAt: null } })
-        if(!m) throw new DomainError("NOT_FOUND", `Milestone "${ref}" não encontrado.`, { ref })
-        return m
+    // Resolve por id OU por NOME (`id|nome`, como a documentação sempre disse).
+    // Só o id funcionava, e o nome não casava nada — devolvendo zero itens SEM
+    // erro, que faz uma entrega cheia parecer vazia (MPMX3-12). Nome ambíguo
+    // recusa listando os candidatos, em vez de escolher um por conta própria.
+    const _resolveByIdOrName = async (Model, ref, { projectId, label, field } = {}) => {
+        if(!ref) throw new DomainError("VALIDATION_ERROR", `Referência de ${label} é obrigatória.`, { field })
+        const byId = await Model.findOne({ where: { id: ref, deletedAt: null } })
+        if(byId) return byId
+        const where = { name: ref, deletedAt: null }
+        if(projectId) where.projectId = projectId
+        const matches = await Model.findAll({ where, limit: 5 })
+        if(matches.length === 1) return matches[0]
+        if(matches.length > 1)
+            throw new DomainError("VALIDATION_ERROR",
+                `"${ref}" casa com ${matches.length} ${label}s. Informe o id ou o projeto.`,
+                { field, candidates: matches.map((m) => ({ id: m.id, name: m.name, projectId: m.projectId })) })
+        throw new DomainError("NOT_FOUND", `${label[0].toUpperCase()}${label.slice(1)} "${ref}" não encontrado.`, { ref })
     }
+
+    const ResolveMilestone = async (ref, projectId) =>
+        _resolveByIdOrName(Milestone, ref, { projectId, label: "milestone", field: "milestone" })
 
     const CreateMilestone = async ({ project, name, shortDescription, description, targetDate, status = "planning", actor } = {}) => {
         if(!name) throw new DomainError("VALIDATION_ERROR", "Nome do milestone é obrigatório.", { field: "name" })
@@ -289,12 +304,8 @@ const PlanningStore = (ctx) => {
     }
 
     // ---------------- Sprints ----------------
-    const ResolveSprint = async (ref) => {
-        if(!ref) throw new DomainError("VALIDATION_ERROR", "Referência de sprint é obrigatória.", { field: "sprint" })
-        const s = await Sprint.findOne({ where: { id: ref, deletedAt: null } })
-        if(!s) throw new DomainError("NOT_FOUND", `Sprint "${ref}" não encontrado.`, { ref })
-        return s
-    }
+    const ResolveSprint = async (ref, projectId) =>
+        _resolveByIdOrName(Sprint, ref, { projectId, label: "sprint", field: "sprint" })
 
     const CreateSprint = async ({ project, name, shortDescription, goal, startDate, endDate, status = "planned", actor } = {}) => {
         if(!name) throw new DomainError("VALIDATION_ERROR", "Nome do sprint é obrigatório.", { field: "name" })

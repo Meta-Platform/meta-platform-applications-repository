@@ -767,3 +767,56 @@ test("MPMX3-21 ação de ambiente vira registro consultável", async () => {
     const lista = await byName("list_environment_actions").handler({ project: "MCP" })
     assert.ok(lista.some((n) => /service-orchestrator/.test(n.body)))
 })
+
+// ─────────── MPMX3: gate, lote e leituras (itens 8 a 14 e 23) na camada MCP ───────────
+
+test("MPMX3-8 set_items_status pede UMA aprovação para o conjunto", async () => {
+    const a = await store.CreateItem({ project: "MCP", type: "task", title: "Lote A" })
+    const b = await store.CreateItem({ project: "MCP", type: "task", title: "Lote B" })
+    const pendente = await byName("set_items_status").handler({ items: [a.key, b.key], status: "done", waitApproval: false })
+    assert.equal(pendente.status, "pending_approval")
+    const req = await store.DescribeCreationRequest({ request: pendente.approvalRequestId })
+    assert.equal(req.actionName, "set-status-batch")
+    assert.equal(req.subject.batch.length, 2, "o pedido leva a lista para a decisão ser informada")
+    // Nada mudou antes da decisão.
+    assert.equal((await store.GetItem({ item: a.id })).statusKey, "backlog")
+})
+
+test("MPMX3-10 concluir devolve os critérios em aberto mesmo no resumo", async () => {
+    const it = await store.CreateItem({ project: "MCP", type: "task", title: "Com critérios" })
+    await store.AddAcceptanceCriteria({ item: it.id, text: "cobrir o caso de erro" })
+    // Humano conclui (sem gate) e o resumo carrega o aviso.
+    const out = await store.SetStatus({ item: it.id, status: "done", actor: { source: "cli" } })
+    assert.equal(out.unmetAcceptanceCriteria.length, 1)
+})
+
+test("MPMX3-11 update_acceptance_criteria aceita lista de ids", async () => {
+    const it = await store.CreateItem({ project: "MCP", type: "task", title: "Vários critérios" })
+    const um = await store.AddAcceptanceCriteria({ item: it.id, text: "um" })
+    const dois = await store.AddAcceptanceCriteria({ item: it.id, text: "dois" })
+    const marcados = await byName("update_acceptance_criteria").handler({ criteria: [um.id, dois.id], met: true })
+    assert.equal(marcados.length, 2)
+    assert.ok(marcados.every((c) => c.met))
+})
+
+test("MPMX3-23 get_activity_context enxuto por padrão, inteiro sob demanda", async () => {
+    await store.AddActivityNote({ project: "MCP", text: `Nota comprida: ${"y".repeat(2000)}`, actor: { source: "cli" } })
+    const enxuto = await byName("get_activity_context").handler({ project: "MCP" })
+    assert.ok(enxuto._trimmed, "avisa que recortou")
+    assert.ok(enxuto.notes.some((n) => n.truncated))
+    const inteiro = await byName("get_activity_context").handler({ project: "MCP", fullText: true })
+    assert.equal(inteiro._trimmed, undefined)
+})
+
+test("MPMX3-13 close_project não conta ideias do inbox como pendência", async () => {
+    const p = await store.CreateProject({ name: "Fechar MCP", keyPrefix: "FMCP", status: "active", actor: { source: "cli" } })
+    const feito = await store.CreateItem({ project: p.id, type: "task", title: "Trabalho" })
+    await store.SetStatus({ item: feito.id, status: "done", actor: { source: "cli" } })
+    await store.CreateItem({ project: p.id, type: "improvement", title: "Ideia para depois", horizon: "inbox" })
+
+    // Sem relatório final, a recusa é sobre o RELATÓRIO — não sobre a ideia.
+    await assert.rejects(
+        () => byName("close_project").handler({ project: p.id }),
+        (e) => e.code === "CLOSE_PRECONDITION_FAILED" && /relatório final/.test(e.message) && !/não concluído/.test(e.message)
+    )
+})

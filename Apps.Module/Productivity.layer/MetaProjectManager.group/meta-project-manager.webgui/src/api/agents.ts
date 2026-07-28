@@ -58,6 +58,13 @@ const CreateAgentsApi = (call: Caller) => ({
     rejectCreation: (requestId: string, reason?: string, actorUserId?: string): Promise<CreationRequest> =>
         call("Agents", "RejectCreation", { requestId, reason, actorUserId }),
 
+    // Decidir VÁRIOS pedidos de uma vez. Cada um é decidido de forma
+    // independente: um obsoleto (STALE_APPROVAL) não derruba o resto.
+    decideCreations: (requests: string[], decision: "approve" | "reject" = "approve", reason?: string): Promise<{
+        total: number; succeeded: number; failed: number
+        results: { request: string; ok: boolean; error?: { code: string; message: string } }[]
+    }> => call("Agents", "DecideCreations", { requests, decision, reason }),
+
     // ── Coordenação entre sessões (MPMX3) ─────────────────────────────────
     // Presença: quem está trabalhando AGORA, com que itens e pacotes. É a
     // leitura que o humano precisa para arbitrar quando dois agentes colidem.

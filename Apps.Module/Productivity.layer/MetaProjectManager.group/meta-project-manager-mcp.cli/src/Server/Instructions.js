@@ -174,9 +174,17 @@ servidor aplica; o que não estiver lá é livre:
 - **INICIAR uma tarefa** (mover para \`in-progress\`) e **CONCLUIR uma tarefa**
   (mover para \`done\`/\`completed\` ou uma coluna de conclusão): você NUNCA começa
   nem dá uma tarefa por concluída sem solicitação/aprovação explícita do humano.
-  Vale para \`set_item_status\`; e você também não pode CRIAR um item já
+  Vale para \`set_item_status\`, para \`set_items_status\` (lote) **e para
+  \`update_item({ status })\`** — a regra é da mudança de status, não da tool, e
+  não há caminho lateral. Você também não pode CRIAR um item já
   \`in-progress\`/\`done\` (erro \`AGENT_ACTION_REQUIRES_HUMAN\`). As DEMAIS mudanças
   de status (ex.: backlog→ready, →review, →blocked) seguem livres;
+  Quando o humano autorizar um CONJUNTO ("pode concluir todos esses"), use
+  \`set_items_status\`: uma aprovação para a lista inteira, em vez de N diálogos
+  idênticos que levam qualquer um a carimbar sem ler.
+  Ao CONCLUIR, o retorno traz \`unmetAcceptanceCriteria\` — os critérios que você
+  mesmo escreveu e ainda não marcou. Leia antes de dar por pronto: fechar pelo
+  commit em vez do critério já deixou passar item incompleto.
 - ESTRUTURA DO FLUXO: criar/alterar/mover/remover coluna, trocar board padrão;
 - IDENTIDADE E CICLO DE VIDA DO PROJETO: alterar name, slug, shortDescription,
   description ou status (\`update_project\`), arquivar e restaurar projeto.
@@ -296,7 +304,8 @@ num passo só.
 | \`AGENT_SESSION_REJECTED\` | O humano recusou a sessão. Pare de escrever e avise. |
 | \`AGENT_ACTION_REQUIRES_HUMAN\` | Iniciar/concluir (ou criar item já iniciado) exige solicitação explícita do humano. Proponha e aguarde. |
 | \`REJECTED_BY_HUMAN\` | O humano recusou. Leia \`details.reason\` e NÃO reenvie. |
-| \`APPROVAL_TIMEOUT\` | Ninguém decidiu a tempo. Pergunte ao humano. |
+| \`APPROVAL_TIMEOUT\` | Ninguém decidiu a tempo. Pergunte ao humano. O pedido continua na fila — e se o item mudar de estado nesse meio tempo, uma aprovação tardia será recusada (\`STALE_APPROVAL\`) em vez de reverter o seu trabalho. |
+| \`STALE_APPROVAL\` | O pedido foi aprovado tarde demais e o item já saiu do status de origem. Nada mudou: refaça o pedido se ainda quiser a transição. |
 | \`FORBIDDEN\` | Falta permissão. Reduza o escopo ou peça acesso. |
 | \`VALIDATION_ERROR\` | Corrija o campo; muitas vezes há \`details.suggestion\`. |
 | \`NOT_FOUND\` | A referência não existe. Busque antes de assumir.

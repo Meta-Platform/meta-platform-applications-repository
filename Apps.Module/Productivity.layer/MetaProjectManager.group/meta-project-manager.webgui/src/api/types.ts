@@ -459,6 +459,12 @@ export interface ApprovalSubject {
     // Conclusão de épico: o que será concluído junto (e o que ainda está aberto).
     children?: { key: string; title: string; statusKey: string; type: string }[]
     childrenOpen?: { key: string; title: string; statusKey: string; type: string }[]
+    // Concluir: a definição de pronto que AINDA NÃO foi cumprida. Sem isto na
+    // tela, o critério em aberto passa batido e o item é fechado incompleto.
+    unmetCriteria?: { id: ID; text: string }[]
+    // Lote de mudança de status: o alvo é o CONJUNTO, e a lista é a informação
+    // principal da decisão.
+    batch?: { key: string; title: string; from: string; to: string; unmetCriteria?: { id: ID; text: string }[] }[]
 }
 
 export interface CreationRequest {

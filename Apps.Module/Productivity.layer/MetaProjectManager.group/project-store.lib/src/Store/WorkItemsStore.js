@@ -241,8 +241,12 @@ const WorkItemsStore = (ctx) => {
         if(status) where.statusKey = status
         if(priority) where.priority = priority
         if(board) where.boardId = board
-        if(milestone) where.milestoneId = milestone === "none" ? null : milestone
-        if(sprint) where.sprintId = sprint === "none" ? null : sprint
+        // Entrega e sprint aceitam id OU NOME, como a documentação do parâmetro
+        // sempre prometeu. Antes, o nome não casava nada e a chamada devolvia zero
+        // itens SEM erro — que é pior que recusar: parece uma entrega vazia
+        // (MPMX3-12). Referência inexistente agora falha com NOT_FOUND.
+        if(milestone) where.milestoneId = milestone === "none" ? null : (await store.ResolveMilestone(milestone, where.projectId)).id
+        if(sprint) where.sprintId = sprint === "none" ? null : (await store.ResolveSprint(sprint, where.projectId)).id
         if(horizon) where.horizon = horizon === "none" ? null : horizon
         if(clarityState) where.clarityState = clarityState
         if(effort) where.effort = effort
@@ -363,6 +367,22 @@ const WorkItemsStore = (ctx) => {
     const UpdateItem = async ({ item, actor, ...fields } = {}) => {
         const instance = await ResolveItem(item)
         await store.AssertProjectWritable({ project: instance.projectId })
+
+        // O GATE VALE PARA QUALQUER CAMINHO QUE MUDE O STATUS (MPMX3-14).
+        //
+        // `set_item_status` bloqueava iniciar/concluir por agente, mas
+        // `update_item({ status })` escrevia o campo direto — duas tools fazendo a
+        // mesma coisa com regras diferentes, e a trava contornável por acidente.
+        // A regra passa a viver na camada que MUDA o status: aqui, delegamos ao
+        // SetStatus, que aplica o gate e a limpeza de completedAt/pendingStatus.
+        if(fields.statusKey !== undefined && fields.statusKey !== instance.statusKey){
+            const { statusKey, ...rest } = fields
+            const changed = await SetStatus({ item: instance.id, status: statusKey, actor })
+            // O resto do patch (se houver) segue pelo caminho normal.
+            if(Object.keys(rest).length === 0) return changed
+            return UpdateItem({ item: instance.id, actor, ...rest })
+        }
+
         const patch = {}
         const simple = ["title", "shortDescription", "description", "statusKey", "priority", "progress", "dueDate", "startDate", "blockedReason",
             "estimatePoints", "estimateMinutes", "milestoneId", "sprintId",
@@ -629,6 +649,23 @@ const WorkItemsStore = (ctx) => {
         return { ...result, completedChildren: completed, totalChildren: descendants.length }
     }
 
+    /**
+     * Critérios de aceite ainda NÃO marcados — a definição de "pronto" que o
+     * fluxo de fechamento não mostrava em lugar nenhum (MPMX3-10).
+     *
+     * `list_items` não os traz, o modal de aprovação mostrava título e descrição,
+     * e só `get_item` os devolvia — caro item a item. O efeito prático era fechar
+     * olhando o commit, não o critério: três itens do projeto LOGS foram dados
+     * por prontos incompletos exatamente assim.
+     */
+    const UnmetAcceptanceCriteria = async ({ item } = {}) => {
+        const instance = typeof item === "object" && item.id ? item : await ResolveItem(item)
+        const rows = await WorkItemAcceptanceCriteria.findAll({
+            where: { workItemId: instance.id, met: false }, order: [["order", "ASC"]]
+        })
+        return rows.map((r) => ({ id: r.id, text: r.text }))
+    }
+
     const SetStatus = async ({ item, status, actor } = {}) => {
         if(!status) throw new DomainError("VALIDATION_ERROR", "Status é obrigatório.", { field: "status" })
         const instance = await ResolveItem(item)
@@ -649,11 +686,18 @@ const WorkItemsStore = (ctx) => {
                 // é o que faz um segundo agente pegar o mesmo item.
                 await instance.update({ pendingStatusKey: status, pendingStatusAt: new Date() })
                 emit("item.updated", Serialize(instance))
+                // Concluir carrega o que FALTA: quem aprova vê os critérios ainda
+                // não atendidos no próprio pedido (MPMX3-10). `fromStatus` viaja
+                // junto para a aprovação tardia saber que já não se aplica (MPMX3-9).
+                const unmet = done ? await UnmetAcceptanceCriteria({ item: instance }) : []
                 await store.GateAgentAction({
                     actionName: "set-status", type: "work-item", targetId: instance.id,
-                    projectId: instance.projectId, payload: { item: instance.id, status }, risk: "normal",
+                    projectId: instance.projectId,
+                    payload: { item: instance.id, status, fromStatus: instance.statusKey, unmetCriteria: unmet },
+                    risk: "normal",
                     reason: done
                         ? `Concluir a tarefa ${instance.key} (mover para "${status}") por agente requer solicitação/aprovação explícita do humano.`
+                            + (unmet.length ? ` ATENÇÃO: ${unmet.length} critério(s) de aceite ainda não marcado(s).` : "")
                         : `Iniciar a tarefa ${instance.key} (mover para "${status}") por agente requer solicitação/aprovação explícita do humano.`,
                     actor
                 })
@@ -673,7 +717,76 @@ const WorkItemsStore = (ctx) => {
         const data = Serialize(instance)
         await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "set-status", actor, metadata: { status, key: instance.key }, before, after: { statusKey: status } })
         emit("item.updated", data)
+        // Concluiu com critério em aberto? O retorno DIZ quais — um esquecimento
+        // silencioso vira aviso, que é o que muda o comportamento de quem fecha
+        // pelo commit em vez do critério (MPMX3-10).
+        if(doneStatuses.has(status)){
+            const unmet = await UnmetAcceptanceCriteria({ item: instance })
+            if(unmet.length) return { ...data, unmetAcceptanceCriteria: unmet }
+        }
         return data
+    }
+
+    /**
+     * Mudar o status de VÁRIOS itens com UMA decisão humana (MPMX3-8).
+     *
+     * O gate por item é correto na intenção e insuportável na escala: 74 itens
+     * viraram ~150 diálogos idênticos, e o humano passa a carimbar — que é
+     * justamente o que o gate deveria impedir. Aqui o pedido é UM e carrega a
+     * lista inteira (com os critérios de aceite em aberto de cada um), então a
+     * decisão continua informada, só não é repetida.
+     *
+     * Transição livre (ex.: → `review`) não abre pedido nenhum: aplica direto.
+     */
+    const SetStatusBatch = async ({ items = [], status, actor } = {}) => {
+        if(!status) throw new DomainError("VALIDATION_ERROR", "Status é obrigatório.", { field: "status" })
+        if(!Array.isArray(items) || items.length === 0)
+            throw new DomainError("VALIDATION_ERROR", "Informe ao menos um item.", { field: "items" })
+
+        const instances = []
+        for(const ref of items) instances.push(await ResolveItem(ref))
+        for(const instance of instances) await store.AssertProjectWritable({ project: instance.projectId })
+
+        // O gate só entra em cena se ALGUM item de fato muda para iniciar/concluir.
+        const gated = []
+        if(store.IsAgentActor(actor)){
+            for(const instance of instances){
+                if(instance.statusKey === status) continue
+                const done = await _isDoneStatus(instance, status)
+                if(done || START_STATUS_SET.has(status)) gated.push({ instance, done })
+            }
+        }
+
+        if(gated.length){
+            const detail = []
+            for(const { instance, done } of gated){
+                await instance.update({ pendingStatusKey: status, pendingStatusAt: new Date() })
+                emit("item.updated", Serialize(instance))
+                detail.push({
+                    item: instance.id, key: instance.key, title: instance.title,
+                    fromStatus: instance.statusKey,
+                    unmetCriteria: done ? await UnmetAcceptanceCriteria({ item: instance }) : []
+                })
+            }
+            const pendentes = detail.reduce((n, d) => n + d.unmetCriteria.length, 0)
+            await store.GateAgentAction({
+                actionName: "set-status-batch", type: "work-item",
+                targetId: gated[0].instance.id,          // âncora para o projeto/alvo principal
+                projectId: gated[0].instance.projectId,
+                payload: { items: detail.map((d) => d.item), status, detail },
+                reason: `Mover ${detail.length} tarefa(s) para "${status}" por agente requer aprovação humana.`
+                    + (pendentes ? ` ATENÇÃO: ${pendentes} critério(s) de aceite ainda não marcado(s) no conjunto.` : ""),
+                actor
+            })
+        }
+
+        // Aprovado (ou transição livre / humano): aplica um a um com ator SEM
+        // sessão — o gate já foi decidido uma vez, aqui em cima.
+        const executor = { ...actor, session: undefined }
+        const results = []
+        for(const instance of instances)
+            results.push(await SetStatus({ item: instance.id, status, actor: executor }))
+        return { total: results.length, status, items: results }
     }
 
     const Assign = async ({ item, user, actor } = {}) => {
@@ -684,6 +797,45 @@ const WorkItemsStore = (ctx) => {
         await instance.update({ assigneeUserId })
         const data = Serialize(instance)
         await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "assign", actor, metadata: { assigneeUserId }, before, after: { assigneeUserId } })
+        emit("item.updated", data)
+        return data
+    }
+
+    /**
+     * Muda o item de PROJETO (MPMX3-13).
+     *
+     * Existe por causa das ideias do inbox: encerrar um projeto arquivava junto o
+     * material registrado para o futuro, que não era trabalho daquele projeto —
+     * e recuperá-lo exigia restaurar o projeto inteiro. Mudar de casa é o
+     * caminho certo, mas não é um `update` de campo: a **key** pertence ao
+     * projeto (`LOGS-73` não existe fora do LOGS), e board, entrega e sprint
+     * também. Todos são refeitos ou soltos aqui.
+     */
+    const MoveItemToProject = async ({ item, project, actor } = {}) => {
+        const instance = await ResolveItem(item)
+        const target = await store.ResolveProject(project)
+        if(instance.projectId === target.id) return Serialize(instance)
+        await store.AssertProjectWritable({ project: instance.projectId })
+        await store.AssertProjectWritable({ project: target })
+
+        const before = { projectId: instance.projectId, key: instance.key }
+        const key = await store.NextItemKey(target)
+        await instance.update({
+            projectId: target.id,
+            key,
+            boardId: target.defaultBoardId || null,
+            // Planejamento é do projeto de origem: fica para trás em vez de
+            // apontar para uma entrega de outro projeto.
+            milestoneId: null, sprintId: null,
+            // Pai que não veio junto deixaria uma hierarquia entre projetos.
+            parentId: null
+        })
+        const data = Serialize(instance)
+        await writeAudit({
+            projectId: target.id, entityType: "work-item", entityId: instance.id, action: "move-project",
+            actor, metadata: { fromProjectId: before.projectId, fromKey: before.key, key },
+            before, after: { projectId: target.id, key }
+        })
         emit("item.updated", data)
         return data
     }
@@ -872,16 +1024,34 @@ const WorkItemsStore = (ctx) => {
         const row = await WorkItemAcceptanceCriteria.create({ id: NewId(), workItemId: instance.id, text, order })
         return Serialize(row)
     }
-    const UpdateAcceptanceCriteria = async ({ criteria, text, met } = {}) => {
-        const row = await WorkItemAcceptanceCriteria.findOne({ where: { id: criteria } })
-        if(!row) throw new DomainError("NOT_FOUND", "Critério não encontrado.", { ref: criteria })
-        const owner = await ResolveItem(row.workItemId)
-        await store.AssertProjectWritable({ project: owner.projectId })
-        const patch = {}
-        if(text !== undefined) patch.text = text
-        if(met !== undefined) patch.met = met
-        await row.update(patch)
-        return Serialize(row)
+    /**
+     * Marca critérios de aceite — um, ou VÁRIOS numa chamada (MPMX3-11).
+     *
+     * Fechar um item com quatro critérios custava quatro chamadas, enquanto
+     * criar, vincular e criar itens já iam em lote desde o MPMX2. Aceita
+     * `criteria` como id único ou lista de ids, e `updates` para dar um `met`
+     * (ou `text`) diferente por critério.
+     */
+    const UpdateAcceptanceCriteria = async ({ criteria, updates, text, met } = {}) => {
+        const entries = Array.isArray(updates) && updates.length
+            ? updates
+            : (Array.isArray(criteria) ? criteria : [criteria]).map((id) => ({ criteria: id, text, met }))
+
+        const results = []
+        for(const entry of entries){
+            const id = entry.criteria || entry.id
+            const row = await WorkItemAcceptanceCriteria.findOne({ where: { id } })
+            if(!row) throw new DomainError("NOT_FOUND", "Critério não encontrado.", { ref: id })
+            const owner = await ResolveItem(row.workItemId)
+            await store.AssertProjectWritable({ project: owner.projectId })
+            const patch = {}
+            if(entry.text !== undefined) patch.text = entry.text
+            if(entry.met !== undefined) patch.met = entry.met
+            await row.update(patch)
+            results.push(Serialize(row))
+        }
+        // Um id só continua devolvendo o registro (contrato antigo intacto).
+        return results.length === 1 ? results[0] : results
     }
     const RemoveAcceptanceCriteria = async ({ criteria, actor } = {}) => {
         const row = await WorkItemAcceptanceCriteria.findOne({ where: { id: criteria } })
@@ -900,9 +1070,9 @@ const WorkItemsStore = (ctx) => {
     return {
         ResolveItem,
         ListProjectAreas, ListProjectLabels,
-        CreateItem, ListItems, CountItems, GetItem, UpdateItem, SetStatus, Assign,
-        MoveItem, MoveToBoard, ReorderItem, ConvertItem, ConvertIdea, SetBlocked, CompleteEpic,
-        ClaimItem, RenewItemClaim, ReleaseItem, GetItemClaim, NextTask,
+        CreateItem, ListItems, CountItems, GetItem, UpdateItem, SetStatus, SetStatusBatch, Assign,
+        MoveItem, MoveItemToProject, MoveToBoard, ReorderItem, ConvertItem, ConvertIdea, SetBlocked, CompleteEpic,
+        ClaimItem, RenewItemClaim, ReleaseItem, GetItemClaim, NextTask, UnmetAcceptanceCriteria,
         LinkItem, UnlinkItem, DeleteItem,
         AddChecklistItem, UpdateChecklistItem, RemoveChecklistItem,
         AddAcceptanceCriteria, UpdateAcceptanceCriteria, RemoveAcceptanceCriteria

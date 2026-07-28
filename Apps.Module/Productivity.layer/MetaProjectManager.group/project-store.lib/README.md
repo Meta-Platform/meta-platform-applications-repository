@@ -89,6 +89,22 @@ que um humano aprova (a ação é executada de fato) ou rejeita.
   (boards/itens/anexos/comentários); `DescribeCreationRequest`/`ListCreationRequests` enriquecem
   o pedido com **quem** pediu (provider/modelo/sessão/objetivo) e o **impacto** — a GUI usa isso.
 
+## Gate de status: uma regra, todos os caminhos
+
+O gate de iniciar/concluir vive na **camada que muda o status**, não na tool:
+`UpdateItem({ statusKey })` delega ao `SetStatus`, então não existe caminho lateral para
+começar ou concluir uma tarefa sem aprovação. Em volta dele:
+
+- **`UnmetAcceptanceCriteria`**: concluir devolve os critérios que ainda não foram marcados
+  (e o pedido de aprovação os carrega para a tela do humano). Fechar pelo commit em vez do
+  critério já deixou passar item incompleto — agora o esquecimento vira aviso.
+- **`SetStatusBatch`** + **`DecideRequests`**: um pedido para N itens, e uma decisão humana
+  para N pedidos. O gate por item é correto e insuportável na escala (74 itens = ~150
+  diálogos), e humano que carimba não lê — o oposto do que ele existe para garantir.
+- **`STALE_APPROVAL`**: aprovar um pedido cujo alvo já saiu do status de origem é recusado
+  (o pedido vira `expired`, preservado para auditoria) em vez de reverter, horas depois, um
+  trabalho que seguiu em frente.
+
 ## Notas de atividade e permissões
 
 - **`ActivityStore`**: `AddActivityNote` (sem autor humano ⇒ atribui ao `usuario-desktop` via
@@ -148,6 +164,9 @@ só assim filtra, soma e navega:
 - **`Ready({ project })`**: o que está pronto para começar — dependências fechadas, sem bloqueio
   e com a entrega liberada — ordenado por quantos itens cada um destrava.
 - **`EcosystemIndexStatus()`**: estado do catálogo de pacotes por leitura pura (sem indexar).
+- **`ResolveMilestone`/`ResolveSprint`** aceitam **id OU nome** (`ListItems({ milestone: "M1 — Fundação" })`
+  funciona): antes só o id casava e o nome devolvia zero itens **sem erro**, fazendo uma entrega
+  cheia parecer vazia. Nome ambíguo recusa listando os candidatos.
 
 ## Estrutura
 

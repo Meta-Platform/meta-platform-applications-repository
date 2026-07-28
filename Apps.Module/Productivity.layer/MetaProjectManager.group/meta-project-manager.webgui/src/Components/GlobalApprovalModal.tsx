@@ -256,6 +256,47 @@ const GlobalApprovalModal = () => {
                     </div>
                     : null}
 
+                {/* LOTE: a decisão é sobre o CONJUNTO. A lista é o que torna a
+                    aprovação em bloco informada em vez de um carimbo. */}
+                {subject && subject.batch && subject.batch.length > 0
+                    ? <div className="mpm-panel">
+                        <div className="mpm-section-title">
+                            <Icon name="tasks" /> Itens neste pedido ({subject.batch.length})
+                        </div>
+                        <div className="mpm-approval__scroll">
+                            {subject.batch.map((row) =>
+                                <div key={row.key} className="mpm-approval__change">
+                                    <span className="mpm-mono mpm-muted" style={{ minWidth: 90 }}>{row.key}</span>
+                                    <span className="mpm-exec__title">{row.title}</span>
+                                    <span className="mpm-muted">{statusLabel(row.from)}</span>
+                                    <Icon name="long arrow alternate right" />
+                                    <strong className="mpm-approval__to">{statusLabel(row.to)}</strong>
+                                    {row.unmetCriteria && row.unmetCriteria.length > 0
+                                        ? <span className="mpm-chip mpm-chip--warning">{row.unmetCriteria.length} critério(s) em aberto</span>
+                                        : null}
+                                </div>)}
+                        </div>
+                    </div>
+                    : null}
+
+                {/* CONCLUIR: o que a definição de pronto ainda não cobre. É a
+                    informação que faltava para o humano decidir sem abrir o item
+                    (três itens do LOGS foram fechados incompletos por sua falta). */}
+                {subject && subject.unmetCriteria && subject.unmetCriteria.length > 0
+                    ? <div className="mpm-panel" style={{ borderColor: "var(--mp-warning)" }}>
+                        <div className="mpm-section-title">
+                            <Icon name="warning sign" /> Critérios de aceite ainda não marcados ({subject.unmetCriteria.length})
+                        </div>
+                        <div className="mpm-approval__scroll">
+                            {subject.unmetCriteria.map((criteria) =>
+                                <div key={criteria.id} className="mpm-approval__change">
+                                    <Icon name="square outline" />
+                                    <span className="mpm-exec__title">{criteria.text}</span>
+                                </div>)}
+                        </div>
+                    </div>
+                    : null}
+
                 {/* CRIAÇÃO: os campos com que o alvo vai nascer. */}
                 {createdFields.length > 0
                     ? <div className="mpm-panel">

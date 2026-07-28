@@ -78,7 +78,11 @@ const BuildTools = ({ store, actor }) => {
     const ItemMutationResult = async (data, view) => {
         const body = view === "full" ? data : SummarizeItem(data)
         const pendingFeedbackCount = data && data.id ? await PendingFeedbackForItem(data.id) : undefined
-        return { ...body, pendingFeedbackCount }
+        // O que FALTA para o item estar pronto atravessa o resumo: encolher a
+        // resposta não pode apagar justamente o aviso de que a definição de
+        // pronto não foi cumprida (MPMX3-10).
+        const unmet = data && data.unmetAcceptanceCriteria
+        return { ...body, pendingFeedbackCount, ...(unmet && unmet.length ? { unmetAcceptanceCriteria: unmet } : {}) }
     }
     // Campo `view` comum às mutações de item.
     const VIEW_FIELD = { view: S.enum(["summary", "full"], "Formato do retorno: summary (padrão) = { key, statusKey, progress, completedAt, updatedAt } + pendingFeedbackCount; full = o item inteiro.") }
@@ -125,7 +129,10 @@ const BuildTools = ({ store, actor }) => {
     // e devolve o resultado da ação — o agente não segue adiante sem o veredicto.
     // Se rejeitado/expirado, erro estruturado. resumeToken (derivado da ação + alvo)
     // dá idempotência: retries reusam o pedido pendente em vez de duplicá-lo.
-    const ACTION_LABEL = { create: "criação", delete: "remoção", "set-status": "mudança de status" }
+    const ACTION_LABEL = {
+        create: "criação", delete: "remoção", "set-status": "mudança de status",
+        "set-status-batch": "mudança de status em lote"
+    }
     const GatedAction = async ({ actionName = "delete", type, ref, run, waitApproval = true, approvalTimeoutSeconds }) => {
         const resumeToken = `${actionName}:${type}:${ref}`
         try {
@@ -574,25 +581,44 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "close_project",
-            description: "Encerra um projeto de forma COESA num passo: valida as pré-condições (todos os itens concluídos + relatório final preenchido) e então ARQUIVA. Se faltar algo, NÃO arquiva e retorna `CLOSE_PRECONDITION_FAILED` com o que falta (via `details.preconditions`). Passe `finalReport` para gravar o relatório no mesmo passo; `force:true` ignora itens abertos (mas nunca a falta de relatório). O arquivamento passa pelo GATE: bloqueia até um humano aprovar.",
+            description: "Encerra um projeto de forma COESA num passo: valida as pré-condições (trabalho concluído + relatório final) e então ARQUIVA. IDEIAS DO INBOX NÃO CONTAM como pendência (elas são registro para o futuro, não trabalho do projeto) — mas o retorno diz quantas são e quais, porque arquivar o projeto as leva junto. Use `ideasTo: \"<projeto>\"` para MOVÊ-LAS antes de arquivar, em vez de perdê-las. Se faltar algo, NÃO arquiva e retorna `CLOSE_PRECONDITION_FAILED` com o que falta. `finalReport` grava o relatório no mesmo passo; `force:true` ignora itens abertos (nunca a falta de relatório). O arquivamento passa pelo GATE: bloqueia até um humano aprovar.",
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"),
                 finalReport: S.str("Relatório final em markdown a gravar antes de encerrar (opcional se já houver um)"),
                 force: S.bool("Encerrar mesmo com itens não concluídos (a falta de relatório final NUNCA é ignorada)"),
+                ideasTo: S.str("Mover as ideias do inbox para ESTE projeto antes de arquivar (id|slug|key)"),
                 ...WAIT_FIELDS
             }, ["project"]),
             handler: async (i) => {
                 // 1. Se veio relatório, grava primeiro (livre, sem gate).
                 if(typeof i.finalReport === "string" && i.finalReport.trim())
                     await store.SetProjectReport(A({ project: i.project, finalReport: i.finalReport }))
-                // 2. Confere as pré-condições sobre o estado atual.
+
+                // 2. IDEIAS não são trabalho pendente (MPMX3-13). Elas bloqueavam o
+                // encerramento e a única saída era `force`, que as arquivava junto
+                // com o projeto — material bom sumindo em silêncio. Aqui elas saem
+                // da contagem e, se `ideasTo` foi informado, MUDAM DE CASA antes.
+                const ideas = await store.ListItems({ project: i.project, horizon: "inbox", includeClaimed: true, limit: 500 })
+                let movedIdeas
+                if(i.ideasTo && ideas.length){
+                    const target = await store.ResolveProject(i.ideasTo)
+                    movedIdeas = []
+                    for(const idea of ideas){
+                        const moved = await store.MoveItemToProject(A({ item: idea.id, project: target.id })).catch(() => undefined)
+                        if(moved) movedIdeas.push({ from: idea.key, to: moved.key, title: idea.title })
+                    }
+                }
+                const remainingIdeas = movedIdeas ? [] : ideas
+
+                // 3. Confere as pré-condições sobre o estado atual.
                 const metrics = await store.ProjectMetrics({ project: i.project })
                 const report = await store.GetProjectReport({ project: i.project })
-                const openItems = metrics.total - metrics.done
+                const openItems = Math.max(0, metrics.total - metrics.done - remainingIdeas.length)
                 const preconditions = {
                     allItemsDone: openItems === 0,
                     totalItems: metrics.total,
                     openItems,
+                    inboxIdeas: remainingIdeas.length,
                     hasFinalReport: !!(report.finalReport && String(report.finalReport).trim())
                 }
                 const missing = []
@@ -600,13 +626,23 @@ const BuildTools = ({ store, actor }) => {
                 if(!preconditions.hasFinalReport) missing.push("relatório final ausente (passe finalReport ou grave com set_project_report)")
                 if(missing.length)
                     throw McpError("CLOSE_PRECONDITION_FAILED", `Não é possível encerrar o projeto: ${missing.join("; ")}.`, { preconditions })
-                // 3. Arquiva sob GATE (bloqueia até a aprovação humana).
+
+                // 4. Arquiva sob GATE (bloqueia até a aprovação humana).
                 const archived = await GatedAction({
                     actionName: "archive", type: "project", ref: i.project,
                     waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
                     run: (actor) => store.ArchiveProject({ project: i.project, actor })
                 })
-                return { closed: true, preconditions, project: archived }
+                return {
+                    closed: true, preconditions, project: archived,
+                    // O QUE FOI JUNTO: dito explicitamente, para a decisão de
+                    // recuperar (ou não) ser tomada com a informação na mão.
+                    ...(movedIdeas ? { movedIdeas, movedIdeasTo: i.ideasTo } : {}),
+                    ...(remainingIdeas.length ? {
+                        archivedWithIdeas: remainingIdeas.map((idea) => ({ key: idea.key, title: idea.title })),
+                        archivedWithIdeasHint: "estas ideias foram arquivadas com o projeto; use ideasTo:\"<projeto>\" na próxima vez para movê-las antes"
+                    } : {})
+                }
             }
         },
         {
@@ -791,9 +827,18 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "update_acceptance_criteria",
-            description: "Edita/marca um critério de aceite. LIVRE.",
-            inputSchema: Obj({ criteria: S.str("Critério (id)"), text: S.str("Novo texto"), met: S.bool("Atendido") }, ["criteria"]),
-            handler: (i) => store.UpdateAcceptanceCriteria({ criteria: i.criteria, text: i.text, met: i.met })
+            description: "Edita/marca critério(s) de aceite. Aceita UM id, uma LISTA de ids (mesmo `met` para todos) ou `updates: [{ criteria, met }]` para valores diferentes por critério — fechar um item de 4 critérios custa 1 chamada, não 4. LIVRE.",
+            inputSchema: Obj({
+                criteria: { description: "Critério (id) ou lista de ids", anyOf: [{ type: "string" }, { type: "array", items: { type: "string" } }] },
+                updates: {
+                    type: "array",
+                    description: "Um valor por critério: [{ criteria, met, text }]",
+                    items: Obj({ criteria: S.str("Critério (id)"), met: S.bool("Atendido"), text: S.str("Novo texto") }, ["criteria"])
+                },
+                text: S.str("Novo texto (quando `criteria` é um id só)"),
+                met: S.bool("Atendido — aplicado a todos os ids informados em `criteria`")
+            }),
+            handler: (i) => store.UpdateAcceptanceCriteria({ criteria: i.criteria, updates: i.updates, text: i.text, met: i.met })
         },
         {
             name: "remove_acceptance_criteria",
@@ -1026,7 +1071,7 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "set_item_status",
-            description: "Muda o status de um item (ex.: backlog → ready → in-progress → review → done). A maioria das transições é LIVRE, MAS iniciar (mover para in-progress) e concluir (mover para done/completed ou coluna de conclusão) EXIGEM aprovação humana: a chamada BLOQUEIA até o humano decidir e então retorna o item já no novo status; rejeição vira REJECTED_BY_HUMAN. Nunca comece nem dê uma tarefa por concluída sem solicitação explícita do usuário. Use waitApproval:false para receber o approvalRequestId sem esperar. Retorna um RESUMO + pendingFeedbackCount (use view:\"full\" para o item inteiro).",
+            description: "Muda o status de um item (ex.: backlog → ready → in-progress → review → done). A maioria das transições é LIVRE, MAS iniciar (mover para in-progress) e concluir (mover para done/completed ou coluna de conclusão) EXIGEM aprovação humana: a chamada BLOQUEIA até o humano decidir e então retorna o item já no novo status; rejeição vira REJECTED_BY_HUMAN. Nunca comece nem dê uma tarefa por concluída sem solicitação explícita do usuário. Ao CONCLUIR, o retorno traz `unmetAcceptanceCriteria` — os critérios que ainda não foram marcados: LEIA antes de dar o item por pronto, é a definição de pronto que você mesmo escreveu. Vários itens de uma vez: `set_items_status` (uma aprovação só). Use waitApproval:false para receber o approvalRequestId sem esperar. Retorna um RESUMO + pendingFeedbackCount (use view:\"full\" para o item inteiro).",
             inputSchema: Obj({
                 item: S.str("Item (id|key)"),
                 status: S.str("Novo status (statusKey)"),
@@ -1048,6 +1093,20 @@ const BuildTools = ({ store, actor }) => {
                 if(result && result.status === "pending_approval") return result
                 return ItemMutationResult(result, i.view)
             }
+        },
+        {
+            name: "set_items_status",
+            description: "Muda o status de VÁRIOS itens com UMA aprovação humana. Use quando o humano já autorizou o conjunto (\"pode concluir todos esses\"): em vez de N diálogos idênticos — 74 itens geraram ~150 —, o humano vê UMA vez a lista completa (com os critérios de aceite ainda em aberto de cada item) e decide. Transições livres (ex.: → review) aplicam direto, sem pedido. Rejeitar não muda nada. Não é autorização guarda-chuva: vale só para este pedido.",
+            inputSchema: Obj({
+                items: { type: "array", items: { type: "string" }, description: "Itens (id|key)" },
+                status: S.str("Novo status (statusKey) para todos"),
+                ...WAIT_FIELDS
+            }, ["items", "status"]),
+            handler: (i) => GatedAction({
+                actionName: "set-status-batch", type: "work-item", ref: `${i.items.join(",")}:${i.status}`,
+                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                run: (actor) => store.SetStatusBatch({ items: i.items, status: i.status, actor })
+            })
         },
         {
             name: "assign_item",
@@ -1567,13 +1626,15 @@ const BuildTools = ({ store, actor }) => {
         },
         {
             name: "get_activity_context",
-            description: "Contexto consolidado de um escopo: anotações humanas recentes + auditoria recente. Chame ANTES de agir para entender o que aconteceu e reagir às notas do humano.",
+            description: "Contexto consolidado de um escopo: anotações humanas recentes + auditoria recente. É a leitura CARA da investigação — prefira `project_pulse` e `who_is_here` para se situar, e venha aqui quando precisar do TEXTO das notas humanas. Vem enxuto por padrão (corpo das notas recortado, diffs da auditoria fora); `fullText:true` traz tudo, ao custo de contexto.",
             inputSchema: Obj({
                 project: S.str("Projeto (id|slug|key)"), board: S.str("Board (id)"),
                 sprint: S.str("Sprint (id)"), milestone: S.str("Milestone (id)"),
-                item: S.str("Item (id|key)"), limit: S.num("Máx. por seção")
+                item: S.str("Item (id|key)"), limit: S.num("Máx. por seção"),
+                fullText: S.bool("Trazer o corpo INTEIRO das notas e os diffs da auditoria (padrão false — a resposta enxuta cabe no contexto)"),
+                noteBodyChars: S.num("Tamanho do recorte do corpo de cada nota (padrão 400)")
             }),
-            handler: (i) => store.GetActivityContext({ project: i.project, board: i.board, sprint: i.sprint, milestone: i.milestone, item: i.item, limit: i.limit, actor })
+            handler: (i) => store.GetActivityContext({ project: i.project, board: i.board, sprint: i.sprint, milestone: i.milestone, item: i.item, limit: i.limit, fullText: i.fullText, noteBodyChars: i.noteBodyChars, actor })
         },
 
         // ───────────── Orientação (para clientes que ignoram `instructions`) ─────────────

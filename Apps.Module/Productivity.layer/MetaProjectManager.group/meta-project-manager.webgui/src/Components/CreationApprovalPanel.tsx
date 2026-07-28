@@ -37,6 +37,23 @@ const CreationApprovalPanel = () => {
         } catch (e: any) { setError(e.message) } finally { setBusyId(null) }
     }
 
+    // DECIDIR EM BLOCO (MPMX3-8): quando o agente pede N mudanças de status, o
+    // custo do gate crescia linearmente e o humano passava a carimbar — o oposto
+    // do que ele existe para garantir. Aqui a decisão é uma, sobre a lista que
+    // está na tela; cada pedido é processado de forma independente no servidor,
+    // então um obsoleto não derruba os outros.
+    const decideAll = async (decision: "approve" | "reject") => {
+        setBusyId("all"); setError(null)
+        try {
+            const out = await api.agents.decideCreations(requests.map((r) => r.id), decision)
+            await reload()
+            if (out.failed > 0) {
+                const first = out.results.find((r) => !r.ok)
+                setError(`${out.succeeded} de ${out.total} decidido(s). ${out.failed} falhou/falharam — ex.: ${first?.error?.message || first?.error?.code}`)
+            }
+        } catch (e: any) { setError(e.message) } finally { setBusyId(null) }
+    }
+
     const doReject = async () => {
         if (!rejectTarget) return
         const req = rejectTarget
@@ -56,6 +73,19 @@ const CreationApprovalPanel = () => {
         <div className="mpm-page-subtitle" style={{ marginBottom: "var(--mp-space-3)" }}>
             Agentes não criam projetos/boards diretamente — aprove para executar a criação ou rejeite.
         </div>
+        {requests.length > 1
+            ? <div className="mpm-toolbar mpm-toolbar--end" style={{ marginBottom: "var(--mp-space-3)" }}>
+                <span className="mpm-muted" style={{ fontSize: "12px", flex: 1 }}>
+                    {requests.length} pedidos na fila — decida de uma vez se já autorizou o conjunto.
+                </span>
+                <button className="mpm-btn mpm-btn--sm mpm-btn--danger" disabled={busyId === "all"} onClick={() => decideAll("reject")}>
+                    <Icon name="ban" /> Rejeitar todos
+                </button>
+                <button className="mpm-btn mpm-btn--sm mpm-btn--primary" disabled={busyId === "all"} onClick={() => decideAll("approve")}>
+                    <Icon name="check circle" /> Aprovar todos ({requests.length})
+                </button>
+            </div>
+            : null}
         <ErrorBanner error={error} />
         <div className="mpm-col mpm-gap-4">
             {requests.map((req) =>

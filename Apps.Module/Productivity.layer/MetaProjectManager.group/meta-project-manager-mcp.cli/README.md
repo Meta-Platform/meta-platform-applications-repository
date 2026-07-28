@@ -164,9 +164,18 @@ pediu (provider/modelo/sessão). Não tente burlar o gate.
 pelo mesmo gate das tools acima — BLOQUEIA até a decisão humana e retorna o item
 já no novo status (ou `REJECTED_BY_HUMAN`), com `waitApproval`/`approvalTimeoutSeconds`.
 
+O gate é da **mudança de status**, não da tool: `update_item({ status })` e
+`set_items_status` (lote) passam pela mesma regra — não há caminho lateral.
+Ao concluir, o retorno traz **`unmetAcceptanceCriteria`** (a definição de pronto
+que ainda não foi marcada), e o pedido de aprovação leva essa lista para a tela
+do humano. Uma aprovação **tardia** que não faz mais sentido é recusada com
+`STALE_APPROVAL` em vez de reverter o estado atual do item.
+
 **Em lote:** `create_items` (N itens; `ref`/`parent:"@apelido"` montam a
-hierarquia dentro do próprio lote), `link_items` (N vínculos) e
-`add_acceptance_criteria` com `texts`. Cada elemento volta como
+hierarquia dentro do próprio lote), `link_items` (N vínculos),
+`add_acceptance_criteria` com `texts`, `update_acceptance_criteria` com lista de
+ids (ou `updates:[{criteria,met}]`) e `set_items_status` — que pede **uma**
+aprovação para o conjunto em vez de N diálogos idênticos. Cada elemento volta como
 `{ index, ok, key | error }` — uma falha isolada não invalida o lote. `create_item`
 também aceita `acceptanceCriteria` para criar a Definition of Done junto.
 

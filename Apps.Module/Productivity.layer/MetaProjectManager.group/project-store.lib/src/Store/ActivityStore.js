@@ -162,9 +162,26 @@ const ActivityStore = (ctx) => {
         return { id: row.id, deleted: true }
     }
 
-    // Contexto consolidado de um escopo para o AGENTE se situar antes de agir:
-    // notas humanas recentes + auditoria recente do mesmo escopo.
-    const GetActivityContext = async ({ project, board, sprint, milestone, item, limit = 20, actor } = {}) => {
+    /**
+     * Contexto consolidado de um escopo para o AGENTE se situar antes de agir:
+     * notas humanas recentes + auditoria recente do mesmo escopo.
+     *
+     * ENXUTO POR PADRÃO (MPMX3-23). Esta é a chamada que as instruções mandam
+     * fazer PRIMEIRO — e era a primeira a estourar: num projeto grande devolvia
+     * 63 mil caracteres e virava arquivo truncado, inútil no momento em que era
+     * necessária. O `limit` cortava por seção, não por tamanho: 25 notas longas
+     * estouram igual.
+     *
+     * Agora o corpo de cada nota vem RECORTADO (`bodyPreview` + `truncated`) e a
+     * auditoria vem sem os diffs; `fullText: true` traz tudo para quem realmente
+     * precisa do texto inteiro, e `noteBodyChars` ajusta o recorte.
+     */
+    const CONTEXT_NOTE_CHARS = 400
+
+    const GetActivityContext = async ({
+        project, board, sprint, milestone, item,
+        limit = 20, fullText = false, noteBodyChars = CONTEXT_NOTE_CHARS, actor
+    } = {}) => {
         const hasScope = !!(project || board || sprint || milestone || item)
         if(!hasScope) await store.AssertGlobalActivityAccess({ actor, permission: "activity:read:all_projects" })
         const scope = await _resolveScope({ project, board, sprint, milestone, item })
@@ -177,7 +194,35 @@ const ActivityStore = (ctx) => {
             : { projectId: scope.projectId }
         const audit = await store.ListActivity({ ...auditFilter, limit, actor })
 
-        return { scope, notes, audit }
+        if(fullText) return { scope, notes, audit }
+
+        const chars = Number(noteBodyChars) > 0 ? Number(noteBodyChars) : CONTEXT_NOTE_CHARS
+        const trimmedNotes = notes.map((note) => {
+            const body = String(note.body || "")
+            const long = body.length > chars
+            return {
+                id: note.id, createdAt: note.createdAt, kind: note.kind, phase: note.phase,
+                scopeType: note.scopeType, scopeId: note.scopeId,
+                authorUserId: note.authorUserId, authorSessionId: note.authorSessionId, source: note.source,
+                body: long ? `${body.slice(0, chars)}…` : body,
+                truncated: long || undefined,
+                bodyChars: long ? body.length : undefined
+            }
+        })
+        // Auditoria sem before/after: o diff completo é o que mais pesa, e quem
+        // precisa dele pede o evento por `get_audit_event`.
+        const trimmedAudit = audit.map((event) => ({
+            id: event.id, createdAt: event.createdAt, action: event.action,
+            entityType: event.entityType, entityId: event.entityId, itemKey: event.itemKey,
+            actorType: event.actorType, source: event.source, provider: event.provider, model: event.model
+        }))
+        return {
+            scope, notes: trimmedNotes, audit: trimmedAudit,
+            _trimmed: {
+                notes: trimmedNotes.filter((n) => n.truncated).length,
+                hint: "corpo das notas recortado e diffs da auditoria omitidos — use fullText:true (ou get_audit_event) para o conteúdo inteiro"
+            }
+        }
     }
 
     return { AddActivityNote, ReportProgress, ListActivityNotes, DeleteActivityNote, GetActivityContext }

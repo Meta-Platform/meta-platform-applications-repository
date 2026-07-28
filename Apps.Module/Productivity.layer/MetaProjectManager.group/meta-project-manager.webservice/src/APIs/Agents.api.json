@@ -265,6 +265,37 @@
             ]
         },
         {
+            "summary": "DecideCreations",
+            "method": "POST",
+            "path": "/creation-requests/decide",
+            "parameters": [
+                {
+                    "name": "requests",
+                    "in": "body",
+                    "type": "array",
+                    "required": true
+                },
+                {
+                    "name": "decision",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "reason",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "name": "actorUserId",
+                    "in": "body",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
             "summary": "WhoIsHere",
             "method": "GET",
             "path": "/agent-presence",

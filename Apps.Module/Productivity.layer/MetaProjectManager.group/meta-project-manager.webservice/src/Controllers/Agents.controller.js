@@ -29,6 +29,10 @@ const AgentsController = (params) => {
     const ListCreationRequests = async (p = {}) => Guard(async () => { await ctx.ready; return store.ListCreationRequests({ type: p.type, actionName: p.actionName, status: p.status, agent: p.agent, session: p.session, limit: p.limit }) })
     const GetCreationRequest = async (arg) => Guard(async () => { await ctx.ready; const id = idOf(arg, "requestId"); return store.DescribeCreationRequest({ request: id }) })
     const ApproveCreation = async (p = {}) => Guard(async () => { await ctx.ready; return store.ApproveRequest({ request: p.requestId, actor: Actor(p) }) })
+    // Decidir um CONJUNTO de pedidos de uma vez (MPMX3-8): 74 itens geravam ~150
+    // diálogos, e humano que carimba não lê — o oposto do que o gate existe para
+    // garantir. Cada pedido é decidido de forma independente no store.
+    const DecideCreations = async (p = {}) => Guard(async () => { await ctx.ready; return store.DecideRequests({ requests: p.requests, decision: p.decision, reason: p.reason, actor: Actor(p) }) })
     const RejectCreation = async (p = {}) => Guard(async () => { await ctx.ready; return store.RejectRequest({ request: p.requestId, reason: p.reason, actor: Actor(p) }) })
 
     // ── Coordenação entre agentes (MPMX3) ──────────────────────────────────
@@ -56,6 +60,7 @@ const AgentsController = (params) => {
         GetCreationRequest,
         ApproveCreation,
         RejectCreation,
+        DecideCreations,
         WhoIsHere,
         ListAgentNotices,
         SendAgentNotice,

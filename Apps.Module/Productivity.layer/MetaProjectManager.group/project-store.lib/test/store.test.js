@@ -2053,3 +2053,166 @@ test("MPMX3 presença envelhece: sessão sem sinal sai sozinha e avisa", async (
     const viva = await store.GetSession({ session: sessao.id })
     assert.equal(viva.presence, "here")
 })
+
+// ─────────────── MPMX3: gate, fila e leituras (itens 8 a 14 e 23) ───────────────
+
+test("MPMX3-14 update_item com status passa pelo MESMO gate de set_item_status", async () => {
+    const p = await store.CreateProject({ name: "GateStatus", keyPrefix: "GST", status: "active", actor: { source: "cli" } })
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Alvo do gate" })
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "gst-1" } }
+
+    // O caminho lateral estava aberto: update_item escrevia o status direto.
+    await assert.rejects(
+        () => store.UpdateItem({ item: item.id, statusKey: "done", actor: agente }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED"
+    )
+    assert.equal((await store.GetItem({ item: item.id })).statusKey, "backlog")
+
+    // Transição livre continua livre por qualquer caminho.
+    const livre = await store.UpdateItem({ item: item.id, statusKey: "review", actor: agente })
+    assert.equal(livre.statusKey, "review")
+
+    // E o patch misto (status + outro campo) não perde o resto.
+    const misto = await store.UpdateItem({ item: item.id, statusKey: "ready", title: "Renomeado", actor: agente })
+    assert.equal(misto.title, "Renomeado")
+    assert.equal((await store.GetItem({ item: item.id })).statusKey, "ready")
+})
+
+test("MPMX3-9 aprovação tardia não reverte item que já mudou de estado", async () => {
+    const p = await store.CreateProject({ name: "Tardia", keyPrefix: "TARD", status: "active", actor: { source: "cli" } })
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Vai avançar sozinho" })
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "tard-1" } }
+
+    await assert.rejects(() => store.SetStatus({ item: item.id, status: "in-progress", actor: agente }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pedido = (await store.ListCreationRequests({ status: "pending", projectId: p.id }))
+        .find((r) => r.actionName === "set-status" && r.targetId === item.id)
+
+    // O agente desistiu de esperar e o item seguiu por outro caminho.
+    await store.SetStatus({ item: item.id, status: "review", actor: { source: "cli" } })
+
+    // Horas depois, o humano encontra o pedido antigo e aprova.
+    await assert.rejects(() => store.ApproveRequest({ request: pedido.id, actor: { source: "gui" } }),
+        (e) => e.code === "STALE_APPROVAL")
+    assert.equal((await store.GetItem({ item: item.id })).statusKey, "review", "o estado atual é preservado")
+
+    // E o pedido sai da fila, preservado como expirado (não fica pendente para sempre).
+    const aindaPendente = (await store.ListCreationRequests({ status: "pending", projectId: p.id }))
+        .some((r) => r.id === pedido.id)
+    assert.equal(aindaPendente, false)
+})
+
+test("MPMX3-8 um pedido move vários itens, e o humano decide em bloco", async () => {
+    const p = await store.CreateProject({ name: "Lote", keyPrefix: "LOTE", status: "active", actor: { source: "cli" } })
+    const a = await store.CreateItem({ project: p.id, type: "task", title: "Um" })
+    const b = await store.CreateItem({ project: p.id, type: "task", title: "Dois" })
+    const c = await store.CreateItem({ project: p.id, type: "task", title: "Três" })
+    await store.AddAcceptanceCriteria({ item: a.id, text: "critério em aberto" })
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "lote-1" } }
+
+    // Transição LIVRE não abre pedido nenhum.
+    const livre = await store.SetStatusBatch({ items: [a.key, b.key, c.key], status: "review", actor: agente })
+    assert.equal(livre.total, 3)
+
+    // Concluir os três: UM pedido para o conjunto.
+    await assert.rejects(() => store.SetStatusBatch({ items: [a.key, b.key, c.key], status: "done", actor: agente }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pendentes = await store.ListCreationRequests({ status: "pending", projectId: p.id })
+    assert.equal(pendentes.length, 1, "um pedido, não três")
+    const pedido = pendentes[0]
+    assert.equal(pedido.subject.batch.length, 3, "o pedido carrega a lista inteira")
+    assert.equal(pedido.subject.unmetCriteria.length, 1, "e os critérios em aberto do conjunto")
+
+    await store.ApproveRequest({ request: pedido.id, actor: { source: "gui" } })
+    for(const item of [a, b, c])
+        assert.equal((await store.GetItem({ item: item.id })).statusKey, "done")
+})
+
+test("MPMX3-8 decisão em lote de pedidos independentes", async () => {
+    const p = await store.CreateProject({ name: "LoteDecide", keyPrefix: "LDEC", status: "active", actor: { source: "cli" } })
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "ldec-1" } }
+    const criados = []
+    for(const titulo of ["A", "B"]){
+        const item = await store.CreateItem({ project: p.id, type: "task", title: titulo })
+        await assert.rejects(() => store.SetStatus({ item: item.id, status: "in-progress", actor: agente }),
+            (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+        criados.push(item)
+    }
+    const ids = (await store.ListCreationRequests({ status: "pending", projectId: p.id })).map((r) => r.id)
+    assert.equal(ids.length, 2)
+
+    const out = await store.DecideRequests({ requests: ids, decision: "approve", actor: { source: "gui" } })
+    assert.equal(out.succeeded, 2)
+    for(const item of criados)
+        assert.equal((await store.GetItem({ item: item.id })).statusKey, "in-progress")
+})
+
+test("MPMX3-10 concluir devolve os critérios de aceite não atendidos", async () => {
+    const p = await store.CreateProject({ name: "Criterios", keyPrefix: "CRIT", status: "active", actor: { source: "cli" } })
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Com definição de pronto" })
+    const um = await store.AddAcceptanceCriteria({ item: item.id, text: "servidor também limita a taxa" })
+    const dois = await store.AddAcceptanceCriteria({ item: item.id, text: "navegação por data" })
+
+    const fechado = await store.SetStatus({ item: item.id, status: "done", actor: { source: "cli" } })
+    assert.equal(fechado.unmetAcceptanceCriteria.length, 2, "fechar não silencia o que falta")
+    assert.match(fechado.unmetAcceptanceCriteria[0].text, /limita a taxa/)
+
+    // MPMX3-11: marcar os dois numa chamada só.
+    const marcados = await store.UpdateAcceptanceCriteria({ criteria: [um.id, dois.id], met: true })
+    assert.equal(marcados.length, 2)
+    assert.ok(marcados.every((c) => c.met))
+    const limpo = await store.SetStatus({ item: item.id, status: "review", actor: { source: "cli" } })
+    assert.equal(limpo.unmetAcceptanceCriteria, undefined)
+
+    // E com valores diferentes por critério.
+    const mistos = await store.UpdateAcceptanceCriteria({ updates: [{ criteria: um.id, met: false }, { criteria: dois.id, met: true }] })
+    assert.equal(mistos[0].met, false)
+    assert.equal(mistos[1].met, true)
+    assert.equal((await store.UnmetAcceptanceCriteria({ item: item.id })).length, 1)
+})
+
+test("MPMX3-12 list_items encontra a entrega pelo NOME, não só pelo id", async () => {
+    const p = await store.CreateProject({ name: "PorNome", keyPrefix: "PNOM", status: "active", actor: { source: "cli" } })
+    const entrega = await store.CreateMilestone({ project: p.id, name: "M1 — Fundação" })
+    const sprint = await store.CreateSprint({ project: p.id, name: "Sprint 1" })
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Na entrega", milestoneId: entrega.id, sprintId: sprint.id })
+
+    const porNome = await store.ListItems({ project: p.id, milestone: "M1 — Fundação" })
+    assert.equal(porNome.length, 1, "o nome resolve — antes devolvia zero, em silêncio")
+    assert.equal(porNome[0].id, item.id)
+    assert.equal((await store.ListItems({ project: p.id, sprint: "Sprint 1" })).length, 1)
+    assert.equal((await store.ListItems({ project: p.id, milestone: entrega.id })).length, 1, "o id continua valendo")
+
+    // Referência inexistente RECUSA, em vez de devolver lista vazia.
+    await assert.rejects(() => store.ListItems({ project: p.id, milestone: "Entrega que não existe" }),
+        (e) => e.code === "NOT_FOUND")
+})
+
+test("MPMX3-13 ideias do inbox mudam de casa em vez de sumir com o projeto", async () => {
+    const p = await store.CreateProject({ name: "Encerrar", keyPrefix: "ENCE", status: "active", actor: { source: "cli" } })
+    const futuro = await store.CreateProject({ name: "Ideias Futuras", keyPrefix: "FUT", status: "active", actor: { source: "cli" } })
+    const ideia = await store.CreateItem({ project: p.id, type: "improvement", title: "Export para OpenTelemetry", horizon: "inbox" })
+
+    const movida = await store.MoveItemToProject({ item: ideia.id, project: futuro.id, actor: { source: "cli" } })
+    assert.equal(movida.projectId, futuro.id)
+    assert.ok(movida.key.startsWith("FUT-"), "a key é do projeto novo — ela pertence ao projeto")
+    assert.equal((await store.ListItems({ project: p.id, horizon: "inbox" })).length, 0)
+    assert.equal((await store.ListItems({ project: futuro.id, horizon: "inbox" })).length, 1)
+})
+
+test("MPMX3-23 get_activity_context vem enxuto por padrão", async () => {
+    const p = await store.CreateProject({ name: "Contexto", keyPrefix: "CTX", status: "active", actor: { source: "cli" } })
+    const longo = "x".repeat(3000)
+    await store.AddActivityNote({ project: p.id, text: `Nota longa: ${longo}`, actor: { source: "cli" } })
+
+    const enxuto = await store.GetActivityContext({ project: p.id, actor: { source: "cli" } })
+    assert.ok(enxuto.notes[0].truncated, "o corpo é recortado")
+    assert.ok(enxuto.notes[0].body.length < 500)
+    assert.ok(enxuto.notes[0].bodyChars > 3000, "mas diz o tamanho real")
+    assert.ok(enxuto._trimmed, "e avisa que recortou")
+    assert.ok(enxuto.audit.every((e) => e.before === undefined && e.after === undefined), "auditoria sem os diffs")
+
+    const inteiro = await store.GetActivityContext({ project: p.id, fullText: true, actor: { source: "cli" } })
+    assert.ok(inteiro.notes[0].body.length > 3000, "fullText traz tudo para quem precisa")
+    assert.equal(inteiro._trimmed, undefined)
+})

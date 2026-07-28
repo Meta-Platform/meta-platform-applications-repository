@@ -175,6 +175,11 @@ const AGENT_GATE_POLICY = {
     // Só as transições de INICIAR/CONCLUIR (ver AGENT_GATED_*_STATUSES); as demais
     // mudanças de status não chegam a chamar o gate.
     "set-status":  ["work-item"],
+    // O MESMO gate, para um CONJUNTO de itens numa decisão só. Um projeto de 74
+    // itens gerava ~150 diálogos idênticos — e humano que carimba não lê, que é
+    // o oposto do que o gate existe para garantir (MPMX3-8). O pedido carrega a
+    // lista inteira, então a decisão continua informada.
+    "set-status-batch": ["work-item"],
     // Concluir um ÉPICO inteiro numa autorização só. Existe porque fechar um
     // épico de 8 filhos custava 8 aprovações idênticas — e humano que carimba
     // não lê. O pedido carrega a lista do que será concluído junto.
