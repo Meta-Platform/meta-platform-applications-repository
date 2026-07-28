@@ -1813,3 +1813,38 @@ test("MPME-19/20/22 progresso, reivindicação e pulse orquestram agentes em par
     const filaDepois = await store.Ready({ project: p.id })
     assert.ok(filaDepois.some((i) => i.id === a.id), "liberado, volta para a fila")
 })
+
+test("MPME-21 sequência diz o estado de cada item e de quem ele espera", async () => {
+    const p = await store.CreateProject({ name: "Sequencia", keyPrefix: "SEQ", status: "active", actor: { source: "cli" } })
+    const base = await store.CreateItem({ project: p.id, type: "task", title: "Base" })
+    const depende = await store.CreateItem({ project: p.id, type: "task", title: "Depende da base" })
+    const livre = await store.CreateItem({ project: p.id, type: "task", title: "Livre" })
+    const travado = await store.CreateItem({ project: p.id, type: "task", title: "Travado" })
+    await store.LinkItem({ item: depende.id, relation: "depends", target: base.id })
+    await store.SetBlocked({ item: travado.id, reason: "sem credencial" })
+    await store.SetStatus({ item: base.id, status: "in-progress" })
+
+    const seq = await store.SequenceView({ project: p.id })
+    const byKey = {}
+    seq.items.forEach((i) => { byKey[i.key] = i })
+
+    assert.equal(byKey[base.key].state, "doing")
+    assert.deepEqual(byKey[base.key].unblocks, [depende.key], "diz o que ele destrava ao sair")
+    assert.equal(byKey[depende.key].state, "waiting")
+    assert.deepEqual(byKey[depende.key].waitingFor, [base.key], "diz de QUEM espera")
+    assert.equal(byKey[livre.key].state, "ready")
+    assert.equal(byKey[travado.key].state, "blocked")
+    assert.equal(byKey[travado.key].blockedReason, "sem credencial")
+
+    assert.equal(seq.counts.doing, 1)
+    assert.equal(seq.counts.waiting, 1)
+    assert.equal(seq.counts.ready, 1)
+    assert.equal(seq.counts.blocked, 1)
+
+    // Concluir a base solta quem esperava.
+    await store.SetStatus({ item: base.id, status: "done" })
+    const depois = await store.SequenceView({ project: p.id })
+    const dep = depois.items.find((i) => i.key === depende.key)
+    assert.equal(dep.state, "ready", "sem dependência aberta, vira pronto")
+    assert.deepEqual(dep.waitingFor, [])
+})

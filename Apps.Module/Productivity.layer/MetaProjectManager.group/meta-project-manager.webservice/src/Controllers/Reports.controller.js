@@ -48,6 +48,8 @@ const ReportsController = (params) => {
     // Início/fim REAIS por item, reconstruídos da auditoria (MPME-13).
     const ReportItemTimeline = async (p = {}) => Guard(async () => { await ctx.ready; return store.ItemTimeline({ project: p.project }) })
     const ReportReady = async (p = {}) => Guard(async () => { await ctx.ready; return store.Ready({ project: p.project, limit: p.limit }) })
+    // Sequência do trabalho: estado, quem espera quem (MPME-21).
+    const ReportSequence = async (p = {}) => Guard(async () => { await ctx.ready; return store.SequenceView({ project: p.project }) })
     // O que acabou de acontecer no projeto (MPME-22).
     const ReportPulse = async (p = {}) => Guard(async () => { await ctx.ready; return store.ProjectPulse({ project: p.project, limit: p.limit }) })
 
@@ -68,7 +70,8 @@ const ReportsController = (params) => {
         ReportExecution,
         ReportItemTimeline,
         ReportReady,
-        ReportPulse
+        ReportPulse,
+        ReportSequence
     }
 }
 

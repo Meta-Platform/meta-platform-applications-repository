@@ -530,6 +530,35 @@ export interface ProjectPulse {
     total: number
 }
 
+// A sequência do trabalho: estado por item + de quem ele espera. É o que
+// substitui a leitura por data quando vários agentes trabalham em paralelo.
+export type SequenceState = "done" | "doing" | "ready" | "waiting" | "blocked" | string
+export interface SequenceItem {
+    id: ID
+    key: string
+    title: string
+    type: string
+    statusKey: string
+    parentId?: ID | null
+    milestoneId?: ID | null
+    sprintId?: ID | null
+    priority?: string
+    value?: string
+    effort?: string
+    state: SequenceState
+    waitingFor: string[]
+    unblocks: string[]
+    blockedReason?: string
+    claimed?: { sessionId: ID; expiresAt: string }
+}
+export interface SequenceReport {
+    projectId: ID
+    name: string
+    items: SequenceItem[]
+    counts: { done: number; doing: number; ready: number; waiting: number; blocked: number }
+    total: number
+}
+
 export interface ExecutionOverview {
     projectId: ID
     name: string

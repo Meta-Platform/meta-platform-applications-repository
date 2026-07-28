@@ -8,6 +8,7 @@ import ExecutionPage from "../Pages/Execution.page"
 import InboxPage   from "../Pages/Inbox.page"
 import RoadmapPage from "../Pages/Roadmap.page"
 import GanttPage   from "../Pages/Gantt.page"
+import SequencePage from "../Pages/Sequence.page"
 import DocsPage    from "../Pages/Docs.page"
 import RisksPage   from "../Pages/Risks.page"
 import PlanningDocsPage from "../Pages/PlanningDocs.page"
@@ -30,6 +31,7 @@ export default {
     InboxPage,
     RoadmapPage,
     GanttPage,
+    SequencePage,
     DocsPage,
     RisksPage,
     PlanningDocsPage,

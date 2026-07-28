@@ -1,5 +1,5 @@
 import { Caller } from "./client"
-import { ActivityEntry, ExecutionOverview, FlowReport, ItemTimelineReport, ProjectPulse, WorkItem } from "./types"
+import { ActivityEntry, ExecutionOverview, FlowReport, ItemTimelineReport, ProjectPulse, SequenceReport, WorkItem } from "./types"
 
 const CreateReportsApi = (call: Caller) => ({
     activity: (query: { project?: string; limit?: string } = {}): Promise<ActivityEntry[]> =>
@@ -16,6 +16,10 @@ const CreateReportsApi = (call: Caller) => ({
     // Início/fim REAIS por item, reconstruídos da auditoria (não de datas digitadas).
     itemTimeline: (project?: string): Promise<ItemTimelineReport> =>
         call("Reports", "ReportItemTimeline", { project }),
+
+    // Sequência: estado por item, de quem espera e o que destrava (sem datas).
+    sequence: (project?: string): Promise<SequenceReport> =>
+        call("Reports", "ReportSequence", { project }),
 
     // O que acabou de acontecer: status, criação, bloqueio, reivindicação e o
     // que os agentes reportaram — em ordem.

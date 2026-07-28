@@ -40,6 +40,10 @@
         "page": "RoadmapPage"
     },
     {
+        "path": "/projects/:projectId/sequence",
+        "page": "SequencePage"
+    },
+    {
         "path": "/projects/:projectId/gantt",
         "page": "GanttPage"
     },

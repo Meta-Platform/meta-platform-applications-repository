@@ -133,6 +133,82 @@ const ReportsStore = (ctx) => {
         return Number(limit) > 0 ? ready.slice(0, Number(limit)) : ready
     }
 
+    /**
+     * A SEQUÊNCIA do trabalho — sem calendário (MPME-21).
+     *
+     * Data de término não descreve trabalho executado por vários agentes em
+     * paralelo: o que descreve é ORDEM e DEPENDÊNCIA. Para cada item, aqui vai o
+     * estado, de quem ele espera e o que ele destrava — que é o que o Gantt
+     * tentava (e falhava) dizer com barras por data.
+     *
+     * Reusa a montagem de dependências do Ready: uma definição só de "pronto".
+     */
+    const SequenceView = async ({ project } = {}) => {
+        const { projectInstance, items } = await _projectItems(project)
+        const byId = {}
+        items.forEach((i) => { byId[i.id] = i })
+
+        const links = await WorkItemLink.findAll({
+            where: { [Op.or]: [
+                { sourceItemId: { [Op.in]: items.map((i) => i.id) } },
+                { targetItemId: { [Op.in]: items.map((i) => i.id) } }
+            ] }
+        })
+        const externalIds = [...new Set(links.flatMap((l) => [l.sourceItemId, l.targetItemId]).filter((id) => !byId[id]))]
+        if(externalIds.length){
+            const externals = await WorkItem.findAll({
+                where: { id: { [Op.in]: externalIds } }, attributes: ["id", "key", "statusKey", "deletedAt"]
+            })
+            externals.forEach((i) => { byId[i.id] = i })
+        }
+        const isOpen = (id) => !!byId[id] && !byId[id].deletedAt && !DONE.has(byId[id].statusKey)
+
+        const needs = new Map(), unblocks = new Map()
+        const remember = (map, key, value) => {
+            if(!map.has(key)) map.set(key, new Set())
+            map.get(key).add(value)
+        }
+        for(const link of links){
+            if(link.relation === "depends"){
+                remember(needs, link.sourceItemId, link.targetItemId)
+                remember(unblocks, link.targetItemId, link.sourceItemId)
+            } else if(link.relation === "blocks"){
+                remember(needs, link.targetItemId, link.sourceItemId)
+                remember(unblocks, link.sourceItemId, link.targetItemId)
+            }
+        }
+
+        const claimAlive = (item) =>
+            item.claimedBySessionId && item.claimExpiresAt && new Date(item.claimExpiresAt).getTime() > Date.now()
+        const keyOf = (id) => byId[id] && byId[id].key
+
+        const rows = items.map((item) => {
+            const waitingFor = [...(needs.get(item.id) || [])].filter(isOpen).map(keyOf).filter(Boolean)
+            const releases = [...(unblocks.get(item.id) || [])].filter(isOpen).map(keyOf).filter(Boolean)
+            const done = DONE.has(item.statusKey)
+            const blocked = item.statusKey === "blocked" || !!item.blockedReason
+            const doing = !done && !blocked && !READY_STATUSES.has(item.statusKey)
+            const state = done ? "done"
+                : blocked ? "blocked"
+                : doing ? "doing"
+                : waitingFor.length ? "waiting"
+                : "ready"
+            return {
+                id: item.id, key: item.key, title: item.title, type: item.type,
+                statusKey: item.statusKey, parentId: item.parentId,
+                milestoneId: item.milestoneId, sprintId: item.sprintId,
+                priority: item.priority, value: item.value, effort: item.effort,
+                state, waitingFor, unblocks: releases,
+                blockedReason: item.blockedReason || undefined,
+                claimed: claimAlive(item) ? { sessionId: item.claimedBySessionId, expiresAt: item.claimExpiresAt } : undefined
+            }
+        })
+
+        const counts = { done: 0, doing: 0, ready: 0, waiting: 0, blocked: 0 }
+        rows.forEach((r) => { counts[r.state]++ })
+        return { projectId: projectInstance.id, name: projectInstance.name, items: rows, counts, total: rows.length }
+    }
+
     // "Em que pé está o projeto AGORA" — numa chamada só.
     //
     // As peças existiam espalhadas (Ready, Blocked, ProjectStatus, ListSprints),
@@ -314,7 +390,7 @@ const ReportsStore = (ctx) => {
         return groups.filter((g) => agentUsers.has(g.userId))
     }
 
-    return { ProjectStatus, Blocked, Overdue, Ready, ExecutionOverview, ProjectPulse, ByAssignee, ByAgent }
+    return { ProjectStatus, Blocked, Overdue, Ready, ExecutionOverview, ProjectPulse, SequenceView, ByAssignee, ByAgent }
 }
 
 module.exports = ReportsStore

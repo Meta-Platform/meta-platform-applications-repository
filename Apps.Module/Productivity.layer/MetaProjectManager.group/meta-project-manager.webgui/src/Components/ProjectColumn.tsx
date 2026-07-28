@@ -18,7 +18,11 @@ const PROJECT_NAV: { key: string; label: string; icon: any; path: (id: string) =
     { key: "backlog",  label: "Backlog",     icon: "clipboard list", path: (id) => `/projects/${id}/backlog`, hint: "Trabalho priorizado ainda não em execução (valor/esforço/clareza)." },
     { key: "inbox",    label: "Ideias",      icon: "inbox",   path: (id) => `/projects/${id}/inbox`,   hint: "Ideias cruas anotadas rápido, para triar depois (inbox, no jargão técnico)." },
     { key: "roadmap",  label: "Planejamento", icon: "road",   path: (id) => `/projects/${id}/roadmap`, hint: "O plano no tempo: entregas (por data) e horizontes (agora/próximo/depois)." },
-    { key: "gantt",    label: "Cronograma",  icon: "chart bar", path: (id) => `/projects/${id}/gantt`, hint: "Gráfico de Gantt: barras início→término, marcos e estrutura analítica (EAP)." },
+    // Sequência substituiu o Cronograma no menu: trabalho de vários agentes em
+    // paralelo se descreve por ordem e dependência, não por data (MPME-21). O
+    // Gantt continua acessível pela rota /gantt para quem quiser a leitura
+    // temporal do que JÁ aconteceu.
+    { key: "sequence", label: "Sequência",   icon: "sitemap", path: (id) => `/projects/${id}/sequence`, hint: "O que dá para pegar agora, o que espera o quê e o que cada item destrava — sem calendário." },
     { key: "docs",     label: "Documentação", icon: "book",   path: (id) => `/projects/${id}/docs`,    hint: "Wiki do projeto: páginas de documentação organizadas em árvore." },
     { key: "risks",    label: "Riscos",      icon: "warning sign", path: (id) => `/projects/${id}/risks`, hint: "Registro de riscos: matriz probabilidade×impacto, mitigação e contingência." },
     { key: "planning-docs", label: "Planos", icon: "file alternate outline", path: (id) => `/projects/${id}/planning-docs`, hint: "Documentos de planejamento: termo de abertura/charter com seções estruturadas." },

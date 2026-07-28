@@ -1627,6 +1627,12 @@ const BuildTools = ({ store, actor }) => {
             })
         },
         {
+            name: "project_sequence",
+            description: "A SEQUÊNCIA do trabalho, sem calendário: para cada item, o estado (feito | fazendo | pronto | esperando | bloqueado), DE QUEM ele espera (`waitingFor`) e o que ele destrava (`unblocks`). Substitui a leitura por data — trabalho de vários agentes em paralelo não se descreve por prazo, e sim por ordem e dependência. Use para escolher o que atacar e para explicar por que algo não pode começar ainda.",
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }, ["project"]),
+            handler: (i) => store.SequenceView({ project: i.project })
+        },
+        {
             name: "project_pulse",
             description: "O QUE ACABOU DE ACONTECER no projeto: mudanças de status, criações, bloqueios, reivindicações e o progresso que os agentes reportaram — em ordem, do mais recente para o mais antigo. LEIA ANTES de escolher trabalho: vários agentes atuam aqui ao mesmo tempo, e pegar item sem saber o que os outros estão fazendo gera trabalho jogado fora. Enxuto de propósito (ruído de campo alterado fica fora).",
             inputSchema: Obj({ project: S.str("Projeto (id|slug|key)"), limit: S.num("Máx. de eventos (padrão 30)") }, ["project"]),
