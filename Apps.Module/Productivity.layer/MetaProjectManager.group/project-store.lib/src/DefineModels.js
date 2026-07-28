@@ -119,6 +119,11 @@ const DefineModels = (sequelize) => {
         moduleName:         { type: DataTypes.STRING },
         layerName:          { type: DataTypes.STRING },
         groupName:          { type: DataTypes.STRING },
+        // Reivindicação por uma sessão de agente: enquanto vive, os outros
+        // agentes veem que o item está tomado (MPME-20).
+        claimedBySessionId: { type: DataTypes.STRING },
+        claimedAt:          { type: DataTypes.DATE },
+        claimExpiresAt:     { type: DataTypes.DATE },
         deletedAt:          { type: DataTypes.DATE }
     }, { tableName: "work_items", indexes: [
         { fields: ["projectId"] }, { fields: ["boardId"] }, { fields: ["parentId"] },
@@ -343,6 +348,12 @@ const DefineModels = (sequelize) => {
         authorUserId:    { type: DataTypes.STRING },
         authorSessionId: { type: DataTypes.STRING },
         source:          { type: DataTypes.STRING, allowNull: false, defaultValue: "desktop" },
+        // `note` = anotação humana; `progress` = o agente contando o que está
+        // fazendo enquanto faz (MPME-19). Separado para a leitura "o que está
+        // acontecendo agora" não se misturar com discussão.
+        kind:            { type: DataTypes.STRING, allowNull: false, defaultValue: "note" },
+        // Etapa curta reportada junto (ex.: "investigando", "implementando").
+        phase:           { type: DataTypes.STRING },
         deletedAt:       { type: DataTypes.DATE }
     }, { tableName: "activity_notes", indexes: [
         { fields: ["projectId"] }, { fields: ["scopeType", "scopeId"] }, { fields: ["createdAt"] }

@@ -1773,3 +1773,43 @@ test("MPME-30 concluir épico fecha os filhos abertos numa autorização só", a
     await store.ApproveRequest({ request: pedido.id, actor: { source: "gui" } })
     assert.equal((await store.GetItem({ item: e2.id })).statusKey, "done")
 })
+
+test("MPME-19/20/22 progresso, reivindicação e pulse orquestram agentes em paralelo", async () => {
+    const p = await store.CreateProject({ name: "Paralelo", keyPrefix: "PAR", status: "active", actor: { source: "cli" } })
+    const a = await store.CreateItem({ project: p.id, type: "task", title: "Tarefa A" })
+    const b = await store.CreateItem({ project: p.id, type: "task", title: "Tarefa B" })
+
+    const agente1 = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "par-1" } }
+    const agente2 = { source: "agent", session: { provider: "codex", modelName: "gpt-6", traceId: "par-2" } }
+
+    // 1. Um agente reivindica; o outro não consegue o mesmo item.
+    const claim = await store.ClaimItem({ item: a.id, actor: agente1 })
+    assert.ok(claim.claim.expiresAt, "a reivindicação tem validade")
+    await assert.rejects(() => store.ClaimItem({ item: a.id, actor: agente2 }), (e) => e.code === "ITEM_CLAIMED")
+
+    // 2. O item reivindicado sai da fila (senão dois pegam o mesmo trabalho).
+    const fila = await store.Ready({ project: p.id })
+    assert.ok(!fila.some((i) => i.id === a.id), "item com dono não é oferecido")
+    assert.ok(fila.some((i) => i.id === b.id), "o resto da fila continua")
+
+    // 3. Reportar progresso registra o relato E renova a reivindicação.
+    const progresso = await store.ReportProgress({ item: a.id, note: "lendo o ReportsStore", phase: "investigando", actor: agente1 })
+    assert.equal(progresso.kind, "progress")
+    assert.ok(progresso.claim, "reportar é o heartbeat da reivindicação")
+
+    // 4. A Execução mostra quem está com o quê e o último reporte.
+    const exec = await store.ExecutionOverview({ project: p.id })
+    assert.equal(exec.agents.length, 1)
+    assert.equal(exec.agents[0].item.key, a.key)
+    assert.equal(exec.agents[0].lastProgress.body, "lendo o ReportsStore")
+
+    // 5. O pulse conta o que aconteceu, do mais recente para o mais antigo.
+    const pulse = await store.ProjectPulse({ project: p.id, limit: 10 })
+    assert.ok(pulse.events.length > 0)
+    assert.equal(pulse.events[0].summary, "lendo o ReportsStore", "o mais recente vem primeiro")
+
+    // 6. Liberar devolve o item à fila.
+    await store.ReleaseItem({ item: a.id, actor: agente1 })
+    const filaDepois = await store.Ready({ project: p.id })
+    assert.ok(filaDepois.some((i) => i.id === a.id), "liberado, volta para a fila")
+})

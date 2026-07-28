@@ -371,6 +371,83 @@ const WorkItemsStore = (ctx) => {
         return data
     }
 
+    // ───────────── Reivindicação de item (MPME-20) ─────────────
+    //
+    // Vários agentes trabalham no mesmo projeto ao mesmo tempo. Sem um dono
+    // declarado, dois pegam a mesma tarefa e o trabalho é jogado fora. O claim
+    // resolve isso — com VALIDADE, porque um agente que morreu no meio não pode
+    // travar o item para sempre (mesmo desenho do claim de feedback).
+    const CLAIM_DEFAULT_MINUTES = 45
+
+    const _claimOf = (instance) => {
+        if(!instance.claimedBySessionId || !instance.claimExpiresAt) return undefined
+        if(new Date(instance.claimExpiresAt).getTime() <= Date.now()) return undefined
+        return {
+            sessionId: instance.claimedBySessionId,
+            claimedAt: instance.claimedAt,
+            expiresAt: instance.claimExpiresAt
+        }
+    }
+
+    // A sessão do ator (cria se for a primeira ação dela).
+    const _sessionIdOf = async (actor) => {
+        if(actor && actor.actorSessionId) return actor.actorSessionId
+        if(actor && actor.session){
+            const session = await store.ResolveOrCreateSessionByIdentity(actor.session, "claim-item")
+            return session.id
+        }
+        return undefined
+    }
+
+    const ClaimItem = async ({ item, minutes, actor } = {}) => {
+        const instance = await ResolveItem(item)
+        await store.AssertProjectWritable({ project: instance.projectId })
+        const sessionId = await _sessionIdOf(actor)
+        if(!sessionId)
+            throw new DomainError("VALIDATION_ERROR", "Só uma sessão de agente reivindica item.", { field: "actor" })
+
+        const current = _claimOf(instance)
+        if(current && current.sessionId !== sessionId)
+            throw new DomainError("ITEM_CLAIMED",
+                `Item já reivindicado por outra sessão até ${new Date(current.expiresAt).toISOString()}. Pegue outro da fila.`,
+                { itemId: instance.id, claim: current })
+
+        const ttl = Number(minutes) > 0 ? Number(minutes) : CLAIM_DEFAULT_MINUTES
+        const expiresAt = new Date(Date.now() + ttl * 60000)
+        await instance.update({ claimedBySessionId: sessionId, claimedAt: new Date(), claimExpiresAt: expiresAt })
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "claim", actor, metadata: { expiresAt, minutes: ttl } })
+        emit("item.updated", Serialize(instance))
+        return { ...Serialize(instance), claim: _claimOf(instance) }
+    }
+
+    // Renovar é o heartbeat: quem está reportando progresso está vivo.
+    const RenewItemClaim = async ({ item, minutes, actor } = {}) => {
+        const instance = await ResolveItem(item)
+        const sessionId = await _sessionIdOf(actor)
+        const current = _claimOf(instance)
+        if(!sessionId || !current || current.sessionId !== sessionId) return undefined
+        const ttl = Number(minutes) > 0 ? Number(minutes) : CLAIM_DEFAULT_MINUTES
+        await instance.update({ claimExpiresAt: new Date(Date.now() + ttl * 60000) })
+        return _claimOf(instance)
+    }
+
+    const ReleaseItem = async ({ item, actor } = {}) => {
+        const instance = await ResolveItem(item)
+        const sessionId = await _sessionIdOf(actor)
+        const current = _claimOf(instance)
+        // Humano (sem sessão) pode liberar qualquer item — é a válvula de escape
+        // quando um agente trava algo e ninguém quer esperar a validade.
+        if(current && sessionId && current.sessionId !== sessionId)
+            throw new DomainError("ITEM_CLAIMED", "Este item foi reivindicado por outra sessão.", { itemId: instance.id, claim: current })
+        await instance.update({ claimedBySessionId: null, claimedAt: null, claimExpiresAt: null })
+        await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "release", actor })
+        emit("item.updated", Serialize(instance))
+        return { ...Serialize(instance), claim: undefined }
+    }
+
+    // Claim vivo de um item (para as listagens dizerem quem está com o quê).
+    const GetItemClaim = async ({ item } = {}) => _claimOf(await ResolveItem(item))
+
     /**
      * Conclui um ÉPICO e tudo que pende dele, numa autorização só.
      *
@@ -688,6 +765,7 @@ const WorkItemsStore = (ctx) => {
         ListProjectAreas, ListProjectLabels,
         CreateItem, ListItems, CountItems, GetItem, UpdateItem, SetStatus, Assign,
         MoveItem, MoveToBoard, ReorderItem, ConvertItem, ConvertIdea, SetBlocked, CompleteEpic,
+        ClaimItem, RenewItemClaim, ReleaseItem, GetItemClaim,
         LinkItem, UnlinkItem, DeleteItem,
         AddChecklistItem, UpdateChecklistItem, RemoveChecklistItem,
         AddAcceptanceCriteria, UpdateAcceptanceCriteria, RemoveAcceptanceCriteria

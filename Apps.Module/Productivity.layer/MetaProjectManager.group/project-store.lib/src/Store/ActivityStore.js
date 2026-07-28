@@ -38,7 +38,7 @@ const ActivityStore = (ctx) => {
     }
 
     // Adiciona uma nota. Sem autor humano explícito, atribui ao usuario-desktop.
-    const AddActivityNote = async ({ project, board, sprint, milestone, item, text, body, source, actor = {} } = {}) => {
+    const AddActivityNote = async ({ project, board, sprint, milestone, item, text, body, source, kind, phase, actor = {} } = {}) => {
         const content = (body || text || "").trim()
         if(!content) throw new DomainError("VALIDATION_ERROR", "Texto da nota é obrigatório.", { field: "text" })
 
@@ -75,6 +75,8 @@ const ActivityStore = (ctx) => {
             body: content,
             authorUserId,
             authorSessionId,
+            kind: kind || "note",
+            phase,
             source: source || actor.source || (authorType === "desktop" ? "desktop" : "api")
         })
         const data = Serialize(note)
@@ -85,6 +87,32 @@ const ActivityStore = (ctx) => {
         })
         emit("activity.created", data)
         return data
+    }
+
+    /**
+     * O agente contando o que está fazendo ENQUANTO faz (MPME-19).
+     *
+     * A auditoria registra o FATO (mudou status, criou item) — nunca a intenção.
+     * Com vários agentes trabalhando em paralelo, quem olha (humano ou outro
+     * agente) precisa saber o que está sendo tentado agora, e por quê, para se
+     * coordenar em vez de atropelar.
+     *
+     * É uma nota de atividade de tipo `progress`: mesmo canal, mesma auditoria,
+     * leitura separada. Reportar também RENOVA a reivindicação do item — o
+     * heartbeat sai de graça, sem uma segunda chamada só para dizer "ainda estou
+     * aqui".
+     */
+    const ReportProgress = async ({ item, project, note, phase, actor = {} } = {}) => {
+        const content = String(note || "").trim()
+        if(!content) throw new DomainError("VALIDATION_ERROR", "Diga o que você está fazendo (`note`).", { field: "note" })
+        const created = await AddActivityNote({
+            item, project, body: content, kind: "progress", phase, source: actor.source || "agent", actor
+        })
+        // Renova o claim (se houver) sem falhar o reporte caso não haja item.
+        let claim
+        if(item && store.RenewItemClaim)
+            claim = await store.RenewItemClaim({ item, actor }).catch(() => undefined)
+        return { ...created, claim }
     }
 
     // Lista notas por escopo. Sem projeto e sem escopo => consulta GLOBAL (permissão).
@@ -142,7 +170,7 @@ const ActivityStore = (ctx) => {
         return { scope, notes, audit }
     }
 
-    return { AddActivityNote, ListActivityNotes, DeleteActivityNote, GetActivityContext }
+    return { AddActivityNote, ReportProgress, ListActivityNotes, DeleteActivityNote, GetActivityContext }
 }
 
 module.exports = ActivityStore

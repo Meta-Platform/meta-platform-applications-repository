@@ -1627,6 +1627,38 @@ const BuildTools = ({ store, actor }) => {
             })
         },
         {
+            name: "project_pulse",
+            description: "O QUE ACABOU DE ACONTECER no projeto: mudanças de status, criações, bloqueios, reivindicações e o progresso que os agentes reportaram — em ordem, do mais recente para o mais antigo. LEIA ANTES de escolher trabalho: vários agentes atuam aqui ao mesmo tempo, e pegar item sem saber o que os outros estão fazendo gera trabalho jogado fora. Enxuto de propósito (ruído de campo alterado fica fora).",
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)"), limit: S.num("Máx. de eventos (padrão 30)") }, ["project"]),
+            handler: (i) => store.ProjectPulse({ project: i.project, limit: i.limit })
+        },
+        {
+            name: "report_progress",
+            description: "CONTE O QUE VOCÊ ESTÁ FAZENDO, enquanto faz. Obrigatório: ao COMEÇAR num item, ao VIRAR DE ETAPA (investiguei → implementando → verificando) e ao TERMINAR. Por que importa: vários agentes trabalham neste projeto ao mesmo tempo; a auditoria registra o FATO (mudou status), nunca a intenção — sem o seu relato, o humano e os outros agentes não sabem o que está sendo tentado agora e atropelam o seu trabalho. Uma linha basta, direta (\"lendo o ReportsStore para achar onde a fila é montada\"). Também RENOVA sua reivindicação do item — reportar é o heartbeat. LIVRE.",
+            inputSchema: Obj({
+                item: S.str("Item (id|key) em que você está trabalhando"),
+                project: S.str("Projeto (id|slug|key) — use quando o trabalho ainda não é de um item específico"),
+                note: S.str("O que você está fazendo agora, em uma linha"),
+                phase: S.str("Etapa curta: investigando | implementando | verificando | bloqueado | concluindo")
+            }, ["note"]),
+            handler: (i) => store.ReportProgress(A({ item: i.item, project: i.project, note: i.note, phase: i.phase }))
+        },
+        {
+            name: "claim_item",
+            description: "REIVINDICA um item antes de trabalhar nele: enquanto sua reivindicação vive, os outros agentes veem que ele está tomado e ele SAI da fila deles. Faça isto ANTES de começar (e antes de pedir para iniciar a tarefa). A reivindicação tem validade e é renovada por `report_progress` — se sua sessão morrer, ela expira sozinha e o item volta à fila (nada fica travado para sempre). Item já reivindicado por outra sessão responde `ITEM_CLAIMED`: pegue outro. LIVRE.",
+            inputSchema: Obj({
+                item: S.str("Item (id|key)"),
+                minutes: S.num("Validade em minutos (padrão 45)")
+            }, ["item"]),
+            handler: (i) => store.ClaimItem(A({ item: i.item, minutes: i.minutes }))
+        },
+        {
+            name: "release_item",
+            description: "Libera o item que você reivindicou — faça ao terminar, ao desistir ou ao trocar de tarefa. Devolve o item à fila dos outros agentes na hora, em vez de esperar a validade expirar. LIVRE.",
+            inputSchema: Obj({ item: S.str("Item (id|key)") }, ["item"]),
+            handler: (i) => store.ReleaseItem(A({ item: i.item }))
+        },
+        {
             name: "complete_epic",
             description: "Conclui um ÉPICO e todos os itens que pendem dele numa AUTORIZAÇÃO SÓ. Use quando o épico terminou: em vez de N pedidos de `set_item_status` (um por filho), o humano vê UMA vez a lista do que será concluído junto — inclusive os filhos ainda abertos — e decide. GATE: bloqueia até a decisão; rejeitar não conclui nada. Não é autorização guarda-chuva: vale só para este pedido.",
             inputSchema: Obj({

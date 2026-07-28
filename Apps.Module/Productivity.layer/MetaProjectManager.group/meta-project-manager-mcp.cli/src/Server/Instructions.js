@@ -88,6 +88,25 @@ Faça isto, nesta ordem, ao começar:
 \`AGENT_SESSION_PENDING_APPROVAL\` = você tentou escrever antes da liberação.
 \`AGENT_SESSION_REJECTED\` = o humano recusou: pare, não tente outro caminho.
 
+## 3.10. VOCÊ NÃO ESTÁ SOZINHO (isto é obrigatório)
+
+Vários agentes trabalham neste workspace **ao mesmo tempo**. Datas de término
+não descrevem esse trabalho — o que vale é **estado**: o que falta, o que está
+sendo feito agora e por quem.
+
+Ciclo de trabalho, sempre:
+
+1. \`claim_item\` — reivindique ANTES de começar. Item reivindicado sai da fila
+   dos outros; \`ITEM_CLAIMED\` significa que já tem dono: pegue outro.
+2. \`report_progress\` — ao começar, **a cada virada de etapa** e ao terminar.
+   Uma linha direta do que está fazendo. É o que impede outro agente (e o
+   humano) de atropelar você — e renova sua reivindicação.
+3. \`release_item\` — ao terminar, desistir ou trocar de tarefa.
+
+E antes de escolher trabalho: **leia o que acabou de acontecer** (\`project_pulse\`
+ou \`list_activity\`) e a fila (\`report_ready\`). Não escolha item sem olhar o que
+os outros estão fazendo.
+
 ## 4. O que é LIVRE e o que exige aprovação
 
 ### 4.0. TRAVA DE PLANEJAMENTO (leia primeiro)
@@ -237,6 +256,7 @@ num passo só.
 |---|---|
 | \`AGENT_SESSION_CONFIRMATION_REQUIRED\` | Avise o humano e aguarde a aprovação. |
 | \`PROJECT_IN_PLANNING\` | Projeto em planejamento: você não escreve nele. Só leituras — ou proponha a saída com \`update_project\` mandando SÓ \`status\` (aguarda aprovação humana). |
+| \`ITEM_CLAIMED\` | Outro agente está com o item. Pegue outro da fila — não insista. |
 | \`AGENT_SESSION_PENDING_APPROVAL\` | Sua entrada ainda não foi liberada. Chame \`declare_session\` e aguarde; só leituras até lá. |
 | \`AGENT_SESSION_REJECTED\` | O humano recusou a sessão. Pare de escrever e avise. |
 | \`AGENT_ACTION_REQUIRES_HUMAN\` | Iniciar/concluir (ou criar item já iniciado) exige solicitação explícita do humano. Proponha e aguarde. |

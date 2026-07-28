@@ -105,10 +105,15 @@ const ReportsStore = (ctx) => {
         const blockedMilestones = new Set(milestones.filter((m) => m.dependenciesMet === false).map((m) => m.id))
 
         const PRIORITY_RANK = { urgent: 5, critical: 5, high: 4, medium: 3, low: 2, none: 1 }
+        // Item reivindicado por uma sessão viva já tem dono: oferecê-lo como
+        // "pronto para pegar" é convidar dois agentes para o mesmo trabalho.
+        const claimAlive = (item) =>
+            item.claimedBySessionId && item.claimExpiresAt && new Date(item.claimExpiresAt).getTime() > Date.now()
         const ready = []
         for(const item of items){
             if(!READY_STATUSES.has(item.statusKey)) continue
             if(item.blockedReason || item.statusKey === "blocked") continue
+            if(claimAlive(item)) continue
             const pending = [...(needs.get(item.id) || [])].filter(isOpen)
             if(pending.length) continue
             if(item.milestoneId && blockedMilestones.has(item.milestoneId)) continue
@@ -164,10 +169,35 @@ const ReportsStore = (ctx) => {
         // destrava): o que a próxima pessoa — ou o próximo agente — vai pegar.
         const queue = await Ready({ project: projectInstance.id, limit: queueLimit })
 
+        // QUEM ESTÁ TRABALHANDO AGORA (MPME-22): sessões com item reivindicado
+        // vivo + o último progresso que cada uma reportou. É o que permite a um
+        // agente (e a você) se orquestrar com os outros em vez de atropelar.
+        const claimed = items.filter((i) =>
+            i.claimedBySessionId && i.claimExpiresAt && new Date(i.claimExpiresAt).getTime() > Date.now())
+        const agents = []
+        for(const item of claimed){
+            const session = await store.GetSession({ session: item.claimedBySessionId }).catch(() => undefined)
+            const [lastProgress] = await store.ListActivityNotes({ item: item.id, limit: 5, actor: { source: "api" } })
+                .then((notes) => (notes || []).filter((n) => n.kind === "progress"))
+                .catch(() => [])
+            agents.push({
+                sessionId: item.claimedBySessionId,
+                provider: session && session.provider,
+                model: session && session.modelName,
+                objective: session && session.objective,
+                item: { id: item.id, key: item.key, title: item.title, statusKey: item.statusKey },
+                claimExpiresAt: item.claimExpiresAt,
+                lastProgress: lastProgress
+                    ? { body: lastProgress.body, phase: lastProgress.phase, at: lastProgress.createdAt }
+                    : undefined
+            })
+        }
+
         const open = items.filter((i) => !DONE.has(i.statusKey))
         return {
             projectId: projectInstance.id,
             name: projectInstance.name,
+            agents,
             round: currentRound
                 ? { id: currentRound.id, name: currentRound.name, status: currentRound.status,
                     startDate: currentRound.startDate, endDate: currentRound.endDate,
@@ -190,6 +220,69 @@ const ReportsStore = (ctx) => {
                 // diz se a fila vai secar (refinamento pendente).
                 notReady: open.filter((i) => READY_STATUSES.has(i.statusKey)).length - queue.length
             }
+        }
+    }
+
+    /**
+     * "O que acabou de acontecer aqui?" — em uma leitura.
+     *
+     * Com vários agentes em paralelo, quem chega (humano ou outro agente)
+     * precisa se situar antes de agir: o que mudou de status, o que foi criado,
+     * o que travou e o que os agentes estão reportando. A auditoria já tem os
+     * fatos e as notas têm o relato; o que faltava era a leitura ÚNICA, em ordem,
+     * enxuta o bastante para caber na decisão (MPME-22).
+     */
+    const ProjectPulse = async ({ project, limit = 30 } = {}) => {
+        const projectInstance = await store.ResolveProject(project)
+        const take = Number(limit) > 0 ? Number(limit) : 30
+
+        const [audit, notes] = await Promise.all([
+            store.ListActivity({ projectId: projectInstance.id, limit: take * 2, actor: { source: "api" } }).catch(() => []),
+            store.ListActivityNotes({ project: projectInstance.id, limit: take, actor: { source: "api" } }).catch(() => [])
+        ])
+
+        // Ruído fora: um pulse cheio de "atualizou campo X" esconde o que importa.
+        const RELEVANT = new Set(["create", "set-status", "claim", "release", "block", "delete", "assign-planning", "approve", "reject"])
+        // A nota entra pelo outro canal (com o texto): o evento de auditoria dela
+        // seria a mesma coisa dita duas vezes, e sem o conteúdo.
+        const NOISE = new Set(["activity-note", "audit-event"])
+        const events = []
+        for(const entry of audit){
+            if(!RELEVANT.has(entry.action)) continue
+            if(NOISE.has(entry.entityType)) continue
+            events.push({
+                kind: "audit",
+                at: entry.createdAt,
+                action: entry.action,
+                entityType: entry.entityType,
+                entityId: entry.entityId,
+                itemKey: entry.itemKey || (entry.metadata && entry.metadata.key),
+                who: entry.actorType === "agent"
+                    ? `${entry.provider || "agente"}${entry.model ? ` · ${entry.model}` : ""}`
+                    : (entry.actorType || entry.source),
+                summary: entry.after && entry.after.statusKey
+                    ? `${entry.entityType} → ${entry.after.statusKey}`
+                    : `${entry.action} ${entry.entityType}`
+            })
+        }
+        for(const note of notes){
+            events.push({
+                kind: note.kind === "progress" ? "progress" : "note",
+                at: note.createdAt,
+                phase: note.phase,
+                entityType: note.scopeType,
+                entityId: note.scopeId,
+                who: note.source === "agent" ? "agente" : (note.source || "humano"),
+                summary: note.body
+            })
+        }
+        events.sort((a, b) => new Date(b.at) - new Date(a.at))
+
+        return {
+            projectId: projectInstance.id,
+            name: projectInstance.name,
+            events: events.slice(0, take),
+            total: events.length
         }
     }
 
@@ -221,7 +314,7 @@ const ReportsStore = (ctx) => {
         return groups.filter((g) => agentUsers.has(g.userId))
     }
 
-    return { ProjectStatus, Blocked, Overdue, Ready, ExecutionOverview, ByAssignee, ByAgent }
+    return { ProjectStatus, Blocked, Overdue, Ready, ExecutionOverview, ProjectPulse, ByAssignee, ByAgent }
 }
 
 module.exports = ReportsStore

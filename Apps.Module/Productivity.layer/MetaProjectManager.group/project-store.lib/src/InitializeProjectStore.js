@@ -82,6 +82,15 @@ const InitializeProjectStore = (options = {}) => {
         ["milestones",        "shortDescription", "VARCHAR(255)"],
         ["sprints",           "shortDescription", "VARCHAR(255)"],
         ["users",             "permissionsJson",  "TEXT"],
+        // Progresso reportado por agente (MPME-19).
+        ["activity_notes",    "kind",             "VARCHAR(255) NOT NULL DEFAULT 'note'"],
+        ["activity_notes",    "phase",            "VARCHAR(255)"],
+        // Reivindicação de item por sessão de agente (MPME-20): quem está com o
+        // item e até quando. Sem validade, um agente que morreu travaria o item
+        // para sempre.
+        ["work_items",        "claimedBySessionId", "VARCHAR(255)"],
+        ["work_items",        "claimedAt",          "DATETIME"],
+        ["work_items",        "claimExpiresAt",     "DATETIME"],
         ["audit_events",      "actorType",        "VARCHAR(255)"],
         ["audit_events",      "provider",         "VARCHAR(255)"],
         ["audit_events",      "model",            "VARCHAR(255)"],
