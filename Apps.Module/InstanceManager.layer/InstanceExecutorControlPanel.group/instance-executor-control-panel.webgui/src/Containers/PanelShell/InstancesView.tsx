@@ -29,7 +29,9 @@ const KIND_FILTERS = [
     { key: "all",     label: "todas" },
     { key: "app",     label: "app" },
     { key: "desktop", label: "desktop" },
-    { key: "cli",     label: "cli" }
+    { key: "cli",     label: "cli" },
+    // Processo que se anunciou ao daemon sem ter sido lançado por ele.
+    { key: "external", label: "externa" }
 ]
 
 // O que se abre de uma instância. São painéis do workspace — vários podem
