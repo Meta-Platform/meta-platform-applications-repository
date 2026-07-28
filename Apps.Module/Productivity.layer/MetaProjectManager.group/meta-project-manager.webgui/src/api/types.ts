@@ -499,9 +499,41 @@ export interface ExecutionRound {
     totalItems?: number
     doneItems?: number
 }
+// Quem está trabalhando AGORA: sessão de agente com item reivindicado vivo e o
+// último progresso que ela reportou.
+export interface ExecutionAgent {
+    sessionId: ID
+    provider?: string
+    model?: string
+    objective?: string
+    item: { id: ID; key: string; title: string; statusKey: string }
+    claimExpiresAt?: string
+    lastProgress?: { body: string; phase?: string; at: string }
+}
+
+// Um acontecimento do projeto (auditoria consolidada + relatos dos agentes).
+export interface PulseEvent {
+    kind: "audit" | "progress" | "note" | string
+    at: string
+    action?: string
+    entityType?: string
+    entityId?: ID
+    itemKey?: string
+    phase?: string
+    who?: string
+    summary: string
+}
+export interface ProjectPulse {
+    projectId: ID
+    name: string
+    events: PulseEvent[]
+    total: number
+}
+
 export interface ExecutionOverview {
     projectId: ID
     name: string
+    agents?: ExecutionAgent[]
     round: ExecutionRound | null
     now: WorkItem[]
     queue: (WorkItem & { unblocks?: number; unblocksKeys?: string[] })[]

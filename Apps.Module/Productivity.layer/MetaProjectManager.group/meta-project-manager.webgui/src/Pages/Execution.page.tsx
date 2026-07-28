@@ -7,7 +7,7 @@ import useApi from "../Hooks/useApi"
 import useLiveReload from "../Hooks/useLiveReload"
 import { useReadOnly } from "../Hooks/useReadOnly"
 import { ItemNavigatorProvider } from "../Hooks/useItemNavigator"
-import { Project, User, WorkItem, ExecutionOverview } from "../api/types"
+import { Project, User, WorkItem, ExecutionOverview, ProjectPulse } from "../api/types"
 import AppShell from "../Components/AppShell"
 import PageFeedbackButton from "../Components/PageFeedbackButton"
 import WorkItemInspector from "../Components/WorkItemInspector"
@@ -50,6 +50,7 @@ const ExecutionPage = () => {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [showAllQueue, setShowAllQueue] = useState(false)
+    const [pulse, setPulse] = useState<ProjectPulse | null>(null)
 
     const usersById = useMemo(() => {
         const map: { [id: string]: User } = {}
@@ -59,6 +60,7 @@ const ExecutionPage = () => {
 
     const load = () => {
         if (!projectId) return Promise.resolve()
+        api.reports.pulse(projectId, 25).then(setPulse).catch(() => {})
         return api.reports.execution(projectId, 50)
             .then((d) => setData(d))
             .catch((e) => setError(e.message))
@@ -162,6 +164,39 @@ const ExecutionPage = () => {
                     </div>
                 </div>
 
+                {/* AGENTES AGORA: quem está com o quê e o que reportou por último.
+                    Com vários agentes em paralelo, é o primeiro bloco a olhar. */}
+                {data.agents && data.agents.length > 0
+                    ? <div className="mpm-panel">
+                        <div className="mpm-panel__title">
+                            <Icon name="microchip" /> Agentes agora ({data.agents.length})
+                        </div>
+                        <div className="mpm-exec__list">
+                            {data.agents.map((agent) =>
+                                <button key={agent.sessionId} className="mpm-exec__row"
+                                    title={`Abrir ${agent.item.key}`} onClick={() => setSelected(agent.item.id)}>
+                                    <span className="mpm-chip mpm-chip--info">
+                                        {agent.provider || "agente"}{agent.model ? ` · ${agent.model}` : ""}
+                                    </span>
+                                    <span className="mpm-mono mpm-muted">{agent.item.key}</span>
+                                    <span className="mpm-exec__title">
+                                        {agent.lastProgress
+                                            ? <>
+                                                {agent.lastProgress.phase
+                                                    ? <span className="mpm-chip mpm-chip--neutral">{agent.lastProgress.phase}</span>
+                                                    : null}
+                                                {" "}{agent.lastProgress.body}
+                                            </>
+                                            : <span className="mpm-muted">reivindicou, ainda não reportou o que está fazendo</span>}
+                                    </span>
+                                    <span className="mpm-exec__when mpm-muted">
+                                        {agent.lastProgress ? formatDateTime(agent.lastProgress.at) : ""}
+                                    </span>
+                                </button>)}
+                        </div>
+                    </div>
+                    : null}
+
                 {/* 1. EM EXECUÇÃO AGORA */}
                 <div className="mpm-panel">
                     <div className="mpm-panel__title">
@@ -242,6 +277,25 @@ const ExecutionPage = () => {
                                 : null}
                         </div>}
                 </div>
+                {/* O QUE ACABOU DE ACONTECER: para se situar sem abrir a auditoria. */}
+                {pulse && pulse.events.length > 0
+                    ? <div className="mpm-panel">
+                        <div className="mpm-panel__title">
+                            <Icon name="history" /> Últimos acontecimentos
+                        </div>
+                        <div className="mpm-exec__list">
+                            {pulse.events.slice(0, 12).map((event, i) =>
+                                <div key={`${event.at}-${i}`} className="mpm-exec__row" style={{ cursor: "default" }}>
+                                    <Icon name={event.kind === "progress" ? "comment outline" : "circle outline"}
+                                        className="mpm-muted" />
+                                    {event.itemKey ? <span className="mpm-mono mpm-muted">{event.itemKey}</span> : null}
+                                    <span className="mpm-exec__title">{event.summary}</span>
+                                    <span className="mpm-exec__why">{event.who}</span>
+                                    <span className="mpm-exec__when mpm-muted">{formatDateTime(event.at)}</span>
+                                </div>)}
+                        </div>
+                    </div>
+                    : null}
             </>}
         </AppShell>
     </ItemNavigatorProvider>
