@@ -308,6 +308,9 @@
     box-shadow: var(--mp-shadow-1);
     padding: var(--mp-space-4) var(--mp-space-5);
     margin-bottom: var(--mp-space-4);
+    /* Dentro de uma coluna flex de altura fixa (as telas de painel), sem isto o
+       masthead encolhe e seu conteúdo é cortado por baixo da topbar. */
+    flex: 0 0 auto;
 }
 .mp-masthead__top {
     display: flex;
@@ -449,108 +452,6 @@
     margin-top: 2px;
 }
 .mp-object-card__chips { display: flex; align-items: center; gap: 6px; min-width: 0; }
-
-/* ================================================================== */
-/* Operations Overview (Home) — §11.2                                 */
-/* ================================================================== */
-.mp-ov-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--mp-space-4);
-    flex-wrap: wrap;
-    padding: var(--mp-space-4) var(--mp-space-5);
-    background: var(--mp-surface);
-    border: var(--mp-border-strong);
-    border-radius: var(--mp-radius-lg);
-    box-shadow: var(--mp-shadow-1);
-    margin-bottom: var(--mp-space-4);
-}
-.mp-ov-title {
-    font-family: var(--mp-font-display);
-    font-weight: 800;
-    font-size: var(--mp-text-2xl);
-    letter-spacing: -0.02em;
-    color: var(--mp-ink);
-    line-height: 1.1;
-}
-
-/* faixa de tiles de sistema */
-.mp-ov-tiles {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: var(--mp-space-3);
-    margin-bottom: var(--mp-space-4);
-}
-.mp-tile {
-    display: flex;
-    align-items: center;
-    gap: var(--mp-space-3);
-    text-align: left;
-    padding: var(--mp-space-4);
-    background: var(--mp-surface);
-    border: var(--mp-border);
-    border-radius: var(--mp-radius-md);
-    box-shadow: var(--mp-shadow-1);
-    cursor: pointer;
-    font-family: var(--mp-font-ui);
-    transition: transform .1s ease, box-shadow .1s ease;
-}
-.mp-tile:hover { transform: translate(-1px, -1px); box-shadow: var(--mp-shadow-2); }
-.mp-tile:active { transform: translate(1px, 1px); box-shadow: none; }
-.mp-tile:focus-visible { outline: 3px solid var(--mp-accent-blue); outline-offset: 2px; }
-.mp-tile__icon {
-    flex: 0 0 auto;
-    width: 40px; height: 40px;
-    display: inline-flex; align-items: center; justify-content: center;
-    background: var(--mp-paper-2);
-    border: var(--mp-border-strong);
-    border-radius: var(--mp-radius-sm);
-    box-shadow: var(--mp-shadow-1);
-    font-size: 1.2em;
-}
-.mp-tile__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 1.15; }
-.mp-tile__count { font-family: var(--mp-font-display); font-weight: 800; font-size: var(--mp-text-2xl); color: var(--mp-ink); }
-.mp-tile__title { font-weight: 700; font-size: var(--mp-text-sm); color: var(--mp-ink-2); }
-.mp-tile__sub { font-size: var(--mp-text-xs); font-weight: 700; margin-top: 2px; }
-.mp-tile__arrow { color: var(--mp-muted-2) !important; margin: 0 !important; flex: 0 0 auto; }
-
-/* colunas do overview */
-.mp-ov-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--mp-space-4);
-    align-items: start;
-}
-@media (max-width: 900px) { .mp-ov-grid { grid-template-columns: 1fr; } }
-
-.mp-ov-panel {
-    background: var(--mp-surface);
-    border: var(--mp-border);
-    border-radius: var(--mp-radius-lg);
-    box-shadow: var(--mp-shadow-1);
-    overflow: hidden;
-}
-.mp-ov-panel__head {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: var(--mp-space-3) var(--mp-space-4);
-    background: var(--mp-paper-2);
-    border-bottom: var(--mp-border);
-    color: var(--mp-ink);
-    font-size: var(--mp-text-md);
-}
-.mp-ov-panel__body { padding: var(--mp-space-4); }
-.mp-ov-row {
-    display: flex; align-items: center; gap: var(--mp-space-2);
-    padding: var(--mp-space-2) var(--mp-space-2);
-    border-bottom: 1px solid var(--mp-line-faint);
-    cursor: pointer;
-    border-radius: var(--mp-radius-sm);
-}
-.mp-ov-row:last-child { border-bottom: none; }
-.mp-ov-row:hover { background: var(--mp-surface-2); }
-.mp-ov-empty { color: var(--mp-muted); padding: var(--mp-space-2); font-size: var(--mp-text-sm); }
-.mp-ov-more { color: var(--mp-accent-blue); cursor: pointer; padding: var(--mp-space-2); font-size: var(--mp-text-sm); font-weight: 700; }
 
 /* ================================================================== */
 /* Skeletons / loading (§11.2) — blocos retangulares no estilo sistema */

@@ -1,106 +1,66 @@
-import React, { Fragment } from "react"
+import * as React from "react"
+import { DataTable, KeyValueList, Panel } from "@i-components"
 
-import {
-    Input,
-    Table,
-    Form,
-    Segment
-} from "semantic-ui-react"
+// Visualizador recursivo de parâmetros de execução (startup-params, boot).
+// Objeto vira lista chave/valor; lista de objetos vira tabela; escalar vira
+// valor mono. Toda a apresentação sai do kit comum — este componente não
+// desenha borda, cor nem tipografia próprias (antes usava Segment/Table do
+// Semantic com sombras e "aliceblue" no código).
 
-
-const GetUniqueProperties = (arrayOfObjects) => {
-    const uniqueProperties = new Set()
-
-    arrayOfObjects.forEach(obj => {
-        Object.keys(obj).forEach(key => {
-            uniqueProperties.add(key)
-        })
-    })
-
+const GetUniqueProperties = (arrayOfObjects: any[]): string[] => {
+    const uniqueProperties = new Set<string>()
+    arrayOfObjects.forEach((item) => Object.keys(item || {}).forEach((key) => uniqueProperties.add(key)))
     return Array.from(uniqueProperties)
 }
 
-const ParamsViewer = ({ params }) => {
+const IsPlainObject = (value: any) =>
+    value !== null && typeof value === "object" && !Array.isArray(value)
 
-    const renderArrayItem = (arrayOfObjects) => {
+const IsArrayOfObjects = (value: any) =>
+    Array.isArray(value) && value.some(IsPlainObject)
 
-        const columns = GetUniqueProperties(arrayOfObjects)
+const ScalarText = (value: any) => value === undefined || value === null ? "—" : String(value)
 
-        return <Segment secondary style={{
-            margin: "8px", 
-            padding: "8px", 
-            boxShadow: "rgb(92 92 92) 1px 1px 3px 1px"
-            }}>
-                    <Table celled striped compact>
-                        <Table.Header>
-                            <Table.Row>
-                                {
-                                    columns
-                                    .map((property:string, key) => 
-                                        <Table.HeaderCell key={key} style={{padding:"5px"}}>{property}</Table.HeaderCell>)
-                                }
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {
-                                arrayOfObjects.map((object, key) => 
-                                <Table.Row key={key}>
-                                    {
-                                        columns
-                                        .map((columnName:string) => 
-                                            <Table.Cell key={columnName}>
-                                                <Input
-                                                    fluid
-                                                    value={object[columnName]}/>
-                                            </Table.Cell>)
-                                    }
-                                </Table.Row>)
-                            }
-                        </Table.Body>
-                    </Table>
-                </Segment>
-    }
+const ArrayOfObjectsTable = ({ rows }: { rows: any[] }) =>
+    <DataTable
+        dense
+        rows={rows}
+        columns={GetUniqueProperties(rows).map((property) => ({
+            key: property,
+            header: property,
+            mono: true,
+            render: (row: any) => ScalarText(row[property])
+        }))}/>
 
-    const renderItemParam = (paramName, value) => 
-        <Fragment>
-            <Form.Field>
-                <label style={{marginBottom:"0px"}}>{paramName}</label>
-                {   
-                    typeof value === "string" 
-                    && <input 
-                            placeholder={paramName} 
-                            value={value}/>
-                }
-                {
-                    !(typeof value === "string") 
-                    && !Array.isArray(value) 
-                    && renderParams(value)
-                }
-                {Array.isArray(value) && renderArrayItem(value)}
-            </Form.Field>
-        </Fragment>
+const ParamsBlock = ({ params }: any): any => {
 
+    const keys = Object.keys(params || {})
+    if(keys.length === 0) return null
 
-    const renderParams = (params) => 
-        <Segment style={{margin: "8px", padding:"8px", boxShadow: "rgb(92 92 92) 1px 1px 3px 1px", backgroundColor: "aliceblue"}}>
-            <Form size="tiny">
-                {
-                    Object
-                    .keys(params)
-                    .map((property) => {
-                        const itemValue = params[property]
-                        return renderItemParam(property, itemValue)
-                    })
-                }
-            </Form>
-        </Segment>
+    // Escalares e listas simples viram uma única lista chave/valor; os valores
+    // compostos ganham painel próprio, recursivamente.
+    const flatItems = keys
+        .filter((key) => !IsPlainObject(params[key]) && !IsArrayOfObjects(params[key]))
+        .map((key) => ({
+            label: key,
+            mono: true,
+            value: Array.isArray(params[key]) ? params[key].map(ScalarText).join(", ") : ScalarText(params[key])
+        }))
 
-    return <Fragment>
-                {
-                    params
-                    && renderParams(params)
-                }
-            </Fragment>
+    const compositeKeys = keys.filter((key) => IsPlainObject(params[key]) || IsArrayOfObjects(params[key]))
+
+    return <>
+        { flatItems.length > 0 && <KeyValueList columns={2} items={flatItems}/> }
+        { compositeKeys.map((key) =>
+            <Panel key={key} title={key} icon={Array.isArray(params[key]) ? "list" : "folder open"}>
+                { Array.isArray(params[key])
+                    ? <ArrayOfObjectsTable rows={params[key]}/>
+                    : <ParamsBlock params={params[key]}/> }
+            </Panel>) }
+    </>
 }
+
+const ParamsViewer = ({ params }: any) =>
+    params ? <div className="mp-stack"><ParamsBlock params={params}/></div> : null
 
 export default ParamsViewer

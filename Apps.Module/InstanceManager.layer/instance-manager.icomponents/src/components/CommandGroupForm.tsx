@@ -1,7 +1,10 @@
 import * as React from "react"
 import { useMemo, useState } from "react"
 
-import { Button, Checkbox, Form, Icon, Input, Label, Message, Segment } from "semantic-ui-react"
+import {
+    Banner, Button, CheckboxInput, CodeBlock, FormField, IconButton, Panel,
+    StatusChip, TextInput, TreeRow
+} from "@i-components"
 
 import {
     BuildCommandLineArgs,
@@ -22,132 +25,96 @@ import {
 //
 // Os posicionais são obrigatórios; as opções, não. Nós sem handler (`path`) são
 // apenas agrupadores do yargs — aparecem como pasta e não podem ser executados.
+// Toda a UI vem do kit comum (@i-components).
 
-const MUTED = { color: "var(--mp-muted)" }
+const SectionTitle = ({ children }: any) =>
+    <div className="mp-kv__label" style={{ padding: "4px 6px 8px" }}>{children}</div>
 
-const SectionTitle = ({ icon, children }:any) =>
-    <div style={{ ...MUTED, fontSize: ".78em", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", padding: "4px 6px 8px" }}>
-        <Icon name={icon}/> {children}
-    </div>
-
-const CommandNodeView = ({ entry, selectedId, onSelect }:any) => {
+const CommandNodeView = ({ entry, selectedId, onSelect }: any) => {
 
     const [ isOpen, setIsOpen ] = useState(entry.depth === 0)
 
     const hasChildren = entry.children.length > 0
     const isSelected  = entry.id === selectedId
 
-    const handleClick = () => {
-        if(entry.isExecutable) onSelect(entry.id)
-        if(hasChildren && !entry.isExecutable) setIsOpen(!isOpen)
-    }
-
     return <div>
-        <div
-            onClick={handleClick}
-            title={entry.description || entry.label}
-            style={{
-                display: "flex", alignItems: "center", gap: "6px",
-                padding: "4px 6px", paddingLeft: `${6 + entry.depth * 12}px`,
-                cursor: entry.isExecutable || hasChildren ? "pointer" : "default",
-                borderRadius: "4px",
-                background: isSelected ? "var(--mp-accent-soft, rgba(45,116,196,.12))" : undefined,
-                boxShadow: isSelected ? "inset 3px 0 0 var(--mp-accent-blue)" : undefined,
-                fontWeight: isSelected ? 700 : 400
-            }}>
-            {
-                hasChildren
-                ? <Icon
-                    name={isOpen ? "caret down" : "caret right"}
-                    onClick={(event:any) => { event.stopPropagation(); setIsOpen(!isOpen) }}
-                    style={{ flex: "0 0 auto", margin: 0, ...MUTED }}/>
-                : <span style={{ flex: "0 0 auto", width: "1.18em" }}/>
-            }
-            <Icon
-                name={entry.isExecutable ? "terminal" : "folder"}
-                style={{ flex: "0 0 auto", margin: 0, color: entry.isExecutable ? "var(--mp-accent-cyan)" : "var(--mp-accent-orange)" }}/>
-            <span style={{
-                flex: "1 1 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                ...entry.isExecutable ? {} : MUTED
-            }}>
-                {entry.label}
-            </span>
-        </div>
+        <TreeRow
+            label={entry.label}
+            icon={entry.isExecutable ? "terminal" : "folder"}
+            depth={entry.depth}
+            hasChildren={hasChildren}
+            expanded={isOpen}
+            selected={isSelected}
+            onToggle={() => setIsOpen(!isOpen)}
+            onSelect={() => {
+                if(entry.isExecutable) onSelect(entry.id)
+                else if(hasChildren) setIsOpen(!isOpen)
+            }}/>
         {
             isOpen &&
-            entry.children.map((child:CommandEntry) =>
+            entry.children.map((child: CommandEntry) =>
                 <CommandNodeView key={child.id} entry={child} selectedId={selectedId} onSelect={onSelect}/>)
         }
     </div>
 }
 
-const ArrayField = ({ value, onChange }:any) => {
+// Campo de valor múltiplo (`array` no yargs): uma linha por valor.
+const ArrayField = ({ value, onChange }: any) => {
 
-    const items:string[] = Array.isArray(value) && value.length > 0 ? value : [""]
+    const items: string[] = Array.isArray(value) && value.length > 0 ? value : [ "" ]
 
-    const _replace = (index:number, item:string) => onChange(items.map((current, position) => position === index ? item : current))
+    const _replace = (index: number, item: string) =>
+        onChange(items.map((current, position) => position === index ? item : current))
 
     return <>
         {
             items.map((item, index) =>
-                <div key={index} style={{ display: "flex", gap: "4px", marginBottom: "4px" }}>
-                    <Input
-                        size="mini"
-                        fluid
-                        style={{ flex: "1 1 auto" }}
-                        value={item}
-                        onChange={(event:any) => _replace(index, event.target.value)}/>
-                    <Button
-                        basic icon="minus" size="mini" type="button"
-                        title="remover"
+                <div key={index} style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+                    <TextInput value={item} onChange={(event: any) => _replace(index, event.target.value)}/>
+                    <IconButton
+                        icon="minus"
+                        label="remover valor"
+                        size="sm"
                         disabled={items.length === 1 && item === ""}
                         onClick={() => onChange(items.filter((_, position) => position !== index))}/>
                 </div>)
         }
-        <Button basic icon size="mini" type="button" onClick={() => onChange([ ...items, "" ])}>
-            <Icon name="plus"/> valor
-        </Button>
+        <Button size="sm" variant="subtle" icon="plus" onClick={() => onChange([ ...items, "" ])}>valor</Button>
     </>
 }
 
-const ParameterField = ({ parameter, value, isRequired, onChange }:{
+const ParameterField = ({ parameter, value, isRequired, onChange }: {
     parameter  : CommandParameter
     value      : any
     isRequired : boolean
-    onChange   : (value:any) => void
+    onChange   : (value: any) => void
 }) => {
 
     const { key, valueType, describe } = parameter
-
-    const label = <label style={{ marginBottom: "0px" }}>
-        {parameter.paramType === "option" ? `--${key}` : key}
-        { isRequired && <span style={{ color: "var(--mp-accent-red, #c00)" }} title="obrigatório"> *</span> }
-        { describe && <span style={{ ...MUTED, fontWeight: 400, marginLeft: "6px", fontSize: ".9em" }}>{describe}</span> }
-    </label>
+    const label = parameter.paramType === "option" ? `--${key}` : key
 
     if(valueType === "boolean")
-        return <Form.Field style={{ marginBottom: "7px" }}>
-            <Checkbox
+        return <div style={{ marginBottom: 7 }}>
+            <CheckboxInput
                 label={`--${key}${describe ? ` — ${describe}` : ""}`}
                 checked={value === true}
-                onChange={(event:any, { checked }:any) => onChange(checked)}/>
-        </Form.Field>
+                onChange={(event: any) => onChange(event.target.checked)}/>
+        </div>
 
     if(valueType === "array")
-        return <Form.Field style={{ marginBottom: "7px" }}>
-            {label}
+        return <FormField label={label} hint={describe} required={isRequired}>
             <ArrayField value={value} onChange={onChange}/>
-        </Form.Field>
+        </FormField>
 
-    return <Form.Field style={{ marginBottom: "7px" }}>
-        {label}
-        <Input
-            size="mini"
+    return <FormField label={label} hint={describe} required={isRequired}>
+        <TextInput
             type={valueType === "number" ? "number" : "text"}
             value={value === undefined ? "" : value}
-            onChange={(event:any) => onChange(event.target.value)}/>
-    </Form.Field>
+            onChange={(event: any) => onChange(event.target.value)}/>
+    </FormField>
 }
+
+const STATUS_TONE: any = { idle: "neutral", running: "warning", exited: "neutral", error: "danger" }
 
 const CommandGroupForm = ({
     commandGroup,
@@ -155,9 +122,9 @@ const CommandGroupForm = ({
     status,
     onExecute,
     onKill
-}:any) => {
+}: any) => {
 
-    const commandTree = useMemo(() => BuildCommandTree(commandGroup), [commandGroup])
+    const commandTree = useMemo(() => BuildCommandTree(commandGroup), [ commandGroup ])
 
     const [ selectedId, setSelectedId ] = useState<string>()
     // Valores por comando: trocar de comando não pode apagar o que já foi digitado.
@@ -166,14 +133,14 @@ const CommandGroupForm = ({
     // Pré-seleciona o primeiro comando executável.
     const firstExecutableId = useMemo(() =>
         FlattenCommandTree(commandTree).find((entry) => entry.isExecutable)?.id,
-    [commandTree])
+    [ commandTree ])
 
     const activeId = selectedId || firstExecutableId
     const entry    = FindCommandEntry(commandTree, activeId)
 
     const values = (activeId && valuesByCommand[activeId]) || {}
 
-    const _changeValue = (key:string, value:any) =>
+    const _changeValue = (key: string, value: any) =>
         setValuesByCommand({ ...valuesByCommand, [activeId as string]: { ...values, [key]: value } })
 
     const missingPositionals = entry ? MissingPositionals(entry, values) : []
@@ -181,43 +148,45 @@ const CommandGroupForm = ({
 
     const isRunning = status === "running"
     const canRun    = Boolean(entry) && missingPositionals.length === 0 && !isRunning
+    const hasRun    = status === "exited" || status === "error"
 
     if(commandTree.length === 0)
-        return <Message info size="tiny">
-            <Icon name="info circle"/> este pacote não declara um <code>command-group</code> — use a aba <strong>terminal</strong>.
-        </Message>
+        return <Banner tone="info" title="Sem command-group">
+            este pacote não declara um <code>command-group</code> — use a aba <strong>terminal</strong>.
+        </Banner>
 
-    return <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+    return <div className="mp-stack">
 
-        <div style={{ display: "flex", gap: "10px", minHeight: 0 }}>
+        <div style={{ display: "flex", gap: 10, minHeight: 0 }}>
 
             { /* coluna 1 — árvore de comandos */ }
-            <Segment style={{ width: "260px", flex: "0 0 auto", overflow: "auto", maxHeight: "34vh", margin: 0, padding: "8px" }}>
-                <SectionTitle icon="list">comandos</SectionTitle>
-                {
-                    commandTree.map((rootEntry) =>
-                        <CommandNodeView
-                            key={rootEntry.id}
-                            entry={rootEntry}
-                            selectedId={activeId}
-                            onSelect={setSelectedId}/>)
-                }
-            </Segment>
+            <div style={{ width: 260, flex: "0 0 auto", overflow: "auto", maxHeight: "34vh" }}>
+                <Panel title="comandos" icon="list">
+                    {
+                        commandTree.map((rootEntry) =>
+                            <CommandNodeView
+                                key={rootEntry.id}
+                                entry={rootEntry}
+                                selectedId={activeId}
+                                onSelect={setSelectedId}/>)
+                    }
+                </Panel>
+            </div>
 
             { /* coluna 2 — parâmetros do comando selecionado */ }
-            <Segment style={{ flex: "1 1 auto", minWidth: 0, overflow: "auto", maxHeight: "34vh", margin: 0, padding: "8px" }}>
-                {
-                    !entry
-                    ? <div style={{ ...MUTED, padding: "20px", textAlign: "center" }}>selecione um comando</div>
-                    : <>
-                        <div style={{ fontWeight: 700, marginBottom: "2px" }}>{CommandSignature(entry)}</div>
-                        { entry.description && <div style={{ ...MUTED, fontSize: ".9em", marginBottom: "10px" }}>{entry.description}</div> }
+            <div style={{ flex: "1 1 auto", minWidth: 0, overflow: "auto", maxHeight: "34vh" }}>
+                <Panel title={entry ? CommandSignature(entry) : "comando"} icon="terminal">
+                    {
+                        !entry
+                        ? <div className="mp-empty-state__message">selecione um comando</div>
+                        : <>
+                            { entry.description &&
+                                <div className="mp-field__hint" style={{ marginBottom: 10 }}>{entry.description}</div> }
 
-                        <Form>
                             {
                                 entry.positionalKeys.length > 0 &&
                                 <>
-                                    <SectionTitle icon="sort numeric down">posicionais</SectionTitle>
+                                    <SectionTitle>posicionais</SectionTitle>
                                     {
                                         entry.positionalKeys.map((key) =>
                                             <ParameterField
@@ -225,14 +194,14 @@ const CommandGroupForm = ({
                                                 parameter={entry.parametersByKey[key] || { key, paramType: "positional", valueType: "string" }}
                                                 value={values[key]}
                                                 isRequired={true}
-                                                onChange={(value:any) => _changeValue(key, value)}/>)
+                                                onChange={(value: any) => _changeValue(key, value)}/>)
                                     }
                                 </>
                             }
                             {
                                 entry.options.length > 0 &&
                                 <>
-                                    <SectionTitle icon="sliders horizontal">opções</SectionTitle>
+                                    <SectionTitle>opções</SectionTitle>
                                     {
                                         entry.options.map((parameter) =>
                                             <ParameterField
@@ -240,52 +209,41 @@ const CommandGroupForm = ({
                                                 parameter={parameter}
                                                 value={values[parameter.key]}
                                                 isRequired={false}
-                                                onChange={(value:any) => _changeValue(parameter.key, value)}/>)
+                                                onChange={(value: any) => _changeValue(parameter.key, value)}/>)
                                     }
                                 </>
                             }
                             {
                                 entry.positionalKeys.length === 0 && entry.options.length === 0 &&
-                                <div style={{ ...MUTED, fontSize: ".9em" }}>este comando não recebe parâmetros.</div>
+                                <div className="mp-field__hint">este comando não recebe parâmetros.</div>
                             }
-                        </Form>
-                    </>
-                }
-            </Segment>
+                        </>
+                    }
+                </Panel>
+            </div>
         </div>
 
         { /* rodapé — preview da linha de comando e ações */ }
-        <Segment style={{ margin: 0, padding: "8px" }}>
-            <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                <div style={{
-                    flex: "1 1 auto", minWidth: 0, overflowX: "auto", whiteSpace: "nowrap",
-                    fontFamily: "monospace", fontSize: ".9em",
-                    background: "var(--mp-code-bg, rgba(0,0,0,.05))", padding: "6px 8px", borderRadius: "3px"
-                }}>
-                    <span style={MUTED}>$ </span>
-                    {executableName || "pkg-exec"} {commandLineArgs}
-                </div>
-                <Button
-                    primary size="small"
-                    disabled={!canRun}
-                    onClick={() => onExecute(commandLineArgs)}>
-                    <Icon name={status === "exited" || status === "error" ? "redo" : "play"}/>
-                    { status === "exited" || status === "error" ? "executar de novo" : "executar" }
-                </Button>
-                <Button basic size="small" disabled={!isRunning} onClick={onKill}>
-                    <Icon name="stop"/> encerrar
-                </Button>
-                <Label size="small" color={({ idle: "grey", running: "orange", exited: "grey", error: "red" } as any)[status]}>
-                    {status}
-                </Label>
+        <div className="mp-toolbar">
+            <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+                <CodeBlock language="bash">{`$ ${executableName || "pkg-exec"} ${commandLineArgs}`}</CodeBlock>
             </div>
-            {
-                missingPositionals.length > 0 &&
-                <Message size="tiny" warning style={{ marginTop: "8px", marginBottom: 0 }}>
-                    <Icon name="warning sign"/> preencha os parâmetros obrigatórios: <strong>{missingPositionals.join(", ")}</strong>
-                </Message>
-            }
-        </Segment>
+            <Button
+                variant="primary"
+                icon={hasRun ? "redo" : "play"}
+                disabled={!canRun}
+                onClick={() => onExecute(commandLineArgs)}>
+                { hasRun ? "executar de novo" : "executar" }
+            </Button>
+            <Button icon="stop" disabled={!isRunning} onClick={onKill}>encerrar</Button>
+            <StatusChip label={status} tone={STATUS_TONE[status] || "neutral"}/>
+        </div>
+        {
+            missingPositionals.length > 0 &&
+            <Banner tone="warning" title="Parâmetros obrigatórios">
+                preencha: <strong>{missingPositionals.join(", ")}</strong>
+            </Banner>
+        }
     </div>
 }
 

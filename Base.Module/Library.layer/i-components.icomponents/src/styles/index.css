@@ -2,8 +2,12 @@
 @import "./CorporateTheme.css";
 @import "./theme-retro-brutalist.css";
 @import "./components.css";
+@import "./controls.css";
 @import "./themes.css";
 
+/* Primitivas estruturais (Surface/Stack/Badge). Os controles do kit vivem em
+ * controls.css; .mp-button, em especial, é definido lá com as suas variantes
+ * — não o redefina aqui. */
 .mp-surface {
   color: var(--mp-ink);
   background: var(--mp-surface);
@@ -18,13 +22,4 @@
   background: var(--mp-accent-cyan);
   border: 1px solid var(--mp-line);
   font: 700 12px/1.5 var(--mp-font-mono, monospace);
-}
-.mp-button {
-  padding: 8px 14px;
-  color: var(--mp-ink);
-  background: var(--mp-accent-yellow);
-  border: 2px solid var(--mp-line);
-  box-shadow: 3px 3px 0 var(--mp-line);
-  font: 700 13px/1.2 var(--mp-font-mono, monospace);
-  cursor: pointer;
 }

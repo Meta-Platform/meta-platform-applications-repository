@@ -1,5 +1,7 @@
-import React, { type HTMLAttributes, type ButtonHTMLAttributes } from "react"
+import React, { type HTMLAttributes } from "react"
 
+// Primitivas estruturais. Os controles (Button, Icon, Input…) ficam em
+// Controls.tsx / Inputs.tsx — aqui vivem só os invólucros de layout.
 export const Surface = ({ className = "", ...props }: HTMLAttributes<HTMLDivElement>) =>
     <div className={`mp-surface ${className}`.trim()} {...props} />
 
@@ -8,6 +10,3 @@ export const Stack = ({ className = "", ...props }: HTMLAttributes<HTMLDivElemen
 
 export const Badge = ({ className = "", ...props }: HTMLAttributes<HTMLSpanElement>) =>
     <span className={`mp-badge ${className}`.trim()} {...props} />
-
-export const Button = ({ className = "", ...props }: ButtonHTMLAttributes<HTMLButtonElement>) =>
-    <button className={`mp-button ${className}`.trim()} {...props} />

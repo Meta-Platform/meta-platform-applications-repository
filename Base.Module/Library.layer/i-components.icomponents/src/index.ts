@@ -1,4 +1,17 @@
+// Superfície pública do kit comum. Um aplicativo do Application Repository
+// importa DAQUI (alias @i-components) — nunca de semantic-ui-react direto.
 export * from "./components/Primitives"
+export { default as Icon } from "./components/Icon"
+export type { IconTone } from "./components/Icon"
+export * from "./components/Controls"
+export * from "./components/Inputs"
+export * from "./components/Feedback"
+export * from "./components/Overlays"
+export * from "./components/DataDisplay"
+export * from "./components/Headers"
+export { default as StatusBadge, GetStatusMeta, GetStatusTone, GetStatusIcon, GetSeverityRank } from "./components/StatusBadge"
+export type { StatusTone } from "./components/StatusBadge"
+export { default as CopyableMonoText, TruncateMiddle } from "./components/CopyableMonoText"
 export * from "./catalog/types"
 export { commonStories } from "./catalog/stories"
 export * from "./theme"

@@ -1,13 +1,23 @@
+// Biblioteca de ÁREA do Instance Manager (Launcher + Instance Executor Control
+// Panel). Só entra aqui o que é específico da área; primitivas, cabeçalhos,
+// status e shell vivem no kit comum @i-components.
 export { default as CommandGroupForm } from "./components/CommandGroupForm"
 export { default as ParamsViewer } from "./components/ParamsViewer"
-export { default as PackageCardControl } from "./components/PackageCardControl"
-export { default as PackageCardHeader } from "./components/PackageCardHeader"
-export { default as CopyableMonoText } from "./components/CopyableMonoText"
-export { default as EntityHeader } from "./components/EntityHeader"
-export { default as PageMasthead } from "./components/PageMasthead"
-export { default as StatusBadge, GetStatusMeta, GetSeverityRank } from "./components/StatusBadge"
-export { default as StatusStrip, StatusChip } from "./components/StatusStrip"
-export { default as SystemBanner } from "./components/SystemBanner"
 export { instanceManagerStories } from "./catalog/stories"
 export { default as useWebSocket } from "./hooks/useWebSocket"
 export * from "./utils/CommandGroup"
+
+// Compatibilidade: estes componentes foram PROMOVIDOS para o kit comum (o CSS
+// deles já vivia lá). Importe de "@i-components" — estes re-exports saem quando
+// o Instance Executor Control Panel migrar (onda 2).
+export {
+    CopyableMonoText,
+    EntityHeader,
+    PageMasthead,
+    StatusBadge,
+    StatusStrip,
+    StatusChip,
+    SystemBanner,
+    GetStatusMeta,
+    GetSeverityRank
+} from "@i-components"

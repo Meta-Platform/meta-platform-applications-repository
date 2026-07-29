@@ -1,3 +1,8 @@
-@import "./tokens.css";
-@import "./components.css";
-@import "./themes.css";
+/*
+ * Instance Manager iComponents — estilos específicos da área.
+ *
+ * O design system (tokens, temas e classes .mp-*) vem do kit comum
+ * @i-components: o WebGui consumidor importa "@i-components/styles/index.css".
+ * Este arquivo existe para o que for EXCLUSIVO da área — hoje, nada: os
+ * componentes daqui compõem apenas classes do kit.
+ */

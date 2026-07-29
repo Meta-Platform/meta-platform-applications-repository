@@ -12,6 +12,12 @@
         "supervisorSocketFileName":"api-designer-desktop.sock"
     },
     {
+        "appType":"DESKTOP",
+        "executable":"ui-catalog-desktop",
+        "packageNamespace":"Apps.Module/Tools.layer/UICatalog.group/ui-catalog.desktopapp",
+        "supervisorSocketFileName":"ui-catalog-desktop.sock"
+    },
+    {
         "appType":"APP",
         "executable":"developer",
         "packageNamespace":"Apps.Module/Tools.layer/PackageDeveloper.group/package-developer.webapp",

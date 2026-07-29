@@ -1,21 +1,111 @@
-.catalog-shell { min-height: 100vh; display: grid; grid-template-columns: 300px 1fr; background: var(--mp-paper); color: var(--mp-ink); }
-.catalog-sidebar { position: sticky; top: 0; height: 100vh; overflow: auto; padding: 20px; background: var(--mp-ink); color: var(--mp-paper); border-right: 4px solid var(--mp-accent-cyan); }
-.catalog-brand { display: grid; gap: 3px; margin-bottom: 18px; }
-.catalog-brand span, .catalog-brand small, .catalog-kicker { color: var(--mp-muted-2); font: 700 11px/1.4 var(--mp-font-mono, monospace); text-transform: uppercase; letter-spacing: .08em; }
-.catalog-brand strong { font-size: 25px; }
-.catalog-sidebar input { width: 100%; padding: 10px; box-sizing: border-box; background: var(--mp-surface); border: 2px solid var(--mp-accent-yellow); }
-.catalog-sidebar nav h2 { margin: 22px 0 6px; color: var(--mp-accent-cyan); font: 700 12px/1.4 var(--mp-font-mono, monospace); }
-.catalog-sidebar nav button { width: 100%; padding: 8px 10px; color: inherit; background: transparent; border: 0; text-align: left; cursor: pointer; }
-.catalog-sidebar nav button:hover, .catalog-sidebar nav button.active { color: var(--mp-ink); background: var(--mp-accent-yellow); }
-.catalog-main { min-width: 0; }
-.catalog-story-header { padding: 32px 42px 24px; background: var(--mp-surface); border-bottom: 2px solid var(--mp-line); }
-.catalog-story-header h1 { margin: 5px 0; font-size: 30px; }
-.catalog-story-header code { display: inline-block; padding: 4px 7px; background: var(--mp-paper-2); border: 1px solid var(--mp-line-soft); }
-.catalog-canvas { min-height: 420px; margin: 32px 42px; padding: 32px; background: white; border: 2px solid var(--mp-line); box-shadow: var(--mp-shadow-2); }
-.catalog-webgui-card { max-width: 740px; }
-.catalog-webgui-card dl { display: grid; gap: 8px; }
-.catalog-webgui-card dl div { display: grid; grid-template-columns: 220px 1fr; padding: 9px; border-bottom: 1px solid var(--mp-line-soft); }
-.catalog-webgui-card dt { color: var(--mp-muted); font-weight: 700; }
-.catalog-webgui-card dd { margin: 0; font-family: var(--mp-font-mono, monospace); }
-.catalog-empty { padding: 40px; }
-@media (max-width: 760px) { .catalog-shell { grid-template-columns: 1fr; } .catalog-sidebar { position: relative; height: auto; } }
+/*
+ * UI Catalog — estilos EXCLUSIVOS do catálogo (prefixo .ct-).
+ *
+ * Nada de design system aqui: shell, painéis, botões, chips e tabelas vêm do
+ * kit comum (@i-components/styles/index.css). Este arquivo só resolve o layout
+ * da navegação e do palco de preview.
+ */
+
+.ct-shell { height: 100vh; }
+.ct-shell .mp-shell__content { padding: 0; }
+
+/* ---------------- navegação ---------------- */
+.ct-navrail { width: 300px; overflow: auto; }
+.ct-lib { margin-top: var(--mp-space-4); }
+.ct-lib__head {
+    display: grid;
+    gap: 1px;
+    padding: var(--mp-space-2) var(--mp-space-2) var(--mp-space-1);
+    border-top: 1px solid var(--mp-line-faint);
+}
+.ct-lib__title {
+    font-family: var(--mp-font-display);
+    font-size: var(--mp-text-sm);
+    font-weight: 800;
+    color: var(--mp-ink);
+}
+.ct-lib__meta { font-family: var(--mp-font-mono); font-size: var(--mp-text-xs); color: var(--mp-muted-2); }
+
+.ct-group { margin-top: var(--mp-space-2); }
+.ct-group__title {
+    padding: 2px var(--mp-space-2);
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--mp-muted-2);
+}
+.ct-item {
+    display: block;
+    width: 100%;
+    padding: 5px 10px 5px 16px;
+    background: transparent;
+    border: none;
+    border-radius: var(--mp-radius-sm);
+    color: var(--mp-ink-2);
+    font-family: var(--mp-font-ui);
+    font-size: var(--mp-text-sm);
+    text-align: left;
+    cursor: pointer;
+}
+.ct-item:hover { background: var(--mp-surface-2); color: var(--mp-ink); }
+.ct-item.is-active {
+    background: var(--mp-accent-yellow);
+    color: var(--mp-ink);
+    font-weight: 700;
+    box-shadow: inset 3px 0 0 var(--mp-line);
+}
+
+/* ---------------- história ---------------- */
+.ct-story { padding: var(--mp-space-5); }
+.ct-story .mp-masthead { margin-bottom: var(--mp-space-3); }
+.ct-import {
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-xs);
+    color: var(--mp-ink-3);
+    background: var(--mp-surface-2);
+    border: 1px solid var(--mp-line-faint);
+    border-radius: var(--mp-radius-sm);
+    padding: 2px 7px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 46ch;
+}
+
+.ct-tabbody { padding-top: var(--mp-space-4); }
+
+.ct-preview {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--mp-space-4);
+    padding-top: var(--mp-space-4);
+    align-items: start;
+}
+.ct-preview.has-controls { grid-template-columns: minmax(0, 1fr) 320px; }
+@media (max-width: 1080px) { .ct-preview.has-controls { grid-template-columns: 1fr; } }
+
+/* Palco: papel quadriculado para o componente não "flutuar" — é o mesmo grid da
+   área de trabalho, então o preview se parece com o aplicativo real. */
+.ct-canvas {
+    position: relative;
+    min-height: 320px;
+    padding: var(--mp-space-6);
+    background:
+        linear-gradient(var(--mp-grid-line) 1px, transparent 1px) 0 0 / 22px 22px,
+        linear-gradient(90deg, var(--mp-grid-line) 1px, transparent 1px) 0 0 / 22px 22px,
+        var(--mp-paper);
+    border: var(--mp-border-strong);
+    border-radius: var(--mp-radius-md);
+    box-shadow: var(--mp-shadow-2);
+    overflow: auto;
+}
+.ct-canvas.is-inline { min-height: 0; padding: var(--mp-space-4); box-shadow: none; }
+
+/* ---------------- aplicativos ---------------- */
+.ct-appgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--mp-space-3);
+}
