@@ -1,33 +1,24 @@
 import * as React from "react"
 import {useState, useEffect} from "react"
-import styled from "styled-components"
+import {
+    Button, CheckboxInput, DataTable, Icon, IconButton, Panel, SelectInput, TextInput
+} from "@i-components"
 
-import { 
-    Checkbox,
-    Table,
-    Icon,
-    Input,
-    Select,
-    Button
-} from "semantic-ui-react"
+const IN_OPTIONS = [
+    { value: "body",  label: "body" },
+    { value: "path",  label: "path" },
+    { value: "query", label: "query" }
+]
 
+const TYPE_OPTIONS = [
+    { value: "string", label: "string" },
+    { value: "number", label: "number" },
+    { value: "json",   label: "json" }
+]
 
-const SelectStyle = styled(Select)`
-    min-width: 100px!important;
-`
-
-const inOptions = [
-    { key: "body", value: "body", text: "body" },
-    {key: "path", value: "path", text: "path" },
-    { key: "query", value: "query", text: "query" }
-  ]
-
-  const typeOptions = [
-    { key: "string", value: "string", text: "string" },
-    { key: "number", value: "number", text: "number" },
-    { key: "json", value: "json", text: "json" }
-  ]
-
+// Parâmetros do endpoint: tabela do kit (DataTable) + uma linha de criação com
+// os controles do kit. Antes era <Table> do Semantic com Select estilizado por
+// styled-components.
 const TableParameters = ({parameters, onChangeParameters}:any) => {
 
     const [newName, setNewName]         = useState("")
@@ -36,7 +27,6 @@ const TableParameters = ({parameters, onChangeParameters}:any) => {
     const [newRequired, setNewRequired] = useState(false)
 
     const [parameterForUpdate, setParameterForUpdate] = useState<Array<any>>()
-
 
     useEffect(()=>{
         if(parameters)
@@ -65,84 +55,77 @@ const TableParameters = ({parameters, onChangeParameters}:any) => {
         setNewRequired(false)
     }
 
-    const handleRemoveParameter = (key:any) => {
+    const handleRemoveParameter = (index:number) => {
         const params = (parameterForUpdate || parameters)
-        setParameterForUpdate(params.reduce((acc:any, value:any, index:any)=>{
-            return key !== index ? [...acc, value] : acc
-        }, []))
+        setParameterForUpdate(params.filter((_:any, position:number) => position !== index))
     }
 
-    return <Table celled striped>
-                <Table.Header>
-                    <Table.Row>
-                        <Table.HeaderCell colSpan="5">parameters</Table.HeaderCell>
-                    </Table.Row>
-                </Table.Header>
-                <Table.Header>
-                    <Table.Row>
-                        <Table.HeaderCell>name</Table.HeaderCell>
-                        <Table.HeaderCell>in</Table.HeaderCell>
-                        <Table.HeaderCell>type</Table.HeaderCell>
-                        <Table.HeaderCell>required</Table.HeaderCell>
-                        <Table.HeaderCell/>
-                    </Table.Row>
-                </Table.Header>
-                <Table.Body>
-                    {
-                        (parameterForUpdate || parameters).map((parameter: any, key:number) =>
-                            <Table.Row key={key}>
-                                {
-                                    ["name", "in", "type"]
-                                        .map((property, key2) => <Table.Cell key={key2}>{parameter[property]}</Table.Cell>)
-                                }
-                                <Table.Cell>{parameter.required && <Icon name="check"/>}</Table.Cell>
-                                <Table.Cell>
-                                    <Button color="orange" icon="minus" onClick={() => handleRemoveParameter(key)}/>
-                                </Table.Cell>
-                            </Table.Row>)
-                    }
-                    <Table.Row>
-                        <Table.Cell>
-                            <Input
-                                placeholder="name"
-                                value={newName}
-                                onChange={({target:{value}}) => setNewName(value)} />
-                        </Table.Cell>
-                        <Table.Cell>
-                            <SelectStyle 
-                                placeholder="in"
-                                value={newIn}
-                                options={inOptions}
-                                onChange={(e:any, {value}:any) => setNewIn(value)} />
-                        </Table.Cell>
-                        <Table.Cell>
-                            <SelectStyle
-                                placeholder="type"
-                                value={newType}
-                                options={typeOptions}
-                                onChange={(e:any, {value}:any) => setNewType(value)} />
-                        </Table.Cell>
-                        <Table.Cell>
-                            <Checkbox 
-                                checked={newRequired}
-                                toggle
-                                onChange={(e:any, {checked}:any) => setNewRequired(checked)}/>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <Button 
-                                disabled = {isButtonDisable()} 
-                                color    = "blue"
-                                icon     = "plus"
-                                onClick  = {handleAddParameters}/>
-                        </Table.Cell>
-                    </Table.Row>
-                </Table.Body>
-            </Table>
+    const rows = (parameterForUpdate || parameters).map((parameter:any, index:number) => ({ ...parameter, index }))
+
+    return <Panel title="parameters" icon="list">
+        <DataTable
+            dense
+            rows         = {rows}
+            rowKey       = {(row:any) => String(row.index)}
+            emptyMessage = "Nenhum parâmetro declarado."
+            columns      = {[
+                { key: "name", header: "name", mono: true },
+                { key: "in",   header: "in" },
+                { key: "type", header: "type" },
+                {
+                    key: "required",
+                    header: "required",
+                    align: "center",
+                    width: 90,
+                    render: (row:any) => row.required ? <Icon name="check" tone="success"/> : null
+                },
+                {
+                    key: "actions",
+                    header: "",
+                    width: 50,
+                    align: "right",
+                    render: (row:any) =>
+                        <IconButton
+                            icon="minus"
+                            label="remover parâmetro"
+                            size="sm"
+                            variant="danger"
+                            onClick={() => handleRemoveParameter(row.index)}/>
+                }
+            ]}/>
+
+        <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 160px", minWidth: 140 }}>
+                <TextInput
+                    placeholder = "name"
+                    value       = {newName}
+                    onChange    = {({target:{value}}:any) => setNewName(value)}/>
+            </div>
+            <div style={{ width: 120 }}>
+                <SelectInput
+                    placeholder = "in"
+                    value       = {newIn}
+                    options     = {IN_OPTIONS}
+                    onChange    = {({target:{value}}:any) => setNewIn(value)}/>
+            </div>
+            <div style={{ width: 120 }}>
+                <SelectInput
+                    placeholder = "type"
+                    value       = {newType}
+                    options     = {TYPE_OPTIONS}
+                    onChange    = {({target:{value}}:any) => setNewType(value)}/>
+            </div>
+            <CheckboxInput
+                label    = "required"
+                checked  = {newRequired}
+                onChange = {({target:{checked}}:any) => setNewRequired(checked)}/>
+            <Button
+                variant  = "primary"
+                icon     = "plus"
+                disabled = {isButtonDisable()}
+                onClick  = {handleAddParameters}/>
+        </div>
+    </Panel>
 }
-    
-
-
-
-
 
 export default TableParameters

@@ -10,39 +10,23 @@ html, body, #gui { height: 100%; margin: 0; }
 
 .mws-app { height: 100%; display: flex; flex-direction: column; overflow: hidden; color: var(--mp-ink); }
 
-/* ---- barra de topo ---- */
-.mws-topbar {
-    flex: 0 0 auto;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 var(--mp-space-3);
-    background: var(--mp-paper-2);
-    border-bottom: var(--mp-border-strong);
-    box-shadow: var(--mp-shadow-1);
-    user-select: none;
+/* A barra de topo, os botões, os chips e o estado vazio vêm do kit comum
+ * (Topbar/Button/StatusChip/EmptyState). Aqui ficou só o relógio, que é
+ * particular deste aplicativo. */
+.mws-clock {
+    display: flex; flex-direction: column; align-items: flex-end;
+    line-height: 1.05;
+    font-family: var(--mp-font-mono);
+    min-width: 76px;
 }
-.mws-topbar__brand { font-family: var(--mp-font-display); font-weight: 800; font-size: var(--mp-text-md); letter-spacing: -0.01em; }
-.mws-topbar__mark { color: var(--mp-accent-orange); }
-.mws-topbar__right { display: flex; align-items: center; gap: var(--mp-space-4); }
-.mws-topbar__chip {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: var(--mp-text-xs); font-weight: 800; color: var(--mp-ink-2);
-    background: var(--mp-surface); border: 1.5px solid var(--mp-line-soft); border-radius: 999px; padding: 2px 10px;
-}
-.mws-topbar__theme.ui.dropdown { color: var(--mp-ink) !important; font-size: var(--mp-text-sm); }
-.mws-topbar__clock { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.05; font-family: var(--mp-font-mono); min-width: 76px; }
-.mws-topbar__clock strong { font-size: var(--mp-text-md); }
-.mws-topbar__clock small { font-size: 10px; color: var(--mp-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.mws-clock strong { font-size: var(--mp-text-md); }
+.mws-clock small { font-size: 10px; color: var(--mp-muted); text-transform: uppercase; letter-spacing: 0.03em; }
 
 /* ---- quadro ---- */
 .mws-board { flex: 1 1 auto; overflow: auto; padding: var(--mp-space-6); }
 .mws-board__toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--mp-space-5); }
 .mws-board__title { margin: 0; font-family: var(--mp-font-display); font-size: var(--mp-text-2xl); color: var(--mp-ink); }
 
-.mws-empty { text-align: center; color: var(--mp-muted); margin-top: 12vh; }
-.mws-empty p { margin: var(--mp-space-3) 0 var(--mp-space-4); }
 
 .mws-notes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--mp-space-4); }
 

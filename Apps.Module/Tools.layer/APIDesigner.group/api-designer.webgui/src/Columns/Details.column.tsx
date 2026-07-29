@@ -1,21 +1,12 @@
 import * as React from "react"
-import styled     from "styled-components"
-
-import {
-	Grid, 
-	Button
-} from "semantic-ui-react"
+import { Button, Stack, Toolbar } from "@i-components"
 
 import EndpointForm    from "../Forms/Endpoint.form"
 import TableParameters from "../Components/TableParameters.component"
 
-const RowStyle = styled(Grid.Row)`
-	margin-bottom:15px;
-`
-
 const DetailsColumn = ({
     hasPendingChanges,
-    endpointSelected, 
+    endpointSelected,
     methodForUpdate,
     parametersForUpdate,
     pathForUpdate,
@@ -24,46 +15,40 @@ const DetailsColumn = ({
     onChangeParameters,
     onCancelEndpointEditing,
     onConfirmEndpointEditing
-}:any) => 
-<>
-    <RowStyle>
-        {
-            endpointSelected 
-            && <EndpointForm 
-                    values         = {endpointSelected || {}}
-                    summary        = {endpointSelected.summary} 
-                    method         = {methodForUpdate || endpointSelected.method} 
-                    path           = {pathForUpdate || endpointSelected.path}
-                    onChangeUrl    = {onChangeUrl}
-                    onChangeMethod = {onChangeMethod}/>
-        }
-    </RowStyle>
-    <RowStyle>
-        {
-            endpointSelected 
-            && <TableParameters 
-                    onChangeParameters={onChangeParameters}
-                    parameters={parametersForUpdate || endpointSelected.parameters || []}/>
-        }
-    </RowStyle>
-    <Grid.Row>
-        <Grid.Column>
-            <Button 
-                negative 
-                disabled      = {!hasPendingChanges}
-                onClick       = {onCancelEndpointEditing} 
-                labelPosition = "right"
-                icon          = "trash" 
-                content       = "Cancel" />
-            <Button 
-                positive 
-                disabled      = {!hasPendingChanges}
-                onClick       = {onConfirmEndpointEditing}
-                labelPosition = "right"
-                icon          = "save" 
-                content       = "Confirm" />
-        </Grid.Column>
-    </Grid.Row>
-</>
+}:any) =>
+<Stack>
+    {
+        endpointSelected
+        && <EndpointForm
+                values         = {endpointSelected || {}}
+                summary        = {endpointSelected.summary}
+                method         = {methodForUpdate || endpointSelected.method}
+                path           = {pathForUpdate || endpointSelected.path}
+                onChangeUrl    = {onChangeUrl}
+                onChangeMethod = {onChangeMethod}/>
+    }
+    {
+        endpointSelected
+        && <TableParameters
+                onChangeParameters = {onChangeParameters}
+                parameters         = {parametersForUpdate || endpointSelected.parameters || []}/>
+    }
+    <Toolbar>
+        <Toolbar.Spacer/>
+        <Button
+            icon     = "undo"
+            disabled = {!hasPendingChanges}
+            onClick  = {onCancelEndpointEditing}>
+            Cancelar
+        </Button>
+        <Button
+            variant  = "primary"
+            icon     = "save"
+            disabled = {!hasPendingChanges}
+            onClick  = {onConfirmEndpointEditing}>
+            Confirmar
+        </Button>
+    </Toolbar>
+</Stack>
 
 export default DetailsColumn

@@ -34,10 +34,10 @@ export const apps: AppRecord[] = [
         guiPackage: "@/my-workspace.webgui",
         libraries: [ "@i-components" ],
         localComponents: 1,
-        semanticFiles: 2,
-        cssLines: 79,
+        semanticFiles: 0,
+        cssLines: 52,
         wave: 1,
-        migrated: false
+        migrated: true
     },
     {
         id: "api-designer",
@@ -48,10 +48,10 @@ export const apps: AppRecord[] = [
         desktopExecutable: "api-designer-desktop",
         libraries: [ "@i-components" ],
         localComponents: 8,
-        semanticFiles: 9,
-        cssLines: 0,
+        semanticFiles: 0,
+        cssLines: 22,
         wave: 1,
-        migrated: false
+        migrated: true
     },
     {
         id: "launcher",

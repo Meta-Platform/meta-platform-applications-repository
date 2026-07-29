@@ -1,12 +1,5 @@
 import * as React             from "react"
 import { useEffect, useState} from "react"
-import styled                 from "styled-components"
-
-import {
-	Segment, 
-	Grid, 
-	Container
-} from "semantic-ui-react"
 
 
 import { connect }            from "react-redux"
@@ -17,11 +10,6 @@ import GetAPI from "../Utils/GetAPI"
 import APIColumn      from "../Columns/API.column"
 import EndpointColumn from "../Columns/Endpoint.column"
 import DetailsColumn  from "../Columns/Details.column"
-
-const SegmentStyle = styled(Segment)`
-    background-color: #fff !important;
-    border-color: #ffffff00 !important;
-`
 
 type APIDesignerParamsType = {
 	api     ?: string
@@ -242,52 +230,36 @@ const APIDesignerContainer = ({
 
 	const hasPendingChanges = !!(pathForUpdate || methodForUpdate || parametersForUpdate)
 	
-	return <Container fluid={true}>
-		<div>
-			<SegmentStyle attached="bottom">
-				<Grid columns="three" divided>
-							<Grid.Row>
-								<Grid.Column width={3}>
-									<APIColumn
-										onChangeAPIForCreate = {setAPIForCreate}
-										onChangeAPI          = {setAPISelected}
-										APISelected          = {APISelected}
-										listAPI              = {listAPI}
-										APIForCreate         = {APIForCreate}
-										onCreateAPI          = {handleCreateAPI}
-										errorMessage         = {errorMessage}
-									/>
-								</Grid.Column>
-								<Grid.Column width={4}>
-									<EndpointColumn
-										endpointSelected          = {endpointSelected}
-										listEndpoint              = {listEndpoint}
-										methodForCreate           = {methodForCreate}
-										endpointForCreate         = {endpointForCreate}
-										onCreateEndpoint          = {handleCreateEndpoint}
-										onChangeSummary           = {(indexSummary:number) => setEndpointSelected(listEndpoint[indexSummary])}
-										onChangeEndpointForCreate = {(endpointForCreate:any) => setEndpointForCreate(endpointForCreate)}
-										onChangeMethodForCreate   = {(e:any, {value}:any) => setMethodForCreate(value)}/>
-								</Grid.Column>
-								<Grid.Column>
-									<DetailsColumn
-									    hasPendingChanges        = {hasPendingChanges}
-										endpointSelected         = {endpointSelected}
-										methodForUpdate          = {methodForUpdate}
-										parametersForUpdate      = {parametersForUpdate}
-										pathForUpdate             = {pathForUpdate}
-										onChangeUrl              = {(path:string) => setPathForUpdate(path)}
-										onChangeMethod           = {(method:string) => setMethodForUpdate(method)}
-										onChangeParameters       = {(parameters:any)=> setParametersForUpdate(parameters)}
-										onCancelEndpointEditing  = {handleCancelEndpointEditing}
-										onConfirmEndpointEditing = {handleConfirmEndpointEditing}
-									/>
-								</Grid.Column>
-							</Grid.Row>
-						</Grid>
-			</SegmentStyle>
-		</div>
-	</Container>
+	return <div className="apid-columns">
+		<APIColumn
+			onChangeAPIForCreate = {setAPIForCreate}
+			onChangeAPI          = {setAPISelected}
+			APISelected          = {APISelected}
+			listAPI              = {listAPI}
+			APIForCreate         = {APIForCreate}
+			onCreateAPI          = {handleCreateAPI}
+			errorMessage         = {errorMessage}/>
+		<EndpointColumn
+			endpointSelected          = {endpointSelected}
+			listEndpoint              = {listEndpoint}
+			methodForCreate           = {methodForCreate}
+			endpointForCreate         = {endpointForCreate}
+			onCreateEndpoint          = {handleCreateEndpoint}
+			onChangeSummary           = {(indexSummary:number) => setEndpointSelected(listEndpoint[indexSummary])}
+			onChangeEndpointForCreate = {(endpointForCreate:any) => setEndpointForCreate(endpointForCreate)}
+			onChangeMethodForCreate   = {({target:{value}}:any) => setMethodForCreate(value)}/>
+		<DetailsColumn
+			hasPendingChanges        = {hasPendingChanges}
+			endpointSelected         = {endpointSelected}
+			methodForUpdate          = {methodForUpdate}
+			parametersForUpdate      = {parametersForUpdate}
+			pathForUpdate            = {pathForUpdate}
+			onChangeUrl              = {(path:string) => setPathForUpdate(path)}
+			onChangeMethod           = {(method:string) => setMethodForUpdate(method)}
+			onChangeParameters       = {(parameters:any)=> setParametersForUpdate(parameters)}
+			onCancelEndpointEditing  = {handleCancelEndpointEditing}
+			onConfirmEndpointEditing = {handleConfirmEndpointEditing}/>
+	</div>
 
 }
 

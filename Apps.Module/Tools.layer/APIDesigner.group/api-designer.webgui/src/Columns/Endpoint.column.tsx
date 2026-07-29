@@ -1,51 +1,49 @@
 import * as React from "react"
-import {
-	Input,
-	Button,
-	Select
-} from "semantic-ui-react"
+import { Button, Panel, SelectInput, TextInput } from "@i-components"
 
-import EndpointsList   from "../Lists/Endpoints.list"
+import EndpointsList from "../Lists/Endpoints.list"
+
+const METHOD_OPTIONS = [
+	{ value: "GET",    label: "GET" },
+	{ value: "POST",   label: "POST" },
+	{ value: "PUT",    label: "PUT" },
+	{ value: "DELETE", label: "DELETE" },
+	{ value: "WS",     label: "WS" }
+]
 
 const EndpointColumn = ({
     methodForCreate,
     endpointForCreate,
-    endpointSelected, 
+    endpointSelected,
     listEndpoint,
     onCreateEndpoint,
     onChangeSummary,
     onChangeEndpointForCreate,
     onChangeMethodForCreate
-    }:any) => {
+    }:any) =>
+    <Panel title="Endpoints" icon="sitemap">
+        <EndpointsList
+            endpointSelected = {endpointSelected || {}}
+            endpoint         = {listEndpoint}
+            onChangeSummary  = {onChangeSummary}/>
 
-    return <>
-        <h3>Endpoints</h3>
-		<EndpointsList
-			endpointSelected = {endpointSelected || {}}
-			endpoint         = {listEndpoint}
-			onChangeSummary  = {onChangeSummary}/>
-		<Input type="text" placeholder="endpoint name" action>
-			<input 
-				value       = {endpointForCreate}
-				onChange    = {({target:{value}}) => onChangeEndpointForCreate(value)}/>
-			<Select
-				value={methodForCreate}
-				compact
-				onChange={onChangeMethodForCreate}
-				options={[
-					{ key: "GET",    text: "GET",    value: "GET" },
-					{ key: "POST",   text: "POST",   value: "POST" },
-					{ key: "PUT",    text: "PUT",    value: "PUT" },
-					{ key: "DELETE", text: "DELETE", value: "DELETE" },
-					{ key: "WS",     text: "WS",     value: "WS" }
-			  	]}/>
-			<Button 
-				disabled = {!(endpointForCreate || endpointForCreate === "")}
-				icon     = "add"
-				color    = "blue"
-				onClick  = {onCreateEndpoint}/>
-		</Input>
-    </>
-}
+        <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
+            <TextInput
+                value       = {endpointForCreate || ""}
+                placeholder = "nome do endpoint"
+                onChange    = {({target:{value}}:any) => onChangeEndpointForCreate(value)}/>
+            <div style={{ width: 120, flex: "0 0 auto" }}>
+                <SelectInput
+                    value    = {methodForCreate}
+                    options  = {METHOD_OPTIONS}
+                    onChange = {onChangeMethodForCreate}/>
+            </div>
+            <Button
+                variant  = "primary"
+                icon     = "add"
+                disabled = {!(endpointForCreate && endpointForCreate !== "")}
+                onClick  = {onCreateEndpoint}/>
+        </div>
+    </Panel>
 
 export default EndpointColumn

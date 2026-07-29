@@ -1,23 +1,20 @@
 import * as React from "react"
-import { List } from "semantic-ui-react"
+import { ListRow } from "@i-components"
 
 const APIList = (
 	{APISelected, listAPI, onChangeAPI}
 	:{APISelected:string, listAPI:Array<string>, onChangeAPI:Function}
-) => 
-<List selection animated>
+) =>
+<div>
 	{
-		listAPI.map((API, key) => 
-		<List.Item 
-			key     = {key}
-			active  = {API===APISelected}
-			onClick = {()=>onChangeAPI(API)}>
-			<List.Icon name="globe" />
-			<List.Content>
-				<List.Header>{API}</List.Header>
-			</List.Content>
-		</List.Item>)
+		listAPI.map((API, key) =>
+			<ListRow
+				key      = {key}
+				icon     = "globe"
+				title    = {API}
+				selected = {API === APISelected}
+				onClick  = {() => onChangeAPI(API)}/>)
 	}
-</List>
+</div>
 
 export default APIList

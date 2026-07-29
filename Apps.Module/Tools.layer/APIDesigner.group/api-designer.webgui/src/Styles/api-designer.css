@@ -1,0 +1,22 @@
+/*
+ * API Designer — estilos EXCLUSIVOS do aplicativo (prefixo .apid-).
+ * Painéis, listas, tabelas, botões e campos vêm do kit @i-components; aqui só
+ * fica o arranjo das três colunas de trabalho (API → endpoints → detalhe).
+ */
+
+.apid-columns {
+    display: grid;
+    grid-template-columns: minmax(200px, 1fr) minmax(240px, 1.3fr) minmax(320px, 2.4fr);
+    gap: var(--mp-space-4);
+    align-items: start;
+    padding: var(--mp-space-4);
+    height: 100vh;
+    overflow: auto;
+    box-sizing: border-box;
+    background: var(--mp-paper);
+    color: var(--mp-ink);
+}
+
+@media (max-width: 1080px) {
+    .apid-columns { grid-template-columns: 1fr; height: auto; }
+}
