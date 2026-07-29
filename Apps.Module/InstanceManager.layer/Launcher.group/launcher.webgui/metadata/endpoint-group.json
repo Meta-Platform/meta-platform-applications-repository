@@ -5,7 +5,9 @@
         "?isWatch"
     ],
     "bound-params": [
-        "serverService"
+        "serverService",
+        "iComponents",
+        "instanceComponents"
     ],
     "endpoints": [
         {
@@ -19,7 +21,11 @@
                 "isWatch": "isWatch"
             },
             "bound-params": {
-                "serverService": "serverService"
+                "serverService": "serverService",
+                "componentLibraries": {
+                    "@i-components": "iComponents",
+                    "@instance-components": "instanceComponents"
+                }
             }
         }
     ]

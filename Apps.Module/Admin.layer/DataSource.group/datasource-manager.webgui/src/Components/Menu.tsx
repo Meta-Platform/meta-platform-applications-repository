@@ -2,7 +2,7 @@ import * as React from "react"
 import { useState } from "react"
 import { Icon } from "semantic-ui-react"
 
-import { THEMES, ApplyTheme, GetSavedTheme, ThemeName } from "../Utils/theme"
+import { THEMES, ApplyTheme, GetSavedTheme, ThemeName } from "@i-components/theme"
 
 // Barra de sistema (topbar) do Datasource Manager — mesmo padrão eco-main-menu
 // dos demais apps. Marca à esquerda + seletor de tema à direita.

@@ -3,7 +3,7 @@ import { useMemo, useState } from "react"
 
 import { Icon } from "semantic-ui-react"
 
-import useWebSocket from "../../Hooks/useWebSocket"
+import { useWebSocket } from "@instance-components"
 import GetAPI from "../../Utils/GetAPI"
 
 import { DataGrid, GridColumn, SearchField, StateLabel, EmptyState } from "../../Components/system"

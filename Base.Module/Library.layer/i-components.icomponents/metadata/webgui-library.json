@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "alias": "@i-components",
+  "framework": "react",
+  "source": "src",
+  "entry": "index.ts",
+  "styles": "styles/index.css",
+  "catalog": {
+    "title": "Application Repository / iComponents",
+    "scope": "common",
+    "stories": "catalog/stories.tsx"
+  }
+}

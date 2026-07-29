@@ -18,6 +18,8 @@
             },
             "bound-params": {
                 "instanceExecutorControlPanelWebgui": "@/instance-executor-control-panel.webgui",
+                "iComponents": "@/i-components.icomponents",
+                "instanceComponents": "@/instance-manager.icomponents",
                 "instanceExecutorControlPanelGuiService": "@/instance-executor-control-panel-gui.service",
                 "instanceExecutorControlPanelWebservice": "@/instance-executor-control-panel.webservice",
                 "commandLineRuntimeService": "@/command-line-runtime.service",
@@ -29,6 +31,10 @@
             },
             "gui-host": {
                 "webgui": "instanceExecutorControlPanelWebgui",
+                "componentLibraries": {
+                    "@i-components": "iComponents",
+                    "@instance-components": "instanceComponents"
+                },
                 "guiService": "guiService",
                 "serviceGraph": [
                     {

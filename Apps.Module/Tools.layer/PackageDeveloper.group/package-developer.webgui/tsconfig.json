@@ -6,6 +6,7 @@
         "module": "commonjs",
         "target": "es5",
         "jsx": "react",
+        "skipLibCheck": true,
         "lib": [
             "esnext",
             "dom"
@@ -13,7 +14,13 @@
         "types": [
             "react",
             "node"
-        ]
+        ],
+        "baseUrl": ".",
+        "paths": {
+            "*": ["node_modules/*"],
+            "@i-components": ["../../../../Base.Module/Library.layer/i-components.icomponents/src"],
+            "@i-components/*": ["../../../../Base.Module/Library.layer/i-components.icomponents/src/*"]
+        }
     },
     "exclude": [
         "node_modules",

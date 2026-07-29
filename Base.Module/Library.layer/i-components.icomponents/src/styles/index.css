@@ -1,0 +1,30 @@
+@import "./tokens.css";
+@import "./CorporateTheme.css";
+@import "./theme-retro-brutalist.css";
+@import "./components.css";
+@import "./themes.css";
+
+.mp-surface {
+  color: var(--mp-ink);
+  background: var(--mp-surface);
+  border: var(--mp-border);
+  box-shadow: var(--mp-shadow-2);
+}
+
+.mp-stack { display: grid; gap: var(--mp-space-3, 12px); }
+.mp-badge {
+  width: fit-content;
+  padding: 2px 8px;
+  background: var(--mp-accent-cyan);
+  border: 1px solid var(--mp-line);
+  font: 700 12px/1.5 var(--mp-font-mono, monospace);
+}
+.mp-button {
+  padding: 8px 14px;
+  color: var(--mp-ink);
+  background: var(--mp-accent-yellow);
+  border: 2px solid var(--mp-line);
+  box-shadow: 3px 3px 0 var(--mp-line);
+  font: 700 13px/1.2 var(--mp-font-mono, monospace);
+  cursor: pointer;
+}

@@ -11,6 +11,6 @@ module.exports = async (dbconfig, SourceModels) => {
         AssociateAllTables(modelByName, SourceModels)
         SyncAllModels(modelByName)
     }catch(e){
-        console.log(e)
+        Log.error("SyncDB", e)
     }
 }

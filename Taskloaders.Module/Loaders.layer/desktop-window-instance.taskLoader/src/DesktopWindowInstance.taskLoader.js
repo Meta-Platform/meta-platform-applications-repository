@@ -30,6 +30,16 @@ const _HandlePaths = (handle) => ({
     nodeModules: handle.getNodeModulesPath()
 })
 
+const _ComponentLibraryDescriptor = (alias, handle) => {
+    const manifest = handle.getManifest()
+    return {
+        alias: alias || manifest.alias,
+        sourcePath: handle.getSourcePath(),
+        nodeModulesPath: handle.getNodeModulesPath(),
+        framework: manifest.framework
+    }
+}
+
 // Modo GUI-host: a janela Electron NÃO carrega uma URL HTTP — o processo
 // principal do Electron compila o webgui e hospeda os services por IPC. Como só
 // strings cruzam o spawn, serializamos num JSON temporário (passado via
@@ -46,6 +56,9 @@ const _BuildGuiConfig = (loaderParams) => {
     const guiHost = loaderParams.guiHost
     const params  = loaderParams.guiParams || {}
     const webguiHandle = loaderParams[guiHost.webgui]
+    const componentLibraries = Object.keys(guiHost.componentLibraries || {}).map((alias) =>
+        _ComponentLibraryDescriptor(alias, loaderParams[guiHost.componentLibraries[alias]])
+    )
 
     const serviceGraph = (guiHost.serviceGraph || []).map((entry) => ({
         ref:            entry.ref,
@@ -72,7 +85,8 @@ const _BuildGuiConfig = (loaderParams) => {
             environmentPath:           webguiHandle.getEnvironmentPath(),
             nodeModules:               webguiHandle.getNodeModulesPath(),
             serverAppName:             params.serverName,
-            RT_ENV_GENERATED_DIR_NAME: params.RT_ENV_GENERATED_DIR_NAME
+            RT_ENV_GENERATED_DIR_NAME: params.RT_ENV_GENERATED_DIR_NAME,
+            componentLibraries
         },
         params,
         guiServiceRef: guiHost.guiService,

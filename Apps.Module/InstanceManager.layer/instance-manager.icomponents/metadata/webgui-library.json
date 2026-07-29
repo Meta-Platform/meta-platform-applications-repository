@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "alias": "@instance-components",
+  "framework": "react",
+  "source": "src",
+  "entry": "index.ts",
+  "styles": "styles/index.css",
+  "catalog": {
+    "title": "Application Repository / Instance Manager",
+    "scope": "Apps.Module/InstanceManager.layer",
+    "stories": "catalog/stories.tsx"
+  }
+}

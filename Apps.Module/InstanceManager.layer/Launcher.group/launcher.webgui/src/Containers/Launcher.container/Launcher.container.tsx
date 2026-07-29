@@ -6,11 +6,10 @@ import { bindActionCreators } from "redux"
 import { Button, Checkbox, Dropdown, Icon, Input, Loader, Segment } from "semantic-ui-react"
 
 import GetAPI from "../../Utils/GetAPI"
-import useWebSocket from "../../Hooks/useWebSocket"
-import QueryParamsActionsCreator from "../../Actions/QueryParams.actionsCreator"
+import { useWebSocket } from "@instance-components"
+import { QueryParamsActionsCreator } from "@i-components"
 
-import PageMasthead from "../../Components/ui/PageMasthead"
-import StatusStrip, { StatusChip } from "../../Components/ui/StatusStrip"
+import { PageMasthead, StatusStrip, StatusChip } from "@instance-components"
 
 import PackageTree, { PackageInformation, PackageKey, IsBootable, IsRunning } from "./PackageTree"
 import PackageResults from "./PackageResults"

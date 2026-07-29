@@ -7,6 +7,13 @@
         "target": "es5",
         "jsx": "react",
         "lib": ["esnext", "dom"],
-        "types": ["react", "node"]
+        "skipLibCheck": true,
+        "types": ["react", "node"],
+        "baseUrl": ".",
+        "paths": {
+            "*": ["node_modules/*"],
+            "@i-components": ["../../../../Base.Module/Library.layer/i-components.icomponents/src"],
+            "@i-components/*": ["../../../../Base.Module/Library.layer/i-components.icomponents/src/*"]
+        }
     }
 }

@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "strict": false,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "target": "es2020",
+    "jsx": "react-jsx",
+    "lib": ["esnext", "dom"],
+    "types": ["node", "react"],
+    "baseUrl": "src",
+    "paths": {
+      "react": ["../node_modules/@types/react/index.d.ts"],
+      "react/jsx-runtime": ["../node_modules/@types/react/jsx-runtime.d.ts"],
+      "@i-components": [
+        "../../../../Base.Module/Library.layer/i-components.icomponents/src/index.ts"
+      ],
+      "@i-components/*": [
+        "../../../../Base.Module/Library.layer/i-components.icomponents/src/*"
+      ]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

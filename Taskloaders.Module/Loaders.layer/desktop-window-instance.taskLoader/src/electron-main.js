@@ -704,7 +704,8 @@ const CreateGuiHostWindow = async () => {
         try {
             fingerprint = BuildCache.ComputeWebInterfaceFingerprint({
                 context:     config.webgui.context,
-                nodeModules: config.webgui.nodeModules
+                nodeModules: config.webgui.nodeModules,
+                componentLibraries: config.webgui.componentLibraries
             })
         } catch(e) {
             fingerprint = null
@@ -728,6 +729,7 @@ const CreateGuiHostWindow = async () => {
                 output,
                 url:            "",
                 serverAppName:  config.webgui.serverAppName,
+                componentLibraries: config.webgui.componentLibraries,
                 onChangeProgress: (percentage) => {
                     if(!window.isDestroyed() && !window.webContents.isDestroyed())
                         window.webContents.send("build:progress", percentage)

@@ -2,7 +2,7 @@ import * as React from "react"
 import { useState, useEffect } from "react"
 import { Button, Icon, Dropdown } from "semantic-ui-react"
 
-import { THEMES, ThemeName, GetSavedTheme, ApplyTheme } from "../Utils/theme"
+import { THEMES, ThemeName, GetSavedTheme, ApplyTheme } from "@i-components/theme"
 
 const NOTES_KEY = "myworkspace-notes"
 const NOTE_COLORS = ["yellow", "cyan", "pink", "green", "blue"] as const

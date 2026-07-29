@@ -5,27 +5,21 @@ import { combineReducers, createStore } from "redux"
 
 import "semantic-ui-css/semantic.css"
 // Design system Meta Platform "Retro-Brutalist" (mesmo dos outros painéis).
-import "./Styles/tokens.css"
-import "./Styles/CorporateTheme.css"
-import "./Styles/theme-retro-brutalist.css"
-import "./Styles/components.css"
+import "@i-components/styles/index.css"
+import "@instance-components/styles/index.css"
 // Camada de painel de sistema (shell, grid denso, medidores, gráficos, log).
 import "./Styles/system-panel.css"
-import "./Styles/themes.css"
 
-import { applySavedTheme } from "./Utils/theme"
+import { applySavedTheme } from "@i-components/theme"
 
 import PagesMapper from "./Mappers/Pages.mapper"
 
 //@ts-ignore
 import ROUTES_CONFIG from "./routes.config.json"
 
-import QueryParamsReducer    from "./Reducers/QueryParams.reducer"
+import { AppManagerReducer, HTTPServerManagerReducer, ProcessManagerReducer, QueryParamsReducer } from "@i-components"
 
 import AppContainer             from "./Containers/App.container"
-import AppManagerReducer        from "./Reducers/AppManager.reducer"
-import HTTPServerManagerReducer from "./Reducers/HTTPServerManager.reducer"
-import ProcessManagerReducer    from "./Reducers/ProcessManager.reducer"
 
 const reducer = combineReducers({
 	AppManager        : AppManagerReducer,

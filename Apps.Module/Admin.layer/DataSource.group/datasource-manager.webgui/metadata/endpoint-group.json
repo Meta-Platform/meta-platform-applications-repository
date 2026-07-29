@@ -4,7 +4,8 @@
         "serverName"
     ],
     "bound-params": [
-        "serverService"
+        "serverService",
+        "iComponents"
     ],
     "endpoints": [
         {
@@ -17,7 +18,10 @@
                 "serverName": "{{serverName}}"
             },
             "bound-params": {
-                "serverService": "serverService"
+                "serverService": "serverService",
+                "componentLibraries": {
+                    "@i-components": "iComponents"
+                }
             }
         }
     ]

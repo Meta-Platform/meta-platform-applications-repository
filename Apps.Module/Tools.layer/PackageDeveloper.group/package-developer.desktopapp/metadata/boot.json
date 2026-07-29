@@ -18,6 +18,7 @@
             },
             "bound-params": {
                 "packageDeveloperWebgui": "@/package-developer.webgui",
+                "iComponents": "@/i-components.icomponents",
                 "packageDeveloperGuiService": "@/package-developer-gui.service",
                 "packageDeveloperWebservice": "@/package-developer.webservice",
                 "packageDeveloperLib": "@/package-developer.lib",
@@ -28,6 +29,9 @@
             },
             "gui-host": {
                 "webgui": "packageDeveloperWebgui",
+                "componentLibraries": {
+                    "@i-components": "iComponents"
+                },
                 "guiService": "guiService",
                 "serviceGraph": [
                     {

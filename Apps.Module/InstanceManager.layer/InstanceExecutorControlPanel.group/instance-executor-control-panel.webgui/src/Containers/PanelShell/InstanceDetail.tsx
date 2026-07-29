@@ -20,7 +20,7 @@ import {
     PackageName
 } from "../../Components/system"
 
-import CopyableMonoText from "../../Components/ui/CopyableMonoText"
+import { CopyableMonoText } from "@instance-components"
 
 // Painéis de UMA instância, hospedados pelo espaço de trabalho: "o que é isso"
 // (resumo) e "quanto está custando" (desempenho). Tarefas e log têm componentes

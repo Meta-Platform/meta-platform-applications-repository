@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "esModuleInterop":true,
+        "sourceMap": true,
+        "noImplicitAny": true,
+        "module": "esnext",
+        "moduleResolution": "node",
+        "target": "es2020",
+        "jsx": "react-jsx",
+        "lib":["esnext", "dom"],
+        "types": ["react"],
+        "baseUrl": "src",
+        "paths": {
+            
+        }
+    },
+    "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

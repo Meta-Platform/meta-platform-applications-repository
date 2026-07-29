@@ -4,15 +4,11 @@ import { Provider }                     from "react-redux"
 import { combineReducers, createStore } from "redux"
 
 import "semantic-ui-css/semantic.css"
-import "./Styles/tokens.css"
-import "./Styles/CorporateTheme.css"
-import "./Styles/theme-retro-brutalist.css"
-import "./Styles/components.css"
-import "./Styles/themes.css"
+import "@i-components/styles/index.css"
 import "./Styles/workbench.css"
 import "./Styles/explorer.css"
 
-import { applySavedTheme } from "./Utils/theme"
+import { applySavedTheme } from "@i-components/theme"
 
 import PagesMapper from "./Mappers/Pages.mapper"
 
@@ -20,10 +16,9 @@ import PagesMapper from "./Mappers/Pages.mapper"
 import ROUTES_CONFIG from "./routes.config.json"
 
 import AppContainer             from "./Containers/App.container"
-import HTTPServerManagerReducer from "./Reducers/HTTPServerManager.reducer"
+import { HTTPServerManagerReducer, QueryParamsReducer } from "@i-components"
 
 import PackageManagerReducer from "./Reducers/PackageManager.reducer"
-import QueryParamsReducer    from "./Reducers/QueryParams.reducer"
 
 
 const reducer = combineReducers({

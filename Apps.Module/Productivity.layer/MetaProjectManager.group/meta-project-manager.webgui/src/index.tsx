@@ -5,14 +5,10 @@ import { combineReducers, createStore } from "redux"
 
 import "semantic-ui-css/semantic.css"
 import "@uiw/react-md-editor/markdown-editor.css"
-import "./Styles/tokens.css"
-import "./Styles/CorporateTheme.css"
-import "./Styles/theme-retro-brutalist.css"
-import "./Styles/components.css"
-import "./Styles/themes.css"
+import "@i-components/styles/index.css"
 import "./Styles/mpm.css"
 
-import { applySavedTheme } from "./Utils/theme"
+import { applySavedTheme } from "@i-components/theme"
 import { applySavedZoom } from "./Utils/zoom"
 
 // O Meta Project Manager abre em grayscale; se o usuário já escolheu outro tema,
@@ -26,12 +22,9 @@ import PagesMapper from "./Mappers/Pages.mapper"
 //@ts-ignore
 import ROUTES_CONFIG from "./routes.config.json"
 
-import QueryParamsReducer       from "./Reducers/QueryParams.reducer"
+import { AppManagerReducer, HTTPServerManagerReducer, ProcessManagerReducer, QueryParamsReducer } from "@i-components"
 
 import AppContainer             from "./Containers/App.container"
-import AppManagerReducer        from "./Reducers/AppManager.reducer"
-import HTTPServerManagerReducer from "./Reducers/HTTPServerManager.reducer"
-import ProcessManagerReducer    from "./Reducers/ProcessManager.reducer"
 
 const reducer = combineReducers({
 	AppManager        : AppManagerReducer,

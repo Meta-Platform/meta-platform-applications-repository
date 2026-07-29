@@ -4,15 +4,15 @@ import { Provider }                     from "react-redux"
 import { combineReducers, createStore } from "redux"
 
 import "semantic-ui-css/semantic.css"
+import "@i-components/styles/index.css"
+import { applySavedTheme } from "@i-components/theme"
 
 //import APIDesignerIcon from "./APIDesigner.svg"
 //@ts-ignore
 import ROUTES_CONFIG from "./routes.config.json"
 
 import AppContainer             from "./Containers/App.container"
-import AppManagerReducer        from "./Reducers/AppManager.reducer"
-import HTTPServerManagerReducer from "./Reducers/HTTPServerManager.reducer"
-import ProcessManagerReducer    from "./Reducers/ProcessManager.reducer"
+import { AppManagerReducer, HTTPServerManagerReducer, ProcessManagerReducer } from "@i-components"
 
 import PagesMapper from "./Mappers/Pages.mapper"
 
@@ -24,6 +24,7 @@ const reducer = combineReducers({
 
 const store = createStore(reducer)
 
+applySavedTheme()
 const root = ReactDOM.createRoot(document.getElementById("gui"))
 
 root.render(<Provider store={store}>

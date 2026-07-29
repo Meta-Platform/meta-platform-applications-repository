@@ -7,7 +7,7 @@ import { connect }            from "react-redux"
 import { bindActionCreators } from "redux"
 import axios                  from "axios"
 
-import HTTPServerManagerActionsCreator from "../Actions/HTTPServerManager.actionsCreator"
+import { HTTPServerManagerActionsCreator } from "@i-components"
 import { EventsProvider } from "../Hooks/useEvents"
 import { ToastProvider } from "../Hooks/useToasts"
 import { ApprovalQueueProvider } from "../Hooks/useApprovalQueue"

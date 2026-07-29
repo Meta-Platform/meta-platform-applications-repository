@@ -1,4 +1,4 @@
-import { GetSavedTheme, ApplyTheme, DEFAULT_THEME, HasExplicitTheme } from "../src/Utils/theme"
+import { GetSavedTheme, ApplyTheme, DEFAULT_THEME, HasExplicitTheme } from "@i-components/theme"
 
 beforeEach(() => {
     window.localStorage.clear()

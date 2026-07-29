@@ -55,7 +55,9 @@
                 "serverName": "{{serverName}}"
             },
             "bound-params": {
-                "serverService": "@@/server-service"
+                "serverService": "@@/server-service",
+                "iComponents": "@/i-components.icomponents",
+                "instanceComponents": "@/instance-manager.icomponents"
             }
         },
         {

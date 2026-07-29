@@ -1,0 +1,30 @@
+{
+  "params": [
+    "serverManagerUrl",
+    "serverName"
+  ],
+  "bound-params": [
+    "serverService",
+    "iComponents",
+    "instanceComponents"
+  ],
+  "endpoints": [
+    {
+      "url": "/",
+      "type": "web-graphic-user-interface",
+      "params": {
+        "entrypoint": "index.tsx",
+        "htmlTemplate": "index.html",
+        "serverEndpointStatus": "{{serverManagerUrl}}",
+        "serverName": "{{serverName}}"
+      },
+      "bound-params": {
+        "serverService": "serverService",
+        "componentLibraries": {
+          "@i-components": "iComponents",
+          "@instance-components": "instanceComponents"
+        }
+      }
+    }
+  ]
+}

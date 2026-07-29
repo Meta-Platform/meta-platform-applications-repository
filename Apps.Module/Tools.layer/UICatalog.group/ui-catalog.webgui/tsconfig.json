@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "strict": false,
+    "module": "commonjs",
+    "target": "es2020",
+    "jsx": "react",
+    "lib": ["esnext", "dom"],
+    "types": ["react", "node"],
+    "baseUrl": ".",
+    "paths": {
+      "*": ["node_modules/*"],
+      "react": ["node_modules/@types/react"],
+      "react/*": ["node_modules/@types/react/*"],
+      "semantic-ui-react": ["node_modules/semantic-ui-react"],
+      "styled-components": ["node_modules/styled-components"],
+      "@i-components": ["../../../../Base.Module/Library.layer/i-components.icomponents/src"],
+      "@i-components/*": ["../../../../Base.Module/Library.layer/i-components.icomponents/src/*"],
+      "@instance-components": ["../../../InstanceManager.layer/instance-manager.icomponents/src"],
+      "@instance-components/*": ["../../../InstanceManager.layer/instance-manager.icomponents/src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

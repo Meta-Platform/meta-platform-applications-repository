@@ -15,12 +15,16 @@
             },
             "bound-params": {
                 "datasourceWebgui": "@/datasource-manager.webgui",
+                "iComponents": "@/i-components.icomponents",
                 "datasourceGuiService": "@/datasource-gui.service",
                 "datasourceManagerWebservice": "@/datasource-manager.webservice",
                 "datasourceManagerService": "@/datasource-manager.service"
             },
             "gui-host": {
                 "webgui": "datasourceWebgui",
+                "componentLibraries": {
+                    "@i-components": "iComponents"
+                },
                 "guiService": "guiService",
                 "serviceGraph": [
                     {

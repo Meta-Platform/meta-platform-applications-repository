@@ -35,7 +35,7 @@ class DataSourceLocalManager{
                     this.AddSource(new DataStoreService({appDataDir: this.appDataDir, ...params}))
                     break;
                 default:
-                    console.log(`type ${type} don't exist`)
+                    Log.info("DataSourceRelationalDB", `type ${type} don't exist`)
             }
         })
     }

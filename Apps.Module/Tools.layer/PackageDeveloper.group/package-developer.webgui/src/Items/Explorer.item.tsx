@@ -5,7 +5,7 @@ import { connect }            from "react-redux"
 import { bindActionCreators } from "redux"
 import styled                 from "styled-components"
 
-import QueryParamsActionsCreator from "../Actions/QueryParams.actionsCreator"
+import { QueryParamsActionsCreator } from "@i-components"
 import PackageManagerActionsCreator from "../Actions/PackageManager.actionsCreator"
 import useExplorerItemState  from "../Hooks/useExplorerItemState"
 

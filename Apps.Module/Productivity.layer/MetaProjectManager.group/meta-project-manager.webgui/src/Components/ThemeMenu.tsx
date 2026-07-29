@@ -2,7 +2,7 @@ import * as React from "react"
 import { useState, useEffect } from "react"
 import { Icon } from "semantic-ui-react"
 
-import { THEMES, ThemeName, ApplyTheme, GetSavedTheme } from "../Utils/theme"
+import { THEMES, ThemeName, ApplyTheme, GetSavedTheme } from "@i-components/theme"
 import useApi from "../Hooks/useApi"
 
 // Chave da preferência de tema no app_state do servidor (mesma tabela que guarda

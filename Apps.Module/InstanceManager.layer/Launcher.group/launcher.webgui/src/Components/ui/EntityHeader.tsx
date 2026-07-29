@@ -1,7 +1,6 @@
 import * as React from "react"
 import { Icon, Label } from "semantic-ui-react"
-import StatusBadge from "../StatusBadge"
-import CopyableMonoText from "./CopyableMonoText"
+import { StatusBadge, CopyableMonoText } from "@instance-components"
 
 // Cabeçalho canônico de entidade — usado por package, environment, socket,
 // repository, config file, task. Estrutura única de apresentação (§9.3, §19).

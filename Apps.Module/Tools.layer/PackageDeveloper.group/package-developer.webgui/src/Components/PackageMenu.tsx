@@ -10,7 +10,7 @@ import {
 import styled from "styled-components"
 
 import listIcons    from "../Mocks/AppsMenu.mock"
-import { THEMES, ApplyTheme, GetSavedTheme, ThemeName } from "../Utils/theme"
+import { THEMES, ApplyTheme, GetSavedTheme, ThemeName } from "@i-components/theme"
 
 const AppsMenuItem = styled(Menu.Item)`
 	padding: 8px!important;

@@ -6,7 +6,7 @@ import GetAPI                 from "../Utils/GetAPI"
 import GetBuildProgressSocket from "../Utils/GetBuildProgressSocket"
 import GetApplicationIconURL  from "../Utils/GetApplicationIconURL"
 import FormatAppName          from "../Utils/FormatAppName"
-import { GetSavedTheme, ApplyTheme, ThemeName, THEMES } from "../Utils/theme"
+import { GetSavedTheme, ApplyTheme, ThemeName, THEMES } from "@i-components/theme"
 import {
     IconPosition, IconPositions, DefaultPosition, RowsPerColumn, CELL_W, CELL_H
 } from "../Utils/IconLayout"

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react"
 
-import useWebSocket from "./useWebSocket"
+import { useWebSocket } from "@instance-components"
 import GetAPI from "../Utils/GetAPI"
 
 import { Task } from "../Utils/TaskPresentation"

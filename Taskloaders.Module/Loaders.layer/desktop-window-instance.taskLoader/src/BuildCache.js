@@ -64,13 +64,17 @@ const _HashTree = (hash, rootDir, currentDir) => {
 // Fingerprint de conteúdo (sha256 hex) das entradas do build do webgui. O
 // diretório de saída/gerado NÃO participa — só fonte e node_modules —, então a
 // assinatura calculada antes do build permanece válida para gravar depois dele.
-const ComputeWebInterfaceFingerprint = ({ context, nodeModules }) => {
+const ComputeWebInterfaceFingerprint = ({ context, nodeModules, componentLibraries = [] }) => {
     const hash = crypto.createHash("sha256")
     hash.update("v" + CACHE_VERSION + "\n")
     hash.update("[context]\n")
     if(context) _HashTree(hash, context, context)
     hash.update("[node_modules]\n")
     if(nodeModules) _HashTree(hash, nodeModules, nodeModules)
+    for(const library of componentLibraries){
+        hash.update(`[icomponents:${library.alias || ""}]\n`)
+        if(library.sourcePath) _HashTree(hash, library.sourcePath, library.sourcePath)
+    }
     return hash.digest("hex")
 }
 

@@ -21,6 +21,7 @@
             },
             "bound-params": {
                 "homeScreenWebgui": "@/home-screen.webgui",
+                "iComponents": "@/i-components.icomponents",
                 "desktopGuiService": "@/desktop-gui.service",
                 "executionManagerWebservice": "@/execution-manager.webservice",
                 "repositoryManagerService": "@/repository-manager.service",
@@ -34,6 +35,9 @@
             },
             "gui-host": {
                 "webgui": "homeScreenWebgui",
+                "componentLibraries": {
+                    "@i-components": "iComponents"
+                },
                 "guiService": "guiService",
                 "serviceGraph": [
                     {

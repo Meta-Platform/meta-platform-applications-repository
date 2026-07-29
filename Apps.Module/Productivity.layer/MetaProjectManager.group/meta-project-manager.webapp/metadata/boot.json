@@ -46,7 +46,8 @@
                 "isWatch": "isWatch"
             },
             "bound-params": {
-                "serverService": "@@/server-service"
+                "serverService": "@@/server-service",
+                "iComponents": "@/i-components.icomponents"
             }
         }
     ]

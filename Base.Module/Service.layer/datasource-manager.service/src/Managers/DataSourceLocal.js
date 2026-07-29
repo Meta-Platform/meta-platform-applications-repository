@@ -37,7 +37,7 @@ const DataSourceLocalManager = (params) => {
             case "datastore":
                 return DataStoreService({ appDataDir, ...sourceParams })
             default:
-                console.log(`type ${sourceParams.type} don't exist`)
+                Log.info("DataSourceLocal", `type ${sourceParams.type} don't exist`)
                 return null
         }
     }

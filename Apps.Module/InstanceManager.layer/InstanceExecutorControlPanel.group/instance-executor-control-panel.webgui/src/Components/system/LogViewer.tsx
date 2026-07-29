@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 
 import { Icon } from "semantic-ui-react"
 
-import useWebSocket from "../../Hooks/useWebSocket"
+import { useWebSocket } from "@instance-components"
 import GetAPI from "../../Utils/GetAPI"
 import { SearchField } from "./Indicators"
 import { FormatBytes } from "./Format"

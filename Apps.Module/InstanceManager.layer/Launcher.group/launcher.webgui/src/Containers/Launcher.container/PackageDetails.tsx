@@ -14,12 +14,11 @@ import {
 
 import CompareObjects from "../../Utils/CompareObjects"
 import GetAPI from "../../Utils/GetAPI"
-import { ResolveExecutableName } from "../../Utils/CommandGroup"
+import { ResolveExecutableName } from "@instance-components"
 
 import EntityHeader from "../../Components/ui/EntityHeader"
 import StartupParamsForm from "../../Components/StartupParamsForm"
-import ParamsViewer from "../../Components/ParamsViewer"
-import CommandGroupForm from "../../Components/CommandGroupForm"
+import { ParamsViewer, CommandGroupForm } from "@instance-components"
 import ExecutionTerminal, { ExecutionTerminalHandle } from "../../Components/ExecutionTerminal"
 
 import PackageIcon from "./PackageIcon"

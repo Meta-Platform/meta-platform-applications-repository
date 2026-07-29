@@ -7,7 +7,7 @@ import { connect }            from "react-redux"
 import { bindActionCreators } from "redux"
 import axios                  from "axios"
 
-import HTTPServerManagerActionsCreator from "../Actions/HTTPServerManager.actionsCreator"
+import { HTTPServerManagerActionsCreator } from "@i-components"
 
 const fetchHTTPServersRunning = async () => {
     // Electron GUI-host: não há servidor HTTP — o transporte é IPC (window.metaGui).

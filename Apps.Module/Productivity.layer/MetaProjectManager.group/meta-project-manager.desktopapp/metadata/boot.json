@@ -21,12 +21,16 @@
             },
             "bound-params": {
                 "metaProjectManagerWebgui": "@/meta-project-manager.webgui",
+                "iComponents": "@/i-components.icomponents",
                 "metaProjectManagerGuiService": "@/meta-project-manager-gui.service",
                 "metaProjectManagerWebservice": "@/meta-project-manager.webservice",
                 "projectStoreLib": "@/project-store.lib"
             },
             "gui-host": {
                 "webgui": "metaProjectManagerWebgui",
+                "componentLibraries": {
+                    "@i-components": "iComponents"
+                },
                 "guiService": "guiService",
                 "serviceGraph": [
                     {

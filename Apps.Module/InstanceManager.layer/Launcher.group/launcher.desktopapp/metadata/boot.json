@@ -18,6 +18,8 @@
             },
             "bound-params": {
                 "launcherWebgui": "@/launcher.webgui",
+                "iComponents": "@/i-components.icomponents",
+                "instanceComponents": "@/instance-manager.icomponents",
                 "launcherGuiService": "@/launcher-gui.service",
                 "launcherWebservice": "@/launcher.webservice",
                 "commandLineRuntimeService": "@/command-line-runtime.service",
@@ -29,6 +31,10 @@
             },
             "gui-host": {
                 "webgui": "launcherWebgui",
+                "componentLibraries": {
+                    "@i-components": "iComponents",
+                    "@instance-components": "instanceComponents"
+                },
                 "guiService": "guiService",
                 "serviceGraph": [
                     {
