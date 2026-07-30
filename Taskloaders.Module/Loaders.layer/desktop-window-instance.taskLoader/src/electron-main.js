@@ -450,6 +450,48 @@ const CreateWindow = () => {
             setTimeout(PollForUpdatedBundle, ASSET_POLL_INTERVAL_MS)
     }
 
+    /* A tela em branco que não se resolve sozinha.
+
+       O servidor responde 200 ao HTML mesmo quando o bundle ainda não existe
+       (rebuild em curso, provisionamento por cima do app aberto): a página
+       carrega, `did-fail-load` NÃO dispara — não houve falha de rede — e a
+       janela fica vazia para sempre, sem nada na tela que explique o quê.
+
+       Depois de carregar o front-end real, conferimos se ele de fato pintou
+       alguma coisa. Se não pintou, tratamos como não-carregado: volta para a
+       tela de carregamento e o polling recomeça, pegando o bundle assim que
+       ele ficar pronto. */
+    const EMPTY_PAGE_CHECK_MS = 6000
+    const EMPTY_PAGE_MIN_HTML = 200
+    // Teto de tentativas: se uma aplicação legitimamente pinta quase nada, ela
+    // não pode ficar recarregando para sempre. Passado o teto, a tela é dela.
+    const EMPTY_PAGE_MAX_RECOVERIES = 10
+    let emptyPageRecoveries = 0
+
+    const RecoverIfBlank = async () => {
+        if(!loaded || window.isDestroyed() || promptOpen) return
+        if(emptyPageRecoveries >= EMPTY_PAGE_MAX_RECOVERIES) return
+        let renderedLength = EMPTY_PAGE_MIN_HTML
+        try {
+            renderedLength = await window.webContents.executeJavaScript(
+                "document.body ? document.body.innerHTML.trim().length : 0"
+            )
+        } catch (error) {
+            // Não conseguir perguntar não é motivo para descartar a tela.
+            return
+        }
+        if(renderedLength >= EMPTY_PAGE_MIN_HTML || window.isDestroyed()) return
+
+        emptyPageRecoveries += 1
+        if(globalThis.Log) Log.warn("electron-main", `a interface carregou vazia — voltando a esperar o build (tentativa ${emptyPageRecoveries})`)
+        loaded = false
+        currentBundleSignature = undefined
+        ignoredBundleSignature = undefined
+        window.loadFile(LOADING_PAGE)
+        if(title) window.setTitle(title)
+        setTimeout(PollUntilReady, POLL_INTERVAL_MS)
+    }
+
     // "ready" só quando a UI REAL terminar de carregar. O did-finish-load também
     // dispara para a página provisória (loading.html) e para recarregamentos de
     // bundle; a trava loaded/readyReported garante um único "ready", no instante
@@ -460,6 +502,8 @@ const CreateWindow = () => {
             readyReported = true
             _ReportLaunchProgress("ready", 100)
         }
+        // Carregou "com sucesso" não quer dizer que apareceu algo: ver RecoverIfBlank.
+        if(loaded) setTimeout(RecoverIfBlank, EMPTY_PAGE_CHECK_MS)
     })
 
     // Se o front-end buildado falhar ao carregar, volta para a provisória e
