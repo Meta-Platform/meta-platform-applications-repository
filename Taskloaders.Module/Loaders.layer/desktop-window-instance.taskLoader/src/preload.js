@@ -5,6 +5,15 @@ contextBridge.exposeInMainWorld("electronNotifications", {
     show: ({ title, body }) => ipcRenderer.invoke("desktop-notification:show", { title, body })
 })
 
+// Placa de vídeo da janela. Só existe no Electron: num navegador comum a
+// aplicação não escolhe GPU, e a interface usa a ausência desta ponte para não
+// oferecer uma escolha que não teria efeito.
+contextBridge.exposeInMainWorld("desktopGpu", {
+    getState: () => ipcRenderer.invoke("desktop-gpu:get-state"),
+    // Reabre a janela: a escolha da placa é lida na largada do processo.
+    setPreference: ({ mode, deviceName }) => ipcRenderer.invoke("desktop-gpu:set-preference", { mode, deviceName })
+})
+
 // Progresso do build do webgui (modo GUI-host): o processo principal emite
 // "build:progress" com a porcentagem do webpack ProgressPlugin; a tela
 // provisória (loading.html) assina para animar a barra determinada.

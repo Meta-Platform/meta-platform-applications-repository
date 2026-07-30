@@ -1,5 +1,6 @@
 const { spawn } = require("child_process")
 const { join } = require("path")
+const { ResolveGpuLaunch } = require("./GpuPreference")
 
 const ELECTRON_MAIN_SCRIPT = join(__dirname, "electron-main.js")
 
@@ -25,11 +26,18 @@ const CreateOpenElectronWindow = (runtimeDeps) => {
                 ? { DESKTOP_WINDOW_URL: url }
                 : { DESKTOP_WINDOW_FILE: join(rootPath, file) }
 
+        // Placa de vídeo escolhida para ESTE app: a variável do ANGLE tem de
+        // existir já no spawn, porque o processo de GPU do Chromium nasce do
+        // zygote e não enxerga o que for definido depois, lá dentro. Lida do
+        // disco a cada abertura — é assim que a troca vale ao reabrir a janela.
+        const gpuEnv = ResolveGpuLaunch(wmClass).env
+
         return spawn(electronBinaryPath, [ELECTRON_MAIN_SCRIPT], {
             stdio: "inherit",
             env: {
                 ...process.env,
                 ...contentEnv,
+                ...gpuEnv,
                 // Caminhos p/ o electron-main (modo gui-host) resolver o
                 // WebInterfaceBuilder (ecosystem-core) e o SmartRequire (essential)
                 // por PATH — o subprocesso não recebe módulos injetados.

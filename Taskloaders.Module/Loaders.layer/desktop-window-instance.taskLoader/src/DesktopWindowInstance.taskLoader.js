@@ -17,6 +17,11 @@ const _ResolveWmClass = (raw) => {
 // TaskStatusTypes/CommandChannelEventTypes/OpenElectronWindow são resolvidos dentro da
 // fábrica (deps injetadas pelo registry) — este loader vive em outro repo (applications).
 
+// Código com que o processo da janela avisa "reabra-me" em vez de "terminei"
+// (ver RESTART_EXIT_CODE no electron-main.js). É como a troca de placa de vídeo
+// consegue um processo novo sem que a instância morra para o monitor.
+const WINDOW_RESTART_EXIT_CODE = 87
+
 // Ícone da janela: convenção de icon.svg na raiz do package (rootPath).
 const ResolveIconPath = (rootPath) => {
     if(!rootPath) return undefined
@@ -138,6 +143,12 @@ const DesktopWindowInstanceTaskLoader = (runtimeDeps) => {
     let windowProcess
     let wasStopped = false
     let isProcessExitScheduled = false
+    // Reabertura pedida pela própria janela (ver RESTART_EXIT_CODE no
+    // electron-main): trocar a placa de vídeo exige um processo Electron novo,
+    // porque a escolha é uma flag lida na largada. Reabrimos aqui em vez de
+    // deixar o Electron se relançar sozinho — assim a INSTÂNCIA continua sendo
+    // esta, e o app não some do monitor de execução.
+    let openWindow
 
     const {
         url,
@@ -160,6 +171,29 @@ const DesktopWindowInstanceTaskLoader = (runtimeDeps) => {
         setTimeout(() => process.exit(0), 100)
     }
 
+    const _WatchWindowProcess = () => {
+        windowProcess.on("exit", (code, signal) => {
+            windowProcess = undefined
+            // Por que a janela terminou: sem isto, o monitor de instâncias
+            // mostra "encerrada" sem motivo nenhum.
+            log.info(`a janela terminou (código=${code}, sinal=${signal})`)
+
+            // A janela pediu para ser reaberta (troca de placa de vídeo). Não é
+            // fim de execução: a instância segue viva e ganha uma janela nova.
+            if(code === WINDOW_RESTART_EXIT_CODE && !wasStopped){
+                log.info("a janela pediu reabertura — abrindo de novo")
+                openWindow()
+                _WatchWindowProcess()
+                return
+            }
+
+            executorChannel.emit(CommandChannelEventTypes.CHANGE_TASK_STATUS, TaskStatusTypes.TERMINATED)
+            if(!wasStopped)
+                executorChannel.emit(CommandChannelEventTypes.STOP_ALL_TASKS)
+            ScheduleProcessExit()
+        })
+    }
+
     const Start = () => {
         executorChannel.emit(CommandChannelEventTypes.CHANGE_TASK_STATUS, TaskStatusTypes.STARTING)
         try{
@@ -170,21 +204,16 @@ const DesktopWindowInstanceTaskLoader = (runtimeDeps) => {
                 // Registra o app na barra de tarefas (StartupWMClass) para que o
                 // KDE não agrupe todos os desktopapps pelo binário Electron comum.
                 EnsureAppDesktopEntry({ wmClass, name: config.window.title, iconPath: config.window.iconPath })
-                windowProcess = OpenElectronWindow({ guiConfigPath, wmClass, logsDirPath: _ResolveLogsDirPath() })
+                openWindow = () => { windowProcess = OpenElectronWindow({ guiConfigPath, wmClass, logsDirPath: _ResolveLogsDirPath() }) }
             } else {
                 const wmClass  = _ResolveWmClass(rootPath ? basename(rootPath) : title)
                 const iconPath = ResolveIconPath(rootPath)
                 EnsureAppDesktopEntry({ wmClass, name: title, iconPath })
-                windowProcess = OpenElectronWindow({ url, file, rootPath, title, width, height, iconPath, wmClass, logsDirPath: _ResolveLogsDirPath() })
+                openWindow = () => { windowProcess = OpenElectronWindow({ url, file, rootPath, title, width, height, iconPath, wmClass, logsDirPath: _ResolveLogsDirPath() }) }
             }
 
-            windowProcess.on("exit", () => {
-                windowProcess = undefined
-                executorChannel.emit(CommandChannelEventTypes.CHANGE_TASK_STATUS, TaskStatusTypes.TERMINATED)
-                if(!wasStopped)
-                    executorChannel.emit(CommandChannelEventTypes.STOP_ALL_TASKS)
-                ScheduleProcessExit()
-            })
+            openWindow()
+            _WatchWindowProcess()
 
             executorChannel.emit(CommandChannelEventTypes.CHANGE_TASK_STATUS, TaskStatusTypes.ACTIVE)
         }catch(e){

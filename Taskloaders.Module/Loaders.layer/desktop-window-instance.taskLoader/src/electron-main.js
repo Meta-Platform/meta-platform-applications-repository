@@ -5,6 +5,7 @@ const crypto = require("crypto")
 const fs = require("fs")
 const { join, dirname } = require("path")
 const { pathToFileURL } = require("url")
+const { ResolveGpuLaunch, ListVulkanDevices, WritePreference } = require("./GpuPreference")
 
 // `globalThis.Log` deste processo. O Electron é um processo SEPARADO: sem esta
 // instalação, todo log de app desktop existiria apenas como texto no stdout que
@@ -54,13 +55,6 @@ if(IS_GUI_HOST){
     ])
 }
 
-// PRIME offload is explicit opt-in. Keep ANGLE on the NVIDIA-backed OpenGL
-// context instead of allowing Chromium's Vulkan probe to fall back to software.
-if(process.platform === "linux" && process.env.__NV_PRIME_RENDER_OFFLOAD === "1"){
-    app.commandLine.appendSwitch("use-gl", "angle")
-    app.commandLine.appendSwitch("use-angle", "gl")
-}
-
 // Identidade de janela para o gerenciador de janelas (X11 WM_CLASS). Sem isto,
 // TODOS os .desktopapp compartilham a mesma classe (o binário Electron) e o KDE
 // (e afins) os agrupa num único botão da barra de tarefas. Damos a cada app uma
@@ -72,6 +66,27 @@ if(WM_CLASS){
     app.commandLine.appendSwitch("class", WM_CLASS)
     app.setName(WM_CLASS)
 }
+
+// Placa de vídeo da janela: a preferência é por app (a classe X11 identifica
+// qual). Aqui aplicamos só o SWITCH — a variável ANGLE_PREFERRED_DEVICE tem de
+// vir de quem abriu este processo, e o task loader já a injetou no env. O porquê
+// dessa divisão está em GpuPreference.js.
+const GPU_STATE = ResolveGpuLaunch(WM_CLASS)
+if(GPU_STATE.useVulkan) app.commandLine.appendSwitch("use-angle", "vulkan")
+
+// Código de saída reservado: "não fui fechado, quero reabrir". Trocar de placa
+// exige um processo novo (a escolha é flag de linha de comando), e `relaunch()`
+// deixaria o app fora do monitor de instâncias — o processo que nos abriu morre
+// junto. Então saímos com este código e quem nos abriu (o task loader) reabre a
+// janela, mantendo a MESMA instância.
+const RESTART_EXIT_CODE = 87
+
+// Sair pedindo reabertura destrói a janela, e a destruição dispara os mesmos
+// caminhos de "o usuário fechou" — que encerravam com 0 por cima do nosso
+// código, transformando o pedido de reabertura em fim de execução. A intenção
+// fica registrada aqui e TODA saída passa por ela.
+let restartRequested = false
+const ExitApp = () => app.exit(restartRequested ? RESTART_EXIT_CODE : 0)
 
 // Rota inicial da aplicação: quando quem manda abrir sabe ONDE quer chegar (o
 // Package Developer abrindo o Instance Executor já na instância que acabou de
@@ -324,7 +339,7 @@ const CreateWindow = () => {
 
     // Esta task loader cria uma única janela. Ao fechar essa janela, encerra o
     // processo Electron inteiro para não deixar renderer/GPU/network órfãos.
-    window.on("closed", () => app.exit(0))
+    window.on("closed", () => ExitApp())
 
     // Canal de foco: permite ao daemon trazer esta janela para frente.
     StartWindowControlServer(window)
@@ -464,6 +479,41 @@ const CreateWindow = () => {
     PollUntilReady()
 }
 
+// ======================================================================
+// Placa de vídeo: o que está ativo, o que existe e como trocar.
+// ======================================================================
+
+// O que a interface precisa para montar a escolha: as placas da máquina, a
+// preferência gravada e o que o Chromium REALMENTE ativou (que pode divergir da
+// preferência — driver ausente, placa desligada). Sem esse último dado o menu
+// diria "NVIDIA" enquanto a cena roda na integrada.
+ipcMain.handle("desktop-gpu:get-state", async () => {
+    let activeRenderer = null
+    try {
+        const info = await app.getGPUInfo("complete")
+        activeRenderer = (info.auxAttributes || {}).glRenderer || null
+    } catch (error) {
+        /* Diagnóstico é opcional: sem ele o menu ainda funciona. */
+    }
+    return {
+        mode      : GPU_STATE.mode,
+        deviceName: GPU_STATE.deviceName || null,
+        applied   : GPU_STATE.useVulkan,
+        reason    : GPU_STATE.reason,
+        devices   : ListVulkanDevices(),
+        activeRenderer
+    }
+})
+
+// Grava a escolha e reabre a janela para ela valer. A troca sem reabrir não
+// existe: as flags de GPU são lidas uma única vez, na largada do processo.
+ipcMain.handle("desktop-gpu:set-preference", async (_event, { mode, deviceName } = {}) => {
+    const preference = WritePreference(WM_CLASS, { mode, deviceName })
+    restartRequested = true
+    setTimeout(ExitApp, 120)
+    return { ...preference, restarting: true }
+})
+
 ipcMain.handle("desktop-notification:show", async (event, { title, body } = {}) => {
     if(Notification.isSupported() && title) {
         new Notification({
@@ -567,7 +617,7 @@ const CreateGuiHostWindow = async () => {
             nodeIntegration: false
         }
     })
-    window.on("closed", () => app.exit(0))
+    window.on("closed", () => ExitApp())
     StartWindowControlServer(window)
     ApplyPackageIcon(window, iconPath)
 
@@ -755,7 +805,7 @@ const CreateGuiHostWindow = async () => {
 
 app.whenReady().then(() => IS_GUI_HOST ? CreateGuiHostWindow() : CreateWindow())
 
-app.on("window-all-closed", () => app.exit(0))
+app.on("window-all-closed", () => ExitApp())
 app.on("before-quit", () => BrowserWindow.getAllWindows().forEach((window) => {
     if(!window.isDestroyed()) window.destroy()
 }))
