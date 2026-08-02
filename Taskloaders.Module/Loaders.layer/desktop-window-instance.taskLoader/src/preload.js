@@ -21,6 +21,19 @@ contextBridge.exposeInMainWorld("buildProgress", {
     onProgress: (callback) => ipcRenderer.on("build:progress", (_event, percentage) => callback(percentage))
 })
 
+// Intenção de zoom do teclado (Ctrl+=/+/-/0) e da roda. O processo principal
+// intercepta os aceleradores nativos do Chromium ANTES da página (eles nunca
+// chegam como keydown) e repassa só a direção: +1 aumenta, -1 diminui, 0
+// restaura. Cabe à GUI decidir o que escalar (fonte, layout...). Retorna a
+// função de cancelamento da assinatura.
+contextBridge.exposeInMainWorld("desktopZoom", {
+    onIntent: (callback) => {
+        const listener = (_event, direction) => callback(direction)
+        ipcRenderer.on("desktop-zoom:intent", listener)
+        return () => ipcRenderer.removeListener("desktop-zoom:intent", listener)
+    }
+})
+
 // Ponte de acesso aos services SEM webservices (modo GUI-host). O renderer
 // chama os services hospedados no processo principal do Electron por IPC, no
 // lugar de HTTP. window.metaGui só existe nas aplicações Electron GUI-host —

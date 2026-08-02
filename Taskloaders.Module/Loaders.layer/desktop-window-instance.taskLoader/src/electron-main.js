@@ -316,6 +316,41 @@ const ApplyPackageIcon = (window, iconPath) => {
         .catch(() => {})
 }
 
+// O Chromium PERSISTE o zoom por origem entre sessões: uma janela que zoomou
+// uma vez (Ctrl+roda do mouse, por exemplo) reabre zoomada — e GUIs de colunas
+// fixas transbordam/deslocam. O zoom nativo fica travado no 1:1 em todo load;
+// escala de leitura é responsabilidade da própria GUI (ex.: Ctrl+= do app).
+//
+// Os aceleradores de zoom do teclado (Ctrl+=/+/-/0) são consumidos no processo
+// BROWSER, antes de a página sequer receber o keydown — preventDefault na
+// página não alcança. A interceptação tem que ser aqui (before-input-event):
+// mata o zoom nativo e repassa a INTENÇÃO à GUI por IPC ("desktop-zoom:intent",
+// exposto pelo preload como window.desktopZoom), para o app aplicar a escala
+// dele. App que não assina o canal ao menos não quebra o layout.
+const LockNativeZoom = (window) => {
+    const Reset = () => {
+        try {
+            window.webContents.setZoomFactor(1)
+            window.webContents.setVisualZoomLevelLimits(1, 1)
+        } catch(e) { /* a janela pode fechar no meio de um load; nada a fazer */ }
+    }
+    Reset()
+    window.webContents.on("did-finish-load", Reset)
+    // Ctrl+roda do mouse: cancela o pedido de zoom e garante o 1:1.
+    window.webContents.on("zoom-changed", (event) => { event.preventDefault(); Reset() })
+    window.webContents.on("before-input-event", (event, input) => {
+        if(input.type !== "keyDown" || !input.control || input.alt || input.meta) return
+        // Numpad0 fica de fora: é atalho de vista da cena nos apps 3D.
+        const direction = (input.key === "+" || input.key === "=") ? 1
+            : (input.key === "-" || input.key === "_") ? -1
+            : (input.key === "0" && input.code !== "Numpad0") ? 0
+            : null
+        if(direction === null) return
+        event.preventDefault()
+        try { window.webContents.send("desktop-zoom:intent", direction) } catch(e) {}
+    })
+}
+
 const CreateWindow = () => {
 
     // Sem menu (não é uma aplicação de desenvolvimento).
@@ -340,6 +375,8 @@ const CreateWindow = () => {
     // Esta task loader cria uma única janela. Ao fechar essa janela, encerra o
     // processo Electron inteiro para não deixar renderer/GPU/network órfãos.
     window.on("closed", () => ExitApp())
+
+    LockNativeZoom(window)
 
     // Canal de foco: permite ao daemon trazer esta janela para frente.
     StartWindowControlServer(window)
@@ -662,6 +699,7 @@ const CreateGuiHostWindow = async () => {
         }
     })
     window.on("closed", () => ExitApp())
+    LockNativeZoom(window)
     StartWindowControlServer(window)
     ApplyPackageIcon(window, iconPath)
 
