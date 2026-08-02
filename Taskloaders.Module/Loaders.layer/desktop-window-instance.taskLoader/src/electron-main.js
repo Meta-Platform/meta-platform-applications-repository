@@ -316,38 +316,41 @@ const ApplyPackageIcon = (window, iconPath) => {
         .catch(() => {})
 }
 
-// O Chromium PERSISTE o zoom por origem entre sessões: uma janela que zoomou
-// uma vez (Ctrl+roda do mouse, por exemplo) reabre zoomada — e GUIs de colunas
-// fixas transbordam/deslocam. O zoom nativo fica travado no 1:1 em todo load;
-// escala de leitura é responsabilidade da própria GUI (ex.: Ctrl+= do app).
-//
-// Os aceleradores de zoom do teclado (Ctrl+=/+/-/0) são consumidos no processo
-// BROWSER, antes de a página sequer receber o keydown — preventDefault na
-// página não alcança. A interceptação tem que ser aqui (before-input-event):
-// mata o zoom nativo e repassa a INTENÇÃO à GUI por IPC ("desktop-zoom:intent",
-// exposto pelo preload como window.desktopZoom), para o app aplicar a escala
-// dele. App que não assina o canal ao menos não quebra o layout.
-const LockNativeZoom = (window) => {
-    const Reset = () => {
-        try {
-            window.webContents.setZoomFactor(1)
-            window.webContents.setVisualZoomLevelLimits(1, 1)
-        } catch(e) { /* a janela pode fechar no meio de um load; nada a fazer */ }
+// Zoom da interface (Ctrl+= / + / - / 0 e Ctrl+roda) gerido AQUI, com o zoom
+// REAL do Chromium (setZoomFactor). Com ele os media queries enxergam um
+// viewport menor e o layout SE ADAPTA, como numa janela estreita — diferente
+// de `zoom` CSS na raiz da página, que desloca a pintura e quebra o shell
+// (bug E3DV-233). O Chromium persiste o fator por origem sozinho, então a
+// preferência sobrevive ao reabrir. Os atalhos são interceptados no processo
+// principal (before-input-event) para valerem em TODO desktopapp,
+// independente de layout de teclado e sem depender de código da GUI.
+const ZOOM_LEVELS = [0.7, 0.8, 0.9, 1, 1.1, 1.25, 1.4, 1.6, 1.8, 2]
+const InstallManagedZoom = (window) => {
+    const contents = window.webContents
+    const Aplicar = (fator) => { try { contents.setZoomFactor(fator) } catch(e) { /* janela fechando */ } }
+    const Passo = (direcao) => {
+        let atual = 1
+        try { atual = contents.getZoomFactor() } catch(e) {}
+        const indice = ZOOM_LEVELS.findIndex(nivel => Math.abs(nivel - atual) < 0.051)
+        Aplicar(indice === -1 ? 1 : ZOOM_LEVELS[Math.min(Math.max(indice + direcao, 0), ZOOM_LEVELS.length - 1)])
     }
-    Reset()
-    window.webContents.on("did-finish-load", Reset)
-    // Ctrl+roda do mouse: cancela o pedido de zoom e garante o 1:1.
-    window.webContents.on("zoom-changed", (event) => { event.preventDefault(); Reset() })
-    window.webContents.on("before-input-event", (event, input) => {
+    // Pinch fica travado: zoom só por atalho/roda, sempre em degraus conhecidos.
+    try { contents.setVisualZoomLevelLimits(1, 1) } catch(e) {}
+    contents.on("before-input-event", (event, input) => {
         if(input.type !== "keyDown" || !input.control || input.alt || input.meta) return
+        const mais  = input.key === "+" || input.key === "="
+        const menos = input.key === "-" || input.key === "_"
         // Numpad0 fica de fora: é atalho de vista da cena nos apps 3D.
-        const direction = (input.key === "+" || input.key === "=") ? 1
-            : (input.key === "-" || input.key === "_") ? -1
-            : (input.key === "0" && input.code !== "Numpad0") ? 0
-            : null
-        if(direction === null) return
+        const zero  = input.key === "0" && input.code !== "Numpad0"
+        if(!mais && !menos && !zero) return
         event.preventDefault()
-        try { window.webContents.send("desktop-zoom:intent", direction) } catch(e) {}
+        if(zero) Aplicar(1)
+        else Passo(mais ? 1 : -1)
+    })
+    // Ctrl+roda pede zoom ao browser; entra nos mesmos degraus do teclado.
+    contents.on("zoom-changed", (event, direction) => {
+        event.preventDefault()
+        Passo(direction === "in" ? 1 : -1)
     })
 }
 
@@ -376,7 +379,7 @@ const CreateWindow = () => {
     // processo Electron inteiro para não deixar renderer/GPU/network órfãos.
     window.on("closed", () => ExitApp())
 
-    LockNativeZoom(window)
+    InstallManagedZoom(window)
 
     // Canal de foco: permite ao daemon trazer esta janela para frente.
     StartWindowControlServer(window)
@@ -699,7 +702,7 @@ const CreateGuiHostWindow = async () => {
         }
     })
     window.on("closed", () => ExitApp())
-    LockNativeZoom(window)
+    InstallManagedZoom(window)
     StartWindowControlServer(window)
     ApplyPackageIcon(window, iconPath)
 
