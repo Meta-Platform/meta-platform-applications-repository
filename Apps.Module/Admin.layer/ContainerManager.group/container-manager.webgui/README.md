@@ -13,6 +13,7 @@ volumes. Construída sobre o kit comum `@i-components` — nenhum componente de
 
 | Seção | O que faz |
 |-------|-----------|
+| **Aplicações** | Agrupa os containers por aplicação (estado, uptime, memória, CPU, rede, processos) com atalho para log ao vivo e terminal. É a tela de entrada |
 | **Conexões** | Cadastra Docker/Podman, testa antes de salvar, mostra conectado/offline e oferece os runtimes encontrados na máquina |
 | **Containers** | Lista com estado, portas e imagem; start, stop, restart, kill e remove; inspeção e histórico de logs; criação com portas, ambiente, volumes e rede |
 | **Imagens** | Lista, inspeção, remoção e build a partir do texto de um Dockerfile, com a saída do build à vista |
@@ -21,11 +22,36 @@ volumes. Construída sobre o kit comum `@i-components` — nenhum componente de
 
 ## Como conversa com o backend
 
-Transporte duplo, decidido em tempo de execução por `Utils/Api.ts`: **HTTP**
-com o `container-manager.webservice` quando servida pelo navegador, e **IPC**
-com o `container-manager-gui.service` quando roda como janela Electron
-(GUI-host). Os nomes de método são os mesmos nos dois caminhos, então nenhuma
-tela sabe a diferença.
+Transporte duplo, decidido em tempo de execução por `Utils/Api.ts` e
+`Utils/GetRequestByServer.ts`:
+
+| | Navegador | Janela (GUI-host) |
+|---|---|---|
+| Requisição | HTTP (axios) | `window.metaGui.invoke` |
+| Stream | `WebSocket` | `IPCWebSocket` sobre `metaGui.stream` |
+
+As duas colunas têm a **mesma superfície**, então nenhuma tela sabe a diferença
+— é assim que tudo o que funciona na janela funciona na web, com um código só.
+
+O que sustenta isso do lado do servidor: o `container-manager-gui.service`
+publica o **`api.json` inteiro** no manifesto (não só os nomes dos métodos) e
+implementa `InvokeStream`. Sem o manifesto completo, a interface não teria como
+saber que `LogStream` é um stream, e o modo janela ficaria sem log ao vivo,
+terminal e métricas.
+
+## Sobre o terminal
+
+É um console de **linha**: cada comando é enviado ao pressionar Enter, com
+histórico nas setas ↑/↓ e Ctrl+C mandando ETX. Não é um emulador de terminal
+completo — cursor, cores e aplicações de tela cheia (`top`, `vim`) exigiriam
+`xterm.js` e uma dependência nova no pacote. Para "ver o que está acontecendo
+lá dentro", que é o uso real, a linha basta.
+
+`Utils/StripAnsi.ts` limpa as sequências de escape antes de exibir (opcional no
+log ao vivo). A **ordem** das alternativas do padrão importa: o CSI aceita `]`,
+dígitos e `;` no meio, então casa o começo de um OSC — o título de janela do
+bash — e come a primeira letra do que vem depois. É o tipo de defeito que só
+aparece na tela, com um prompt de verdade.
 
 ## O que a interface não deixa passar
 

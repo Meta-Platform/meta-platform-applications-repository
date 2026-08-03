@@ -27,6 +27,22 @@ runtimes ao mesmo tempo sem ter dois caminhos de código.
 | `Networks` | `/networks` | Listar, inspecionar, criar, remover, conectar e desconectar |
 | `Volumes` | `/volumes` | Listar, inspecionar, criar, remover e navegar arquivos |
 
+### Streams (WebSocket)
+
+| Rota | O que faz |
+|------|-----------|
+| `WS /containers/log-stream/:connectionId/:containerIdOrName` | Log ao vivo, com `stdout` e `stderr` marcados |
+| `WS /containers/stats-stream/:connectionId/:containerIdOrName` | CPU, memória, rede, disco e processos, uma amostra por segundo |
+| `WS /containers/exec/:connectionId/:containerIdOrName` | Terminal: recebe `{type:"input"}` / `{type:"resize"}`, devolve `{type:"output"}` |
+
+Uma regra vale para os três: **quando o cliente fecha, a fonte desliga**. Um
+stream do runtime é recurso vivo do outro lado; sem isso ficaria uma conexão
+pendurada por container aberto, e numa tela de monitoração isso se acumula
+rápido.
+
+Tudo trafega como JSON, e é isso que faz o mesmo código de tela servir o
+WebSocket do navegador e o canal IPC do modo janela.
+
 ## Montagem (`metadata/endpoint-group.json`)
 
 | | |

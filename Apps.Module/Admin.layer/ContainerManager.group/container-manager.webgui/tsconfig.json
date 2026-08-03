@@ -1,19 +1,35 @@
 {
     "compilerOptions": {
-        "esModuleInterop":true,
+        "esModuleInterop": true,
         "sourceMap": true,
         "noImplicitAny": false,
         "module": "commonjs",
         "target": "es5",
         "jsx": "react",
-        "lib":["esnext", "dom"],
+        "lib": [
+            "esnext",
+            "dom"
+        ],
         "skipLibCheck": true,
-        "types": ["react", "node"],
+        "types": [
+            "react",
+            "node"
+        ],
         "baseUrl": ".",
         "paths": {
-            "*": ["node_modules/*"],
-            "@i-components": ["../../../../Base.Module/Library.layer/i-components.icomponents/src"],
-            "@i-components/*": ["../../../../Base.Module/Library.layer/i-components.icomponents/src/*"]
+            "*": [
+                "node_modules/*"
+            ],
+            "@i-components": [
+                "../../../../Base.Module/Library.layer/i-components.icomponents/src"
+            ],
+            "@i-components/*": [
+                "../../../../Base.Module/Library.layer/i-components.icomponents/src/*"
+            ]
         }
-    }
+    },
+    "exclude": [
+        "node_modules",
+        "test"
+    ]
 }
