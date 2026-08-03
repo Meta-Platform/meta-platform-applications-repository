@@ -130,6 +130,94 @@ const ContainersController = (params) => {
     }
 
     /*
+        MÉTRICAS DE VÁRIOS CONTAINERS NUM SOCKET SÓ.
+
+        A tela de aplicações mostra dezenas de cartões, cada um com memória e
+        CPU. Um socket por cartão parece natural e não funciona: o navegador
+        limita as conexões simultâneas por host (~6 em HTTP/1.1), e a partir do
+        sétimo cartão as métricas simplesmente não chegam — a fila nunca anda,
+        porque nenhum stream termina.
+
+        O sintoma foi exatamente esse: no modo janela (IPC, sem esse limite)
+        todos os cartões preenchiam; na web, só os primeiros.
+
+        Aqui o cliente manda a lista de containers que quer acompanhar
+        (`{type:"watch", containers:[...]}`) e recebe tudo por um canal só,
+        com `containerId` em cada amostra. Trocar a lista fecha o que saiu e
+        abre o que entrou — a tela pode filtrar sem reabrir conexão.
+    */
+    const _MultiStatsStream = async (ws, connectionId) => {
+        const fontes = new Map()
+        let fechado = false
+
+        const FecharTudo = () => {
+            fechado = true
+            fontes.forEach((fonte) => {
+                try { fonte.Close() } catch (error) { /* já fechada */ }
+            })
+            fontes.clear()
+        }
+
+        ws.on("close", FecharTudo)
+
+        const Acompanhar = async (containerId) => {
+            if (fechado || fontes.has(containerId)) return
+            try {
+                const fonte = await WithAdapter(connectionId, (adaptador) =>
+                    adaptador.StreamContainerStats({
+                        containerIdOrName: containerId,
+                        onData: (amostra) => _EnviarNoSocket(ws, { type: "stats", containerId, ...amostra }),
+                        onError: () => {
+                            // Um container que morre não pode derrubar as
+                            // métricas dos outros: fecha só a fonte dele.
+                            const morta = fontes.get(containerId)
+                            if (morta) { try { morta.Close() } catch (error) { /* já fechada */ } }
+                            fontes.delete(containerId)
+                            _EnviarNoSocket(ws, { type: "stats-ended", containerId })
+                        },
+                        onEnd: () => {
+                            fontes.delete(containerId)
+                            _EnviarNoSocket(ws, { type: "stats-ended", containerId })
+                        }
+                    }))
+                if (fechado) { try { fonte.Close() } catch (error) { /* corrida com o fechamento */ } ; return }
+                fontes.set(containerId, fonte)
+            } catch (error) {
+                _EnviarNoSocket(ws, { type: "stats-error", containerId, message: error.message })
+            }
+        }
+
+        const Esquecer = (containerId) => {
+            const fonte = fontes.get(containerId)
+            if (!fonte) return
+            try { fonte.Close() } catch (error) { /* já fechada */ }
+            fontes.delete(containerId)
+        }
+
+        ws.on("message", async (bruto) => {
+            const texto = typeof bruto === "string" ? bruto : bruto.toString()
+            let mensagem
+            try {
+                mensagem = JSON.parse(texto)
+            } catch (error) {
+                return
+            }
+
+            if (mensagem.type !== "watch") return
+
+            const desejados = Array.isArray(mensagem.containers) ? mensagem.containers : []
+
+            Array.from(fontes.keys())
+                .filter((containerId) => !desejados.includes(containerId))
+                .forEach(Esquecer)
+
+            for (const containerId of desejados) await Acompanhar(containerId)
+        })
+
+        _EnviarNoSocket(ws, { type: "ready" })
+    }
+
+    /*
         O terminal é o único stream de mão dupla: o que o operador digita chega
         por `ws.on("message")` e vai para a entrada do processo dentro do
         container. Mensagem em JSON com `type`, para caber teclado e
@@ -190,6 +278,7 @@ const ContainersController = (params) => {
         CreateContainer: _CreateContainer,
         LogStream: _LogStream,
         StatsStream: _StatsStream,
+        MultiStatsStream: _MultiStatsStream,
         ExecSession: _ExecSession
     }
 

@@ -107,6 +107,14 @@
                 { "in": "path", "name": "connectionId", "type": "string", "required": true },
                 { "in": "path", "name": "containerIdOrName", "type": "string", "required": true }
             ]
+        },
+        {
+            "summary": "MultiStatsStream",
+            "method": "WS",
+            "path": "/containers/stats-stream-multi/:connectionId",
+            "parameters": [
+                { "in": "path", "name": "connectionId", "type": "string", "required": true }
+            ]
         }
     ]
 }

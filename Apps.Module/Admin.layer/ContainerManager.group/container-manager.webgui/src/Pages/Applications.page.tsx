@@ -14,6 +14,7 @@ import {
 
 import useApi from "../Hooks/useApi"
 import useResource from "../Hooks/useResource"
+import useApplicationsStats from "../Hooks/useApplicationsStats"
 import ApplicationCard from "../Components/ApplicationCard"
 import LiveLog from "../Components/LiveLog"
 import ContainerTerminal from "../Components/ContainerTerminal"
@@ -58,6 +59,15 @@ const ApplicationsPage = ({ conexaoAtiva }: any) => {
     const aplicacoes = useMemo(
         () => GroupApplications(containers, repositorio),
         [containers, repositorio])
+
+    // Um canal só para as métricas de todos os cartões de pé.
+    const idsEmExecucao = useMemo(
+        () => aplicacoes
+            .filter((aplicacao) => aplicacao.state === "running" && aplicacao.latest?.Id)
+            .map((aplicacao) => aplicacao.latest.Id),
+        [aplicacoes])
+
+    const { porContainer } = useApplicationsStats(conexaoId, idsEmExecucao)
 
     const EscolherRepositorio = (valor: string) => {
         setRepositorio(valor)
@@ -129,6 +139,7 @@ const ApplicationsPage = ({ conexaoAtiva }: any) => {
                             key={aplicacao.key}
                             conexaoId={conexaoId}
                             aplicacao={aplicacao}
+                            metrica={porContainer[aplicacao.latest?.Id]}
                             emAcao={emAcao}
                             onAcao={Executar}
                             onAbrirLog={(alvo: any) => Abrir(alvo, "log")}

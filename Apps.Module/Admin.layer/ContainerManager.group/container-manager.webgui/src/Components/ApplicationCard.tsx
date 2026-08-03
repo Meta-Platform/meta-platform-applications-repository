@@ -2,28 +2,24 @@ import * as React from "react"
 
 import { Button, ButtonGroup, Icon, ProgressBar, StatusBadge } from "@i-components"
 
-import useContainerStats from "../Hooks/useContainerStats"
 import { ContainerName, ContainerStatusToken, FormatBytes, FormatPorts, NetworkNames } from "../Utils/Format"
 import { FormatUptime } from "../Utils/FormatUptime"
 
 /*
     Cartão de uma aplicação.
 
-    As métricas são assinadas por cartão, e SÓ quando a aplicação está de pé —
-    container parado não tem o que medir, e abrir um stream para ele seria uma
-    conexão aberta sem nenhum dado do outro lado.
+    A métrica chega PRONTA, do canal único da tela (useApplicationsStats): um
+    socket por cartão esbarra no limite de conexões simultâneas do navegador e
+    deixa os últimos cartões sem dado nenhum.
 
     Aplicação parada não some da lista: some da lista é o que faz um app que
     caiu virar invisível justamente quando alguém precisa vê-lo. Ela fica, com
     o motivo da saída.
 */
-const ApplicationCard = ({ conexaoId, aplicacao, onAbrirLog, onAbrirTerminal, onAcao, emAcao }: any) => {
+const ApplicationCard = ({ conexaoId, aplicacao, metrica, onAbrirLog, onAbrirTerminal, onAcao, emAcao }: any) => {
 
     const rodando = aplicacao.state === "running"
     const container = aplicacao.latest
-    const stats = useContainerStats(conexaoId, container?.Id, rodando)
-
-    const metrica = stats.atual
 
     return <div className={`cm-app ${rodando ? "is-running" : "is-stopped"}`}>
         <div className="cm-app__head">
