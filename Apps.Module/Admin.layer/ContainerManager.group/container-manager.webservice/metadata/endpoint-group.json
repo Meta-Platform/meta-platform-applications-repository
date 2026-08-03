@@ -1,0 +1,78 @@
+{
+    "bound-params": [
+        "serverService",
+        "containerRuntimeConnectionService"
+    ],
+    "endpoints": [
+        {
+            "url": "/container-connections",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/ContainerConnections.api.json",
+                "controller": "Controllers/ContainerConnections.controller"
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "containerRuntimeConnectionService": "containerRuntimeConnectionService"
+                }
+            }
+        },
+        {
+            "url": "/containers",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Containers.api.json",
+                "controller": "Controllers/Containers.controller"
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "containerRuntimeConnectionService": "containerRuntimeConnectionService"
+                }
+            }
+        },
+        {
+            "url": "/images",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Images.api.json",
+                "controller": "Controllers/Images.controller"
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "containerRuntimeConnectionService": "containerRuntimeConnectionService"
+                }
+            }
+        },
+        {
+            "url": "/networks",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Networks.api.json",
+                "controller": "Controllers/Networks.controller"
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "containerRuntimeConnectionService": "containerRuntimeConnectionService"
+                }
+            }
+        },
+        {
+            "url": "/volumes",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Volumes.api.json",
+                "controller": "Controllers/Volumes.controller"
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "containerRuntimeConnectionService": "containerRuntimeConnectionService"
+                }
+            }
+        }
+    ]
+}

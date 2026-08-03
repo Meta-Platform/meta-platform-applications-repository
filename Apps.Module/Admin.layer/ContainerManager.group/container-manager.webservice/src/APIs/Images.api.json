@@ -1,0 +1,43 @@
+{
+    "name": "Images",
+    "endpoints": [
+        {
+            "summary": "ListImages",
+            "method": "POST",
+            "path": "/images/list",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "InspectImage",
+            "method": "POST",
+            "path": "/images/inspect",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "imageIdOrName", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "RemoveImage",
+            "method": "POST",
+            "path": "/images/remove",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "imageIdOrName", "type": "string", "required": true },
+                { "in": "body", "name": "force", "type": "boolean", "required": false }
+            ]
+        },
+        {
+            "summary": "BuildImage",
+            "method": "POST",
+            "path": "/images/build",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "imageTagName", "type": "string", "required": true },
+                { "in": "body", "name": "dockerfileContent", "type": "string", "required": true },
+                { "in": "body", "name": "buildargs", "type": "json", "required": false }
+            ]
+        }
+    ]
+}

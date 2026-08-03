@@ -1,0 +1,151 @@
+/*
+    Estilo do Container Manager.
+
+    Só o que o kit comum (@i-components) não cobre: composições locais desta
+    tela. Nada de cor crua — tudo sai dos tokens --mp-*, para o aplicativo
+    acompanhar tema claro e escuro sem regra própria.
+*/
+
+.cm-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mp-space-3, 12px);
+    padding: var(--mp-space-4, 16px);
+    min-width: 0;
+}
+
+.cm-page__title {
+    font-size: var(--mp-font-lg, 1.05rem);
+    letter-spacing: 0.02em;
+}
+
+.cm-subtitle {
+    margin-top: var(--mp-space-4, 16px);
+    margin-bottom: var(--mp-space-2, 8px);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.cm-muted {
+    color: var(--mp-text-muted, #8a8a8a);
+}
+
+.cm-mt {
+    margin-top: var(--mp-space-2, 8px);
+}
+
+/* Linha de campos repetíveis (porta, montagem, variável de ambiente). */
+.cm-row {
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-2, 8px);
+    margin-bottom: var(--mp-space-2, 8px);
+}
+
+.cm-row--between {
+    justify-content: space-between;
+}
+
+.cm-row__arrow {
+    color: var(--mp-text-muted, #8a8a8a);
+    font-family: var(--mp-font-mono, monospace);
+}
+
+/* Seletor de conexão na barra de topo. */
+.cm-connection-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--mp-space-2, 8px);
+    min-width: 260px;
+}
+
+.cm-connection-name {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--mp-space-2, 8px);
+}
+
+.cm-badge-active {
+    font-size: var(--mp-font-xs, 0.72rem);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0 var(--mp-space-2, 8px);
+    border: var(--mp-border-width, 2px) solid var(--mp-accent, #d9a300);
+    color: var(--mp-accent, #d9a300);
+}
+
+.cm-status-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--mp-space-2, 8px);
+}
+
+.cm-status-version {
+    font-family: var(--mp-font-mono, monospace);
+    font-size: var(--mp-font-xs, 0.72rem);
+    color: var(--mp-text-muted, #8a8a8a);
+}
+
+/* Runtimes encontrados na máquina e ainda não cadastrados. */
+.cm-suggestions {
+    margin-top: var(--mp-space-4, 16px);
+    padding: var(--mp-space-3, 12px);
+    border: var(--mp-border-width, 2px) dashed var(--mp-border, #3a3a3a);
+}
+
+.cm-suggestions__title {
+    font-weight: 600;
+    margin-bottom: var(--mp-space-2, 8px);
+}
+
+.cm-suggestion {
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-3, 12px);
+    padding: var(--mp-space-2, 8px) 0;
+}
+
+.cm-suggestion__desc {
+    min-width: 220px;
+}
+
+.cm-suggestion__endpoint {
+    flex: 1;
+    font-family: var(--mp-font-mono, monospace);
+    font-size: var(--mp-font-sm, 0.85rem);
+    color: var(--mp-text-muted, #8a8a8a);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Navegação de arquivos dentro do volume. */
+.cm-path {
+    font-family: var(--mp-font-mono, monospace);
+}
+
+.cm-entry {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--mp-space-2, 8px);
+    min-width: 0;
+}
+
+.cm-entry a {
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+/* Envio de arquivo: o <input type=file> nativo é escondido atrás do botão. */
+.cm-upload {
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.cm-upload input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}

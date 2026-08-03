@@ -1,0 +1,82 @@
+{
+    "name": "Volumes",
+    "endpoints": [
+        {
+            "summary": "ListVolumes",
+            "method": "POST",
+            "path": "/volumes/list",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "InspectVolume",
+            "method": "POST",
+            "path": "/volumes/inspect",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "volumeName", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "CreateVolume",
+            "method": "POST",
+            "path": "/volumes/create",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "options", "type": "json", "required": true }
+            ]
+        },
+        {
+            "summary": "RemoveVolume",
+            "method": "POST",
+            "path": "/volumes/remove",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "volumeName", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "ListVolumeEntries",
+            "method": "POST",
+            "path": "/volumes/entries",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "volumeName", "type": "string", "required": true },
+                { "in": "body", "name": "path", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "GetFileFromVolume",
+            "method": "POST",
+            "path": "/volumes/file/get",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "volumeName", "type": "string", "required": true },
+                { "in": "body", "name": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "PutFileInVolume",
+            "method": "POST",
+            "path": "/volumes/file/put",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "volumeName", "type": "string", "required": true },
+                { "in": "body", "name": "path", "type": "string", "required": false },
+                { "in": "body", "name": "fileName", "type": "string", "required": true },
+                { "in": "body", "name": "contentBase64", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "DeleteVolumeEntry",
+            "method": "POST",
+            "path": "/volumes/entry/remove",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "volumeName", "type": "string", "required": true },
+                { "in": "body", "name": "path", "type": "string", "required": true }
+            ]
+        }
+    ]
+}

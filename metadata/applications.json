@@ -42,6 +42,18 @@
         "supervisorSocketFileName":"sources-desktop.sock"
     },
     {
+        "appType":"APP",
+        "executable":"container-manager",
+        "packageNamespace":"Apps.Module/Admin.layer/ContainerManager.group/container-manager.webapp",
+        "supervisorSocketFileName":"container-manager.sock"
+    },
+    {
+        "appType":"DESKTOP",
+        "executable":"container-manager-desktop",
+        "packageNamespace":"Apps.Module/Admin.layer/ContainerManager.group/container-manager.desktopapp",
+        "supervisorSocketFileName":"container-manager-desktop.sock"
+    },
+    {
         "appType":"DESKTOP",
         "executable":"my-desktop",
         "packageNamespace":"Apps.Module/Admin.layer/MyDesktop.group/my-desktop.desktopapp",

@@ -1,0 +1,5 @@
+{
+    "port": "9311",
+    "serverName": "ContainerManagerWebguiInstance",
+    "serverManagerUrl": "http://localhost:9311/server-manager/status"
+}

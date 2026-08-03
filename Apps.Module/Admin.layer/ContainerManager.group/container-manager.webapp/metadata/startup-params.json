@@ -1,0 +1,6 @@
+{
+    "port": "9310",
+    "serverName": "ContainerManagerWebappInstance",
+    "appDataDir": "/home/kadisk/EcosystemData/appdata/container-manager",
+    "serverManagerUrl": "http://localhost:9310/server-manager/status"
+}

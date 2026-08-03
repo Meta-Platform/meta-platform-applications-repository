@@ -1,0 +1,51 @@
+{
+    "params": [
+        "serverName",
+        "appDataDir"
+    ],
+    "windows": [
+        {
+            "title": "Container Manager",
+            "width": 1360,
+            "height": 860,
+            "dependency": "@/container-manager.webgui",
+            "params": {
+                "serverName": "{{serverName}}",
+                "appDataDir": "{{appDataDir}}",
+                "storageDir": "{{appDataDir}}"
+            },
+            "bound-params": {
+                "containerManagerWebgui": "@/container-manager.webgui",
+                "iComponents": "@/i-components.icomponents",
+                "containerManagerGuiService": "@/container-manager-gui.service",
+                "containerManagerWebservice": "@/container-manager.webservice",
+                "containerRuntimeAdapterService": "@/container-runtime-adapter.service"
+            },
+            "gui-host": {
+                "webgui": "containerManagerWebgui",
+                "componentLibraries": {
+                    "@i-components": "iComponents"
+                },
+                "guiService": "guiService",
+                "serviceGraph": [
+                    {
+                        "ref": "containerRuntimeConnection",
+                        "package": "containerRuntimeAdapterService",
+                        "factory": "Managers/ContainerRuntimeConnection.manager"
+                    },
+                    {
+                        "ref": "guiService",
+                        "package": "containerManagerGuiService",
+                        "factory": "Services/ContainerManagerGui.service",
+                        "boundServices": {
+                            "containerRuntimeConnectionService": "containerRuntimeConnection"
+                        },
+                        "boundLibs": {
+                            "containerManagerWebservice": "containerManagerWebservice"
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

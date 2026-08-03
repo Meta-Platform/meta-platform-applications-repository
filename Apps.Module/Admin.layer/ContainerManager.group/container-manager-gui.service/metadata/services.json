@@ -1,0 +1,11 @@
+[
+    {
+        "namespace": "ContainerManagerGuiService",
+        "path": "Services/ContainerManagerGui.service",
+        "bound-params": [
+            "containerRuntimeConnectionService",
+            "containerManagerWebservice"
+        ],
+        "params": []
+    }
+]

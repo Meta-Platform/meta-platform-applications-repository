@@ -1,0 +1,85 @@
+{
+    "name": "Containers",
+    "endpoints": [
+        {
+            "summary": "ListContainers",
+            "method": "POST",
+            "path": "/containers/list",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "InspectContainer",
+            "method": "POST",
+            "path": "/containers/inspect",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "containerIdOrName", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "GetContainerLogHistory",
+            "method": "POST",
+            "path": "/containers/logs",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "containerIdOrName", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "StartContainer",
+            "method": "POST",
+            "path": "/containers/start",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "containerIdOrName", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "StopContainer",
+            "method": "POST",
+            "path": "/containers/stop",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "containerIdOrName", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "RestartContainer",
+            "method": "POST",
+            "path": "/containers/restart",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "containerIdOrName", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "KillContainer",
+            "method": "POST",
+            "path": "/containers/kill",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "containerIdOrName", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "RemoveContainer",
+            "method": "POST",
+            "path": "/containers/remove",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "containerIdOrName", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "CreateContainer",
+            "method": "POST",
+            "path": "/containers/create",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "options", "type": "json", "required": true }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,52 @@
+{
+    "params": [
+        "port",
+        "serverManagerUrl",
+        "serverName",
+        "appDataDir"
+    ],
+    "services": [
+        {
+            "namespace": "@@/server-service",
+            "dependency": "@/server-manager.service/services/HTTPServerService",
+            "params": {
+                "name": "{{serverName}}",
+                "port": "{{port}}"
+            }
+        },
+        {
+            "namespace": "@@/container-runtime-connection-service",
+            "dependency": "@/container-runtime-adapter.service/services/ContainerRuntimeConnectionManager",
+            "params": {
+                "storageDir": "appDataDir"
+            }
+        }
+    ],
+    "endpoints": [
+        {
+            "dependency": "@/server-manager.webservice/endpoint-group",
+            "bound-params": {
+                "serverServiceForController": "@@/server-service",
+                "serverService": "@@/server-service"
+            }
+        },
+        {
+            "dependency": "@/container-manager.webservice/endpoint-group",
+            "bound-params": {
+                "serverService": "@@/server-service",
+                "containerRuntimeConnectionService": "@@/container-runtime-connection-service"
+            }
+        },
+        {
+            "dependency": "@/container-manager.webgui/endpoint-group",
+            "params": {
+                "serverManagerUrl": "{{serverManagerUrl}}",
+                "serverName": "{{serverName}}"
+            },
+            "bound-params": {
+                "serverService": "@@/server-service",
+                "iComponents": "@/i-components.icomponents"
+            }
+        }
+    ]
+}

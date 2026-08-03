@@ -1,0 +1,77 @@
+{
+    "name": "ContainerConnections",
+    "endpoints": [
+        {
+            "path": "/connections",
+            "method": "GET",
+            "summary": "ListConnections"
+        },
+        {
+            "path": "/connections/discover",
+            "method": "GET",
+            "summary": "DiscoverConnections"
+        },
+        {
+            "path": "/connections/status",
+            "method": "GET",
+            "summary": "ListConnectionsWithStatus"
+        },
+        {
+            "summary": "GetConnection",
+            "method": "POST",
+            "path": "/connections/get",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "CreateConnection",
+            "method": "POST",
+            "path": "/connections/create",
+            "parameters": [
+                { "in": "body", "name": "name", "type": "string", "required": true },
+                { "in": "body", "name": "runtimeType", "type": "string", "required": true },
+                { "in": "body", "name": "endpoint", "type": "string", "required": true },
+                { "in": "body", "name": "tls", "type": "json", "required": false }
+            ]
+        },
+        {
+            "summary": "UpdateConnection",
+            "method": "POST",
+            "path": "/connections/update",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "name", "type": "string", "required": false },
+                { "in": "body", "name": "runtimeType", "type": "string", "required": false },
+                { "in": "body", "name": "endpoint", "type": "string", "required": false },
+                { "in": "body", "name": "tls", "type": "json", "required": false }
+            ]
+        },
+        {
+            "summary": "RemoveConnection",
+            "method": "POST",
+            "path": "/connections/remove",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "TestConnection",
+            "method": "POST",
+            "path": "/connections/test",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "ProbeEndpoint",
+            "method": "POST",
+            "path": "/connections/probe",
+            "parameters": [
+                { "in": "body", "name": "endpoint", "type": "string", "required": true },
+                { "in": "body", "name": "runtimeType", "type": "string", "required": false },
+                { "in": "body", "name": "tls", "type": "json", "required": false }
+            ]
+        }
+    ]
+}
