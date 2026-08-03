@@ -12,6 +12,7 @@ import {
 } from "@i-components"
 
 import useApi from "../Hooks/useApi"
+import ApplicationsPage from "./Applications.page"
 import ConnectionsPage from "./Connections.page"
 import ContainersPage from "./Containers.page"
 import ImagesPage from "./Images.page"
@@ -20,6 +21,7 @@ import VolumesPage from "./Volumes.page"
 
 const SECOES = [
     { key: "connections", label: "Conexões", icon: "plug" },
+    { key: "applications", label: "Aplicações", icon: "cubes" },
     { key: "containers", label: "Containers", icon: "cube" },
     { key: "images", label: "Imagens", icon: "clone" },
     { key: "networks", label: "Redes", icon: "sitemap" },
@@ -43,7 +45,9 @@ const MainPage = () => {
 
     const api = useApi()
 
-    const [secao, setSecao] = useState("containers")
+    // Abre em Aplicações: é a pergunta que se faz ao chegar ("o que está
+    // rodando aqui?"). Containers é o detalhe de infraestrutura, um clique ao lado.
+    const [secao, setSecao] = useState("applications")
     const [conexoes, setConexoes] = useState<any[]>([])
     const [conexaoAtivaId, setConexaoAtivaId] = useState<string | null>(null)
     const [erro, setErro] = useState<string | null>(null)
@@ -108,6 +112,7 @@ const MainPage = () => {
                     conexaoAtivaId={conexaoAtivaId}
                     onSelecionarConexao={SelecionarConexao}
                     onConexoesMudaram={CarregarConexoes}/>
+            case "applications": return <ApplicationsPage conexaoAtiva={conexaoAtiva}/>
             case "containers": return <ContainersPage conexaoAtiva={conexaoAtiva}/>
             case "images": return <ImagesPage conexaoAtiva={conexaoAtiva}/>
             case "networks": return <NetworksPage conexaoAtiva={conexaoAtiva}/>

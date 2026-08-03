@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "webpack-dev-server",
-    "build": "webpack"
+    "build": "webpack",
+    "test": "node --test --experimental-strip-types --import ./test/register-resolver.mjs test/*.test.ts"
   },
   "author": "Kaio Cezar <kadisk.shark@gmail.com>",
   "license": "BSD-3-Clause",

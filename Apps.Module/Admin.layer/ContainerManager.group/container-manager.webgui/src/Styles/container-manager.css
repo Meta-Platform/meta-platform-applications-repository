@@ -149,3 +149,176 @@
     opacity: 0;
     cursor: pointer;
 }
+
+/* ---- Aplicações (CTMG-24) ---- */
+
+.cm-app-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    gap: var(--mp-space-3, 12px);
+}
+
+.cm-app {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mp-space-2, 8px);
+    padding: var(--mp-space-3, 12px);
+    border: var(--mp-border-width, 2px) solid var(--mp-border, #3a3a3a);
+    background: var(--mp-surface, transparent);
+}
+
+/* Aplicação parada continua na lista, mas recuada visualmente: some da vista
+   é o que faz um app que caiu ficar invisível justo quando importa. */
+.cm-app.is-stopped {
+    opacity: 0.72;
+}
+
+.cm-app__head {
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-2, 8px);
+}
+
+.cm-app__name {
+    font-size: var(--mp-font-md, 0.95rem);
+}
+
+.cm-app__count {
+    font-size: var(--mp-font-xs, 0.72rem);
+    color: var(--mp-text-muted, #8a8a8a);
+}
+
+.cm-app__uptime {
+    margin-left: auto;
+    font-family: var(--mp-font-mono, monospace);
+    font-size: var(--mp-font-xs, 0.72rem);
+    color: var(--mp-text-muted, #8a8a8a);
+}
+
+.cm-app__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--mp-space-3, 12px);
+    font-size: var(--mp-font-sm, 0.85rem);
+    color: var(--mp-text-muted, #8a8a8a);
+}
+
+.cm-app__metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--mp-space-2, 8px);
+    margin-top: var(--mp-space-2, 8px);
+}
+
+.cm-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cm-metric__label {
+    font-size: var(--mp-font-xs, 0.72rem);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--mp-text-muted, #8a8a8a);
+}
+
+.cm-metric__value {
+    font-family: var(--mp-font-mono, monospace);
+}
+
+.cm-app__container-name {
+    font-family: var(--mp-font-mono, monospace);
+    font-size: var(--mp-font-xs, 0.72rem);
+    color: var(--mp-text-muted, #8a8a8a);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ---- Log ao vivo e terminal ---- */
+
+.cm-live {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mp-space-2, 8px);
+    min-height: 0;
+}
+
+.cm-live__area {
+    flex: 1;
+    min-height: 320px;
+    max-height: 52vh;
+    overflow: auto;
+    padding: var(--mp-space-2, 8px);
+    border: var(--mp-border-width, 2px) solid var(--mp-border, #3a3a3a);
+    font-family: var(--mp-font-mono, monospace);
+    font-size: var(--mp-font-sm, 0.85rem);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.cm-live__area--term {
+    min-height: 360px;
+}
+
+/* stderr precisa se distinguir sem depender só de cor: além do tom, ganha
+   uma barra à esquerda. */
+.cm-live__err {
+    color: var(--mp-danger, #d05c5c);
+    border-left: 3px solid var(--mp-danger, #d05c5c);
+    padding-left: var(--mp-space-2, 8px);
+    display: inline-block;
+}
+
+.cm-term__input {
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-2, 8px);
+}
+
+.cm-term__input .mp-input {
+    flex: 1;
+    font-family: var(--mp-font-mono, monospace);
+}
+
+.cm-term__prompt {
+    font-family: var(--mp-font-mono, monospace);
+    color: var(--mp-accent, #d9a300);
+}
+
+/* ---- Métricas ---- */
+
+.cm-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mp-space-3, 12px);
+}
+
+.cm-metrics__head {
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-2, 8px);
+}
+
+.cm-metrics__title {
+    display: flex;
+    align-items: baseline;
+    gap: var(--mp-space-2, 8px);
+    margin-bottom: 4px;
+}
+
+.cm-spark {
+    display: flex;
+    align-items: flex-end;
+    gap: 1px;
+    height: 44px;
+    margin-top: 4px;
+    border-bottom: 1px solid var(--mp-border, #3a3a3a);
+}
+
+.cm-spark__bar {
+    flex: 1;
+    min-width: 2px;
+    background: var(--mp-accent, #d9a300);
+}

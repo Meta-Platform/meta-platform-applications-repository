@@ -22,6 +22,10 @@ import useApi from "../Hooks/useApi"
 import useResource from "../Hooks/useResource"
 import DescribeError from "../Utils/DescribeError"
 import CreateContainerDialog from "../Components/CreateContainer.dialog"
+import ContainerMetrics from "../Components/ContainerMetrics"
+import ContainerTerminal from "../Components/ContainerTerminal"
+import LiveLog from "../Components/LiveLog"
+import { StripAnsi } from "../Utils/StripAnsi"
 import {
     ContainerName,
     ContainerStatusToken,
@@ -120,6 +124,12 @@ const ContainersPage = ({ conexaoAtiva }: any) => {
         }
     }
 
+    /*
+        O histórico chega como `{ isBase64: true, data }`: o adaptador codifica
+        para o JSON do transporte não estragar as sequências ANSI e as quebras
+        de linha do log. Decodificar aqui é o que separa o texto do container
+        de um bloco de base64 na tela.
+    */
     const CarregarLogs = async () => {
         if (!detalhe) return
         setCarregandoDetalhe(true)
@@ -128,7 +138,12 @@ const ContainersPage = ({ conexaoAtiva }: any) => {
                 connectionId: conexaoId,
                 containerIdOrName: detalhe.Id
             })
-            setLogs(typeof data === "string" ? data : JSON.stringify(data, null, 2))
+
+            const bruto = data && data.isBase64
+                ? decodeURIComponent(escape(atob(data.data || "")))
+                : (typeof data === "string" ? data : JSON.stringify(data, null, 2))
+
+            setLogs(StripAnsi(bruto))
         } catch (falha) {
             setLogs(`Não foi possível ler os logs.\n\n${DescribeError(falha)}`)
         } finally {
@@ -232,7 +247,10 @@ const ContainersPage = ({ conexaoAtiva }: any) => {
                     activeKey={abaDoDetalhe}
                     tabs={[
                         { key: "inspecao", label: "Inspeção", icon: "search" },
-                        { key: "logs", label: "Logs", icon: "file alternate outline" }
+                        { key: "logs", label: "Histórico", icon: "file alternate outline" },
+                        { key: "aovivo", label: "Log ao vivo", icon: "rss" },
+                        { key: "metricas", label: "Métricas", icon: "chart line" },
+                        { key: "terminal", label: "Terminal", icon: "terminal" }
                     ]}
                     onChange={(chave: string) => {
                         setAbaDoDetalhe(chave)
@@ -265,6 +283,22 @@ const ContainersPage = ({ conexaoAtiva }: any) => {
                         </Toolbar>
                         <CodeBlock>{logs === null ? "" : (logs || "(sem saída registrada)")}</CodeBlock>
                     </> }
+
+                { abaDoDetalhe === "aovivo" &&
+                    <LiveLog conexaoId={conexaoId} containerIdOrName={detalhe.Id}/> }
+
+                { abaDoDetalhe === "metricas" &&
+                    <ContainerMetrics
+                        conexaoId={conexaoId}
+                        containerIdOrName={detalhe.Id}
+                        rodando={String(detalhe.State).toLowerCase() === "running"}/> }
+
+                { abaDoDetalhe === "terminal" &&
+                    (String(detalhe.State).toLowerCase() === "running"
+                        ? <ContainerTerminal conexaoId={conexaoId} containerIdOrName={detalhe.Id}/>
+                        : <Banner tone="warning" title="Container parado">
+                            Não há processo para abrir um terminal. Inicie o container primeiro.
+                        </Banner>) }
             </Drawer> }
 
         { confirmacao &&

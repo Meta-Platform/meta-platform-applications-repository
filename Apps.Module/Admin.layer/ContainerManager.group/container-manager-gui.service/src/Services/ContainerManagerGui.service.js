@@ -51,7 +51,18 @@ const ContainerManagerGuiService = (params) => {
         const apiTemplate = containerManagerWebservice.require(api)
 
         registry[apiName] = ControllerFactory(controllerParams)
-        manifest[apiName] = (apiTemplate.endpoints || []).map(({ summary }) => summary)
+
+        /*
+            O manifesto carrega o `api.json` INTEIRO, não só os nomes dos
+            métodos. A webgui monta a partir dele um `listServices` sintético
+            com a mesma forma do que o servidor HTTP publica — e é assim que o
+            mesmo `GetRequestByServer` distingue HTTP de WS nos dois
+            transportes. Só com os nomes, a interface não teria como saber que
+            `LogStream` é um stream, e o modo janela ficaria sem log ao vivo,
+            sem terminal e sem métricas.
+        */
+        manifest[apiName] = apiTemplate
+
         parametersBySummary[apiName] = (apiTemplate.endpoints || []).reduce((acc, { summary, parameters }) => {
             acc[summary] = parameters || []
             return acc
@@ -75,12 +86,40 @@ const ContainerManagerGuiService = (params) => {
         return await controller[method](data || {})
     }
 
+    /*
+        Streams no modo janela (CTMG-21/22/23).
+
+        O GUI-host entrega um `wsShim` com a mesma API que os controllers
+        esperam do `ws` do express-ws (send / on / close). Por isso o método WS
+        do controller roda IGUAL nos dois transportes: no navegador recebe o
+        WebSocket de verdade, aqui recebe o shim, e nenhum dos dois sabe a
+        diferença.
+
+        É o que sustenta a regra do aplicativo: **o que funciona na versão
+        desktop funciona na web**, com um código só.
+    */
+    const InvokeStream = (serviceName, method, data, wsShim) => {
+        const controller = registry[serviceName]
+        if (!controller || typeof controller[method] !== "function") {
+            const erro = new Error(`Stream não encontrado: ${serviceName}.${method}`)
+            erro.code = "STREAM_NOT_FOUND"
+            throw erro
+        }
+
+        const parametros = (parametersBySummary[serviceName] || {})[method] || []
+
+        if (parametros.length === 0) return controller[method](wsShim)
+        if (parametros.length === 1) return controller[method](wsShim, (data || {})[parametros[0].name])
+        return controller[method](wsShim, data || {})
+    }
+
     const GetManifest = () => manifest
 
     if (typeof onReady === "function") onReady()
 
     return Object.freeze({
         Invoke,
+        InvokeStream,
         GetManifest
     })
 }

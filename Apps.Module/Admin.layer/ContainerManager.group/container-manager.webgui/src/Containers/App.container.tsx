@@ -11,10 +11,19 @@ import { HTTPServerManagerActionsCreator } from "@i-components"
 
 const fetchHTTPServersRunning = async () => {
     // Electron GUI-host: não há servidor HTTP — o transporte é IPC (window.metaGui).
-    // Sintetiza a lista de servidores (mesmo shape que o axios entrega: a array
-    // guardada em list_web_servers_running) só para passar o gate de render.
+    // Busca o manifesto (o api.json de cada controller) e monta um
+    // `listServices` sintético com a MESMA forma do que o servidor HTTP publica.
+    // É isso que permite ao GetRequestByServer resolver cada endpoint e, em
+    // especial, distinguir WS de HTTP — sem o manifesto, o modo janela ficaria
+    // sem log ao vivo, sem terminal e sem métricas.
     if(typeof window !== "undefined" && (window as any).metaGui){
-        return [{ name: process.env.SERVER_APP_NAME, port: 0, listServices: [] }]
+        const manifest = await (window as any).metaGui.getManifest()
+        const listServices = Object.keys(manifest || {}).map((apiName:string) => ({
+            serviceName: `${apiName}Controller`,
+            path: "",
+            apiTemplate: manifest[apiName]
+        }))
+        return [{ name: process.env.SERVER_APP_NAME, port: 0, listServices }]
     }
     // @ts-ignore
     const {data} = await axios.get(process.env.HTTP_SERVER_MANAGER_ENDPOINT)

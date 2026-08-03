@@ -80,6 +80,33 @@
                 { "in": "body", "name": "connectionId", "type": "string", "required": true },
                 { "in": "body", "name": "options", "type": "json", "required": true }
             ]
+        },
+        {
+            "summary": "LogStream",
+            "method": "WS",
+            "path": "/containers/log-stream/:connectionId/:containerIdOrName",
+            "parameters": [
+                { "in": "path", "name": "connectionId", "type": "string", "required": true },
+                { "in": "path", "name": "containerIdOrName", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "StatsStream",
+            "method": "WS",
+            "path": "/containers/stats-stream/:connectionId/:containerIdOrName",
+            "parameters": [
+                { "in": "path", "name": "connectionId", "type": "string", "required": true },
+                { "in": "path", "name": "containerIdOrName", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "ExecSession",
+            "method": "WS",
+            "path": "/containers/exec/:connectionId/:containerIdOrName",
+            "parameters": [
+                { "in": "path", "name": "connectionId", "type": "string", "required": true },
+                { "in": "path", "name": "containerIdOrName", "type": "string", "required": true }
+            ]
         }
     ]
 }
