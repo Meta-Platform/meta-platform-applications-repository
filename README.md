@@ -47,6 +47,11 @@ a desenvolvimento. Executáveis publicados em
 
 | Package | Tipo | Módulo | Layer | Group | Função | Estado | Dependências (namespaces) | Executável |
 |---------|------|--------|-------|-------|--------|--------|---------------------------|------------|
+| `container-manager.webapp` | webapp | Apps | Admin | ContainerManager | Composição da app de gestão de containers | Desenvolvido | `@@/server-service`, `@/container-runtime-adapter.service` (core), `@/container-manager.{webgui,webservice}` | `container-manager` |
+| `container-manager.webgui` | webgui | Apps | Admin | ContainerManager | Front-end: conexões, containers, imagens, redes e volumes | Desenvolvido | `@@/server-service`, `@/i-components.icomponents` | — |
+| `container-manager.webservice` | webservice | Apps | Admin | ContainerManager | API HTTP sobre o gerenciador de conexões | Desenvolvido | `@@/server-service`, `@/container-runtime-adapter.service` (core) | — |
+| `container-manager.desktopapp` | desktopapp | Apps | Admin | ContainerManager | Janela Electron (GUI-host, sem HTTP) | Desenvolvido | `@/container-manager.{webgui,webservice}`, `@/container-manager-gui.service`, `@/container-runtime-adapter.service` (core) | `container-manager-desktop` |
+| `container-manager-gui.service` | service | Apps | Admin | ContainerManager | Hospeda os controllers do webservice via IPC (modo GUI-host) | Desenvolvido | `@/container-manager.webservice` | — |
 | `datasource-manager.webapp` | webapp | Apps | Admin | DataSource | Composição da app de fontes de dados | Desenvolvido | `@@/server-service` (server-manager), `@/datasource-manager.{webgui,webservice,service}` | `sources` |
 | `datasource-manager.webgui` | webgui | Apps | Admin | DataSource | Front-end | Desenvolvido | `@@/server-service` | — |
 | `datasource-manager.webservice` | webservice | Apps | Admin | DataSource | API HTTP | Desenvolvido | `@@/server-service` | — |
@@ -79,6 +84,15 @@ a desenvolvimento. Executáveis publicados em
 
 ## As aplicações em detalhe
 
+- **container-manager** (`container-manager` / `container-manager-desktop`) —
+  gestão de **Docker e Podman** pela interface, no espírito do Portainer:
+  containers (ciclo de vida, inspeção, logs, criação), imagens (inclusive build
+  a partir de Dockerfile), redes e volumes (com navegação de arquivos). A
+  conexão com o runtime **não** vive aqui: vem do
+  `@/container-runtime-adapter.service`, no Ecosystem Core, e é o
+  `ContainerRuntimeConnectionManager` que permite falar com vários runtimes ao
+  mesmo tempo. Toda operação acontece dentro de uma conexão, escolhida na barra
+  de topo.
 - **datasource-manager** (`sources`) — gerencia fontes de dados. Aplicação web
   completa (webapp+webgui+webservice) apoiada pelo `datasource-manager.service`
   (`DataSourceLocalManager`), em `Base.Module`.
@@ -107,7 +121,7 @@ a desenvolvimento. Executáveis publicados em
 
 ## Estrutura do repositório
 
-- **Apps.Module** → `Admin.layer` (DataSource, MyDesktop), `Tools.layer`
+- **Apps.Module** → `Admin.layer` (ContainerManager, DataSource, MyDesktop), `Tools.layer`
   (APIDesigner, MetaCloud, PackageDeveloper) e `InstanceManager.layer`
   (InstanceExecutorControlPanel).
 - **Base.Module** → `Library.layer` (ui-components) e `Service.layer`
@@ -119,6 +133,14 @@ a desenvolvimento. Executáveis publicados em
   ecosystem-core precisa estar disponível no ecossistema (instale o perfil
   `standard`/`full`).
 - **Executável não encontrado** → `EcosystemData/executables` no `PATH`.
+- **Executável de app novo não aparece depois do `repo update`** → o `update`
+  sincroniza o código, mas só gera os scripts dos executáveis já registrados em
+  `repositories.json`. `repo install` recusa repositório já instalado; registre
+  a entrada no `installedApplications` do repositório e rode `repo update` de
+  novo.
+- **Mudei o código de um `.service` e o comportamento antigo continua** → o
+  daemon `executor-manager` mantém os módulos no cache de `require` do Node.
+  Trocar o arquivo no disco não basta: reinicie o daemon.
 
 Inconsistências conhecidas (packages stub, `ui-components` sem metadata):
 [docs/known-issues.md](./docs/known-issues.md).
