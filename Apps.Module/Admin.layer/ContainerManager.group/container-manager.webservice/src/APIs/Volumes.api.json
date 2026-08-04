@@ -6,7 +6,12 @@
             "method": "POST",
             "path": "/volumes/list",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -14,8 +19,18 @@
             "method": "POST",
             "path": "/volumes/inspect",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "volumeName", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "volumeName",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -23,8 +38,18 @@
             "method": "POST",
             "path": "/volumes/create",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "options", "type": "json", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "options",
+                    "type": "json",
+                    "required": true
+                }
             ]
         },
         {
@@ -32,8 +57,18 @@
             "method": "POST",
             "path": "/volumes/remove",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "volumeName", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "volumeName",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -41,9 +76,24 @@
             "method": "POST",
             "path": "/volumes/entries",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "volumeName", "type": "string", "required": true },
-                { "in": "body", "name": "path", "type": "string", "required": false }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "volumeName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "path",
+                    "type": "string",
+                    "required": false
+                }
             ]
         },
         {
@@ -51,9 +101,24 @@
             "method": "POST",
             "path": "/volumes/file/get",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "volumeName", "type": "string", "required": true },
-                { "in": "body", "name": "path", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "volumeName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "path",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -61,11 +126,36 @@
             "method": "POST",
             "path": "/volumes/file/put",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "volumeName", "type": "string", "required": true },
-                { "in": "body", "name": "path", "type": "string", "required": false },
-                { "in": "body", "name": "fileName", "type": "string", "required": true },
-                { "in": "body", "name": "contentBase64", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "volumeName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "path",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "in": "body",
+                    "name": "fileName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "contentBase64",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -73,9 +163,49 @@
             "method": "POST",
             "path": "/volumes/entry/remove",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "volumeName", "type": "string", "required": true },
-                { "in": "body", "name": "path", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "volumeName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "MakeVolumeDirectory",
+            "method": "POST",
+            "path": "/volumes/file/mkdir",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "volumeName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "path",
+                    "type": "string",
+                    "required": true
+                }
             ]
         }
     ]

@@ -25,6 +25,7 @@ import DescribeError from "../Utils/DescribeError"
 import CreateContainerDialog from "../Components/CreateContainer.dialog"
 import ContainerMetrics from "../Components/ContainerMetrics"
 import ContainerTerminal from "../Components/ContainerTerminal"
+import FileBrowser from "../Components/FileBrowser/FileBrowser"
 import LiveLog from "../Components/LiveLog"
 import { StripAnsi } from "../Utils/StripAnsi"
 import {
@@ -255,7 +256,8 @@ const ContainersPage = ({ conexaoAtiva }: any) => {
                         { key: "logs", label: "Histórico", icon: "file alternate outline" },
                         { key: "aovivo", label: "Log ao vivo", icon: "rss" },
                         { key: "metricas", label: "Métricas", icon: "chart line" },
-                        { key: "terminal", label: "Terminal", icon: "terminal" }
+                        { key: "terminal", label: "Terminal", icon: "terminal" },
+                        { key: "arquivos", label: "Arquivos", icon: "folder" }
                     ]}
                     onChange={(chave: string) => {
                         setAbaDoDetalhe(chave)
@@ -305,6 +307,54 @@ const ContainersPage = ({ conexaoAtiva }: any) => {
                             Não há processo para abrir um terminal. Inicie o container primeiro.
                         </Banner>) }
             </Drawer> }
+
+                {
+                    /*
+                        O MESMO componente do navegador de volume (CTMG-86).
+                        As duas origens respondem com a mesma forma, e foi
+                        decidido assim no adaptador justamente para que aqui
+                        houvesse um caminho e não dois.
+                    */
+                    abaDoDetalhe === "arquivos" && detalhe &&
+                        <FileBrowser
+                            titulo="/"
+                            raiz="/"
+                            caminhoInicial="/"
+                            operacoes={{
+                                Listar: async (caminho: string) =>
+                                    (await (api.containers as any).ListContainerEntries({
+                                        connectionId: conexaoId,
+                                        containerIdOrName: detalhe.Id,
+                                        path: caminho || "/"
+                                    })).data,
+                                Baixar: async (caminho: string) =>
+                                    (await (api.containers as any).CopyFromContainer({
+                                        connectionId: conexaoId,
+                                        containerIdOrName: detalhe.Id,
+                                        path: caminho
+                                    })).data,
+                                Enviar: async (caminho: string, nomeDoArquivo: string, conteudoBase64: string) =>
+                                    (await (api.containers as any).CopyToContainer({
+                                        connectionId: conexaoId,
+                                        containerIdOrName: detalhe.Id,
+                                        path: caminho || "/",
+                                        fileName: nomeDoArquivo,
+                                        contentBase64: conteudoBase64
+                                    })).data,
+                                Apagar: async (caminho: string) =>
+                                    (await (api.containers as any).DeleteContainerEntry({
+                                        connectionId: conexaoId,
+                                        containerIdOrName: detalhe.Id,
+                                        path: caminho
+                                    })).data,
+                                CriarPasta: async (caminho: string) =>
+                                    (await (api.containers as any).MakeContainerDirectory({
+                                        connectionId: conexaoId,
+                                        containerIdOrName: detalhe.Id,
+                                        path: caminho
+                                    })).data
+                            }}/>
+                }
 
         { confirmacao &&
             <ConfirmDialog

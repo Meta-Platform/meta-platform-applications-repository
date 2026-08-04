@@ -42,8 +42,12 @@ const VolumesController = (params) => {
     const _DeleteVolumeEntry = ({ connectionId, volumeName, path }) =>
         WithAdapter(connectionId, (adaptador) => adaptador.DeleteVolumeEntry({ volumeName, path }))
 
+    const _MakeVolumeDirectory = async ({ connectionId, volumeName, path }) =>
+        await WithAdapter(connectionId, (a) => a.MakeVolumeDirectory({ volumeName, path }))
+
     const controllerServiceObject = {
         controllerName: "VolumesController",
+        MakeVolumeDirectory: _MakeVolumeDirectory,
         ListVolumes: _ListVolumes,
         InspectVolume: _InspectVolume,
         CreateVolume: _CreateVolume,

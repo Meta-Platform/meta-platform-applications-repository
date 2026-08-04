@@ -6,7 +6,12 @@
             "method": "POST",
             "path": "/containers/list",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -14,8 +19,18 @@
             "method": "POST",
             "path": "/containers/inspect",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "containerIdOrName", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -23,8 +38,18 @@
             "method": "POST",
             "path": "/containers/logs",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "containerIdOrName", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -32,8 +57,18 @@
             "method": "POST",
             "path": "/containers/start",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "containerIdOrName", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -41,8 +76,18 @@
             "method": "POST",
             "path": "/containers/stop",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "containerIdOrName", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -50,8 +95,18 @@
             "method": "POST",
             "path": "/containers/restart",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "containerIdOrName", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -59,8 +114,18 @@
             "method": "POST",
             "path": "/containers/kill",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "containerIdOrName", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -68,8 +133,18 @@
             "method": "POST",
             "path": "/containers/remove",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "containerIdOrName", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -77,8 +152,18 @@
             "method": "POST",
             "path": "/containers/create",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "options", "type": "json", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "options",
+                    "type": "json",
+                    "required": true
+                }
             ]
         },
         {
@@ -86,8 +171,18 @@
             "method": "WS",
             "path": "/containers/log-stream/:connectionId/:containerIdOrName",
             "parameters": [
-                { "in": "path", "name": "connectionId", "type": "string", "required": true },
-                { "in": "path", "name": "containerIdOrName", "type": "string", "required": true }
+                {
+                    "in": "path",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "path",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -95,8 +190,18 @@
             "method": "WS",
             "path": "/containers/stats-stream/:connectionId/:containerIdOrName",
             "parameters": [
-                { "in": "path", "name": "connectionId", "type": "string", "required": true },
-                { "in": "path", "name": "containerIdOrName", "type": "string", "required": true }
+                {
+                    "in": "path",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "path",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -104,8 +209,48 @@
             "method": "WS",
             "path": "/containers/exec/:connectionId/:containerIdOrName",
             "parameters": [
-                { "in": "path", "name": "connectionId", "type": "string", "required": true },
-                { "in": "path", "name": "containerIdOrName", "type": "string", "required": true }
+                {
+                    "in": "path",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "path",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "query",
+                    "name": "cmd",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "in": "query",
+                    "name": "user",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "in": "query",
+                    "name": "workingDir",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "in": "query",
+                    "name": "cols",
+                    "type": "number",
+                    "required": false
+                },
+                {
+                    "in": "query",
+                    "name": "rows",
+                    "type": "number",
+                    "required": false
+                }
             ]
         },
         {
@@ -113,7 +258,149 @@
             "method": "WS",
             "path": "/containers/stats-stream-multi/:connectionId",
             "parameters": [
-                { "in": "path", "name": "connectionId", "type": "string", "required": true }
+                {
+                    "in": "path",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "ListContainerEntries",
+            "method": "POST",
+            "path": "/containers/files/list",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "CopyFromContainer",
+            "method": "POST",
+            "path": "/containers/files/get",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "CopyToContainer",
+            "method": "POST",
+            "path": "/containers/files/put",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "path",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "fileName",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "in": "body",
+                    "name": "contentBase64",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "DeleteContainerEntry",
+            "method": "POST",
+            "path": "/containers/files/delete",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "path",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "MakeContainerDirectory",
+            "method": "POST",
+            "path": "/containers/files/mkdir",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "path",
+                    "type": "string",
+                    "required": true
+                }
             ]
         }
     ]

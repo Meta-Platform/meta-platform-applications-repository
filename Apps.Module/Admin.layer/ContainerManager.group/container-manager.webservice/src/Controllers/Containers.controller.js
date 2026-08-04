@@ -223,12 +223,31 @@ const ContainersController = (params) => {
         container. Mensagem em JSON com `type`, para caber teclado e
         redimensionamento no mesmo canal.
     */
-    const _ExecSession = async (ws, { connectionId, containerIdOrName }) => {
+    /*
+        O adaptador sempre aceitou `cmd`, `user`, `workingDir`, `cols` e `rows`
+        — o controller é que não repassava nenhum deles (CTMG-82). O resultado:
+        não havia como abrir um terminal como root nem escolher o shell, e o
+        tamanho ficava travado em 80x24 mesmo numa janela grande, quebrando a
+        exibição de tudo que desenha em tela cheia.
+    */
+    const _ExecSession = async (ws, {
+        connectionId, containerIdOrName, cmd, user, workingDir, cols, rows
+    }) => {
         let sessao = null
+
+        // O comando chega como texto na query; o adaptador espera lista.
+        const comando = Array.isArray(cmd)
+            ? cmd
+            : (typeof cmd === "string" && cmd.trim() !== "" ? ["/bin/sh", "-c", cmd] : undefined)
 
         const montagem = await _MontarStream(ws, connectionId, async (adaptador) => {
             sessao = await adaptador.OpenExecSession({
                 containerIdOrName,
+                ...(comando ? { cmd: comando } : {}),
+                ...(user ? { user } : {}),
+                ...(workingDir ? { workingDir } : {}),
+                ...(cols ? { cols: Number(cols) } : {}),
+                ...(rows ? { rows: Number(rows) } : {}),
                 onData: (texto) => _EnviarNoSocket(ws, { type: "output", data: texto }),
                 onError: (error) => {
                     _EnviarNoSocket(ws, { type: "error", message: error.message })
@@ -265,8 +284,36 @@ const ContainersController = (params) => {
         })
     }
 
+    /*
+        ARQUIVOS DENTRO DO CONTAINER (CTMG-84).
+
+        Repasse direto ao adaptador, que é quem decide entre exec (container
+        rodando) e leitura do tar (container parado) — a tela recebe a mesma
+        forma nos dois casos e não precisa saber a diferença.
+    */
+    const _ListContainerEntries = async ({ connectionId, containerIdOrName, path }) =>
+        await WithAdapter(connectionId, (a) => a.ListContainerEntries({ containerIdOrName, path }))
+
+    const _CopyFromContainer = async ({ connectionId, containerIdOrName, path }) =>
+        await WithAdapter(connectionId, (a) => a.CopyFromContainer({ containerIdOrName, path }))
+
+    const _CopyToContainer = async ({ connectionId, containerIdOrName, path, fileName, contentBase64 }) =>
+        await WithAdapter(connectionId, (a) =>
+            a.CopyToContainer({ containerIdOrName, path, fileName, contentBase64 }))
+
+    const _DeleteContainerEntry = async ({ connectionId, containerIdOrName, path }) =>
+        await WithAdapter(connectionId, (a) => a.DeleteContainerEntry({ containerIdOrName, path }))
+
+    const _MakeContainerDirectory = async ({ connectionId, containerIdOrName, path }) =>
+        await WithAdapter(connectionId, (a) => a.MakeContainerDirectory({ containerIdOrName, path }))
+
     const controllerServiceObject = {
         controllerName: "ContainersController",
+        ListContainerEntries: _ListContainerEntries,
+        CopyFromContainer: _CopyFromContainer,
+        CopyToContainer: _CopyToContainer,
+        DeleteContainerEntry: _DeleteContainerEntry,
+        MakeContainerDirectory: _MakeContainerDirectory,
         ListContainers: _ListContainers,
         InspectContainer: _InspectContainer,
         GetContainerLogHistory: _GetContainerLogHistory,
