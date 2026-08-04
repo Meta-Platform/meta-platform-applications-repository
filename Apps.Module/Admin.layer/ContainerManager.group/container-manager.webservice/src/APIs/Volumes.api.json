@@ -68,6 +68,12 @@
                     "name": "volumeName",
                     "type": "string",
                     "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "force",
+                    "type": "boolean",
+                    "required": false
                 }
             ]
         },
@@ -205,6 +211,156 @@
                     "name": "path",
                     "type": "string",
                     "required": true
+                }
+            ]
+        },
+        {
+            "summary": "GetVolumeUsage",
+            "method": "POST",
+            "path": "/volumes/usage",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "volumeName",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "ExportVolume",
+            "method": "POST",
+            "path": "/volumes/export",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "volumeName",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "ImportVolume",
+            "method": "POST",
+            "path": "/volumes/import",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "volumeName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "contentBase64",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "clear",
+                    "type": "boolean",
+                    "required": false
+                },
+                {
+                    "in": "body",
+                    "name": "force",
+                    "type": "boolean",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "CloneVolume",
+            "method": "POST",
+            "path": "/volumes/clone",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "sourceVolumeName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "targetVolumeName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "force",
+                    "type": "boolean",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "EmptyVolume",
+            "method": "POST",
+            "path": "/volumes/empty",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "volumeName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "force",
+                    "type": "boolean",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "PruneVolumes",
+            "method": "POST",
+            "path": "/volumes/prune",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "filters",
+                    "type": "json",
+                    "required": false
                 }
             ]
         }

@@ -36,8 +36,23 @@ const NetworksController = (params) => {
             containerIdOrName
         }))
 
+    /*
+        QUEM USA ESTA REDE (CTMG-102).
+
+        Containers conectados com IP, ALIASES de DNS e a stack de cada um. Os
+        aliases são o que responde "por que o app não acha o banco?" — a
+        pergunta que hoje só se responde por linha de comando.
+    */
+    const _GetNetworkUsage = ({ connectionId, networkIdOrName }) =>
+        WithAdapter(connectionId, (a) => a.GetNetworkUsage(networkIdOrName))
+
+    const _PruneNetworks = ({ connectionId, filters }) =>
+        WithAdapter(connectionId, (a) => a.PruneNetworks({ filters }))
+
     const controllerServiceObject = {
         controllerName: "NetworksController",
+        GetNetworkUsage: _GetNetworkUsage,
+        PruneNetworks: _PruneNetworks,
         ListNetworks: _ListNetworks,
         InspectNetwork: _InspectNetwork,
         CreateNetwork: _CreateNetwork,

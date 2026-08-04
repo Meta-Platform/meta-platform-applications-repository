@@ -6,7 +6,12 @@
             "method": "POST",
             "path": "/networks/list",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -14,8 +19,18 @@
             "method": "POST",
             "path": "/networks/inspect",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "networkIdOrName", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "networkIdOrName",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -23,8 +38,18 @@
             "method": "POST",
             "path": "/networks/create",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "options", "type": "json", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "options",
+                    "type": "json",
+                    "required": true
+                }
             ]
         },
         {
@@ -32,8 +57,18 @@
             "method": "POST",
             "path": "/networks/remove",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "networkIdOrName", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "networkIdOrName",
+                    "type": "string",
+                    "required": true
+                }
             ]
         },
         {
@@ -41,10 +76,30 @@
             "method": "POST",
             "path": "/networks/connect",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "networkIdOrName", "type": "string", "required": true },
-                { "in": "body", "name": "containerIdOrName", "type": "string", "required": true },
-                { "in": "body", "name": "aliases", "type": "json", "required": false }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "networkIdOrName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "aliases",
+                    "type": "json",
+                    "required": false
+                }
             ]
         },
         {
@@ -52,9 +107,62 @@
             "method": "POST",
             "path": "/networks/disconnect",
             "parameters": [
-                { "in": "body", "name": "connectionId", "type": "string", "required": true },
-                { "in": "body", "name": "networkIdOrName", "type": "string", "required": true },
-                { "in": "body", "name": "containerIdOrName", "type": "string", "required": true }
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "networkIdOrName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "GetNetworkUsage",
+            "method": "POST",
+            "path": "/networks/usage",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "networkIdOrName",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "PruneNetworks",
+            "method": "POST",
+            "path": "/networks/prune",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "filters",
+                    "type": "json",
+                    "required": false
+                }
             ]
         }
     ]
