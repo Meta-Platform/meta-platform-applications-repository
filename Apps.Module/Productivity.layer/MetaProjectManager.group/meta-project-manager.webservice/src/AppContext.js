@@ -20,8 +20,11 @@ const EXTERNAL_POLL_MS = 1000
 // Ids já publicados, para não emitir duas vezes o evento que nasceu aqui dentro.
 const MAX_SEEN = 2000
 
+const { CreateDesktopNotifier, NotifiableEvent } = require("./Utils/notifyDesktop")
+
 const GetContext = ({ projectStoreLib, dbFilePath, attachmentsDirPath, maxAttachmentBytes, ecosystemDataPath,
-                      gitStatusLib, instanceManagerClientLib, instanceManagerSocketPath }) => {
+                      gitStatusLib, instanceManagerClientLib, instanceManagerSocketPath,
+                      desktopNotifyUrl }) => {
     if(_context) return _context
 
     const emitter = new EventEmitter()
@@ -43,6 +46,8 @@ const GetContext = ({ projectStoreLib, dbFilePath, attachmentsDirPath, maxAttach
         emitter.emit("event", tagged)
         return tagged
     }
+
+    const notifyDesktop = CreateDesktopNotifier({ url: desktopNotifyUrl })
 
     const InitializeProjectStore = projectStoreLib.require("InitializeProjectStore")
 
@@ -75,6 +80,10 @@ const GetContext = ({ projectStoreLib, dbFilePath, attachmentsDirPath, maxAttach
             // o observador não republicá-lo quando reler a tabela.
             if(evt.type === "audit.created" && evt.payload && evt.payload.id) _remember(evt.payload.id)
             Publish(evt)
+            // Aviso na área de trabalho — UM ponto só, para não haver caminho
+            // que avise duas vezes nem caminho que esqueça. Nunca lança.
+            const aviso = NotifiableEvent(evt)
+            if(aviso) notifyDesktop(aviso)
         }
     })
 

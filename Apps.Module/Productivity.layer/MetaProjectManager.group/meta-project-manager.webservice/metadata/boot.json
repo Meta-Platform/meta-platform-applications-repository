@@ -5,7 +5,8 @@
         "MPM_DB_FILE_PATH",
         "MPM_ATTACHMENTS_DIR_PATH",
         "MPM_MAX_ATTACHMENT_BYTES",
-        "MPM_ECOSYSTEM_DATA_PATH"
+        "MPM_ECOSYSTEM_DATA_PATH",
+        "MPM_DESKTOP_NOTIFY_URL"
     ],
     "services": [
         {
@@ -31,7 +32,8 @@
                 "MPM_DB_FILE_PATH": "{{MPM_DB_FILE_PATH}}",
                 "MPM_ATTACHMENTS_DIR_PATH": "{{MPM_ATTACHMENTS_DIR_PATH}}",
                 "MPM_MAX_ATTACHMENT_BYTES": "{{MPM_MAX_ATTACHMENT_BYTES}}",
-                "MPM_ECOSYSTEM_DATA_PATH": "{{MPM_ECOSYSTEM_DATA_PATH}}"
+                "MPM_ECOSYSTEM_DATA_PATH": "{{MPM_ECOSYSTEM_DATA_PATH}}",
+                "MPM_DESKTOP_NOTIFY_URL": "{{MPM_DESKTOP_NOTIFY_URL}}"
             },
             "bound-params": {
                 "serverService": "@@/server-service",

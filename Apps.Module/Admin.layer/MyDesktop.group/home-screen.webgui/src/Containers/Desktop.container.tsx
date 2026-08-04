@@ -4,6 +4,8 @@ import { Loader, Button, Icon } from "semantic-ui-react"
 
 import GetAPI                 from "../Utils/GetAPI"
 import GetBuildProgressSocket from "../Utils/GetBuildProgressSocket"
+import GetNotificationSocket from "../Utils/GetNotificationSocket"
+import NotificationToast, { DesktopNotification } from "../Components/NotificationToast"
 import GetApplicationIconURL  from "../Utils/GetApplicationIconURL"
 import FormatAppName          from "../Utils/FormatAppName"
 import { GetSavedTheme, ApplyTheme, ThemeName, THEMES } from "@i-components/theme"
@@ -125,6 +127,11 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     const [ seenKeys, setSeenKeys ]               = useState<string[]>([])
     const [ layoutLoaded, setLayoutLoaded ]       = useState<boolean>(false)
     const [ surfaceHeight, setSurfaceHeight ]     = useState<number>(600)
+    // Avisos de outros apps do ecossistema (Notification.StreamNotifications).
+    // `notificationBadges` é o contador por app — o que sobra no ícone depois
+    // que o toast some.
+    const [ notifications, setNotifications ]     = useState<DesktopNotification[]>([])
+    const [ notificationBadges, setNotificationBadges ] = useState<Record<string, number>>({})
     const [ marquee, setMarquee ]                 = useState<Rect>()
     // Estado visual do arrasto cross-surface.
     const [ dragGhost, setDragGhost ]             = useState<DragGhost>()
@@ -276,6 +283,34 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
                 // Sem este fallback, um daemon desatualizado faria o ícone perder
                 // spinner e barra de progresso, em silêncio.
                 _ApplyProgress(launchId, packagePath || launchId, phase, percentage)
+            } catch(e){}
+        }
+        return () => { try { socket.close() } catch(e){} }
+    }, [])
+
+    // Stream de NOTIFICAÇÕES dos apps (aberto uma vez, vive com o desktop).
+    // Um app não precisa estar aberto para avisar: é assim que o Meta Project
+    // Manager diz que há entrega esperando revisão.
+    useEffect(() => {
+        const socket = GetNotificationSocket(serverManagerInformation)
+        if(!socket) return
+        socket.onmessage = (evt:any) => {
+            try {
+                const notification = JSON.parse(evt.data) as DesktopNotification
+                if(!notification || !notification.title) return
+                setNotifications((atuais) => [...atuais, notification].slice(-3))
+                if(notification.appKey)
+                    setNotificationBadges((atuais) => ({
+                        ...atuais,
+                        // `count` é o total que o app declara (ex.: 3 entregas
+                        // esperando); sem ele, cada aviso soma um.
+                        [notification.appKey as string]: typeof notification.count === "number"
+                            ? notification.count
+                            : (atuais[notification.appKey as string] || 0) + 1
+                    }))
+                // O aviso some sozinho — um toast que exige ser fechado vira ruído.
+                const alvo = notification
+                setTimeout(() => setNotifications((atuais) => atuais.filter((n) => n !== alvo)), 8000)
             } catch(e){}
         }
         return () => { try { socket.close() } catch(e){} }
@@ -1051,6 +1086,7 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
                         iconUrl={av.iconUrl}
                         selected={selectedKeys.includes(av.key)}
                         instanceCount={InstancesOf(av).length}
+                        notificationCount={notificationBadges[av.key] || 0}
                         launch={launchByKey[av.key]}
                         position={position}
                         dragging={interaction.current.mode === "dragging" && selectedKeys.includes(av.key)}
@@ -1184,6 +1220,35 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
                         <span>{RenderRichMessage(toast.message)}</span>
                     </div>
                 </Window>
+            </div>
+        }
+
+        {
+            // Avisos vindos de OUTROS apps (Notification.StreamNotifications).
+            // Empilham acima do toast de lançamento, do mais recente para o mais
+            // antigo, e somem sozinhos.
+            notifications.length > 0 &&
+            <div className="myd-notification-stack">
+                {notifications.map((n, i) =>
+                    <NotificationToast
+                        key={`${n.title}-${i}`}
+                        notification={n}
+                        onClose={() => setNotifications((atuais) => atuais.filter((x) => x !== n))}
+                        onOpen={(alvo) => {
+                            // Abrir o app zera o contador dele: o que a pessoa já
+                            // foi ver não continua pedindo atenção.
+                            if(alvo.appKey){
+                                setNotificationBadges((atuais) => {
+                                    const proximos = { ...atuais }
+                                    delete proximos[alvo.appKey as string]
+                                    return proximos
+                                })
+                                handleLauncherLaunch(alvo.appKey as string)
+                            }
+                            setNotifications((atuais) => atuais.filter((x) => x !== alvo))
+                        }}
+                    />
+                )}
             </div>
         }
     </div>

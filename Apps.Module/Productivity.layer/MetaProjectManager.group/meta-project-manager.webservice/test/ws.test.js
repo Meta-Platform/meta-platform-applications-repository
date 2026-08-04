@@ -326,3 +326,35 @@ test("MPMR modelo de entrega ponta a ponta por HTTP", async () => {
     const lista = await srv.request("GET", `/projects/${pid}/mandates`)
     assert.equal(lista.json.data.length, 1)
 })
+
+test("MPMR-33 o aviso ao desktop nunca derruba a operação que o originou", async () => {
+    const { CreateDesktopNotifier, NotifiableEvent } = require("../src/Utils/notifyDesktop")
+
+    // Sem URL configurada: vira no-op silencioso (desligar o aviso não pode
+    // quebrar nada).
+    const desligado = CreateDesktopNotifier({})
+    assert.doesNotThrow(() => desligado({ title: "x" }))
+
+    // Com URL para um endereço que NÃO responde: o erro de rede morre dentro.
+    // É o caso real de um desktop fechado, e a entrega que acabou de ser feita
+    // não pode falhar por causa disso.
+    const morto = CreateDesktopNotifier({ url: "http://127.0.0.1:59999/notify", timeoutMs: 100 })
+    assert.doesNotThrow(() => morto({ title: "Entrega esperando revisão", body: "EHT-1/D1" }))
+    // Espera o socket falhar de fato, para provar que o erro não sobe como
+    // rejeição não tratada.
+    await new Promise((r) => setTimeout(r, 300))
+
+    // O que vira aviso, e o que NÃO vira — avisar sobre tudo treina a pessoa a
+    // ignorar a notificação inteira.
+    assert.ok(NotifiableEvent({ type: "delivery.awaiting_human", payload: { id: "d1", key: "X-1/D1", title: "t" } }))
+    assert.ok(NotifiableEvent({ type: "mandate.exhausted", payload: { id: "m1", title: "Rodada", stopReason: "unreviewed-limit" } }))
+    assert.ok(NotifiableEvent({ type: "approval.requested", payload: { request: { id: "r1" }, actionName: "delete", type: "item" } }))
+    for(const ruido of ["item.updated", "audit.created", "delivery.submitted", "project.updated"])
+        assert.equal(NotifiableEvent({ type: ruido, payload: { id: "x" } }), undefined,
+            `${ruido} não deveria virar notificação`)
+
+    // Cada aviso carrega dedupeKey: o mesmo fato anunciado duas vezes não
+    // aparece duas vezes na tela.
+    const aviso = NotifiableEvent({ type: "delivery.awaiting_human", payload: { id: "d9", key: "X-9/D1" } })
+    assert.ok(aviso.dedupeKey && aviso.dedupeKey.includes("d9"))
+})

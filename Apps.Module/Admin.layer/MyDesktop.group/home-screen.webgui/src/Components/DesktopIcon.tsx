@@ -15,6 +15,10 @@ type DesktopIconProps = {
     iconUrl?: string
     selected: boolean
     instanceCount?: number
+    // Quantas coisas deste app esperam por você (avisos do próprio app, via
+    // Notification). É um eixo DIFERENTE de instanceCount: um app pode estar
+    // fechado e ainda ter trabalho seu esperando.
+    notificationCount?: number
     launch?: LaunchInfo
     position: IconPosition
     dragging?: boolean
@@ -24,7 +28,7 @@ type DesktopIconProps = {
 }
 
 const DesktopIcon = ({
-    label, title, iconUrl, selected, instanceCount = 0, launch, position, dragging,
+    label, title, iconUrl, selected, instanceCount = 0, notificationCount = 0, launch, position, dragging,
     onPointerDown, onOpen, onContextMenu
 }:DesktopIconProps) => {
 
@@ -66,6 +70,15 @@ const DesktopIcon = ({
                 isRunning &&
                 <span className={`myd-icon__running ${hasManyInstances ? "myd-icon__running--count" : ""}`} title={runningTitle}>
                     { hasManyInstances && instanceCount }
+                </span>
+            }
+            {
+                // O contador de pendências fica no canto OPOSTO ao de execução:
+                // são perguntas diferentes ("está rodando?" vs "precisa de
+                // mim?") e sobrepô-las faria uma esconder a outra.
+                notificationCount > 0 &&
+                <span className="myd-icon__notify" title={`${notificationCount} aguardando você`}>
+                    { notificationCount > 99 ? "99+" : notificationCount }
                 </span>
             }
             {

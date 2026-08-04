@@ -33,6 +33,13 @@ const CONTROLLER_MODULES = {
     DesktopLayout: {
         controller: "Controllers/DesktopLayout.controller",
         api:        "APIs/DesktopLayout.api.json"
+    },
+    // Notificações da área de trabalho. Sem esta entrada, o canal existe por
+    // HTTP mas NÃO pelo caminho do Electron — que é justamente onde o desktop
+    // roda. O `notificationHubService` já vem no saco de parâmetros abaixo.
+    Notification: {
+        controller: "Controllers/Notification.controller",
+        api:        "APIs/Notification.api.json"
     }
 }
 

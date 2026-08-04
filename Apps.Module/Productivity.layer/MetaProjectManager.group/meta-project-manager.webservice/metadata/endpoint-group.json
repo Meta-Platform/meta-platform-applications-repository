@@ -2,7 +2,8 @@
     "params": [
         "MPM_DB_FILE_PATH",
         "MPM_ATTACHMENTS_DIR_PATH",
-        "MPM_MAX_ATTACHMENT_BYTES"
+        "MPM_MAX_ATTACHMENT_BYTES",
+        "MPM_DESKTOP_NOTIFY_URL"
     ],
     "bound-params": [
         "serverService",
@@ -20,7 +21,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -41,7 +43,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -62,7 +65,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -83,7 +87,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -104,7 +109,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -126,7 +132,8 @@
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
                     "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
-                    "ecosystemDataPath": "{{MPM_ECOSYSTEM_DATA_PATH}}"
+                    "ecosystemDataPath": "{{MPM_ECOSYSTEM_DATA_PATH}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -147,7 +154,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -168,7 +176,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -189,7 +198,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -210,7 +220,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -231,7 +242,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -252,7 +264,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -273,7 +286,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -294,7 +308,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -315,7 +330,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -336,7 +352,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -357,7 +374,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -378,7 +396,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -399,7 +418,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -420,7 +440,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {
@@ -441,7 +462,8 @@
                 "controller-params": {
                     "dbFilePath": "{{MPM_DB_FILE_PATH}}",
                     "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
-                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}",
+                    "desktopNotifyUrl": "{{MPM_DESKTOP_NOTIFY_URL}}"
                 }
             },
             "bound-params": {

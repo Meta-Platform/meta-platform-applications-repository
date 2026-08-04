@@ -4,5 +4,6 @@
     "MPM_DB_FILE_PATH": "~/virtual-desk-state/local-databases/meta-project-manager.sqlite",
     "MPM_ATTACHMENTS_DIR_PATH": "~/virtual-desk-state/meta-project-manager/attachments",
     "MPM_MAX_ATTACHMENT_BYTES": 52428800,
-    "MPM_ECOSYSTEM_DATA_PATH": "~/EcosystemData"
+    "MPM_ECOSYSTEM_DATA_PATH": "~/EcosystemData",
+    "MPM_DESKTOP_NOTIFY_URL": "http://127.0.0.1:9092/notify"
 }

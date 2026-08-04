@@ -1,0 +1,26 @@
+{
+	"name": "Notification",
+	"endpoints": [
+		{
+			"summary": "StreamNotifications",
+			"method": "WS",
+			"path": "/stream-notifications"
+		},
+		{
+			"summary": "Notify",
+			"method": "POST",
+			"path": "/notify",
+			"parameters": [
+				{ "name": "source",    "in": "body", "type": "string", "required": true },
+				{ "name": "kind",      "in": "body", "type": "string", "required": false },
+				{ "name": "title",     "in": "body", "type": "string", "required": true },
+				{ "name": "body",      "in": "body", "type": "string", "required": false },
+				{ "name": "level",     "in": "body", "type": "string", "required": false },
+				{ "name": "url",       "in": "body", "type": "string", "required": false },
+				{ "name": "appKey",    "in": "body", "type": "string", "required": false },
+				{ "name": "count",     "in": "body", "type": "number", "required": false },
+				{ "name": "dedupeKey", "in": "body", "type": "string", "required": false }
+			]
+		}
+	]
+}
