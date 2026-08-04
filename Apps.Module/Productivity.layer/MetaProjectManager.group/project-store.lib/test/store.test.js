@@ -2684,3 +2684,38 @@ test("MPMR-21 coleta indisponível não derruba a entrega", async () => {
     assert.ok(d.gaps.some((g) => g.ref === "git-indisponivel"))
     await s.sequelize.close()
 })
+
+test("MPMR-29 em projeto migrado, concluir por status é recusado também no STORE (não só no MCP)", async () => {
+    // O caso que motiva: alguém ARRASTA o card para a coluna de conclusão no
+    // board. A GUI chama o store direto, sem passar pelo MCP — e sem esta
+    // recusa o item ficaria com statusKey "done" e executionState "queued",
+    // voltando a ser oferecido na fila.
+    const p = await store.CreateProject({ name: "Arrastar não conclui", keyPrefix: "ARR", status: "active", actor: { source: "cli" } })
+    await store.MigrateProjectToDeliveryModel({ project: p.id, actor: { source: "gui" } })
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Card arrastável", actor: { source: "cli" } })
+
+    // Humano, pela GUI — o caminho do arrastar.
+    await assert.rejects(
+        () => store.SetStatus({ item: item.id, status: "done", actor: { source: "gui" } }),
+        (e) => e.code === "MODEL_MIGRATED" && e.details.replacement === "AcceptDelivery")
+
+    // As transições que NÃO concluem continuam livres (arrastar para "em
+    // progresso" é legítimo).
+    const movido = await store.SetStatus({ item: item.id, status: "in-progress", actor: { source: "gui" } })
+    assert.equal(movido.statusKey, "in-progress")
+
+    // E o caminho de DENTRO do fluxo de entrega continua funcionando: é ele que
+    // conclui de verdade, mantendo os dois eixos coerentes.
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "arr-1" } }
+    const entrega = await store.SubmitDelivery({ item: item.id, summary: "feito", actor: agente })
+    await store.AcceptDelivery({ delivery: entrega.id, actor: { source: "gui" } })
+    const final = await store.GetItem({ item: item.id })
+    assert.equal(final.statusKey, "done")
+    assert.equal(final.executionState, "done")
+    assert.equal(final.reviewState, "accepted")
+
+    // Projeto legado segue aceitando a mudança direta de status.
+    const legado = await store.CreateProject({ name: "Arrastar legado", keyPrefix: "ARL", status: "active", actor: { source: "cli" } })
+    const i2 = await store.CreateItem({ project: legado.id, type: "task", title: "Card antigo", actor: { source: "cli" } })
+    assert.equal((await store.SetStatus({ item: i2.id, status: "done", actor: { source: "gui" } })).statusKey, "done")
+})

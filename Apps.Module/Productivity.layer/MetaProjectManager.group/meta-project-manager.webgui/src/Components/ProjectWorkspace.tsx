@@ -209,16 +209,29 @@ const ProjectWorkspace = () => {
     }, [projectId, loadItems, board, api])
     useEvents(onEvents)
 
+    // Em projeto de ENTREGA, concluir não é mudar de coluna: é aceitar a entrega.
+    // O store recusa com MODEL_MIGRATED, e em vez de mostrar esse erro cru
+    // levamos a pessoa para onde a decisão realmente acontece — ela arrastou o
+    // card justamente porque queria concluir.
+    const _handleStatusError = (e: any, id: string) => {
+        if (e && e.code === "MODEL_MIGRATED") {
+            const deliveryId = e.details && e.details.currentDeliveryId
+            if (deliveryId) { navigate(`/deliveries/${deliveryId}`); return }
+            setError("Neste projeto a conclusão passa por uma entrega revisada — entregue o item antes.")
+        } else setError(e.message)
+        loadItems()
+    }
+
     const moveItem = async (itemId: string, statusKey: string) => {
         // otimista: reflete a mudança de coluna imediatamente
         setItems((prev) => prev.map((i) => i.id === itemId ? { ...i, statusKey } : i))
         try { await api.items.setStatus(itemId, statusKey) }
-        catch (e: any) { setError(e.message); loadItems() }
+        catch (e: any) { _handleStatusError(e, itemId) }
     }
 
     const setStatus = async (id: string, status: string) => {
         setItems((prev) => prev.map((i) => i.id === id ? { ...i, statusKey: status } : i))
-        try { await api.items.setStatus(id, status) } catch (e: any) { setError(e.message); loadItems() }
+        try { await api.items.setStatus(id, status) } catch (e: any) { _handleStatusError(e, id) }
     }
     const setPriority = async (id: string, priority: string) => {
         setItems((prev) => prev.map((i) => i.id === id ? { ...i, priority } : i))

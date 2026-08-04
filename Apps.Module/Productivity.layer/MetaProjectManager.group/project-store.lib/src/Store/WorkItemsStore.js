@@ -5,6 +5,9 @@ const { WORK_ITEM_TYPES, WORK_ITEM_PRIORITIES, LINK_RELATIONS, WORK_ITEM_HORIZON
 const { DeriveStatusKey } = require("../Utils/deliveryState")
 
 const START_STATUS_SET = new Set(AGENT_GATED_START_STATUSES)
+// Status que significam "acabou". Em projeto migrado, chegar a um deles é
+// consequência de uma entrega aceita, nunca uma escolha direta.
+const DONE_LIKE_STATUSES = new Set(["done", "completed", "archived"])
 const DONE_STATUS_SET = new Set(AGENT_GATED_DONE_STATUSES)
 
 // Valida um enum opcional (ignora undefined/null).
@@ -738,7 +741,10 @@ const WorkItemsStore = (ctx) => {
         })
         await instance.update({ executionState: nextExecution, reviewState: nextReview, ...extra })
         if(statusKey !== instance.statusKey)
-            await SetStatus({ item: instance.id, status: statusKey, actor: { ...actor, session: undefined } })
+            // `_fromDeliveryFlow` é o que distingue esta chamada (legítima, vinda
+            // da aceitação/devolução de uma entrega) de alguém arrastando o card
+            // para "concluído" no board — que em projeto migrado não conclui nada.
+            await SetStatus({ item: instance.id, status: statusKey, actor: { ...actor, session: undefined, _fromDeliveryFlow: true } })
         else
             emit("item.updated", Serialize(instance))
         return instance
@@ -759,6 +765,18 @@ const WorkItemsStore = (ctx) => {
         // ser decisões prévias (a conclusão passa por entrega revisada), então
         // nem o pedido nem a marca de status pendente fazem sentido ali.
         const gateModel = store.ProjectGateModel ? await store.ProjectGateModel(instance.projectId) : "legacy"
+
+        // Em projeto migrado, CONCLUIR não é mudar o status — é ter uma entrega
+        // aceita. Sem esta recusa, arrastar o card para "concluído" no board
+        // deixaria os dois eixos discordando: `statusKey: "done"` com
+        // `executionState: "queued"`, e o item voltaria a ser oferecido na fila.
+        // Vale para humano E agente: quem arrasta o card é justamente o humano.
+        if(gateModel === "delivery" && !(actor && actor._fromDeliveryFlow) &&
+           DONE_LIKE_STATUSES.has(status) && status !== instance.statusKey)
+            throw new DomainError("MODEL_MIGRATED",
+                `Neste projeto a conclusão passa por uma entrega revisada: aceite a entrega de ${instance.key} em vez de mudar o status.`,
+                { replacement: "AcceptDelivery", itemKey: instance.key, currentDeliveryId: instance.currentDeliveryId })
+
         if(store.IsAgentActor(actor) && status !== instance.statusKey && gateModel === "legacy"){
             const done = await _isDoneStatus(instance, status)
             const start = START_STATUS_SET.has(status)
