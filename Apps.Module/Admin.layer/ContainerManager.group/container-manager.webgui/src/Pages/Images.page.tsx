@@ -6,8 +6,8 @@ import {
     Button,
     ButtonGroup,
     CodeBlock,
-    ConfirmDialog,
     DataTable,
+    Dialog,
     Drawer,
     EmptyState,
     KeyValueList,
@@ -175,14 +175,25 @@ const ImagesPage = ({ conexaoAtiva }: any) => {
             </Drawer> }
 
         { paraRemover &&
-            <ConfirmDialog
-                danger
+            <Dialog
+                size="sm"
+                icon="exclamation triangle"
                 title="Remover imagem"
-                message={`A imagem "${ImageTag(paraRemover)}" será removida. Se algum container a usa, o runtime recusa — e aí é preciso forçar.`}
-                confirmLabel="Remover"
-                cancelLabel="Cancelar"
-                onConfirm={() => Remover(false)}
-                onCancel={() => setParaRemover(null)}/> }
+                onClose={() => setParaRemover(null)}
+                actions={<>
+                    <Button onClick={() => setParaRemover(null)}>Cancelar</Button>
+                    <Button variant="danger" onClick={() => Remover(false)}>Remover</Button>
+                    <Button variant="danger" icon="bolt" onClick={() => Remover(true)}>
+                        Forçar remoção
+                    </Button>
+                </>}>
+                <p>A imagem <strong>{ImageTag(paraRemover)}</strong> será removida.</p>
+                <p className="cm-muted">
+                    Se algum container a usa, o runtime recusa — e essa recusa é informação.
+                    <strong> Forçar</strong> remove mesmo assim: containers parados que dependem
+                    dela deixam de poder subir.
+                </p>
+            </Dialog> }
 
         { construindo &&
             <BuildImageDialog

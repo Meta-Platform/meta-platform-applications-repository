@@ -90,14 +90,21 @@ const CreateContainerDialog = ({ conexaoId, onFechar, onCriado }: any) => {
                     .filter((porta) => porta.containerPort)
                     .map((porta) => ({
                         containerPort: Number(porta.containerPort),
-                        hostPort: porta.hostPort ? Number(porta.hostPort) : undefined
+                        // Sem porta no host, a porta é exposta e não publicada
+                        // — acesso interno sem abrir nada na máquina.
+                        hostPort: porta.hostPort ? Number(porta.hostPort) : undefined,
+                        protocol: porta.protocol || "tcp"
                     })),
+                // Formato canônico do adaptador. Antes esta tela enviava
+                // {Type,Source,Target} e o adaptador descartava a montagem em
+                // silêncio: o container nascia sem volume (CTMG-26).
                 mounts: mounts
                     .filter((montagem) => montagem.source && montagem.target)
                     .map((montagem) => ({
-                        Type: "volume",
-                        Source: montagem.source,
-                        Target: montagem.target
+                        type: "volume",
+                        source: montagem.source,
+                        target: montagem.target,
+                        readOnly: Boolean(montagem.readOnly)
                     })),
                 environment: environment
                     .filter((variavel) => variavel.chave)

@@ -107,14 +107,21 @@ const VolumesPage = ({ conexaoAtiva }: any) => {
                 volumeName: detalhe.Name,
                 path: alvo
             })
-            const base64 = typeof data === "string" ? data : data?.contentBase64
+            /*
+                O adaptador devolve `{ isBase64, fileName, mimeType, size, data }`
+                — o mesmo contrato de ExportImage e ExportVolume. Esta tela lia
+                `contentBase64`, que nunca existiu: todo download falhava com
+                "o arquivo veio vazio" (CTMG-27).
+            */
+            const base64 = typeof data === "string" ? data : data?.data
             if (!base64) throw new Error("O arquivo veio vazio.")
 
             const bytes = Uint8Array.from(atob(base64), (caractere) => caractere.charCodeAt(0))
-            const url = URL.createObjectURL(new Blob([bytes]))
+            const tipo = (typeof data === "object" && data?.mimeType) || "application/octet-stream"
+            const url = URL.createObjectURL(new Blob([bytes], { type: tipo }))
             const link = document.createElement("a")
             link.href = url
-            link.download = entrada.name
+            link.download = (typeof data === "object" && data?.fileName) || entrada.name
             link.click()
             URL.revokeObjectURL(url)
         } catch (falha) {
