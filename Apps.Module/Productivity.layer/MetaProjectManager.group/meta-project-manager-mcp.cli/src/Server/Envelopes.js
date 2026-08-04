@@ -32,7 +32,14 @@ const SUMMARY_FIELDS = {
     milestoneLink:["id", "sourceMilestoneId", "relation", "targetMilestoneId"],
     criteria:     ["id", "workItemId", "text", "met"],
     comment:      ["id", "workItemId", "createdAt"],
-    attachment:   ["id", "name", "type", "sizeBytes", "createdAt"]
+    attachment:   ["id", "name", "type", "sizeBytes", "createdAt"],
+    // Modelo de entrega. O resumo da ENTREGA carrega a qualidade da evidência:
+    // é o selo que decide se vale abrir o detalhe.
+    delivery:     ["id", "key", "round", "status", "aiReviewState", "evidenceQuality", "verifyExitCode", "updatedAt"],
+    review:       ["id", "deliveryId", "reviewerType", "decision", "round", "createdAt"],
+    mandate:      ["id", "title", "status", "stopReason", "deliveriesMade", "deliveriesUnreviewed", "consecutiveReturns"],
+    plan:         ["id", "title", "status", "nodeCount", "submittedAt", "decidedAt"],
+    agentRole:    ["id", "role", "agentUserId", "sessionId", "projectId", "grantedAt"]
 }
 
 // Aplica o resumo, a menos que o chamador tenha pedido `view: "full"`.
@@ -47,7 +54,11 @@ const MutationResult = (data, view, entity) => {
 // `claim` e `pendingStatusKey` entram no padrão porque respondem "posso pegar
 // isto?": um item tomado por outra sessão, ou já pedido para in-progress e
 // esperando o humano, parecia livre para quem só via o statusKey (MPMX3-22/24).
+// Os dois eixos do modelo de entrega entram na projeção padrão de item: sem
+// eles, a listagem diz "review" e o agente não sabe se a entrega está com o
+// revisor, esperando o humano, ou voltou para ele.
 const ITEM_LIST_FIELDS = [
+    "executionState", "reviewState", "currentDeliveryId", "returnCount",
     "id", "key", "title", "shortDescription", "type", "statusKey", "priority",
     "assigneeUserId", "milestoneId", "sprintId", "horizon", "area", "labels",
     "effort", "confidence", "value", "parentId", "claim", "pendingStatusKey", "updatedAt"

@@ -820,3 +820,131 @@ test("MPMX3-13 close_project não conta ideias do inbox como pendência", async 
         (e) => e.code === "CLOSE_PRECONDITION_FAILED" && /relatório final/.test(e.message) && !/não concluído/.test(e.message)
     )
 })
+
+// ── MODELO DE ENTREGA (MPMR F3) ─────────────────────────────────────────────
+
+test("MPMR-22 as 21 tools do modelo de entrega existem, com schema válido e sem colidir com as anteriores", () => {
+    const novas = [
+        "submit_delivery", "get_delivery", "list_deliveries", "amend_delivery",
+        "withdraw_delivery", "recollect_evidence", "add_delivery_note",
+        "next_review", "list_pending_reviews", "claim_review", "release_review", "submit_review",
+        "my_mandate", "request_mandate_extension", "wait_for_mandate",
+        "propose_plan", "get_plan", "list_plans", "revise_plan", "wait_for_plan",
+        "declare_role"
+    ]
+    for(const nome of novas){
+        const t = byName(nome)
+        assert.ok(t, `tool ${nome} não existe`)
+        assert.equal(t.inputSchema.type, "object", `${nome} sem schema de objeto`)
+        assert.equal(typeof t.handler, "function")
+    }
+    // Nenhuma das anteriores mudou de nome, e ninguém foi registrado duas vezes.
+    const nomes = tools.map((t) => t.name)
+    assert.equal(new Set(nomes).size, nomes.length, "há tool duplicada no catálogo")
+    for(const antiga of ["create_item", "set_item_status", "get_item", "list_items", "next_task", "claim_item"])
+        assert.ok(nomes.includes(antiga), `a tool ${antiga} sumiu do catálogo`)
+})
+
+test("MPMR-24 concluir por status é RECUSADO em projeto migrado, com o substituto no erro", async () => {
+    const p = await store.CreateProject({ name: "MCP Entrega", keyPrefix: "MCPE", status: "active", actor: { source: "cli" } })
+    await store.MigrateProjectToDeliveryModel({ project: p.id, actor: { source: "gui" } })
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Concluir como?", actor: { source: "cli" } })
+
+    await assert.rejects(
+        () => byName("set_item_status").handler({ item: item.key, status: "done" }),
+        (e) => e.code === "MODEL_MIGRATED" && e.details.replacement === "submit_delivery",
+        "concluir por status precisa apontar o caminho novo")
+
+    // Em LOTE também: basta um item migrado para o lote não fazer sentido.
+    await assert.rejects(
+        () => byName("set_items_status").handler({ items: [item.key], status: "done" }),
+        (e) => e.code === "MODEL_MIGRATED")
+
+    // Transição que NÃO é conclusão continua livre.
+    const movido = await byName("set_item_status").handler({ item: item.key, status: "review" })
+    assert.ok(movido)
+
+    // E no projeto LEGADO nada mudou: concluir continua sendo um pedido humano.
+    const legado = await store.CreateItem({ project: "MCP", type: "task", title: "Do jeito antigo", actor: { source: "cli" } })
+    const promessa = byName("set_item_status").handler({ item: legado.key, status: "done", waitApproval: false })
+    const resultado = await promessa
+    assert.equal(resultado.status, "pending_approval", "projeto legado continua abrindo pedido de aprovação")
+})
+
+test("MPMR-22 entregar e revisar pelo MCP: quem executou não revisa", async () => {
+    const p = await store.CreateProject({ name: "MCP Ciclo", keyPrefix: "MCPC", status: "active", actor: { source: "cli" } })
+    await store.MigrateProjectToDeliveryModel({ project: p.id, actor: { source: "gui" } })
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Ciclo pelo MCP", actor: { source: "cli" } })
+
+    const entrega = await byName("submit_delivery").handler({ item: item.key, summary: "Feito pelo MCP." })
+    assert.equal(entrega.round, 1)
+    assert.equal(entrega.status, "ai-review")
+
+    // O ator destas tools É a sessão que entregou — revisar a própria entrega
+    // tem que ser recusado.
+    await assert.rejects(
+        () => byName("submit_review").handler({ delivery: entrega.key, decision: "pass" }),
+        (e) => e.code === "SAME_SESSION_REVIEW")
+
+    // A visão do revisor traz o que decide a revisão.
+    const revisao = await byName("get_delivery").handler({ delivery: entrega.key, view: "review" })
+    assert.ok(Array.isArray(revisao.evidence))
+    assert.ok(Array.isArray(revisao.blockingGaps), "as lacunas impeditivas vêm destacadas")
+    assert.ok(revisao.item && revisao.item.key === item.key)
+})
+
+test("MPMR-22 uma entrega com muita evidência não estoura o teto de resposta, e a lacuna impeditiva sobrevive ao corte", async () => {
+    const { GuardResponseSize, MAX_RESPONSE_CHARS } = require("../src/Server/ResponseGuard")
+    const p = await store.CreateProject({ name: "MCP Grande", keyPrefix: "MCPG", status: "active", actor: { source: "cli" } })
+    await store.MigrateProjectToDeliveryModel({ project: p.id, actor: { source: "gui" } })
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Muita evidência", actor: { source: "cli" } })
+    const entrega = await byName("submit_delivery").handler({ item: item.key, summary: "muita coisa" })
+
+    // 300 linhas de evidência, cada uma com corpo gordo.
+    for(let n = 0; n < 300; n++)
+        await store.models.DeliveryEvidence.create({
+            id: `ev-grande-${n}`, projectId: p.id, deliveryId: entrega.id, workItemId: item.id,
+            kind: "commit", source: "auto", title: `commit ${n}`, ref: `abc${n}`,
+            body: "x".repeat(2000), severity: "info", collectedAt: new Date()
+        })
+
+    const cheia = await byName("get_delivery").handler({ delivery: entrega.key, view: "review" })
+    const guardada = GuardResponseSize(cheia, { toolName: "get_delivery" })
+    const tamanho = JSON.stringify(guardada).length
+    assert.ok(tamanho <= MAX_RESPONSE_CHARS, `a resposta passou do teto: ${tamanho}`)
+
+    // O que não pode sumir: a lacuna que impede a entrega de ser aceita.
+    const texto = JSON.stringify(guardada)
+    const impeditivas = cheia.evidence.filter((e) => e.severity === "blocking")
+    for(const gap of impeditivas)
+        assert.ok(texto.includes(gap.title) || texto.includes(gap.ref),
+            "uma lacuna impeditiva foi cortada da resposta — é justamente ela que não pode sumir")
+})
+
+test("MPMR-23 mandato e plano pelo MCP", async () => {
+    const p = await store.CreateProject({ name: "MCP Plano", keyPrefix: "MCPP", status: "active", actor: { source: "cli" } })
+    await store.MigrateProjectToDeliveryModel({ project: p.id, actor: { source: "gui" } })
+
+    // Sem mandato, a resposta diz isso em vez de devolver vazio.
+    const semMandato = await byName("my_mandate").handler({ project: p.id })
+    assert.ok(semMandato.message || semMandato.id)
+
+    const plano = await byName("propose_plan").handler({
+        project: p.id, title: "Plano pelo MCP", rationale: "porque sim",
+        nodes: [
+            { ref: "e", type: "epic", title: "Épico" },
+            { parentRef: "e", type: "task", title: "Tarefa filha", acceptanceCriteria: ["funciona"] }
+        ]
+    })
+    assert.equal(plano.status, "submitted")
+    assert.equal(plano.nodeCount, 2)
+    // Propor NÃO cria item: é rascunho até o humano aceitar.
+    assert.equal((await store.ListItems({ project: p.id })).length, 0)
+
+    const lido = await byName("get_plan").handler({ plan: plano.id })
+    assert.equal(lido.nodes.length, 2)
+
+    // Papel de revisor é declarável e fica registrado.
+    const papel = await byName("declare_role").handler({ role: "reviewer", project: p.id })
+    assert.equal(papel.role, "reviewer")
+})

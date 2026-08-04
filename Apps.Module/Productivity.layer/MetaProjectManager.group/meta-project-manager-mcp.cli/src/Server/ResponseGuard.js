@@ -26,7 +26,11 @@ const HEAVY_FIELDS = [
     "mitigation", "contingency",
     "objective", "scope", "outOfScope", "stakeholders", "assumptions",
     "constraints", "successCriteria", "deliverables",
-    "payloadJson", "beforeJson", "afterJson", "resultSnapshot", "errorSnapshot", "metadataJson"
+    "payloadJson", "beforeJson", "afterJson", "resultSnapshot", "errorSnapshot", "metadataJson",
+    // Corpo de evidência: a saída de um build passa fácil dos 60k sozinha.
+    // `summary`, `reason`, `returnReason` e `aiVerdictReason` NÃO entram aqui —
+    // são curtos e são justamente o que explica a decisão.
+    "rationale", "risksText"
 ]
 
 const Size = (value) => {

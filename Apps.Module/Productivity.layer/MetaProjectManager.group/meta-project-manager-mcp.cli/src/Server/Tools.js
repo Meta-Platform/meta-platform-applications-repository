@@ -123,6 +123,29 @@ const BuildTools = ({ store, actor }) => {
         return MutationResult(created, i.view, "item")
     }
 
+
+    // ───────────── Conclusão em projeto migrado ─────────────
+    //
+    // Onde o modelo de entrega está ligado, mudar o status para "concluído"
+    // deixou de ser o caminho: quem conclui é a ACEITAÇÃO de uma entrega, feita
+    // por um humano que olhou a evidência. Recusar aqui, com o substituto no
+    // erro, evita o pior desfecho — o agente marcar `done` e ninguém nunca
+    // revisar o que ele fez.
+    //
+    // A tool continua no catálogo durante a convivência: em projeto legado ela
+    // funciona exatamente como sempre funcionou.
+    const DONE_LIKE = new Set(["done", "completed", "archived"])
+    const AssertNotDeliveryConclusion = async (itemRef, status) => {
+        if(!DONE_LIKE.has(String(status))) return
+        let item
+        try { item = await store.ResolveItem(itemRef) } catch(e){ return }
+        const model = store.ProjectGateModel ? await store.ProjectGateModel(item.projectId) : "legacy"
+        if(model !== "delivery") return
+        throw McpError("MODEL_MIGRATED",
+            `Neste projeto a conclusão passa por uma entrega revisada. Use submit_delivery({ item: "${item.key}", summary: "…" }) — quem conclui é o humano que aceita a entrega.`,
+            { replacement: "submit_delivery", item: item.key, projectId: item.projectId })
+    }
+
     // Executa uma AÇÃO GATED (criar projeto/board/milestone/sprint, ou deletar).
     // O gate transforma a chamada num pedido pendente; por padrão (waitApproval)
     // a tool BLOQUEIA (polling do SQLite via WaitForApproval) até a decisão humana
@@ -1083,6 +1106,7 @@ const BuildTools = ({ store, actor }) => {
             // subia na hora, contrariando a própria descrição e deixando pedidos órfãos
             // que ninguém aguardava. Transições livres não tocam o gate e passam direto.
             handler: async (i) => {
+                await AssertNotDeliveryConclusion(i.item, i.status)
                 const result = await GatedAction({
                     actionName: "set-status", type: "work-item", ref: `${i.item}:${i.status}`,
                     waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
@@ -1102,11 +1126,16 @@ const BuildTools = ({ store, actor }) => {
                 status: S.str("Novo status (statusKey) para todos"),
                 ...WAIT_FIELDS
             }, ["items", "status"]),
-            handler: (i) => GatedAction({
-                actionName: "set-status-batch", type: "work-item", ref: `${i.items.join(",")}:${i.status}`,
-                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
-                run: (actor) => store.SetStatusBatch({ items: i.items, status: i.status, actor })
-            })
+            handler: async (i) => {
+                // Basta UM item de projeto migrado para o lote inteiro não fazer
+                // sentido: metade concluiria por status e metade não.
+                for(const ref of i.items) await AssertNotDeliveryConclusion(ref, i.status)
+                return GatedAction({
+                    actionName: "set-status-batch", type: "work-item", ref: `${i.items.join(",")}:${i.status}`,
+                    waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                    run: (actor) => store.SetStatusBatch({ items: i.items, status: i.status, actor })
+                })
+            }
         },
         {
             name: "assign_item",
@@ -1637,11 +1666,178 @@ const BuildTools = ({ store, actor }) => {
             handler: (i) => store.GetActivityContext({ project: i.project, board: i.board, sprint: i.sprint, milestone: i.milestone, item: i.item, limit: i.limit, fullText: i.fullText, noteBodyChars: i.noteBodyChars, actor })
         },
 
+
+        // ───────────── MODELO DE ENTREGA: entregar, revisar, mandato, plano ─────────────
+        //
+        // Em projeto migrado, concluir NÃO é mais mudar o status: é entregar e
+        // ter a entrega aceita. O agente executa livre — o humano decide depois,
+        // olhando o que foi feito, não o nome da ação.
+        {
+            name: "submit_delivery",
+            description: "ENTREGA o trabalho de um item para revisão. Você escreve APENAS o resumo do que fez; o sistema colhe a evidência sozinho (commits que citam a chave do item, arquivos, saída e código de saída do comando de verificação, critérios de aceite). Depois disto o item sai da sua fila e passa por revisão — não mude o status à mão. O retorno traz `warnings` com o que ficou frouxo: resolva ANTES que o humano devolva por isso.",
+            inputSchema: Obj({
+                item: S.str("Item (id|key)"),
+                summary: S.str("O que você fez, em poucas linhas. É o único texto da entrega escrito por você."),
+                title: S.str("Título da entrega (padrão: o do item)"),
+                verifyCommand: S.str("Comando que comprova esta entrega (sobrepõe o do item/projeto)")
+            }, ["item", "summary"]),
+            handler: async (a) => store.SubmitDelivery(A(a))
+        },
+        {
+            name: "get_delivery",
+            description: "Uma entrega com TODA a evidência colhida. `view:\"review\"` traz a visão de quem vai decidir: critérios de aceite com o estado atual, lacunas por gravidade, rodadas anteriores com o motivo de cada devolução e o escopo do mandato.",
+            inputSchema: Obj({
+                delivery: S.str("Entrega (id|key, ex.: MPMR-5/D1)"),
+                view: S.enum(["summary", "review"], "review = a visão de quem vai decidir")
+            }, ["delivery"]),
+            handler: async ({ delivery, view }) => store.GetDelivery({ delivery, view })
+        },
+        {
+            name: "list_deliveries",
+            description: "Lista entregas de um projeto ou item, da mais recente para a mais antiga.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                item: S.str("Item (id|key)"),
+                status: S.enum(["draft","collecting","ai-review","awaiting-human","accepted","returned","withdrawn"], "Status da entrega"),
+                ...FIELDS_FIELD
+            }),
+            handler: async ({ project, item, status, fields, limit, offset }) =>
+                ListEnvelope(await store.ListDeliveries({ project, item, status, limit, offset }), { fields, limit, offset })
+        },
+        {
+            name: "amend_delivery",
+            description: "Corrige o resumo de uma entrega que ainda não foi decidida. Depois da decisão, não: a entrega é o registro do que foi revisado.",
+            inputSchema: Obj({ delivery: S.str("Entrega (id|key)"), summary: S.str("Novo resumo"), title: S.str("Novo título") }, ["delivery"]),
+            handler: async (a) => Written("delivery")(await store.AmendDelivery(A(a)))
+        },
+        {
+            name: "withdraw_delivery",
+            description: "RETIRA a própria entrega (você percebeu que estava errada antes de alguém gastar tempo com ela). O item volta a executar, com você.",
+            inputSchema: Obj({ delivery: S.str("Entrega (id|key)"), reason: S.str("Por que está retirando") }, ["delivery"]),
+            handler: async (a) => Written("delivery")(await store.WithdrawDelivery(A(a)))
+        },
+        {
+            name: "recollect_evidence",
+            description: "Recolhe a evidência de uma entrega — use quando o commit chegou depois de entregar, ou o comando de verificação mudou. A evidência anterior é substituída.",
+            inputSchema: Obj({ delivery: S.str("Entrega (id|key)") }, ["delivery"]),
+            handler: async (a) => store.RecollectEvidence(A(a))
+        },
+        {
+            name: "add_delivery_note",
+            description: "Acrescenta à entrega o que SÓ VOCÊ sabe e o sistema não tem como apurar: uma decisão tomada, algo que ficou de fora, um risco conhecido. Nasce marcada como declarada por você (não como apurada).",
+            inputSchema: Obj({ delivery: S.str("Entrega (id|key)"), title: S.str("Título curto"), body: S.str("O que registrar") }, ["delivery", "body"]),
+            handler: async (a) => store.AddDeliveryNote(A(a))
+        },
+
+        // ── Revisão (papel de REVISOR) ────────────────────────────────────────
+        {
+            name: "next_review",
+            description: "PEGA a próxima entrega para revisar e a reivindica num passo só. Você nunca recebe uma entrega que VOCÊ mesmo produziu — quem fez não revisa. Requer o papel de revisor (declare_role).",
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)"), minutes: S.num("Validade da reivindicação (padrão 20)") }),
+            handler: async (a) => store.NextReview(A(a))
+        },
+        {
+            name: "list_pending_reviews",
+            description: "Entregas esperando revisão de agente. Já sai sem as que você entregou e sem as que outra sessão reivindicou.",
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)"), limit: S.num("Máx. de registros") }),
+            handler: async (a) => store.ListPendingAiReviews(A(a))
+        },
+        {
+            name: "claim_review",
+            description: "Reivindica a revisão de uma entrega específica. Recusa se foi você quem a produziu (SAME_SESSION_REVIEW) ou se outra sessão já a pegou (CONFLICT).",
+            inputSchema: Obj({ delivery: S.str("Entrega (id|key)"), minutes: S.num("Validade (padrão 20)") }, ["delivery"]),
+            handler: async (a) => store.ClaimReview(A(a))
+        },
+        {
+            name: "release_review",
+            description: "Devolve à fila uma revisão que você reivindicou e não vai concluir.",
+            inputSchema: Obj({ delivery: S.str("Entrega (id|key)") }, ["delivery"]),
+            handler: async (a) => Written("delivery")(await store.ReleaseReview(A(a)))
+        },
+        {
+            name: "submit_review",
+            description: "Seu PARECER sobre a entrega. `pass` a envia ao humano com o parecer anexado (você NÃO conclui nada sozinho). `return` a devolve a quem a fez, e exige motivo — sem ele o agente repete o mesmo trabalho. `escalate` é para quando você não se sente apto a julgar. Devolva quando houver lacuna impeditiva: verificação que falhou, critério de aceite em aberto, ou commit que não cita a tarefa num projeto que exige a convenção.",
+            inputSchema: Obj({
+                delivery: S.str("Entrega (id|key)"),
+                decision: S.enum(["pass", "return", "escalate", "abstain"], "Seu veredito"),
+                reason: S.str("Por quê (OBRIGATÓRIO ao devolver)"),
+                criteriaVerdict: { type: "array", description: "Veredito por critério: [{criteriaId, met, note}]", items: { type: "object" } }
+            }, ["delivery", "decision"]),
+            handler: async (a) => store.SubmitReview(A(a))
+        },
+
+        // ── Mandato (o escopo em que você anda sozinho) ───────────────────────
+        {
+            name: "my_mandate",
+            description: "O SEU mandato neste projeto: o escopo aprovado, os contadores e quanto falta para cada condição de parada. Consulte antes de encadear mais uma tarefa — é o que diz se ainda vale começar.",
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)") }),
+            handler: async (a) => (await store.CurrentMandate(A(a))) || { mandate: undefined, message: "Você não tem mandato ativo aqui: trabalhe normalmente, pedindo o que precisar." }
+        },
+        {
+            name: "request_mandate_extension",
+            description: "Pede ao humano para continuar sob um mandato que parou. BLOQUEIA até a decisão. Não use para contornar uma parada por devoluções seguidas — nesse caso, repense a abordagem.",
+            inputSchema: Obj({ mandate: S.str("Mandato (id)"), reason: S.str("Por que vale continuar") }, ["mandate"]),
+            handler: async (a) => store.RequestMandateExtension(A(a))
+        },
+        {
+            name: "wait_for_mandate",
+            description: "ESPERA o mandato voltar a valer. Use quando quiser parar de propósito em vez de tentar de novo em laço — mandato esgotado é sinal de PARAR, e o produto não bloqueia você automaticamente.",
+            inputSchema: Obj({ mandate: S.str("Mandato (id)"), timeoutSeconds: S.num("Tempo máximo de espera (0 = sem limite)") }, ["mandate"]),
+            handler: async (a) => store.WaitForMandate(a)
+        },
+
+        // ── Plano (você propõe, o humano aceita UMA vez) ──────────────────────
+        {
+            name: "propose_plan",
+            description: "PROPÕE um plano inteiro em rascunho: a árvore de itens, a ordem, as dependências e os riscos — nada disso vira item até o humano aceitar. Use isto em vez de despejar itens no backlog: decompor um objetivo passa a ser UMA decisão humana em vez de trinta. Dê `ref` a um nó e cite-o em `parentRef`/`dependsOn` dos outros para montar a árvore numa chamada só.",
+            inputSchema: Obj({
+                project: S.str("Projeto (id|slug|key)"),
+                title: S.str("Título do plano"),
+                shortDescription: S.str("Resumo de uma linha"),
+                rationale: S.str("Por que este recorte, e não outro"),
+                risks: S.str("O que pode dar errado"),
+                nodes: { type: "array", description: "Itens propostos: [{ref, parentRef, type, title, shortDescription, description, acceptanceCriteria[], effort, value, area, dependsOn[], verifyCommand, packages[]}]", items: { type: "object" } }
+            }, ["project", "title", "nodes"]),
+            handler: async (a) => store.ProposePlan(A(a))
+        },
+        {
+            name: "get_plan",
+            description: "Um plano proposto com todos os seus nós, incluindo o que o humano editou antes de aceitar.",
+            inputSchema: Obj({ plan: S.str("Plano (id)") }, ["plan"]),
+            handler: async ({ plan }) => store.GetPlan({ plan })
+        },
+        {
+            name: "list_plans",
+            description: "Planos propostos num projeto.",
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key)"), status: S.enum(["draft","submitted","accepted","rejected","superseded"], "Status") }),
+            handler: async (a) => store.ListPlans(a)
+        },
+        {
+            name: "revise_plan",
+            description: "Ajusta um nó do plano antes do aceite.",
+            inputSchema: Obj({ plan: S.str("Plano (id)"), node: S.str("Nó (id)"), updates: { type: "object", description: "Campos a mudar" } }, ["plan", "node", "updates"]),
+            handler: async (a) => store.RevisePlan(A(a))
+        },
+        {
+            name: "wait_for_plan",
+            description: "ESPERA a decisão humana sobre o plano. Aceito, devolve o plano com os itens criados; recusado, erro com o motivo.",
+            inputSchema: Obj({ plan: S.str("Plano (id)"), timeoutSeconds: S.num("Tempo máximo de espera (0 = sem limite)") }, ["plan"]),
+            handler: async (a) => store.WaitForPlan(a)
+        },
+
+        // ── Papel ─────────────────────────────────────────────────────────────
+        {
+            name: "declare_role",
+            description: "Declara o que você está fazendo nesta sessão: executor (pega e entrega), reviewer (revisa entrega de OUTRAS sessões) ou planner (propõe planos). Revisar exige este papel.",
+            inputSchema: Obj({ role: S.enum(["executor", "reviewer", "planner"], "Papel"), project: S.str("Projeto (id|slug|key) — omitir vale para todos") }, ["role"]),
+            handler: async (a) => store.DeclareRole(A(a))
+        },
+
         // ───────────── Orientação (para clientes que ignoram `instructions`) ─────────────
         {
             name: "get_guidance",
             description: "Regras de operação deste gerenciador: o que é livre, o que exige aprovação humana, como escrever título/descrição, relações de vínculo válidas, códigos de erro e o fluxo recomendado. Chame UMA VEZ no início da sessão se você não recebeu as instruções do servidor.",
-            inputSchema: Obj({ project: Str("Projeto (id|slug|key) — a política depende do modelo dele") }),
+            inputSchema: Obj({ project: S.str("Projeto (id|slug|key) — a política de gate depende do modelo dele") }),
             handler: async ({ project } = {}) => ({
                 instructions: INSTRUCTIONS,
                 // Políticas de trabalho que TODO agente segue (não só as regras de API).
@@ -1830,11 +2026,14 @@ const BuildTools = ({ store, actor }) => {
                 status: S.str("Status de conclusão (padrão: done)"),
                 ...WAIT_FIELDS
             }, ["epic"]),
-            handler: (i) => GatedAction({
-                actionName: "complete-epic", type: "work-item", ref: i.epic,
-                waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
-                run: (actor) => store.CompleteEpic({ item: i.epic, status: i.status || "done", actor })
-            })
+            handler: async (i) => {
+                await AssertNotDeliveryConclusion(i.epic, i.status || "done")
+                return GatedAction({
+                    actionName: "complete-epic", type: "work-item", ref: i.epic,
+                    waitApproval: i.waitApproval, approvalTimeoutSeconds: i.approvalTimeoutSeconds,
+                    run: (actor) => store.CompleteEpic({ item: i.epic, status: i.status || "done", actor })
+                })
+            }
         },
         {
             name: "declare_session",
@@ -1871,7 +2070,11 @@ const BuildTools = ({ store, actor }) => {
         // Sobre a PRÓPRIA sessão: dizer no que está e sair não podem depender da
         // liberação, senão uma sessão pendente que desiste fica presa esperando
         // aprovação para se despedir.
-        "update_session_focus", "end_session"
+        "update_session_focus", "end_session",
+        // Modelo de entrega: consultar o próprio mandato e ESPERAR uma decisão
+        // humana são leitura. Bloquear a espera atrás do portão prenderia uma
+        // sessão que só quer saber se pode continuar.
+        "my_mandate", "wait_for_mandate", "wait_for_plan", "list_pending_reviews"
     ])
     const IsReadOnlyTool = (name) =>
         READ_ONLY_TOOLS.has(name) || /^(list_|get_|search_)/.test(name)

@@ -159,8 +159,15 @@ const DeliveriesStore = (ctx) => {
     const GetDelivery = async ({ delivery, view } = {}) => {
         const row = await ResolveDelivery(delivery)
         const evidence = await DeliveryEvidence.findAll({
-            where: { deliveryId: row.id, deletedAt: null }, order: [["severity", "DESC"], ["createdAt", "ASC"]]
+            where: { deliveryId: row.id, deletedAt: null }, order: [["createdAt", "ASC"]]
         })
+        // Impeditivo primeiro, depois aviso, depois o resto. A ordem não é
+        // estética: quando a resposta estoura o teto do MCP, o corte vem do FIM
+        // da lista — e a lacuna que impede a entrega de ser aceita é justamente
+        // a que não pode sumir. (Ordenar por `severity` no SQL daria a ordem
+        // alfabética: blocking < info < warning.)
+        const PESO = { blocking: 0, warning: 1, info: 2 }
+        evidence.sort((a, b) => (PESO[a.severity] ?? 3) - (PESO[b.severity] ?? 3))
         const item = await WorkItem.findOne({ where: { id: row.workItemId } })
         const reviews = store.ListDeliveryReviews ? await store.ListDeliveryReviews({ delivery: row.id }) : []
 

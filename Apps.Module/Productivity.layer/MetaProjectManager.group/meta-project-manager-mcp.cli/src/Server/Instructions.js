@@ -142,6 +142,62 @@ lhe manda recado ou mexe no ambiente, o aviso vem em **\`_notices\`** junto da
 resposta da sua próxima chamada. LEIA esses avisos: eles mudam o que você deveria
 fazer em seguida. \`agent_inbox\` relê o histórico.
 
+## 3.11. MODELO DE ENTREGA (nos projetos que o adotaram)
+
+Alguns projetos trabalham com **entrega revisada** — descubra qual com
+\`get_guidance({ project })\` (o campo \`constraints.model\` diz \`delivery\` ou
+\`legacy\`). Onde ele está ligado, a regra muda de lugar:
+
+**Você executa livre. O humano decide DEPOIS, olhando o que você fez.**
+Não há aprovação para começar nem para concluir. Em compensação, concluir deixou
+de ser uma mudança de status: \`set_item_status\` para \`done\` é RECUSADO com
+\`MODEL_MIGRATED\`.
+
+O ciclo é este:
+
+1. \`next_task\` — pega e reivindica. A resposta traz o que você precisa ANTES de
+   escrever a primeira linha: a convenção de commit, o comando de verificação e,
+   se a tarefa voltou, a crítica que a fez voltar (\`priorityInstruction\`).
+2. Trabalhe. \`report_progress\` a cada virada de etapa (continua sendo o heartbeat).
+3. **Cite a chave do item na mensagem do commit** (\`feat(x): … MPMR-5 …\`). É
+   assim que a evidência liga o commit ao seu trabalho. Sem isso, o sistema cai
+   para "os commits daquele intervalo de tempo", marca a evidência como fraca e
+   registra a lacuna — e o revisor lê exatamente isso.
+4. \`submit_delivery({ item, summary })\` — você escreve APENAS o resumo. Commits,
+   arquivos, saída e código de saída do comando de verificação, critérios de
+   aceite: tudo isso o sistema colhe sozinho. Não copie log para o resumo.
+5. Leia o \`warnings\` do retorno. É o que ficou frouxo — resolva ANTES que o
+   humano devolva por isso. Corrigiu? \`recollect_evidence\`.
+6. Devolveram? A crítica chega em \`_notices\` e como comentário no item, e o item
+   volta para VOCÊ. Corrija e entregue de novo (vira a rodada seguinte).
+
+**O que NÃO fazer:** mudar o status à mão para simular conclusão; escrever no
+resumo o que o sistema já apura; entregar sabendo que a verificação falhou.
+
+### O papel de REVISOR
+Se você vai revisar, \`declare_role({ role: "reviewer" })\`. Então
+\`next_review\` → leia com \`get_delivery({ view: "review" })\` → \`submit_review\`.
+
+Você **nunca** revisa o que você mesmo entregou (\`SAME_SESSION_REVIEW\`), e
+\`pass\` não conclui nada: manda ao humano com o seu parecer. **Devolva** quando
+houver lacuna impeditiva — verificação que falhou, critério de aceite em aberto,
+commit que não cita a tarefa. Devolver exige motivo, e o motivo é o que evita
+que o outro agente repita o mesmo trabalho.
+
+### MANDATO — até onde você anda sozinho
+\`my_mandate({ project })\` diz o escopo aprovado e quanto falta para parar. O
+mandato para quando: entregas demais esperando revisão (o gargalo virou o
+humano), devoluções seguidas (insistir sai mais caro que repensar), item fora do
+escopo, teto atingido ou validade vencida.
+
+Ao ser barrado (\`MANDATE_EXHAUSTED\`), **pare**. O erro traz \`whatNow\`. Não fique
+tentando: se quiser esperar, \`wait_for_mandate\` espera de propósito.
+
+### PLANO — decompor é UMA decisão humana
+Em vez de despejar trinta itens no backlog, \`propose_plan\`: a árvore inteira,
+com ordem, dependências e riscos, em rascunho. O humano lê o raciocínio, edita e
+aceita uma vez — e só então vira item, com rodada e mandato.
+
 ## 4. O que é LIVRE e o que exige aprovação
 
 ### 4.0. TRAVA DE PLANEJAMENTO (leia primeiro)
@@ -311,6 +367,10 @@ num passo só.
 | \`NOT_FOUND\` | A referência não existe. Busque antes de assumir.
 | \`CONFLICT\` | Um feedback já está com outro agente (ou o claim expirou). Pule para o próximo. |
 | \`CONFLICT\` | Já existe (ex.: slug). Reuse em vez de duplicar. |
+| \`MODEL_MIGRATED\` | Neste projeto concluir é entregar: use \`submit_delivery\`. O erro traz o substituto em \`details.replacement\`. |
+| \`MANDATE_EXHAUSTED\` | Seu mandato parou. **Pare de pegar trabalho.** Leia \`details.stopReason\` e \`details.whatNow\`. |
+| \`OUT_OF_MANDATE\` | O item está fora do escopo que o humano aprovou. Pegue outro, ou peça extensão. |
+| \`SAME_SESSION_REVIEW\` | Você não revisa a própria entrega. Deixe subir ao humano ou peça a outra sessão. |
 
 ## 10. Fluxo recomendado
 1. \`list_projects\` / \`get_project\` → onde estou (e o status: \`planning\` trava a escrita).
@@ -320,7 +380,8 @@ num passo só.
 5. \`next_task\` (ou \`report_ready\` + \`claim_item\`) → pegar trabalho com dono declarado.
 6. \`get_item\` + \`list_comments\` → o que preciso saber para agir.
 7. Agir (\`create_item\`, \`update_item\`…), com \`report_progress\` a cada virada de
-   etapa. Iniciar/concluir tarefa depende de aprovação humana.
+   etapa. Iniciar/concluir tarefa depende de aprovação humana — **exceto** em
+   projeto de entrega, onde você executa livre e entrega (ver 3.11).
 8. \`add_comment\` → registrar o que fez.
 9. \`list_feedback\` de novo → não encerre deixando feedback do projeto pendente.
 10. \`release_item\` + \`end_session\` → sair sem deixar item travado fora da fila.
