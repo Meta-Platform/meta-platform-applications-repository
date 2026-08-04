@@ -91,6 +91,11 @@ const _BuildGuiConfig = (loaderParams) => {
             nodeModules:               webguiHandle.getNodeModulesPath(),
             serverAppName:             params.serverName,
             RT_ENV_GENERATED_DIR_NAME: params.RT_ENV_GENERATED_DIR_NAME,
+            // Perfil de build. `RT_WEBGUI_BUILD_PROFILE` chega do
+            // ecosystem-defaults, que o gerador de parâmetros já injeta em
+            // `guiParams` — nenhum .desktopapp precisa declarar nada para
+            // herdar o padrão do ecossistema.
+            buildProfile:              params.webguiBuildProfile || params.RT_WEBGUI_BUILD_PROFILE,
             componentLibraries
         },
         params,

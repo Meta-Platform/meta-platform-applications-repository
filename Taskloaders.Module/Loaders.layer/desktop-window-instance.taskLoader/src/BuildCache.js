@@ -21,7 +21,10 @@ const { join } = require("path")
 // Versão do formato/algoritmo do cache. Incremente para forçar um rebuild global
 // quando a config do webpack (WebInterfaceBuilder) ou este cálculo mudarem de
 // forma incompatível com bundles já gerados.
-const CACHE_VERSION = 1
+// v2: a configuração do webpack passou a depender do perfil de build (release
+// não emite mapa de código e minifica; debug faz o contrário). Bundles gerados
+// pela configuração anterior não correspondem mais a nenhum perfil.
+const CACHE_VERSION = 2
 const MANIFEST_FILE = ".meta-build-manifest.json"
 
 // Acrescenta ao hash o conteúdo de toda a árvore, em ordem determinística
@@ -64,9 +67,13 @@ const _HashTree = (hash, rootDir, currentDir) => {
 // Fingerprint de conteúdo (sha256 hex) das entradas do build do webgui. O
 // diretório de saída/gerado NÃO participa — só fonte e node_modules —, então a
 // assinatura calculada antes do build permanece válida para gravar depois dele.
-const ComputeWebInterfaceFingerprint = ({ context, nodeModules, componentLibraries = [] }) => {
+const ComputeWebInterfaceFingerprint = ({ context, nodeModules, componentLibraries = [], buildProfile }) => {
     const hash = crypto.createHash("sha256")
     hash.update("v" + CACHE_VERSION + "\n")
+    // A mesma fonte compilada com perfis diferentes produz artefatos
+    // diferentes. Sem o perfil na assinatura, trocar de perfil serviria o
+    // bundle do perfil anterior como se estivesse atualizado.
+    hash.update("[profile]" + (buildProfile || "default") + "\n")
     hash.update("[context]\n")
     if(context) _HashTree(hash, context, context)
     hash.update("[node_modules]\n")

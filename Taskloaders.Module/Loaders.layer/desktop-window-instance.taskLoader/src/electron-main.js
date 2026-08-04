@@ -840,7 +840,11 @@ const CreateGuiHostWindow = async () => {
             fingerprint = BuildCache.ComputeWebInterfaceFingerprint({
                 context:     config.webgui.context,
                 nodeModules: config.webgui.nodeModules,
-                componentLibraries: config.webgui.componentLibraries
+                componentLibraries: config.webgui.componentLibraries,
+                // O perfil entra na assinatura: um bundle minificado e um bundle
+                // de depuração vêm da mesma fonte, mas não são o mesmo artefato.
+                // Sem isto, trocar de perfil serviria o bundle do perfil anterior.
+                buildProfile: config.webgui.buildProfile
             })
         } catch(e) {
             fingerprint = null
@@ -865,6 +869,12 @@ const CreateGuiHostWindow = async () => {
                 url:            "",
                 serverAppName:  config.webgui.serverAppName,
                 componentLibraries: config.webgui.componentLibraries,
+                // Uma janela desktop nunca observa alterações: ela compila uma
+                // vez ao abrir. O perfil define o CUSTO desse build (minificado
+                // e sem mapa de código, ou rápido e depurável).
+                buildProfile:    config.webgui.buildProfile,
+                environmentPath: config.webgui.environmentPath,
+                generatedDirName:config.webgui.RT_ENV_GENERATED_DIR_NAME,
                 onChangeProgress: (percentage) => {
                     if(!window.isDestroyed() && !window.webContents.isDestroyed())
                         window.webContents.send("build:progress", percentage)
