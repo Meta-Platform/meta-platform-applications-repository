@@ -4,7 +4,9 @@
             "dependency": "@//command-group",
             "executableName": "meta-project-manager-mcp",
             "bound-params": {
-                "projectStoreLib": "@/project-store.lib"
+                "projectStoreLib": "@/project-store.lib",
+                "gitStatusLib": "@/git-status.lib",
+                "instanceManagerClientLib": "@/instance-manager-client.lib"
             }
         }
     ]

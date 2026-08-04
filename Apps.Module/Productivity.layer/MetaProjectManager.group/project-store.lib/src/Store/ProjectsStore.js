@@ -89,7 +89,8 @@ const ProjectsStore = (ctx) => {
 
     const CreateProject = async ({
         name, slug, shortDescription, description, icon, color, status = "planning",
-        keyPrefix, repositoryUrl, localPath, ownerUserId, actor
+        keyPrefix, repositoryUrl, localPath, ownerUserId,
+        verifyCommand, verifyCwd, actor
     } = {}) => {
         if(!name) throw new DomainError("VALIDATION_ERROR", "Nome de projeto é obrigatório.", { field: "name" })
         if(!PROJECT_STATUSES.includes(status))
@@ -116,7 +117,8 @@ const ProjectsStore = (ctx) => {
             shortDescription, description, icon, color, status,
             keyPrefix: keyPrefix ? _assertKeyPrefix(keyPrefix) : DeriveKeyPrefix(name),
             keySeq: 0,
-            repositoryUrl, localPath, ownerUserId
+            repositoryUrl, localPath, ownerUserId,
+            verifyCommand, verifyCwd
         })
         const data = Serialize(project)
         await writeAudit({ projectId: project.id, entityType: "project", entityId: project.id, action: "create", actor, metadata: { name, slug: finalSlug } })
@@ -152,7 +154,11 @@ const ProjectsStore = (ctx) => {
     const UpdateProject = async ({ project, actor, ...fields } = {}) => {
         const instance = await ResolveProject(project)
         const allowed = ["name", "shortDescription", "description", "finalReport", "icon", "color", "status", "repositoryUrl", "localPath", "defaultBoardId", "ownerUserId",
-            "contextRepository", "contextModule", "contextLayer", "contextGroup"]
+            "contextRepository", "contextModule", "contextLayer", "contextGroup",
+            // Modelo de entrega: o comando que COMPROVA a entrega e as políticas
+            // de evidência/revisão. São ajustes operacionais — quem muda o
+            // modelo em si é MigrateProjectToDeliveryModel, não um patch.
+            "verifyCommand", "verifyCwd", "requireKeyInCommit", "requireAiReview", "aiReviewTimeoutMinutes"]
         const patch = {}
         for(const key of allowed) if(fields[key] !== undefined) patch[key] = fields[key]
 

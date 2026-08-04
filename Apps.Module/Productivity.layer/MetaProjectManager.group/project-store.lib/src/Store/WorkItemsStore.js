@@ -179,7 +179,7 @@ const WorkItemsStore = (ctx) => {
         const order = await WorkItem.count({ where: { projectId: projectInstance.id, parentId: parentInstance ? parentInstance.id : null, deletedAt: null } })
 
         const softwareFields = {}
-        for(const f of ["repositoryUrl", "branchName", "commitHash", "pullRequestUrl", "environment", "packagePath", "moduleName", "layerName", "groupName"])
+        for(const f of ["repositoryUrl", "branchName", "commitHash", "pullRequestUrl", "environment", "packagePath", "moduleName", "layerName", "groupName", "verifyCommand"])
             if(software[f] !== undefined) softwareFields[f] = software[f]
 
         const item = await WorkItem.create({
@@ -389,7 +389,10 @@ const WorkItemsStore = (ctx) => {
             "estimatePoints", "estimateMinutes", "milestoneId", "sprintId",
             "horizon", "clarityState", "effort", "confidence", "value", "ideaOrigin",
             "repositoryUrl", "branchName", "commitHash", "pullRequestUrl", "releaseTag", "releaseUrl",
-            "environment", "packagePath", "moduleName", "layerName", "groupName"]
+            "environment", "packagePath", "moduleName", "layerName", "groupName",
+            // Modelo de entrega: o comando que comprova ESTE item (sobrepõe o do
+            // projeto) e o nó de plano que o originou.
+            "verifyCommand", "planNodeId"]
         for(const key of simple) if(fields[key] !== undefined) patch[key] = fields[key]
         // Área: adota a grafia já usada no projeto (ver ListProjectAreas).
         if(fields.area !== undefined) patch.area = await _normalizeArea(fields.area, instance.projectId)

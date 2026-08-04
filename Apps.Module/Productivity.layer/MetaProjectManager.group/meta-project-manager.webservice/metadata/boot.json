@@ -35,7 +35,9 @@
             },
             "bound-params": {
                 "serverService": "@@/server-service",
-                "projectStoreLib": "@/project-store.lib"
+                "projectStoreLib": "@/project-store.lib",
+                "gitStatusLib": "@/git-status.lib",
+                "instanceManagerClientLib": "@/instance-manager-client.lib"
             }
         }
     ]

@@ -20,7 +20,8 @@ const EXTERNAL_POLL_MS = 1000
 // Ids já publicados, para não emitir duas vezes o evento que nasceu aqui dentro.
 const MAX_SEEN = 2000
 
-const GetContext = ({ projectStoreLib, dbFilePath, attachmentsDirPath, maxAttachmentBytes, ecosystemDataPath }) => {
+const GetContext = ({ projectStoreLib, dbFilePath, attachmentsDirPath, maxAttachmentBytes, ecosystemDataPath,
+                      gitStatusLib, instanceManagerClientLib, instanceManagerSocketPath }) => {
     if(_context) return _context
 
     const emitter = new EventEmitter()
@@ -44,10 +45,29 @@ const GetContext = ({ projectStoreLib, dbFilePath, attachmentsDirPath, maxAttach
     }
 
     const InitializeProjectStore = projectStoreLib.require("InitializeProjectStore")
+
+    // As duas dependências EXTERNAS da coleta de evidência. O store não as
+    // requer — ele as recebe, e sem elas registra a lacuna em vez de quebrar.
+    // Aqui, no composition root, é onde elas realmente existem.
+    const { CreateVerificationRunner } = projectStoreLib.require("Utils/verificationRunner")
+    let runVerification
+    try {
+        const client = instanceManagerClientLib && instanceManagerClientLib.require("CreateInstanceManagerClient")({
+            socketPath: instanceManagerSocketPath
+        })
+        runVerification = CreateVerificationRunner({ instanceManagerClient: client })
+    } catch(e){
+        // Daemon indisponível não pode impedir o app de subir: a verificação
+        // simplesmente não roda, e a entrega registra isso.
+        runVerification = undefined
+    }
+
     const store = InitializeProjectStore({
         storage: dbFilePath,
         attachmentsDirPath,
         maxAttachmentBytes,
+        gitLib: gitStatusLib,
+        runVerification,
         // Onde o ecossistema declara seus repositórios (catálogo de pacotes).
         ecosystemDataPath,
         onEvent: (evt) => {

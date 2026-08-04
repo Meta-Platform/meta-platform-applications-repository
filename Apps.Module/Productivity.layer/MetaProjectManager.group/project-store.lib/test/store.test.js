@@ -2548,3 +2548,139 @@ test("MPMR plano proposto vira backlog, rodada e mandato numa decisão só", asy
     // Aceitar o plano é uma decisão só: não pode ser aceito de novo.
     assert.equal((await store.AcceptPlan({ plan: plano.id, actor: { source: "gui" } })).status, "accepted")
 })
+
+// ── COLETA DE EVIDÊNCIA (MPMR F2) ───────────────────────────────────────────
+// Estes testes usam um repositório git DE VERDADE (criado no diretório temporário)
+// e um runner de verificação local. É o único jeito de provar que a correlação
+// commit↔item funciona: um dublê de git provaria só que o dublê responde.
+
+const { execFileSync } = require("child_process")
+const CORE_GIT_LIB = "/home/kadisk/Workspaces/meta-platform-repo/repos/ecosystem-core-repository/Main.Module/Libraries.layer/git-status.lib"
+
+const _makeRepo = (nome) => {
+    const repo = path.join(TMP, nome)
+    fs.mkdirSync(repo, { recursive: true })
+    const git = (...args) => execFileSync("git", args, { cwd: repo, stdio: ["ignore", "pipe", "ignore"] })
+    git("init", "-q")
+    git("config", "user.email", "teste@exemplo.com")
+    git("config", "user.name", "Teste")
+    return { repo, commit: (arquivo, conteudo, mensagem) => {
+        fs.writeFileSync(path.join(repo, arquivo), conteudo)
+        git("add", arquivo); git("commit", "-q", "-m", mensagem)
+    } }
+}
+
+const _storeComEvidencia = async (nome) => {
+    const db = path.join(TMP, `${nome}.sqlite`)
+    const gitLib = { require: (m) => require(path.join(CORE_GIT_LIB, "src", m)) }
+    const runVerification = ({ command, args, cwd }) => new Promise((resolve) => {
+        const inicio = Date.now()
+        require("child_process").execFile(command, args, { cwd, timeout: 10000 }, (err, stdout, stderr) =>
+            resolve({ exitCode: err ? (err.code || 1) : 0, output: (stdout || "") + (stderr || ""), durationMs: Date.now() - inicio }))
+    })
+    const s = InitializeProjectStore({ storage: db, attachmentsDirPath: ATT_DIR, gitLib, runVerification })
+    await s.ConnectAndSync()
+    return s
+}
+
+test("MPMR-19 commit que cita a chave vira evidência forte; sem a chave, cai para a janela e se declara fraco", async () => {
+    const s = await _storeComEvidencia("ev-git")
+    const { repo, commit } = _makeRepo("repo-ev")
+    const p = await s.CreateProject({ name: "Com repo", keyPrefix: "CRP", status: "active", localPath: repo, actor: { source: "cli" } })
+    await s.MigrateProjectToDeliveryModel({ project: p.id, actor: { source: "gui" } })
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "ev-git" } }
+
+    const comChave = await s.CreateItem({ project: p.id, type: "task", title: "Com chave", actor: { source: "cli" } })
+    await s.ClaimItem({ item: comChave.id, actor: agente })
+    commit("a.js", "console.log(1)\n", `feat: implementa ${comChave.key}`)
+    const d1 = await s.SubmitDelivery({ item: comChave.id, summary: "feito", actor: agente })
+    const commits1 = d1.evidence.filter((e) => e.kind === "commit")
+    assert.equal(commits1.length, 1)
+    assert.equal(commits1[0].attribution, "key")
+    assert.equal(commits1[0].confidence, "high")
+    assert.ok(d1.evidence.some((e) => e.kind === "file" && e.ref === "a.js"), "os arquivos do commit entram como evidência")
+
+    const semChave = await s.CreateItem({ project: p.id, type: "task", title: "Sem chave", actor: { source: "cli" } })
+    await s.ClaimItem({ item: semChave.id, actor: agente })
+    commit("b.js", "console.log(2)\n", "ajuste rápido")
+    const d2 = await s.SubmitDelivery({ item: semChave.id, summary: "feito", actor: agente })
+    assert.ok(d2.evidence.filter((e) => e.kind === "commit").every((e) => e.attribution === "window"),
+        "sem a chave, a correlação é por tempo")
+    assert.ok(d2.evidence.filter((e) => e.kind === "commit").every((e) => e.confidence === "low"),
+        "e ela se declara fraca em vez de fingir certeza")
+    assert.ok(d2.gaps.some((g) => g.ref === "commit-sem-key" && g.severity === "blocking"))
+    await s.sequelize.close()
+})
+
+test("MPMR-20 a verificação é executada pelo sistema: exit code entra na evidência", async () => {
+    const s = await _storeComEvidencia("ev-verify")
+    const { repo, commit } = _makeRepo("repo-verify")
+    const p = await s.CreateProject({ name: "Verificado", keyPrefix: "VRF", status: "active", localPath: repo,
+        verifyCommand: 'node -e "console.log(\'12 passed\')"', actor: { source: "cli" } })
+    await s.MigrateProjectToDeliveryModel({ project: p.id, actor: { source: "gui" } })
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "ev-vrf" } }
+
+    // Caminho feliz COMPLETO: commit com a chave + verificação verde + critério
+    // atendido. Só assim a evidência vale "verified".
+    const ok = await s.CreateItem({ project: p.id, type: "task", title: "Tudo certo", actor: { source: "cli" } })
+    const criterio = await s.AddAcceptanceCriteria({ item: ok.id, text: "passa nos testes" })
+    await s.UpdateAcceptanceCriteria({ criteria: criterio.id, met: true })
+    await s.ClaimItem({ item: ok.id, actor: agente })
+    commit("ok.js", "1\n", `fix: ${ok.key} resolvido`)
+    const d1 = await s.SubmitDelivery({ item: ok.id, summary: "feito", actor: agente })
+    const v1 = d1.evidence.find((e) => e.kind === "verification")
+    assert.ok(v1, "a verificação vira evidência")
+    assert.equal(v1.exitCode, 0)
+    assert.ok(/12 passed/.test(v1.body), "a saída do comando é guardada")
+    assert.equal(d1.evidenceQuality, "verified", "chave + verificação verde + critérios atendidos = verificada")
+
+    // Verificação que FALHA é lacuna bloqueante — e o agente é avisado na hora,
+    // antes de o humano devolver por isso.
+    const ruim = await s.CreateItem({ project: p.id, type: "task", title: "Quebrado",
+        verifyCommand: 'node -e "process.exit(3)"', actor: { source: "cli" } })
+    await s.ClaimItem({ item: ruim.id, actor: agente })
+    commit("ruim.js", "2\n", `wip: ${ruim.key}`)
+    const d2 = await s.SubmitDelivery({ item: ruim.id, summary: "acho que quebrou", actor: agente })
+    const v2 = d2.evidence.find((e) => e.kind === "verification")
+    assert.equal(v2.exitCode, 3)
+    assert.equal(v2.severity, "blocking")
+    assert.ok(d2.gaps.some((g) => g.ref === "verificacao-falhou" && g.severity === "blocking"))
+    assert.ok(d2.warnings && d2.warnings.length, "o agente é avisado do que ficou frouxo")
+    assert.equal(d2.verifyExitCode, 3)
+    await s.sequelize.close()
+})
+
+test("MPMR-21 a ausência é registrada como fato: sem repo, sem comando, sem critério", async () => {
+    const s = await _storeComEvidencia("ev-gaps")
+    const p = await s.CreateProject({ name: "Sem nada", keyPrefix: "SNA", status: "active", actor: { source: "cli" } })
+    await s.MigrateProjectToDeliveryModel({ project: p.id, actor: { source: "gui" } })
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "ev-gap" } }
+    const item = await s.CreateItem({ project: p.id, type: "task", title: "Nada declarado", actor: { source: "cli" } })
+
+    const d = await s.SubmitDelivery({ item: item.id, summary: "confia", actor: agente })
+    assert.equal(d.evidenceQuality, "none", "sem repositório não há o que apurar")
+    const refs = d.gaps.map((g) => g.ref)
+    assert.ok(refs.includes("repo-nao-declarado"))
+    assert.ok(refs.includes("sem-comando-de-verificacao"))
+    assert.ok(refs.includes("sem-criterios"))
+    // As lacunas ficam na MESMA tabela da evidência: o revisor não olha em dois lugares.
+    const guardadas = await s.models.DeliveryEvidence.findAll({ where: { deliveryId: d.id, kind: "gap" } })
+    assert.equal(guardadas.length, refs.length)
+    await s.sequelize.close()
+})
+
+test("MPMR-21 coleta indisponível não derruba a entrega", async () => {
+    // Store SEM gitLib e SEM runVerification — o caso de um ambiente onde as
+    // duas dependências externas não foram injetadas.
+    const s = InitializeProjectStore({ storage: path.join(TMP, "ev-nolib.sqlite"), attachmentsDirPath: ATT_DIR })
+    await s.ConnectAndSync()
+    const p = await s.CreateProject({ name: "Sem libs", keyPrefix: "SLB", status: "active", actor: { source: "cli" } })
+    await s.MigrateProjectToDeliveryModel({ project: p.id, actor: { source: "gui" } })
+    const item = await s.CreateItem({ project: p.id, type: "task", title: "Ainda entrega", actor: { source: "cli" } })
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "ev-nolib" } }
+
+    const d = await s.SubmitDelivery({ item: item.id, summary: "entreguei", actor: agente })
+    assert.equal(d.status, "ai-review", "a entrega acontece mesmo sem poder apurar nada")
+    assert.ok(d.gaps.some((g) => g.ref === "git-indisponivel"))
+    await s.sequelize.close()
+})

@@ -28,6 +28,7 @@ const DeliveriesStore = require("./Store/DeliveriesStore")
 const ReviewsStore    = require("./Store/ReviewsStore")
 const MandatesStore   = require("./Store/MandatesStore")
 const PlansStore      = require("./Store/PlansStore")
+const CollectEvidence = require("./Evidence/CollectEvidence")
 
 /**
  * Store do Meta Project Manager (domínio + persistência SQLite + auditoria).
@@ -241,6 +242,12 @@ const InitializeProjectStore = (options = {}) => {
     // Reviews usa Deliveries; Mandates é chamado por Deliveries (contadores) e
     // chama GateAgentAction; Plans cria itens, sprint e mandato ao aceitar.
     Object.assign(store, MandatesStore(ctx))
+    // O coletor entra ANTES do DeliveriesStore, que o chama ao submeter. As duas
+    // dependências externas (leitura de git e execução do comando de
+    // verificação) são INJETADAS via config — o store não requer nada de fora do
+    // pacote, e num ambiente sem elas a coleta registra a lacuna em vez de
+    // quebrar.
+    Object.assign(store, CollectEvidence(ctx))
     Object.assign(store, DeliveriesStore(ctx))
     Object.assign(store, ReviewsStore(ctx))
     Object.assign(store, PlansStore(ctx))
