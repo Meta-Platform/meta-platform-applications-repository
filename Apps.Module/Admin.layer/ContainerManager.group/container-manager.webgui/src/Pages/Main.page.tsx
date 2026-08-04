@@ -12,6 +12,8 @@ import {
 } from "@i-components"
 
 import useApi from "../Hooks/useApi"
+import { RuntimeEventsProvider } from "../Contexts/RuntimeEvents.context"
+import CanalDeEventos from "../Components/CanalDeEventos"
 import ApplicationsPage from "./Applications.page"
 import ConnectionsPage from "./Connections.page"
 import ContainersPage from "./Containers.page"
@@ -121,12 +123,30 @@ const MainPage = () => {
         }
     }
 
-    return <AppShell
+    /*
+        O canal de eventos é ABERTO AQUI, no shell, e não em cada tela.
+
+        São ~6 WebSockets por host no navegador, e esse teto já derrubou as
+        métricas da versão web uma vez. Um socket para todas as telas mantém o
+        orçamento em: eventos 1 + métricas 1 + log 1 + terminal 1 + stack 1.
+    */
+    const AbrirCanalDeEventos = React.useMemo(() => {
+        if (!conexaoAtivaId) return null
+        return () => api.system.EventsStream(conexaoAtivaId)
+    }, [api, conexaoAtivaId])
+
+    return <RuntimeEventsProvider
+        AbrirSocket={AbrirCanalDeEventos}
+        connectionId={conexaoAtivaId}>
+    <AppShell
         topbar={
             <Topbar
                 brand="Container Manager"
                 subtitle={conexaoAtiva ? conexaoAtiva.endpoint : "sem conexão"}
-                right={SeletorDeConexao}/>
+                right={<>
+                    <CanalDeEventos/>
+                    {SeletorDeConexao}
+                </>}/>
         }
         sidebar={
             <NavRail
@@ -141,6 +161,7 @@ const MainPage = () => {
         { erro && <Banner tone="danger" title="Erro">{erro}</Banner> }
         <Conteudo/>
     </AppShell>
+    </RuntimeEventsProvider>
 }
 
 export default MainPage

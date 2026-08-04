@@ -1,0 +1,182 @@
+{
+    "name": "System",
+    "endpoints": [
+        {
+            "summary": "EventsStream",
+            "method": "WS",
+            "path": "/system/events/:connectionId",
+            "parameters": [
+                {
+                    "in": "path",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "GetRuntimeInfo",
+            "method": "POST",
+            "path": "/system/info",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "GetRuntimeVersion",
+            "method": "POST",
+            "path": "/system/version",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "PingRuntime",
+            "method": "POST",
+            "path": "/system/ping",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "GetDiskUsage",
+            "method": "POST",
+            "path": "/system/disk-usage",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "PrunePreview",
+            "method": "POST",
+            "path": "/system/prune-preview",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "types",
+                    "type": "array",
+                    "required": false
+                },
+                {
+                    "in": "body",
+                    "name": "danglingOnly",
+                    "type": "boolean",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "PruneSystem",
+            "method": "POST",
+            "path": "/system/prune",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "types",
+                    "type": "array",
+                    "required": false
+                },
+                {
+                    "in": "body",
+                    "name": "danglingOnly",
+                    "type": "boolean",
+                    "required": false
+                },
+                {
+                    "in": "body",
+                    "name": "filters",
+                    "type": "object",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "ListOrphans",
+            "method": "POST",
+            "path": "/system/orphans",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "stoppedForDays",
+                    "type": "number",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "ListActivity",
+            "method": "POST",
+            "path": "/system/activity",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "in": "body",
+                    "name": "action",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "in": "body",
+                    "name": "targetId",
+                    "type": "string",
+                    "required": false
+                },
+                {
+                    "in": "body",
+                    "name": "limit",
+                    "type": "number",
+                    "required": false
+                },
+                {
+                    "in": "body",
+                    "name": "offset",
+                    "type": "number",
+                    "required": false
+                }
+            ]
+        }
+    ]
+}

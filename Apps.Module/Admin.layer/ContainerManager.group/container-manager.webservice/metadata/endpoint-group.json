@@ -99,6 +99,25 @@
                     "containerCatalogLib": "containerCatalogLib"
                 }
             }
+        },
+        {
+            "url": "/system",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/System.api.json",
+                "controller": "Controllers/System.controller",
+                "dbFilePath": "{{dbFilePath}}",
+                "secretKeyPath": "{{secretKeyPath}}",
+                "stacksDir": "{{stacksDir}}",
+                "appDataDir": "{{appDataDir}}"
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "containerRuntimeConnectionService": "containerRuntimeConnectionService",
+                    "containerCatalogLib": "containerCatalogLib"
+                }
+            }
         }
     ],
     "params": [

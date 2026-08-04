@@ -21,6 +21,7 @@ import {
 
 import useApi from "../Hooks/useApi"
 import useResource from "../Hooks/useResource"
+import { useLiveResource } from "../Hooks/useLiveResource"
 import DescribeError from "../Utils/DescribeError"
 import { ContainerName, ShortId } from "../Utils/Format"
 
@@ -47,10 +48,14 @@ const NetworksPage = ({ conexaoAtiva }: any) => {
     const [conectando, setConectando] = useState<any>(null)
     const [containerParaConectar, setContainerParaConectar] = useState("")
 
-    const listagem = useResource(
+    const listagem = useLiveResource(
         async () => (await api.networks.ListNetworks({ connectionId: conexaoId })).data,
         [api, conexaoId],
-        Boolean(conexaoId)
+        Boolean(conexaoId),
+        // Recarrega ao ver evento do runtime — recarregar, e não
+        // aplicar patch: a regra de estado é do Docker, e a cópia
+        // dela na tela divergiria em silêncio (CTMG-75).
+        { refreshOn: ["network"] }
     )
 
     const containers = useResource(

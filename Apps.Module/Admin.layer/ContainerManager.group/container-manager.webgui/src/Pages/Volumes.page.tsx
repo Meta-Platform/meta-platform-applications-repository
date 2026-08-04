@@ -20,6 +20,7 @@ import {
 
 import useApi from "../Hooks/useApi"
 import useResource from "../Hooks/useResource"
+import { useLiveResource } from "../Hooks/useLiveResource"
 import DescribeError from "../Utils/DescribeError"
 import { FormatBytes, FormatDate } from "../Utils/Format"
 
@@ -46,10 +47,14 @@ const VolumesPage = ({ conexaoAtiva }: any) => {
     const [paraRemover, setParaRemover] = useState<any>(null)
     const [entradaParaApagar, setEntradaParaApagar] = useState<any>(null)
 
-    const listagem = useResource(
+    const listagem = useLiveResource(
         async () => (await api.volumes.ListVolumes({ connectionId: conexaoId })).data,
         [api, conexaoId],
-        Boolean(conexaoId)
+        Boolean(conexaoId),
+        // Recarrega ao ver evento do runtime — recarregar, e não
+        // aplicar patch: a regra de estado é do Docker, e a cópia
+        // dela na tela divergiria em silêncio (CTMG-75).
+        { refreshOn: ["volume"] }
     )
 
     // O runtime devolve { Volumes: [...] }; algumas versões devolvem a lista direta.

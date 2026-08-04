@@ -20,6 +20,7 @@ import {
 
 import useApi from "../Hooks/useApi"
 import useResource from "../Hooks/useResource"
+import { useLiveResource } from "../Hooks/useLiveResource"
 import DescribeError from "../Utils/DescribeError"
 import CreateContainerDialog from "../Components/CreateContainer.dialog"
 import ContainerMetrics from "../Components/ContainerMetrics"
@@ -61,10 +62,14 @@ const ContainersPage = ({ conexaoAtiva }: any) => {
     const [criando, setCriando] = useState(false)
     const [emAcao, setEmAcao] = useState<string | null>(null)
 
-    const listagem = useResource(
+    const listagem = useLiveResource(
         async () => (await api.containers.ListContainers({ connectionId: conexaoId })).data,
         [api, conexaoId],
-        Boolean(conexaoId)
+        Boolean(conexaoId),
+        // Recarrega ao ver evento do runtime — recarregar, e não
+        // aplicar patch: a regra de estado é do Docker, e a cópia
+        // dela na tela divergiria em silêncio (CTMG-75).
+        { refreshOn: ["container"] }
     )
 
     const containers = (listagem.dado || []).filter((container: any) => {

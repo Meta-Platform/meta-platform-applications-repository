@@ -18,6 +18,7 @@ import {
 
 import useApi from "../Hooks/useApi"
 import useResource from "../Hooks/useResource"
+import { useLiveResource } from "../Hooks/useLiveResource"
 import DescribeError from "../Utils/DescribeError"
 import BuildImageDialog from "../Components/BuildImage.dialog"
 import { FormatBytes, FormatEpoch, ImageTag, ShortId } from "../Utils/Format"
@@ -35,10 +36,14 @@ const ImagesPage = ({ conexaoAtiva }: any) => {
     const [erroDeAcao, setErroDeAcao] = useState<string | null>(null)
     const [construindo, setConstruindo] = useState(false)
 
-    const listagem = useResource(
+    const listagem = useLiveResource(
         async () => (await api.images.ListImages({ connectionId: conexaoId })).data,
         [api, conexaoId],
-        Boolean(conexaoId)
+        Boolean(conexaoId),
+        // Recarrega ao ver evento do runtime — recarregar, e não
+        // aplicar patch: a regra de estado é do Docker, e a cópia
+        // dela na tela divergiria em silêncio (CTMG-75).
+        { refreshOn: ["image"] }
     )
 
     const imagens = (listagem.dado || []).filter((imagem: any) => {
