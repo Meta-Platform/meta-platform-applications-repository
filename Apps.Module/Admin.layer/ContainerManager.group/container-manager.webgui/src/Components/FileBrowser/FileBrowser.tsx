@@ -14,6 +14,7 @@ import {
 
 import useResource from "../../Hooks/useResource"
 import { DescribeError } from "../../Utils/DescribeError"
+import { BaixarBytes, DeBase64, ParaBase64 } from "../../Utils/Download"
 import { FormatBytes } from "../../Utils/Format"
 
 /*
@@ -48,19 +49,11 @@ const PareceTexto = (conteudo: Uint8Array) => {
     return !amostra.includes(0)
 }
 
-const DeBase64 = (base64: string) => {
-    const binario = atob(base64)
-    const bytes = new Uint8Array(binario.length)
-    for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i)
-    return bytes
-}
-
-const ParaBase64 = (texto: string) => {
-    const bytes = new TextEncoder().encode(texto)
-    let binario = ""
-    for (const byte of Array.from(bytes)) binario += String.fromCharCode(byte)
-    return btoa(binario)
-}
+/*
+    A conversão e o download vivem em `Utils/Download`: a tela de imagens faz o
+    mesmo com o tar exportado, e duas cópias da mesma rotina divergem — uma
+    ganha a correção do `revokeObjectURL`, a outra não.
+*/
 
 export type OperacoesDeArquivo = {
     Listar: (caminho: string) => Promise<{ path: string, entries: any[], source?: string }>
@@ -131,7 +124,7 @@ const FileBrowser = ({ operacoes, caminhoInicial = "", raiz = "", titulo }: Prop
             const bytes = DeBase64(arquivo.data)
 
             if (bytes.length > LIMITE_DE_EDICAO || !PareceTexto(bytes)) {
-                BaixarNoNavegador(arquivo.fileName || entrada.name, bytes)
+                BaixarBytes(arquivo.fileName || entrada.name, bytes)
                 return
             }
 
@@ -140,18 +133,6 @@ const FileBrowser = ({ operacoes, caminhoInicial = "", raiz = "", titulo }: Prop
         } catch (falha) {
             setErroDeAcao(DescribeError(falha))
         }
-    }
-
-    const BaixarNoNavegador = (nome: string, bytes: Uint8Array) => {
-        // `bytes.buffer` e não a view: o tipo genérico de Uint8Array no TS
-        // recente não é aceito como BlobPart.
-        const url = URL.createObjectURL(
-            new Blob([bytes.buffer as ArrayBuffer], { type: "application/octet-stream" }))
-        const link = document.createElement("a")
-        link.href = url
-        link.download = nome
-        link.click()
-        URL.revokeObjectURL(url)
     }
 
     const Salvar = () => ComTratamento(async () => {

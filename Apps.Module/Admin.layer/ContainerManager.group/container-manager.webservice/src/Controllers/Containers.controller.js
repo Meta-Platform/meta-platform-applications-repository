@@ -7,11 +7,27 @@
 */
 
 const CreateRuntimeAccess = require("../Helpers/CreateRuntimeAccess")
+const CreateRegistryAuthResolver = require("../Helpers/ResolveRegistryAuth")
 
 const ContainersController = (params) => {
 
-    const { containerRuntimeConnectionService } = params
+    const {
+        containerRuntimeConnectionService,
+        containerCatalogLib,
+        appDataDir,
+        dbFilePath,
+        secretKeyPath,
+        stacksDir
+    } = params
+
     const { WithAdapter } = CreateRuntimeAccess({ containerRuntimeConnectionService })
+
+    const GetContext = require("../AppContext")
+    const contexto = GetContext({
+        containerCatalogLib, appDataDir, dbFilePath, secretKeyPath, stacksDir
+    })
+
+    const ResolverCredencial = CreateRegistryAuthResolver(contexto)
 
     const _ListContainers = (connectionId) =>
         WithAdapter(connectionId, (adaptador) => adaptador.ListAllContainers())
@@ -307,8 +323,124 @@ const ContainersController = (params) => {
     const _MakeContainerDirectory = async ({ connectionId, containerIdOrName, path }) =>
         await WithAdapter(connectionId, (a) => a.MakeContainerDirectory({ containerIdOrName, path }))
 
+    /*
+        ATUALIZAR A IMAGEM DE UM CONTAINER, COM UM CLIQUE (CTMG-95).
+
+        O "Watchtower embutido", e a sequência importa:
+
+            1. baixar a imagem nova;
+            2. só então recriar.
+
+        Nunca o contrário. Se o pull falha — rede caiu, tag sumiu, credencial
+        venceu — o container atual não foi tocado e continua rodando. A ordem
+        inversa deixaria o usuário sem serviço por causa de um problema de
+        rede, que é o pior desfecho possível para um botão chamado "atualizar".
+
+        O `RecreateContainer` do adaptador preserva o spec inteiro, inclusive
+        os volumes: os DADOS sobrevivem à troca da imagem, que é a única razão
+        pela qual isto pode ser um clique só.
+    */
+    const _UpdateContainerImage = async ({
+        connectionId, containerIdOrName, pull = true, registryId
+    }) => {
+        const antes = await WithAdapter(connectionId, (a) => a.InspectContainer(containerIdOrName))
+        const referencia = antes?.Config?.Image
+
+        if (!referencia) {
+            const erro = new Error(
+                "O container não declara a imagem de origem; não há o que atualizar."
+            )
+            erro.code = "IMAGE_REFERENCE_UNKNOWN"
+            erro.httpStatus = 400
+            erro.statusCode = 400
+            throw erro
+        }
+
+        const DigestDe = async (referenciaOuId) => {
+            try {
+                const imagem = await WithAdapter(connectionId, (a) => a.InspectImage(referenciaOuId))
+                return (imagem.RepoDigests || [])[0] || imagem.Id || null
+            } catch (erro) {
+                return null
+            }
+        }
+
+        const imageDigestBefore = await DigestDe(antes.Image)
+
+        if (pull) {
+            const auth = await ResolverCredencial({ registryId, reference: referencia })
+            // Um erro aqui SOBE, e é isso que protege o container atual.
+            await WithAdapter(connectionId, (a) => a.PullImage({ reference: referencia, auth }))
+        }
+
+        const imageDigestAfter = await DigestDe(referencia)
+
+        /*
+            Digest igual antes e depois: a imagem já era a mais nova. Recriar
+            assim mesmo derrubaria o serviço por alguns segundos sem trocar
+            nada — desligar um Postgres à toa não é um detalhe.
+        */
+        if (imageDigestBefore && imageDigestAfter && imageDigestBefore === imageDigestAfter) {
+            return {
+                oldContainerId: antes.Id,
+                newContainerInfo: null,
+                imageDigestBefore,
+                imageDigestAfter,
+                recreated: false,
+                reason: "ALREADY_UP_TO_DATE"
+            }
+        }
+
+        const resultado = await WithAdapter(connectionId, (a) =>
+            a.RecreateContainer({ containerIdOrName, specPatch: { image: referencia } }))
+
+        try {
+            const store = await contexto.GetStoreOrNull()
+            if (store) {
+                await store.RecordActivity({
+                    connectionId,
+                    action: "container.update-image",
+                    targetType: "container",
+                    targetId: resultado.newContainerInfo?.Id,
+                    targetName: String(antes.Name || "").replace(/^\//, ""),
+                    result: "ok",
+                    details: { reference: referencia, imageDigestBefore, imageDigestAfter }
+                })
+            }
+        } catch (erro) {
+            console.error("Falha ao registrar a atualização (a atualização em si deu certo):", erro)
+        }
+
+        return { ...resultado, imageDigestBefore, imageDigestAfter, recreated: true }
+    }
+
+    /*
+        RECRIAR COM MUDANÇAS (CTMG-59 usa isto; aqui ele nasce para o update).
+
+        `specPatch` é aplicado sobre o spec LIDO do container — não sobre um
+        formulário em branco. O que não está no patch permanece.
+    */
+    const _RecreateContainer = ({ connectionId, containerIdOrName, specPatch, keepName, removeOld }) =>
+        WithAdapter(connectionId, (a) =>
+            a.RecreateContainer({ containerIdOrName, specPatch, keepName, removeOld }))
+
+    const _GetContainerSpec = ({ connectionId, containerIdOrName }) =>
+        WithAdapter(connectionId, (a) => a.GetContainerSpec(containerIdOrName))
+
+    /* ----------------------------------------------- procedência (CTMG-96) */
+
+    const _GetContainerProvenance = async ({ connectionId, containerId }) => {
+        const store = await contexto.GetStoreOrNull()
+        if (!store) return null
+        return await store.GetContainerProvenance({ connectionId, containerId })
+    }
+
     const controllerServiceObject = {
         controllerName: "ContainersController",
+        UpdateContainerImage: _UpdateContainerImage,
+        RecreateContainer: _RecreateContainer,
+        GetContainerSpec: _GetContainerSpec,
+        GetContainerProvenance: _GetContainerProvenance,
         ListContainerEntries: _ListContainerEntries,
         CopyFromContainer: _CopyFromContainer,
         CopyToContainer: _CopyToContainer,

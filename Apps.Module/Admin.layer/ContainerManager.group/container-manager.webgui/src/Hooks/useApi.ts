@@ -20,7 +20,8 @@ export const useApi = () => {
             images: Para("Images"),
             networks: Para("Networks"),
             volumes: Para("Volumes"),
-            system: Para("System")
+            system: Para("System"),
+            registries: Para("Registries")
         }
     }, [HTTPServerManager])
 }

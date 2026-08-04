@@ -101,6 +101,25 @@
             }
         },
         {
+            "url": "/registries",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Registries.api.json",
+                "controller": "Controllers/Registries.controller",
+                "dbFilePath": "{{dbFilePath}}",
+                "secretKeyPath": "{{secretKeyPath}}",
+                "stacksDir": "{{stacksDir}}",
+                "appDataDir": "{{appDataDir}}"
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "containerRuntimeConnectionService": "containerRuntimeConnectionService",
+                    "containerCatalogLib": "containerCatalogLib"
+                }
+            }
+        },
+        {
             "url": "/system",
             "type": "controller",
             "params": {

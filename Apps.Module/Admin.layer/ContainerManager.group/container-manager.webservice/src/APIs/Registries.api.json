@@ -1,0 +1,64 @@
+{
+    "name": "Registries",
+    "endpoints": [
+        {
+            "summary": "ListRegistries",
+            "method": "POST",
+            "path": "/registries/list",
+            "parameters": []
+        },
+        {
+            "summary": "GetRegistry",
+            "method": "POST",
+            "path": "/registries/get",
+            "parameters": [
+                { "in": "body", "name": "registryId", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "CreateRegistry",
+            "method": "POST",
+            "path": "/registries/create",
+            "parameters": [
+                { "in": "body", "name": "name", "type": "string", "required": true },
+                { "in": "body", "name": "serverAddress", "type": "string", "required": true },
+                { "in": "body", "name": "username", "type": "string", "required": false },
+                { "in": "body", "name": "password", "type": "string", "required": false },
+                { "in": "body", "name": "isDefault", "type": "boolean", "required": false }
+            ]
+        },
+        {
+            "summary": "UpdateRegistry",
+            "method": "POST",
+            "path": "/registries/update",
+            "parameters": [
+                { "in": "body", "name": "registryId", "type": "string", "required": true },
+                { "in": "body", "name": "name", "type": "string", "required": false },
+                { "in": "body", "name": "serverAddress", "type": "string", "required": false },
+                { "in": "body", "name": "username", "type": "string", "required": false },
+                { "in": "body", "name": "password", "type": "string", "required": false },
+                { "in": "body", "name": "isDefault", "type": "boolean", "required": false }
+            ]
+        },
+        {
+            "summary": "RemoveRegistry",
+            "method": "POST",
+            "path": "/registries/remove",
+            "parameters": [
+                { "in": "body", "name": "registryId", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "TestRegistry",
+            "method": "POST",
+            "path": "/registries/test",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "registryId", "type": "string", "required": false },
+                { "in": "body", "name": "serverAddress", "type": "string", "required": false },
+                { "in": "body", "name": "username", "type": "string", "required": false },
+                { "in": "body", "name": "password", "type": "string", "required": false }
+            ]
+        }
+    ]
+}

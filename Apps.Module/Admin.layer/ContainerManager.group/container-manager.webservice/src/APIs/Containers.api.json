@@ -402,6 +402,112 @@
                     "required": true
                 }
             ]
+        },
+        {
+            "summary": "UpdateContainerImage",
+            "method": "POST",
+            "path": "/containers/update-image",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "pull",
+                    "type": "boolean",
+                    "required": false
+                },
+                {
+                    "in": "body",
+                    "name": "registryId",
+                    "type": "string",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "RecreateContainer",
+            "method": "POST",
+            "path": "/containers/recreate",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "specPatch",
+                    "type": "json",
+                    "required": false
+                },
+                {
+                    "in": "body",
+                    "name": "keepName",
+                    "type": "boolean",
+                    "required": false
+                },
+                {
+                    "in": "body",
+                    "name": "removeOld",
+                    "type": "boolean",
+                    "required": false
+                }
+            ]
+        },
+        {
+            "summary": "GetContainerSpec",
+            "method": "POST",
+            "path": "/containers/spec",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerIdOrName",
+                    "type": "string",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "summary": "GetContainerProvenance",
+            "method": "POST",
+            "path": "/containers/provenance",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "connectionId",
+                    "type": "string",
+                    "required": true
+                },
+                {
+                    "in": "body",
+                    "name": "containerId",
+                    "type": "string",
+                    "required": true
+                }
+            ]
         }
     ]
 }

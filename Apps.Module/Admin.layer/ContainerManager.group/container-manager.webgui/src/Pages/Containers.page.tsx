@@ -8,6 +8,7 @@ import {
     CodeBlock,
     ConfirmDialog,
     DataTable,
+    Dialog,
     Drawer,
     EmptyState,
     KeyValueList,
@@ -31,6 +32,7 @@ import { StripAnsi } from "../Utils/StripAnsi"
 import {
     ContainerName,
     ContainerStatusToken,
+    FormatDate,
     FormatEpoch,
     FormatPorts,
     ShortId
@@ -62,6 +64,8 @@ const ContainersPage = ({ conexaoAtiva }: any) => {
     const [confirmacao, setConfirmacao] = useState<any>(null)
     const [criando, setCriando] = useState(false)
     const [emAcao, setEmAcao] = useState<string | null>(null)
+    const [procedencia, setProcedencia] = useState<any>(null)
+    const [atualizacaoDeImagem, setAtualizacaoDeImagem] = useState<any>(null)
 
     const listagem = useLiveResource(
         async () => (await api.containers.ListContainers({ connectionId: conexaoId })).data,
@@ -116,7 +120,18 @@ const ContainersPage = ({ conexaoAtiva }: any) => {
         setAbaDoDetalhe("inspecao")
         setInspecao(null)
         setLogs(null)
+        setProcedencia(null)
         setCarregandoDetalhe(true)
+
+        // Sem catálogo não há procedência, e isso não é erro de tela: a aba
+        // explica o que aconteceu em vez de mostrar um banner vermelho.
+        ;(api.containers as any).GetContainerProvenance({
+            connectionId: conexaoId,
+            containerId: container.Id
+        })
+            .then(({ data }: any) => setProcedencia(data))
+            .catch(() => setProcedencia(null))
+
         try {
             const { data } = await api.containers.InspectContainer({
                 connectionId: conexaoId,
@@ -157,6 +172,33 @@ const ContainersPage = ({ conexaoAtiva }: any) => {
         }
     }
 
+    /*
+        ATUALIZAR A IMAGEM (CTMG-95).
+
+        A ordem é a garantia: o servidor baixa primeiro e só recria depois. Um
+        pull que falha deixa tudo como estava — o container continua rodando, e
+        a tela diz por que não deu.
+    */
+    const AtualizarImagem = async () => {
+        const alvo = atualizacaoDeImagem.container
+        setAtualizacaoDeImagem({ ...atualizacaoDeImagem, emAndamento: true, erro: null })
+
+        try {
+            const { data } = await (api.containers as any).UpdateContainerImage({
+                connectionId: conexaoId,
+                containerIdOrName: alvo.Id,
+                pull: true
+            })
+            setAtualizacaoDeImagem((atual: any) => ({ ...atual, emAndamento: false, resultado: data }))
+            await listagem.Recarregar()
+            if (detalhe && detalhe.Id === alvo.Id) setDetalhe(null)
+        } catch (falha) {
+            setAtualizacaoDeImagem((atual: any) => ({
+                ...atual, emAndamento: false, erro: DescribeError(falha)
+            }))
+        }
+    }
+
     const colunas = [
         {
             key: "estado",
@@ -187,7 +229,7 @@ const ContainersPage = ({ conexaoAtiva }: any) => {
         {
             key: "acoes",
             header: "",
-            width: 300,
+            width: 360,
             align: "right" as const,
             render: (container: any) => {
                 const rodando = String(container.State).toLowerCase() === "running"
@@ -202,6 +244,8 @@ const ContainersPage = ({ conexaoAtiva }: any) => {
                     <Button size="sm" icon="redo" title="Reiniciar"
                         loading={emAcao === `RestartContainer:${container.Id}`}
                         onClick={() => Pedir("RestartContainer", container)}>Reiniciar</Button>
+                    <Button size="sm" icon="arrow circle up" title="Baixar a imagem nova e recriar"
+                        onClick={() => setAtualizacaoDeImagem({ container })}>Atualizar</Button>
                     <Button size="sm" variant="danger" icon="bolt" title="Matar"
                         onClick={() => Pedir("KillContainer", container)}>Matar</Button>
                     <Button size="sm" variant="danger" icon="trash" title="Remover"
@@ -257,7 +301,8 @@ const ContainersPage = ({ conexaoAtiva }: any) => {
                         { key: "aovivo", label: "Log ao vivo", icon: "rss" },
                         { key: "metricas", label: "Métricas", icon: "chart line" },
                         { key: "terminal", label: "Terminal", icon: "terminal" },
-                        { key: "arquivos", label: "Arquivos", icon: "folder" }
+                        { key: "arquivos", label: "Arquivos", icon: "folder" },
+                        { key: "procedencia", label: "Procedência", icon: "map signs" }
                     ]}
                     onChange={(chave: string) => {
                         setAbaDoDetalhe(chave)
@@ -306,7 +351,6 @@ const ContainersPage = ({ conexaoAtiva }: any) => {
                         : <Banner tone="warning" title="Container parado">
                             Não há processo para abrir um terminal. Inicie o container primeiro.
                         </Banner>) }
-            </Drawer> }
 
                 {
                     /*
@@ -314,8 +358,12 @@ const ContainersPage = ({ conexaoAtiva }: any) => {
                         As duas origens respondem com a mesma forma, e foi
                         decidido assim no adaptador justamente para que aqui
                         houvesse um caminho e não dois.
+
+                        Este bloco vivia FORA do Drawer, e por isso a aba
+                        "Arquivos" pintava o navegador embaixo da tabela, na
+                        página, em vez de dentro do painel.
                     */
-                    abaDoDetalhe === "arquivos" && detalhe &&
+                    abaDoDetalhe === "arquivos" &&
                         <FileBrowser
                             titulo="/"
                             raiz="/"
@@ -355,6 +403,86 @@ const ContainersPage = ({ conexaoAtiva }: any) => {
                                     })).data
                             }}/>
                 }
+
+                {
+                    /*
+                        DE ONDE ESTE CONTAINER VEIO (CTMG-96).
+
+                        O runtime sabe que o container existe. Ele não sabe que
+                        nasceu da receita "postgres", nem que a imagem veio do
+                        registry privado num dia específico. Isso só existe
+                        porque foi gravado na hora da criação.
+                    */
+                    abaDoDetalhe === "procedencia" &&
+                        (procedencia
+                            ? <KeyValueList items={[
+                                { label: "Origem", value: procedencia.origin },
+                                { label: "Criado por", value: procedencia.createdBy || "—" },
+                                { label: "Receita", value: procedencia.recipeSlug || "—" },
+                                { label: "Serviço", value: procedencia.serviceId || "—" },
+                                { label: "Stack", value: procedencia.stackId || "—" },
+                                { label: "Imagem", value: procedencia.imageReference || "—", mono: true },
+                                { label: "Digest da imagem", value: procedencia.imageDigest || "—", mono: true },
+                                { label: "Registrado em", value: FormatDate(procedencia.createdAt) }
+                            ]}/>
+                            : <Banner tone="info" title="Sem procedência registrada">
+                                Este container não foi criado por aqui, ou o catálogo não está
+                                disponível. O que for criado daqui em diante ganha ficha — e
+                                também uma etiqueta no próprio container, legível pelo
+                                <code> docker inspect</code>.
+                              </Banner>) }
+            </Drawer> }
+
+        { atualizacaoDeImagem &&
+            <Dialog
+                icon="arrow circle up"
+                title="Atualizar a imagem do container"
+                onClose={() => setAtualizacaoDeImagem(null)}
+                actions={<>
+                    <Button
+                        onClick={() => setAtualizacaoDeImagem(null)}
+                        disabled={atualizacaoDeImagem.emAndamento}>
+                        { atualizacaoDeImagem.resultado ? "Fechar" : "Cancelar" }
+                    </Button>
+                    { !atualizacaoDeImagem.resultado &&
+                        <Button
+                            variant="primary"
+                            icon="arrow circle up"
+                            loading={atualizacaoDeImagem.emAndamento}
+                            onClick={AtualizarImagem}>
+                            Baixar e recriar
+                        </Button> }
+                </>}>
+
+                <p>
+                    A imagem <strong>{atualizacaoDeImagem.container.Image}</strong> será baixada
+                    de novo e o container <strong>{ContainerName(atualizacaoDeImagem.container)}</strong>
+                    {" "}recriado com a mesma configuração.
+                </p>
+                <p className="cm-muted">
+                    Os <strong>volumes são preservados</strong> — os dados sobrevivem à troca.
+                    O download vem primeiro: se ele falhar, o container atual continua rodando
+                    exatamente como está.
+                </p>
+
+                { atualizacaoDeImagem.erro &&
+                    <Banner tone="danger" title="A atualização falhou">
+                        {atualizacaoDeImagem.erro}
+                    </Banner> }
+
+                { atualizacaoDeImagem.resultado &&
+                    (atualizacaoDeImagem.resultado.recreated
+                        ? <Banner tone="success" title="Container atualizado">
+                            <KeyValueList items={[
+                                { label: "Antes", value: atualizacaoDeImagem.resultado.imageDigestBefore || "—", mono: true },
+                                { label: "Depois", value: atualizacaoDeImagem.resultado.imageDigestAfter || "—", mono: true }
+                            ]}/>
+                          </Banner>
+                        : <Banner tone="info" title="Já estava atualizado">
+                            A imagem local já é a mesma do registry; nada foi recriado, e o
+                            container não foi interrompido à toa.
+                          </Banner>) }
+            </Dialog> }
 
         { confirmacao &&
             <ConfirmDialog

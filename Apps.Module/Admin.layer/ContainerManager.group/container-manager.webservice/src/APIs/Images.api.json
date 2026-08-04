@@ -38,6 +38,129 @@
                 { "in": "body", "name": "dockerfileContent", "type": "string", "required": true },
                 { "in": "body", "name": "buildargs", "type": "json", "required": false }
             ]
+        },
+        {
+            "summary": "TransferStream",
+            "method": "WS",
+            "path": "/images/transfer/:connectionId",
+            "parameters": [
+                { "in": "path", "name": "connectionId", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "PullImage",
+            "method": "POST",
+            "path": "/images/pull",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "reference", "type": "string", "required": true },
+                { "in": "body", "name": "platform", "type": "string", "required": false },
+                { "in": "body", "name": "registryId", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "PushImage",
+            "method": "POST",
+            "path": "/images/push",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "reference", "type": "string", "required": true },
+                { "in": "body", "name": "tag", "type": "string", "required": false },
+                { "in": "body", "name": "registryId", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "TagImage",
+            "method": "POST",
+            "path": "/images/tag",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "imageIdOrName", "type": "string", "required": true },
+                { "in": "body", "name": "repo", "type": "string", "required": true },
+                { "in": "body", "name": "tag", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "GetImageHistory",
+            "method": "POST",
+            "path": "/images/history",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "imageIdOrName", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "SearchImages",
+            "method": "POST",
+            "path": "/images/search",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "term", "type": "string", "required": true },
+                { "in": "body", "name": "limit", "type": "number", "required": false }
+            ]
+        },
+        {
+            "summary": "ExportImage",
+            "method": "POST",
+            "path": "/images/export",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "imageIdOrName", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "LoadImage",
+            "method": "POST",
+            "path": "/images/load",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "contentBase64", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "PruneImages",
+            "method": "POST",
+            "path": "/images/prune",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "dangling", "type": "boolean", "required": false }
+            ]
+        },
+        {
+            "summary": "CheckImageUpdate",
+            "method": "POST",
+            "path": "/images/check-update",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "reference", "type": "string", "required": true },
+                { "in": "body", "name": "registryId", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "CheckAllImageUpdates",
+            "method": "POST",
+            "path": "/images/check-updates",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "references", "type": "array", "required": false }
+            ]
+        },
+        {
+            "summary": "GetImageProvenance",
+            "method": "POST",
+            "path": "/images/provenance",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true },
+                { "in": "body", "name": "imageId", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "ListImageProvenance",
+            "method": "POST",
+            "path": "/images/provenance/list",
+            "parameters": [
+                { "in": "body", "name": "connectionId", "type": "string", "required": true }
+            ]
         }
     ]
 }
