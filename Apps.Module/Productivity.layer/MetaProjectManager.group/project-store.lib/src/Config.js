@@ -136,6 +136,103 @@ const RISK_STATUSES      = ["open", "mitigating", "accepted", "closed", "occurre
 // Documento de planejamento (termo de abertura/charter): ciclo de vida do plano.
 const PLANNING_DOC_STATUSES = ["draft", "review", "approved", "archived"]
 
+// ── MODELO DE ENTREGA ────────────────────────────────────────────────────────
+//
+// O produto nasceu com UM eixo (statusKey) para responder duas perguntas
+// diferentes: "em que pé está o trabalho?" e "quem já olhou isto?". Enquanto o
+// humano era o executor, uma coluna bastava. Com o agente executando, a segunda
+// pergunta passou a ser a que importa — e ela não cabe numa coluna de board.
+//
+// Agora são dois eixos. `executionState` é o que o AGENTE faz; `reviewState` é
+// onde a ENTREGA está no caminho até a decisão humana. `statusKey` continua
+// existindo, mas vira consequência: quem escreve é DeriveStatusKey, e é dele que
+// o board, o gráfico de fluxo e o histórico do item continuam vivendo.
+const EXECUTION_STATES = ["queued", "claimed", "executing", "delivered", "done"]
+const REVIEW_STATES    = ["none", "collecting", "ai-review", "awaiting-human", "returned", "accepted"]
+
+// Ciclo de vida de uma ENTREGA. Uma tarefa gera N entregas — uma por rodada de
+// revisão —, e é a entrega, não a tarefa, que o humano aceita ou devolve.
+const DELIVERY_STATUSES = [
+    "draft",           // criada, o agente ainda escreve o resumo
+    "collecting",      // enviada; o coletor está montando a evidência
+    "ai-review",       // aguardando o agente-revisor
+    "awaiting-human",  // passou pela IA (ou escapou por falta de revisor)
+    "accepted",
+    "returned",        // devolvida ao mesmo agente, com motivo
+    "withdrawn"        // o próprio agente retirou antes de alguém decidir
+]
+
+// Estado da revisão POR AGENTE, separado do status da entrega porque a entrega
+// segue viva enquanto o revisor vai e volta. `escalated` = ninguém revisou a
+// tempo e ela subiu ao humano marcada como não revisada — falta de revisor
+// nunca pode prender trabalho.
+const AI_REVIEW_STATES = ["pending", "claimed", "passed", "returned", "skipped", "escalated"]
+
+// Quem decide, e o que decide. `escalate` é do revisor-IA que não se sente apto;
+// `abstain` é o que registra "olhei e não é comigo" sem travar a fila.
+const REVIEWER_TYPES     = ["ai", "human"]
+const REVIEW_DECISIONS   = ["accept", "return", "escalate", "abstain"]
+
+// EVIDÊNCIA: o que o sistema colheu sozinho sobre uma entrega. `gap` é a
+// ausência registrada como fato — é o que impede a evidência de mentir por
+// omissão ("não havia comando de verificação declarado" precisa aparecer tanto
+// quanto "os testes passaram").
+const EVIDENCE_KINDS = ["commit", "file", "verification", "criteria", "environment", "activity", "note", "gap"]
+
+// Quem produziu a linha de evidência. Só `note` nasce do agente; o resto é
+// colhido — evidência auto-relatada não é evidência.
+const EVIDENCE_SOURCES = ["auto", "agent", "system"]
+
+// COMO um commit foi ligado ao item. `key` é a correlação forte (a chave do
+// item na mensagem); `window` é o plano B por janela de tempo, que se declara
+// fraco em vez de fingir certeza.
+const EVIDENCE_ATTRIBUTIONS = ["key", "window", "declared", "none"]
+const EVIDENCE_CONFIDENCE   = ["high", "low"]
+
+// Gravidade de uma lacuna. `blocking` é o que o revisor tem instrução de
+// devolver; `warning` informa sem barrar.
+const EVIDENCE_SEVERITIES = ["info", "warning", "blocking"]
+
+// Qualidade agregada da evidência de uma entrega — o selo que o humano lê antes
+// de abrir qualquer detalhe.
+const EVIDENCE_QUALITIES = ["verified", "partial", "unverified", "none"]
+
+// MANDATO: o escopo que o humano aprova UMA vez e dentro do qual o agente
+// encadeia trabalho sem perguntar. `exhausted` é parada por condição atingida
+// (o mandato cumpriu seu papel); `revoked` é o humano puxando o freio.
+const MANDATE_STATUSES = ["draft", "pending", "active", "paused", "exhausted", "revoked", "completed"]
+
+// Condições de parada, na ordem em que são avaliadas. O nome vai para
+// `stopReason` e é o que o agente lê ao ser barrado.
+const MANDATE_STOP_REASONS = [
+    "unreviewed-limit",     // entregas demais esperando revisão humana
+    "consecutive-returns",  // devolvido vezes seguidas: insistir é desperdício
+    "out-of-scope",
+    "delivery-limit",
+    "expired",
+    "revoked"
+]
+
+// Tetos padrão de um mandato novo. São conservadores de propósito: o mandato
+// existe para o agente andar sozinho, não para acumular trabalho que ninguém
+// olhou — três entregas paradas já indicam que o gargalo virou o humano.
+const MANDATE_DEFAULT_MAX_UNREVIEWED         = 3
+const MANDATE_DEFAULT_MAX_CONSECUTIVE_RETURNS = 2
+
+// PAPÉIS de agente. `reviewer` é o único que muda regra de verdade (não se pode
+// revisar a própria entrega); os outros dois documentam intenção e alimentam a
+// fila certa.
+const AGENT_ROLES = ["executor", "reviewer", "planner"]
+
+// PLANO proposto pelo agente: rascunho que o humano aceita, edita ou recusa UMA
+// vez. Aceito, vira árvore de itens + rodada + mandato numa decisão só.
+const PLAN_STATUSES = ["draft", "submitted", "accepted", "rejected", "superseded"]
+
+// Quanto tempo uma entrega espera por um agente-revisor antes de subir ao humano
+// marcada como não revisada, e por quanto tempo uma revisão fica reivindicada.
+const AI_REVIEW_TIMEOUT_MINUTES = 30
+const AI_REVIEW_CLAIM_MINUTES   = 20
+
 // Colunas/status padrão de um board recém-criado (spec §4.2).
 const DEFAULT_COLUMNS = [
     { name: "Backlog",     statusKey: "backlog",     color: "#64748B", isDoneColumn: false },
@@ -242,6 +339,27 @@ module.exports = {
     RISK_LEVELS,
     RISK_STATUSES,
     PLANNING_DOC_STATUSES,
+    // Modelo de entrega
+    EXECUTION_STATES,
+    REVIEW_STATES,
+    DELIVERY_STATUSES,
+    AI_REVIEW_STATES,
+    REVIEWER_TYPES,
+    REVIEW_DECISIONS,
+    EVIDENCE_KINDS,
+    EVIDENCE_SOURCES,
+    EVIDENCE_ATTRIBUTIONS,
+    EVIDENCE_CONFIDENCE,
+    EVIDENCE_SEVERITIES,
+    EVIDENCE_QUALITIES,
+    MANDATE_STATUSES,
+    MANDATE_STOP_REASONS,
+    MANDATE_DEFAULT_MAX_UNREVIEWED,
+    MANDATE_DEFAULT_MAX_CONSECUTIVE_RETURNS,
+    AGENT_ROLES,
+    PLAN_STATUSES,
+    AI_REVIEW_TIMEOUT_MINUTES,
+    AI_REVIEW_CLAIM_MINUTES,
     USER_TYPES,
     DESKTOP_USER_HANDLE,
     DESKTOP_USER_DISPLAYNAME,

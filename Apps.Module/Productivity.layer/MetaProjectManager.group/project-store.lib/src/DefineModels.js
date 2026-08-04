@@ -34,6 +34,28 @@ const DefineModels = (sequelize) => {
         defaultBoardId:{ type: DataTypes.STRING },
         ownerUserId:   { type: DataTypes.STRING },
         archivedAt:    { type: DataTypes.DATE },
+        // ── MODELO DE ENTREGA ────────────────────────────────────────────────
+        // Chave da convivência: enquanto isto está desligado, o projeto segue
+        // exatamente como sempre foi (gate antes de agir, conclusão por mudança
+        // de status). Ligado, o trabalho passa a ser entregue e revisado. É
+        // consultada em três lugares e em nenhum outro: a política de gate, a
+        // fila de trabalho e os handlers do MCP.
+        deliveryModel:  { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+        deliveryModelAt:{ type: DataTypes.DATE },
+        deliveryModelByUserId: { type: DataTypes.STRING },
+        // Comando que COMPROVA que a entrega funciona. O sistema o executa e
+        // guarda saída e código de saída — é o que torna "testei" verificável.
+        // O item pode sobrepor; sem nenhum dos dois, a entrega chega ao revisor
+        // com a lacuna registrada.
+        verifyCommand:  { type: DataTypes.STRING },
+        verifyCwd:      { type: DataTypes.STRING },
+        // Exigir a chave do item na mensagem do commit. Desligado, a correlação
+        // por janela de tempo deixa de ser impeditiva — útil em projeto cujo
+        // histórico não segue a convenção.
+        requireKeyInCommit: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+        // Exigir revisão por agente antes de chegar ao humano.
+        requireAiReview:    { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+        aiReviewTimeoutMinutes: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 30 },
         deletedAt:     { type: DataTypes.DATE }
     }, { tableName: "projects", indexes: [{ fields: ["slug"] }, { fields: ["status"] }] })
 
@@ -131,10 +153,32 @@ const DefineModels = (sequelize) => {
         pendingStatusKey:   { type: DataTypes.STRING },
         pendingStatusRequestId: { type: DataTypes.STRING },
         pendingStatusAt:    { type: DataTypes.DATE },
+        // ── MODELO DE ENTREGA ────────────────────────────────────────────────
+        // Os dois eixos que substituem o uso duplo do statusKey. `executionState`
+        // é o que o agente faz; `reviewState` é onde a entrega está no caminho
+        // até a decisão humana. `statusKey` continua existindo e continua sendo o
+        // que o board pinta — mas quem o escreve, em projeto migrado, é
+        // DeriveStatusKey a partir destes dois.
+        executionState:     { type: DataTypes.STRING, allowNull: false, defaultValue: "queued" },
+        reviewState:        { type: DataTypes.STRING, allowNull: false, defaultValue: "none" },
+        // Última entrega viva, desnormalizada: o board precisa dela em toda linha
+        // e resolver por consulta custaria uma ida ao banco por card.
+        currentDeliveryId:  { type: DataTypes.STRING },
+        deliveryCount:      { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        // Quantas vezes esta tarefa já voltou. É o sinal de que insistir está
+        // saindo mais caro que repensar — o mandato para quando isto acelera.
+        returnCount:        { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        mandateId:          { type: DataTypes.STRING },
+        // Sobrepõe o comando de verificação do projeto para esta tarefa.
+        verifyCommand:      { type: DataTypes.STRING },
+        // De qual nó de plano este item nasceu (quando nasceu de um).
+        planNodeId:         { type: DataTypes.STRING },
+        lastReviewedAt:     { type: DataTypes.DATE },
         deletedAt:          { type: DataTypes.DATE }
     }, { tableName: "work_items", indexes: [
         { fields: ["projectId"] }, { fields: ["boardId"] }, { fields: ["parentId"] },
-        { fields: ["statusKey"] }, { fields: ["assigneeUserId"] }, { fields: ["key"] }
+        { fields: ["statusKey"] }, { fields: ["assigneeUserId"] }, { fields: ["key"] },
+        { fields: ["executionState"] }, { fields: ["reviewState"] }
     ] })
 
     const WorkItemLink = sequelize.define("WorkItemLink", {
@@ -265,7 +309,18 @@ const DefineModels = (sequelize) => {
         noticeCursorAt:    { type: DataTypes.DATE },
         // Quando esta sessão foi avisada, pela primeira vez, de que havia
         // companhia no workspace. Só acontece uma vez por sessão.
-        companyWarnedAt:   { type: DataTypes.DATE }
+        companyWarnedAt:   { type: DataTypes.DATE },
+        // ── MODELO DE ENTREGA ────────────────────────────────────────────────
+        // Papel declarado por esta sessão nesta rodada de trabalho. Uma mesma
+        // sessão pode executar num projeto e revisar noutro; o papel concedido
+        // (AgentRoleAssignment) manda, este é o que ela diz estar fazendo agora.
+        activeRole:            { type: DataTypes.STRING },
+        mandateId:             { type: DataTypes.STRING },
+        // Contadores espelhados do mandato, por sessão: é o que permite dizer
+        // "você já entregou 3 coisas que ninguém olhou" sem consultar o mandato
+        // a cada escrita.
+        deliveriesSinceReview: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        consecutiveReturns:    { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 }
     }, { tableName: "agent_sessions", indexes: [{ fields: ["agentUserId"] }, { fields: ["status"] }, { fields: ["identityKey"] }, { fields: ["presence"] }] })
 
     /**
@@ -630,13 +685,266 @@ const DefineModels = (sequelize) => {
         deletedAt:           { type: DataTypes.DATE }
     }, { tableName: "doc_page_attachments", indexes: [{ fields: ["docPageId"] }, { fields: ["projectId"] }] })
 
+    // ── MODELO DE ENTREGA ────────────────────────────────────────────────────
+    //
+    // ENTREGA: a unidade que o humano revisa. Antes disto, o que um agente havia
+    // produzido não tinha lugar próprio — vivia espalhado em comentário, nota de
+    // progresso e audit log, e revisar exigia remontar a história à mão. Uma
+    // tarefa gera N entregas: cada devolução abre a rodada seguinte, e as antigas
+    // ficam como histórico (`previousDeliveryId` encadeia).
+    //
+    // `summary` é o ÚNICO texto escrito pelo agente aqui. Todo o resto é colhido
+    // (ver DeliveryEvidence) — evidência que o autor redige não é evidência.
+    // Tabela NOVA → o sync() a cria. Soft delete manual.
+    const Delivery = sequelize.define("Delivery", {
+        id:                 idField,
+        projectId:          { type: DataTypes.STRING, allowNull: false },
+        workItemId:         { type: DataTypes.STRING, allowNull: false },
+        // "MPMR-5/D2" — item + rodada. Legível no card e na conversa com o humano.
+        key:                { type: DataTypes.STRING, allowNull: false },
+        round:              { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+        status:             { type: DataTypes.STRING, allowNull: false, defaultValue: "draft" }, // DELIVERY_STATUSES
+        title:              { type: DataTypes.STRING },
+        shortDescription:   { type: DataTypes.STRING },
+        summary:            { type: DataTypes.TEXT },   // o que o agente diz que fez
+        // QUEM entregou. A sessão importa mais que o usuário-agente: é dela que sai
+        // a regra de "o revisor não pode ser quem executou", e é para ela que a
+        // devolução volta.
+        executedBySessionId:   { type: DataTypes.STRING },
+        executedByAgentUserId: { type: DataTypes.STRING },
+        provider:           { type: DataTypes.STRING },
+        model:              { type: DataTypes.STRING },
+        mandateId:          { type: DataTypes.STRING },
+        // Início da janela de coleta: desde quando esta rodada estava sendo
+        // trabalhada. Sem isto, a correlação por tempo não tem de onde partir.
+        claimedAtSnapshot:  { type: DataTypes.DATE },
+        submittedAt:        { type: DataTypes.DATE },
+        evidenceCollectedAt:{ type: DataTypes.DATE },
+        evidenceQuality:    { type: DataTypes.STRING }, // EVIDENCE_QUALITIES
+        // ── Revisão por AGENTE ───────────────────────────────────────────────
+        aiReviewState:      { type: DataTypes.STRING, allowNull: false, defaultValue: "pending" }, // AI_REVIEW_STATES
+        aiReviewClaimedBySessionId: { type: DataTypes.STRING },
+        aiReviewClaimExpiresAt:     { type: DataTypes.DATE },
+        aiReviewedBySessionId:      { type: DataTypes.STRING },
+        aiReviewedAt:       { type: DataTypes.DATE },
+        aiVerdict:          { type: DataTypes.STRING },
+        aiVerdictReason:    { type: DataTypes.TEXT },
+        // ── Decisão HUMANA ───────────────────────────────────────────────────
+        humanDecision:      { type: DataTypes.STRING }, // accept | return
+        decidedByUserId:    { type: DataTypes.STRING },
+        decidedAt:          { type: DataTypes.DATE },
+        returnReason:       { type: DataTypes.TEXT },   // obrigatório ao devolver
+        previousDeliveryId:   { type: DataTypes.STRING },
+        supersededByDeliveryId:{ type: DataTypes.STRING },
+        // Comando de verificação efetivamente usado nesta entrega (o do item ou o
+        // do projeto) e o que ele devolveu. Guardado aqui, e não só na evidência,
+        // para a listagem poder mostrar "verificação falhou" sem abrir a entrega.
+        verifyCommand:      { type: DataTypes.STRING },
+        verifyExitCode:     { type: DataTypes.INTEGER },
+        deletedAt:          { type: DataTypes.DATE }
+    }, { tableName: "deliveries", indexes: [
+        { fields: ["projectId"] }, { fields: ["workItemId"] }, { fields: ["status"] },
+        { fields: ["aiReviewState"] }, { fields: ["executedBySessionId"] }, { fields: ["submittedAt"] }
+    ] })
+
+    // EVIDÊNCIA de uma entrega: o que o SISTEMA apurou, não o que o agente contou.
+    // Cada linha é um fato verificável — um commit que cita a chave do item, um
+    // arquivo tocado, a saída e o código de saída do comando de verificação, um
+    // critério de aceite ainda em aberto.
+    //
+    // `gap` é a ausência registrada como fato. Sem ela a evidência mentiria por
+    // omissão: "não havia comando de verificação declarado" precisa aparecer com
+    // a mesma clareza que "os testes passaram".
+    //
+    // `attribution` diz COMO o commit foi ligado ao item: `key` (a chave estava na
+    // mensagem — correlação forte) ou `window` (só a janela de tempo — o plano B,
+    // que se declara fraco em vez de fingir certeza).
+    const DeliveryEvidence = sequelize.define("DeliveryEvidence", {
+        id:            idField,
+        projectId:     { type: DataTypes.STRING, allowNull: false },
+        deliveryId:    { type: DataTypes.STRING, allowNull: false },
+        workItemId:    { type: DataTypes.STRING },
+        kind:          { type: DataTypes.STRING, allowNull: false }, // EVIDENCE_KINDS
+        source:        { type: DataTypes.STRING, allowNull: false, defaultValue: "auto" },
+        collectorName: { type: DataTypes.STRING },
+        title:         { type: DataTypes.STRING },
+        ref:           { type: DataTypes.STRING },   // hash do commit | caminho | comando
+        body:          { type: DataTypes.TEXT },     // mensagem do commit | saída recortada
+        dataJson:      { type: DataTypes.JSON, defaultValue: {} }, // numstat, duração, critérios…
+        attribution:   { type: DataTypes.STRING },
+        confidence:    { type: DataTypes.STRING },
+        exitCode:      { type: DataTypes.INTEGER },
+        severity:      { type: DataTypes.STRING, allowNull: false, defaultValue: "info" },
+        occurredAt:    { type: DataTypes.DATE },     // quando o fato aconteceu
+        collectedAt:   { type: DataTypes.DATE },     // quando o coletor o viu
+        deletedAt:     { type: DataTypes.DATE }
+    }, { tableName: "delivery_evidence", indexes: [
+        { fields: ["deliveryId"] }, { fields: ["workItemId"] }, { fields: ["kind"] },
+        { fields: ["projectId"] }, { fields: ["severity"] }
+    ] })
+
+    // DECISÃO sobre uma entrega, de quem quer que seja. Guardar as duas revisões
+    // (a do agente-revisor e a do humano) na MESMA tabela é o que permite ler a
+    // rodada inteira em ordem e responder "a IA deixou passar o que eu devolvi?".
+    //
+    // `reason` é obrigatório quando a decisão é devolver — a regra vive no store,
+    // mas o campo existe aqui porque devolver sem dizer por quê é o defeito que
+    // mais desperdiça trabalho de agente.
+    const DeliveryReview = sequelize.define("DeliveryReview", {
+        id:                 idField,
+        projectId:          { type: DataTypes.STRING, allowNull: false },
+        deliveryId:         { type: DataTypes.STRING, allowNull: false },
+        workItemId:         { type: DataTypes.STRING },
+        round:              { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+        reviewerType:       { type: DataTypes.STRING, allowNull: false, defaultValue: "human" }, // REVIEWER_TYPES
+        reviewerSessionId:  { type: DataTypes.STRING },
+        reviewerUserId:     { type: DataTypes.STRING },
+        decision:           { type: DataTypes.STRING, allowNull: false }, // REVIEW_DECISIONS
+        reason:             { type: DataTypes.TEXT },
+        // Veredito por critério de aceite: [{ criteriaId, met, note }].
+        criteriaVerdictJson:{ type: DataTypes.JSON, defaultValue: [] },
+        // Que evidência o revisor declarou ter olhado — distingue "aprovou depois
+        // de conferir" de "aprovou sem abrir".
+        evidenceSeenJson:   { type: DataTypes.JSON, defaultValue: [] },
+        durationMs:         { type: DataTypes.INTEGER }
+    }, { tableName: "delivery_reviews", indexes: [
+        { fields: ["deliveryId"] }, { fields: ["workItemId"] },
+        { fields: ["reviewerType"] }, { fields: ["projectId"] }
+    ] })
+
+    // MANDATO: o escopo que o humano aprova UMA vez e dentro do qual o agente
+    // encadeia trabalho sem perguntar nada. É o que substitui a escolha entre
+    // "pede licença a cada passo" e "não para nunca".
+    //
+    // Os contadores são materializados (e não recalculados por consulta) porque
+    // são avaliados a cada reivindicação e a cada entrega — no caminho quente.
+    // As condições de parada são tetos: atingir qualquer uma esgota o mandato,
+    // e o agente recebe o motivo junto com o que fazer em seguida.
+    const AgentMandate = sequelize.define("AgentMandate", {
+        id:               idField,
+        projectId:        { type: DataTypes.STRING, allowNull: false },
+        title:            { type: DataTypes.STRING, allowNull: false },
+        shortDescription: { type: DataTypes.STRING },
+        // { itemKeys, milestoneId, sprintId, labels, area, packageRefs, planId }
+        scopeJson:        { type: DataTypes.JSON, defaultValue: {} },
+        status:           { type: DataTypes.STRING, allowNull: false, defaultValue: "draft" }, // MANDATE_STATUSES
+        agentUserId:      { type: DataTypes.STRING },
+        // Nulo = vale para qualquer sessão daquele agente. Preenchido = o mandato
+        // morre com a sessão, que é o que se quer quando o humano libera uma
+        // rodada específica de trabalho.
+        sessionId:        { type: DataTypes.STRING },
+        role:             { type: DataTypes.STRING, allowNull: false, defaultValue: "executor" },
+        grantedByUserId:  { type: DataTypes.STRING },
+        grantedAt:        { type: DataTypes.DATE },
+        expiresAt:        { type: DataTypes.DATE },
+        // ── Tetos ────────────────────────────────────────────────────────────
+        maxDeliveries:            { type: DataTypes.INTEGER },
+        maxUnreviewedDeliveries:  { type: DataTypes.INTEGER, allowNull: false, defaultValue: 3 },
+        maxConsecutiveReturns:    { type: DataTypes.INTEGER, allowNull: false, defaultValue: 2 },
+        maxItems:                 { type: DataTypes.INTEGER },
+        stopOnOutOfScope:         { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+        // ── Contadores ───────────────────────────────────────────────────────
+        deliveriesMade:       { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        deliveriesUnreviewed: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        consecutiveReturns:   { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        itemsCompleted:       { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        stopReason:       { type: DataTypes.STRING }, // MANDATE_STOP_REASONS
+        stoppedAt:        { type: DataTypes.DATE },
+        revokedByUserId:  { type: DataTypes.STRING },
+        revokedAt:        { type: DataTypes.DATE },
+        note:             { type: DataTypes.TEXT },
+        deletedAt:        { type: DataTypes.DATE }
+    }, { tableName: "agent_mandates", indexes: [
+        { fields: ["projectId"] }, { fields: ["agentUserId"] },
+        { fields: ["sessionId"] }, { fields: ["status"] }
+    ] })
+
+    // PAPEL de um agente. Só `reviewer` muda regra de verdade (ninguém revisa a
+    // própria entrega); `executor` e `planner` documentam intenção e alimentam a
+    // fila certa. `projectId` nulo = papel global.
+    const AgentRoleAssignment = sequelize.define("AgentRoleAssignment", {
+        id:              idField,
+        projectId:       { type: DataTypes.STRING },
+        agentUserId:     { type: DataTypes.STRING },
+        sessionId:       { type: DataTypes.STRING },
+        role:            { type: DataTypes.STRING, allowNull: false, defaultValue: "executor" }, // AGENT_ROLES
+        grantedByUserId: { type: DataTypes.STRING },
+        grantedAt:       { type: DataTypes.DATE },
+        revokedAt:       { type: DataTypes.DATE },
+        note:            { type: DataTypes.STRING }
+    }, { tableName: "agent_role_assignments", indexes: [
+        { fields: ["projectId"] }, { fields: ["agentUserId"] },
+        { fields: ["sessionId"] }, { fields: ["role"] }
+    ] })
+
+    // PLANO proposto pelo agente. Existe para que decompor um objetivo seja UMA
+    // decisão humana em vez de trinta: o agente propõe a árvore inteira em
+    // rascunho, o humano edita e aceita uma vez, e só então ela vira itens de
+    // verdade (com rodada e mandato). Antes disto, um agente que planejava
+    // despejava itens no backlog que ninguém tinha aprovado.
+    const AgentPlan = sequelize.define("AgentPlan", {
+        id:                 idField,
+        projectId:          { type: DataTypes.STRING, allowNull: false },
+        title:              { type: DataTypes.STRING, allowNull: false },
+        shortDescription:   { type: DataTypes.STRING },
+        rationale:          { type: DataTypes.TEXT },   // por que este recorte
+        risksText:          { type: DataTypes.TEXT },   // o que pode dar errado
+        status:             { type: DataTypes.STRING, allowNull: false, defaultValue: "draft" }, // PLAN_STATUSES
+        proposedBySessionId:{ type: DataTypes.STRING },
+        provider:           { type: DataTypes.STRING },
+        model:              { type: DataTypes.STRING },
+        submittedAt:        { type: DataTypes.DATE },
+        decidedByUserId:    { type: DataTypes.STRING },
+        decidedAt:          { type: DataTypes.DATE },
+        rejectionReason:    { type: DataTypes.TEXT },
+        // O que o aceite criou — permite desfazer com conhecimento de causa.
+        createdSprintId:    { type: DataTypes.STRING },
+        createdMandateId:   { type: DataTypes.STRING },
+        deletedAt:          { type: DataTypes.DATE }
+    }, { tableName: "agent_plans", indexes: [
+        { fields: ["projectId"] }, { fields: ["status"] }, { fields: ["proposedBySessionId"] }
+    ] })
+
+    // NÓ do plano: um item FUTURO. Espelha os campos do WorkItem que importam na
+    // decisão (tipo, esforço, valor, critérios, dependências), mas ainda não é um
+    // item — `createdItemId` só é preenchido no aceite. `parentNodeId` faz a
+    // árvore, como WorkItem.parentId, e as dependências apontam para nós irmãos,
+    // não para itens que ainda não existem.
+    //
+    // `editedByHuman` marca o que o humano mexeu antes de aceitar: é o sinal mais
+    // barato que existe sobre a qualidade do planejamento do agente.
+    const AgentPlanNode = sequelize.define("AgentPlanNode", {
+        id:                 idField,
+        planId:             { type: DataTypes.STRING, allowNull: false },
+        projectId:          { type: DataTypes.STRING, allowNull: false },
+        parentNodeId:       { type: DataTypes.STRING },
+        order:              { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        type:               { type: DataTypes.STRING, allowNull: false, defaultValue: "task" },
+        title:              { type: DataTypes.STRING, allowNull: false },
+        shortDescription:   { type: DataTypes.STRING },
+        description:        { type: DataTypes.TEXT },
+        acceptanceCriteriaJson: { type: DataTypes.JSON, defaultValue: [] },
+        effort:             { type: DataTypes.STRING },
+        value:              { type: DataTypes.STRING },
+        area:               { type: DataTypes.STRING },
+        dependsOnNodeIdsJson:{ type: DataTypes.JSON, defaultValue: [] },
+        verifyCommand:      { type: DataTypes.STRING },
+        packageRefsJson:    { type: DataTypes.JSON, defaultValue: [] },
+        createdItemId:      { type: DataTypes.STRING },
+        editedByHuman:      { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false }
+    }, { tableName: "agent_plan_nodes", indexes: [
+        { fields: ["planId"] }, { fields: ["projectId"] }, { fields: ["parentNodeId"] }
+    ] })
+
     return {
         Project, Board, BoardColumn, WorkItem, WorkItemLink,
         WorkItemChecklistItem, WorkItemAcceptanceCriteria,
         Attachment, Comment, User, AgentProfile, AgentSession, AgentNotice,
         CreationRequest, Milestone, Sprint, AuditEvent, ActivityNote, AgentFeedback,
         EcosystemPackage, WorkItemPackage, AppState, DocPage, DocPageAttachment, RiskItem, PlanningDoc,
-        RiskItemLink, MilestoneLink
+        RiskItemLink, MilestoneLink,
+        Delivery, DeliveryEvidence, DeliveryReview,
+        AgentMandate, AgentRoleAssignment, AgentPlan, AgentPlanNode
     }
 }
 

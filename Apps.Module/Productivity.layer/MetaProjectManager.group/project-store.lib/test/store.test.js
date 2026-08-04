@@ -2235,3 +2235,68 @@ test("MPMX3 varredura não anuncia a saída de sessão antiga (só marca gone)",
     assert.ok(!avisos.some((n) => n.kind === "left" && /gpt-6/.test(n.body)),
         "sessão morta há dias não vira aviso — senão a primeira varredura afoga o canal")
 })
+
+// ── MODELO DE ENTREGA (MPMR) ────────────────────────────────────────────────
+
+test("MPMR-5 as sete tabelas do modelo de entrega nascem do sync()", async () => {
+    const [rows] = await store.sequelize.query("SELECT name FROM sqlite_master WHERE type='table'")
+    const tabelas = rows.map((r) => r.name)
+    for(const t of ["deliveries", "delivery_evidence", "delivery_reviews",
+                    "agent_mandates", "agent_role_assignments", "agent_plans", "agent_plan_nodes"]){
+        assert.ok(tabelas.includes(t), `tabela ${t} não foi criada`)
+    }
+})
+
+test("MPMR-6 banco PRÉ-EXISTENTE ganha as colunas novas sem quebrar o boot", async () => {
+    // O caso real: um banco criado antes desta mudança. Se uma coluna indexada
+    // faltar do ADDED_COLUMNS, o sync() tenta criar o índice antes da coluna e o
+    // boot quebra com "no such column" — em produção, não só aqui.
+    const antigo = path.join(TMP, "pre-existente.sqlite")
+    const velho = InitializeProjectStore({ storage: antigo, attachmentsDirPath: ATT_DIR })
+    await velho.ConnectAndSync()
+    const proj = await velho.CreateProject({ name: "Antes da refundação", keyPrefix: "OLD", status: "active", actor: { source: "cli" } })
+    await velho.CreateItem({ project: proj.id, type: "task", title: "Item antigo", actor: { source: "cli" } })
+    // Simula o banco de ANTES: derruba as colunas novas e o que o sync() criou.
+    // Os índices saem primeiro — num banco realmente antigo eles nunca existiram,
+    // e o SQLite recusa derrubar a coluna enquanto um índice apontar para ela.
+    for(const idx of ["work_items_execution_state", "work_items_review_state"]){
+        await velho.sequelize.query(`DROP INDEX IF EXISTS \`${idx}\``)
+    }
+    for(const c of ["deliveryModel", "deliveryModelAt", "deliveryModelByUserId", "verifyCommand",
+                    "verifyCwd", "requireKeyInCommit", "requireAiReview", "aiReviewTimeoutMinutes"]){
+        await velho.sequelize.query(`ALTER TABLE projects DROP COLUMN \`${c}\``)
+    }
+    for(const c of ["executionState", "reviewState", "currentDeliveryId", "deliveryCount",
+                    "returnCount", "mandateId", "verifyCommand", "planNodeId", "lastReviewedAt"]){
+        await velho.sequelize.query(`ALTER TABLE work_items DROP COLUMN \`${c}\``)
+    }
+    for(const t of ["deliveries", "delivery_evidence", "delivery_reviews", "agent_mandates",
+                    "agent_role_assignments", "agent_plans", "agent_plan_nodes"]){
+        await velho.sequelize.query(`DROP TABLE IF EXISTS \`${t}\``)
+    }
+    await velho.sequelize.close()
+
+    // Agora o boot precisa migrar sozinho — é isto que roda na máquina do usuário.
+    const migrado = InitializeProjectStore({ storage: antigo, attachmentsDirPath: ATT_DIR })
+    await migrado.ConnectAndSync()
+
+    const [[p]] = await migrado.sequelize.query("SELECT deliveryModel, requireAiReview, aiReviewTimeoutMinutes FROM projects LIMIT 1")
+    assert.equal(p.deliveryModel, 0, "projeto que já existia continua no modelo legado")
+    assert.equal(p.requireAiReview, 1)
+    assert.equal(p.aiReviewTimeoutMinutes, 30)
+
+    const [[i]] = await migrado.sequelize.query("SELECT executionState, reviewState, deliveryCount, returnCount FROM work_items LIMIT 1")
+    assert.equal(i.executionState, "queued", "item que já existia entra na fila do modelo novo")
+    assert.equal(i.reviewState, "none")
+    assert.equal(i.deliveryCount, 0)
+    assert.equal(i.returnCount, 0)
+
+    const [rows] = await migrado.sequelize.query("SELECT name FROM sqlite_master WHERE type='table'")
+    assert.ok(rows.map((r) => r.name).includes("deliveries"), "as tabelas novas voltam no boot seguinte")
+
+    // E o dado antigo continua legível — o ALTER não pode custar o histórico.
+    const itens = await migrado.ListItems({ project: proj.id })
+    assert.equal(itens.length, 1)
+    assert.equal(itens[0].title, "Item antigo")
+    await migrado.sequelize.close()
+})

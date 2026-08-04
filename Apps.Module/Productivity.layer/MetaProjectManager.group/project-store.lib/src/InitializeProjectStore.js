@@ -127,7 +127,37 @@ const InitializeProjectStore = (options = {}) => {
         ["agent_sessions",    "presence",         "VARCHAR(255) NOT NULL DEFAULT 'here'"],
         ["agent_sessions",    "presenceChangedAt","DATETIME"],
         ["agent_sessions",    "noticeCursorAt",   "DATETIME"],
-        ["agent_sessions",    "companyWarnedAt",  "DATETIME"]
+        ["agent_sessions",    "companyWarnedAt",  "DATETIME"],
+        // ── MODELO DE ENTREGA ────────────────────────────────────────────────
+        // As tabelas novas (deliveries, delivery_evidence, delivery_reviews,
+        // agent_mandates, agent_role_assignments, agent_plans, agent_plan_nodes)
+        // o sync() cria sozinho — aqui só entram COLUNAS de tabela que já existe.
+        //
+        // work_items.executionState e reviewState ganharam ÍNDICE no DefineModels:
+        // se saírem desta lista, o sync() tenta criar o índice antes da coluna
+        // existir e o boot quebra em TODO banco já criado (não só no do dev).
+        // Em SQLite, NOT NULL exige DEFAULT e booleano é INTEGER.
+        ["projects",          "deliveryModel",          "INTEGER NOT NULL DEFAULT 0"],
+        ["projects",          "deliveryModelAt",        "DATETIME"],
+        ["projects",          "deliveryModelByUserId",  "VARCHAR(255)"],
+        ["projects",          "verifyCommand",          "VARCHAR(255)"],
+        ["projects",          "verifyCwd",              "VARCHAR(255)"],
+        ["projects",          "requireKeyInCommit",     "INTEGER NOT NULL DEFAULT 1"],
+        ["projects",          "requireAiReview",        "INTEGER NOT NULL DEFAULT 1"],
+        ["projects",          "aiReviewTimeoutMinutes", "INTEGER NOT NULL DEFAULT 30"],
+        ["work_items",        "executionState",         "VARCHAR(255) NOT NULL DEFAULT 'queued'"],
+        ["work_items",        "reviewState",            "VARCHAR(255) NOT NULL DEFAULT 'none'"],
+        ["work_items",        "currentDeliveryId",      "VARCHAR(255)"],
+        ["work_items",        "deliveryCount",          "INTEGER NOT NULL DEFAULT 0"],
+        ["work_items",        "returnCount",            "INTEGER NOT NULL DEFAULT 0"],
+        ["work_items",        "mandateId",              "VARCHAR(255)"],
+        ["work_items",        "verifyCommand",          "VARCHAR(255)"],
+        ["work_items",        "planNodeId",             "VARCHAR(255)"],
+        ["work_items",        "lastReviewedAt",         "DATETIME"],
+        ["agent_sessions",    "activeRole",             "VARCHAR(255)"],
+        ["agent_sessions",    "mandateId",              "VARCHAR(255)"],
+        ["agent_sessions",    "deliveriesSinceReview",  "INTEGER NOT NULL DEFAULT 0"],
+        ["agent_sessions",    "consecutiveReturns",     "INTEGER NOT NULL DEFAULT 0"]
     ]
     const MigrateAddedColumns = async () => {
         for(const [table, column, type] of ADDED_COLUMNS){
