@@ -336,6 +336,16 @@ const ReviewsStore = (ctx) => {
             ? await store.ListMandates({ project: projectId, status: "exhausted" }).catch(() => [])
             : []
 
+        // Em revisão pela IA: NÃO exige decisão do humano, mas ele precisa saber
+        // que existe. Sem isto, uma entrega recém-feita simplesmente some da
+        // vista até o prazo do revisor estourar, e a Mesa parece dizer que nada
+        // aconteceu — que é exatamente a dúvida que este produto existe para
+        // acabar.
+        const emRevisaoIA = await Delivery.findAll({
+            where: { status: "ai-review", deletedAt: null, ...(projectId ? { projectId } : {}) },
+            order: [["submittedAt", "ASC"]], limit
+        })
+
         return {
             deliveries: entregas.map((d) => ({
                 ...Serialize(d),
@@ -351,8 +361,13 @@ const ReviewsStore = (ctx) => {
             feedback: Array.isArray(feedback) ? feedback : (feedback.items || []),
             blocked: bloqueados,
             exhaustedMandates: Array.isArray(mandatosParados) ? mandatosParados : (mandatosParados.items || []),
+            // Em curso, não esperando por você — fica numa lista separada de
+            // propósito: misturá-la com a fila de decisão faria a Mesa mentir
+            // sobre quanto trabalho é seu.
+            inAiReview: SerializeMany(emRevisaoIA),
             counts: {
                 deliveries: entregas.length,
+                inAiReview: emRevisaoIA.length,
                 approvals: (Array.isArray(aprovacoes) ? aprovacoes : (aprovacoes.items || [])).length,
                 feedback: (Array.isArray(feedback) ? feedback : (feedback.items || [])).length,
                 blocked: bloqueados.length,

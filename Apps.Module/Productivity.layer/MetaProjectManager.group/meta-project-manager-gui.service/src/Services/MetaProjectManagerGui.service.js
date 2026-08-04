@@ -25,7 +25,14 @@ const CONTROLLER_MODULES = {
     Docs:        { controller: "Controllers/Docs.controller",        api: "APIs/Docs.api.json" },
     Risks:       { controller: "Controllers/Risks.controller",       api: "APIs/Risks.api.json" },
     PlanningDocs:{ controller: "Controllers/PlanningDocs.controller", api: "APIs/PlanningDocs.api.json" },
-    System:      { controller: "Controllers/System.controller",      api: "APIs/System.api.json" }
+    System:      { controller: "Controllers/System.controller",      api: "APIs/System.api.json" },
+    // Modelo de entrega: sem estas quatro linhas o app desktop dá "Método
+    // desconhecido" em toda a Mesa de revisão — este mapa é o caminho do
+    // Electron (IPC), independente do endpoint-group.json do webservice.
+    Deliveries:  { controller: "Controllers/Deliveries.controller",  api: "APIs/Deliveries.api.json" },
+    Reviews:     { controller: "Controllers/Reviews.controller",     api: "APIs/Reviews.api.json" },
+    Mandates:    { controller: "Controllers/Mandates.controller",    api: "APIs/Mandates.api.json" },
+    Plans:       { controller: "Controllers/Plans.controller",       api: "APIs/Plans.api.json" }
 }
 
 const MetaProjectManagerGuiService = (params) => {

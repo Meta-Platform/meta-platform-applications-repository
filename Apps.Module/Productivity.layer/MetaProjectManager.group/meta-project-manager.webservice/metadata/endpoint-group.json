@@ -332,6 +332,82 @@
                     "projectStoreLib": "projectStoreLib"
                 }
             }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Deliveries.api.json",
+                "controller": "Controllers/Deliveries.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Reviews.api.json",
+                "controller": "Controllers/Reviews.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Mandates.api.json",
+                "controller": "Controllers/Mandates.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
+        },
+        {
+            "url": "/",
+            "type": "controller",
+            "params": {
+                "api-template": "APIs/Plans.api.json",
+                "controller": "Controllers/Plans.controller",
+                "controller-params": {
+                    "dbFilePath": "{{MPM_DB_FILE_PATH}}",
+                    "attachmentsDirPath": "{{MPM_ATTACHMENTS_DIR_PATH}}",
+                    "maxAttachmentBytes": "{{MPM_MAX_ATTACHMENT_BYTES}}"
+                }
+            },
+            "bound-params": {
+                "serverService": "serverService",
+                "controller-params": {
+                    "projectStoreLib": "projectStoreLib"
+                }
+            }
         }
     ]
 }

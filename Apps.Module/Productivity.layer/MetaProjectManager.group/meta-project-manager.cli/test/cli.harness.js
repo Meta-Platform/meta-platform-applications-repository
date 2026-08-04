@@ -34,6 +34,17 @@ const MakeHarness = ({ startupParams }) => {
     const run = async (argv) => {
         const lines = []
         const origLog = console.log, origErr = console.error
+        // `Log` é o logger GLOBAL que a plataforma injeta em runtime (é o que
+        // src/Utils/output.js usa). Fora do executor ele não existe, e sem este
+        // stub toda a suíte falha com "Log is not defined" — o que esconde
+        // qualquer defeito real dos comandos.
+        const origGlobalLog = global.Log
+        global.Log = {
+            message: (_scope, ...a) => lines.push(a.join(" ")),
+            error:   (_scope, ...a) => lines.push(a.join(" ")),
+            warning: (_scope, ...a) => lines.push(a.join(" ")),
+            debug:   () => {}
+        }
         console.log = (...a) => lines.push(a.join(" "))
         console.error = (...a) => lines.push(a.join(" "))
         try {
@@ -43,6 +54,7 @@ const MakeHarness = ({ startupParams }) => {
             await y.parseAsync(argv)
         } finally {
             console.log = origLog; console.error = origErr
+            if(origGlobalLog === undefined) delete global.Log; else global.Log = origGlobalLog
         }
         // Os comandos setam process.exitCode=1 em erros estruturados (correto em produção);
         // o harness só valida os envelopes JSON, então reseta para não poluir o node --test.

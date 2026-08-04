@@ -164,3 +164,51 @@ test("activity list --provider filtra eventos de agente", async () => {
     assert.equal(a.json.ok, true)
     assert.ok(a.json.data.every((e) => e.actorType === "agent"))
 })
+
+test("MPMR ciclo de entrega pela CLI: migrar, entregar, devolver, reentregar, aceitar", async () => {
+    const proj = await h.run(["project", "create", "Entrega CLI", "--key-prefix", "ECL", "--status", "active", "--json"])
+    const pid = proj.json.data.id
+    const mig = await h.run(["project", "migrate-delivery", pid, "--json"])
+    assert.equal(mig.json.ok, true)
+    assert.equal(mig.json.data.deliveryModel, true)
+
+    const item = await h.run(["item", "create", "--project", pid, "--type", "task", "--title", "Tarefa CLI", "--json"])
+    const key = item.json.data.key
+
+    const ent = await h.run(["delivery", "submit", key, "--summary", "Feito pela CLI.", "--json"])
+    assert.equal(ent.json.ok, true)
+    assert.equal(ent.json.data.round, 1)
+
+    const lista = await h.run(["delivery", "list", "--project", pid, "--json"])
+    assert.equal(lista.json.data.length, 1)
+
+    // Devolver sem motivo não passa — é o que impede o agente de repetir o erro.
+    const semMotivo = await h.run(["delivery", "return", ent.json.data.key, "--json"])
+    assert.equal(semMotivo.json.ok, false)
+    assert.equal(semMotivo.json.code, "VALIDATION_ERROR")
+
+    const dev = await h.run(["delivery", "return", ent.json.data.key, "--reason", "faltou cobrir o caso vazio", "--json"])
+    assert.equal(dev.json.ok, true)
+
+    const ent2 = await h.run(["delivery", "submit", key, "--summary", "Caso vazio coberto.", "--json"])
+    assert.equal(ent2.json.data.round, 2)
+    const aceite = await h.run(["delivery", "accept", ent2.json.data.key, "--json"])
+    assert.equal(aceite.json.data.status, "accepted")
+
+    const final = await h.run(["item", "show", key, "--json"])
+    assert.equal(final.json.data.statusKey, "done")
+})
+
+test("MPMR mesa de revisão e mandato pela CLI", async () => {
+    const proj = await h.run(["project", "create", "Mesa CLI", "--key-prefix", "MCL", "--status", "active", "--json"])
+    const pid = proj.json.data.id
+    await h.run(["project", "migrate-delivery", pid, "--json"])
+
+    const man = await h.run(["mandate", "create", "Rodada CLI", "--project", pid, "--max-unreviewed", "2", "--json"])
+    assert.equal(man.json.data.status, "active")
+    assert.equal(man.json.data.maxUnreviewedDeliveries, 2)
+
+    const desk = await h.run(["review", "desk", "--project", pid, "--json"])
+    assert.equal(desk.json.ok, true)
+    assert.equal(typeof desk.json.data.counts.deliveries, "number")
+})

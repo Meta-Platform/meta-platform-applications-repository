@@ -207,6 +207,23 @@
                     "parametersToLoad": [
                         "projectStoreLib"
                     ]
+                },
+                {
+                    "namespace": "ProjectMigrateDelivery",
+                    "path": "Commands/ProjectMigrateDelivery.command",
+                    "command": "migrate-delivery [project]",
+                    "description": "Ligar o modelo de entrega neste projeto (revisão pós-execução)",
+                    "parameters": [
+                        {
+                            "key": "project",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "Projeto (id|slug|key)"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
                 }
             ]
         },
@@ -2041,6 +2058,283 @@
                             "paramType": "positional",
                             "valueType": "string",
                             "describe": "id do evento"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Delivery",
+            "command": "delivery",
+            "description": "Entregas: o que o agente produziu, para o humano revisar",
+            "children": [
+                {
+                    "namespace": "DeliverySubmit",
+                    "path": "Commands/DeliverySubmit.command",
+                    "command": "submit [item]",
+                    "description": "Entregar o trabalho de um item (o resumo é seu; a evidência é colhida)",
+                    "parameters": [
+                        {
+                            "key": "item",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "Item (id|key)"
+                        },
+                        {
+                            "key": "summary",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "O que você fez, em poucas linhas"
+                        },
+                        {
+                            "key": "title",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "Título da entrega (padrão: o do item)"
+                        },
+                        {
+                            "key": "verify-command",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "Comando que comprova a entrega (sobrepõe o do projeto)"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "DeliveryList",
+                    "path": "Commands/DeliveryList.command",
+                    "command": "list",
+                    "description": "Listar entregas",
+                    "parameters": [
+                        {
+                            "key": "project",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "Projeto (id|slug|key)"
+                        },
+                        {
+                            "key": "item",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "Item (id|key)"
+                        },
+                        {
+                            "key": "status",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "Status da entrega"
+                        },
+                        {
+                            "key": "limit",
+                            "paramType": "option",
+                            "valueType": "number",
+                            "describe": "Máximo de registros"
+                        },
+                        {
+                            "key": "offset",
+                            "paramType": "option",
+                            "valueType": "number",
+                            "describe": "Deslocamento"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "DeliveryShow",
+                    "path": "Commands/DeliveryShow.command",
+                    "command": "show [delivery]",
+                    "description": "Ver uma entrega com a evidência colhida",
+                    "parameters": [
+                        {
+                            "key": "delivery",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "Entrega (id|key, ex.: MPMR-5/D1)"
+                        },
+                        {
+                            "key": "view",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "review = a visão de quem vai decidir"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "DeliveryAccept",
+                    "path": "Commands/DeliveryAccept.command",
+                    "command": "accept [delivery]",
+                    "description": "Aceitar a entrega (é isto que conclui o item)",
+                    "parameters": [
+                        {
+                            "key": "delivery",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "Entrega (id|key)"
+                        },
+                        {
+                            "key": "note",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "Observação"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "DeliveryReturn",
+                    "path": "Commands/DeliveryReturn.command",
+                    "command": "return [delivery]",
+                    "description": "Devolver a entrega ao mesmo agente, com a crítica",
+                    "parameters": [
+                        {
+                            "key": "delivery",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "Entrega (id|key)"
+                        },
+                        {
+                            "key": "reason",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "Por que está voltando (obrigatório)"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Review",
+            "command": "review",
+            "description": "Revisão: o que espera por você",
+            "children": [
+                {
+                    "namespace": "ReviewDesk",
+                    "path": "Commands/ReviewDesk.command",
+                    "command": "desk",
+                    "description": "A mesa de revisão: entregas, aprovações, feedback e agentes travados",
+                    "parameters": [
+                        {
+                            "key": "project",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "Projeto (id|slug|key)"
+                        },
+                        {
+                            "key": "limit",
+                            "paramType": "option",
+                            "valueType": "number",
+                            "describe": "Máximo de registros"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                }
+            ]
+        },
+        {
+            "namespace": "Mandate",
+            "command": "mandate",
+            "description": "Mandatos: o escopo que o agente pode executar sozinho",
+            "children": [
+                {
+                    "namespace": "MandateCreate",
+                    "path": "Commands/MandateCreate.command",
+                    "command": "create [title]",
+                    "description": "Conceder um mandato ao agente",
+                    "parameters": [
+                        {
+                            "key": "title",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "Título do mandato"
+                        },
+                        {
+                            "key": "project",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "Projeto (id|slug|key)"
+                        },
+                        {
+                            "key": "short-description",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "Resumo de uma linha"
+                        },
+                        {
+                            "key": "session",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "Sessão de agente"
+                        },
+                        {
+                            "key": "agent",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "Usuário-agente"
+                        },
+                        {
+                            "key": "max-deliveries",
+                            "paramType": "option",
+                            "valueType": "number",
+                            "describe": "Teto de entregas"
+                        },
+                        {
+                            "key": "max-unreviewed",
+                            "paramType": "option",
+                            "valueType": "number",
+                            "describe": "Entregas sem revisão que param a linha"
+                        },
+                        {
+                            "key": "max-returns",
+                            "paramType": "option",
+                            "valueType": "number",
+                            "describe": "Devoluções seguidas que param a linha"
+                        },
+                        {
+                            "key": "expires-at",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "Validade (ISO)"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "MandateList",
+                    "path": "Commands/MandateList.command",
+                    "command": "list",
+                    "description": "Listar mandatos",
+                    "parameters": [
+                        {
+                            "key": "project",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "Projeto (id|slug|key)"
+                        },
+                        {
+                            "key": "status",
+                            "paramType": "option",
+                            "valueType": "string",
+                            "describe": "Status do mandato"
                         }
                     ],
                     "parametersToLoad": [

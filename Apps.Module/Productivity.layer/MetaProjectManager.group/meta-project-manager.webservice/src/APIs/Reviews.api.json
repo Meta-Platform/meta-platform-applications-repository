@@ -1,0 +1,52 @@
+{
+    "name": "Reviews",
+    "endpoints": [
+        {
+            "summary": "ReviewDesk",
+            "method": "GET",
+            "path": "/review-desk",
+            "parameters": [
+                { "name": "project", "in": "query", "type": "string", "required": false },
+                { "name": "limit", "in": "query", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "ListPendingReviews",
+            "method": "GET",
+            "path": "/projects/:projectId/pending-reviews",
+            "parameters": [
+                { "name": "projectId", "in": "path", "type": "string", "required": true },
+                { "name": "limit", "in": "query", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "ListDeliveryReviews",
+            "method": "GET",
+            "path": "/deliveries/:deliveryId/reviews",
+            "parameters": [
+                { "name": "deliveryId", "in": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "SubmitReview",
+            "method": "POST",
+            "path": "/deliveries/:deliveryId/reviews",
+            "parameters": [
+                { "name": "deliveryId", "in": "path", "type": "string", "required": true },
+                { "name": "decision", "in": "body", "type": "string", "required": true },
+                { "name": "reason", "in": "body", "type": "string", "required": false },
+                { "name": "criteriaVerdict", "in": "body", "type": "object", "required": false },
+                { "name": "actorUserId", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "EscalateToHuman",
+            "method": "POST",
+            "path": "/deliveries/:deliveryId/escalate",
+            "parameters": [
+                { "name": "deliveryId", "in": "path", "type": "string", "required": true },
+                { "name": "reason", "in": "body", "type": "string", "required": false }
+            ]
+        }
+    ]
+}

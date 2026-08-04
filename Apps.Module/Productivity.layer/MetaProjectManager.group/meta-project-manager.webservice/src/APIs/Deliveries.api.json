@@ -1,0 +1,95 @@
+{
+    "name": "Deliveries",
+    "endpoints": [
+        {
+            "summary": "ListDeliveries",
+            "method": "GET",
+            "path": "/projects/:projectId/deliveries",
+            "parameters": [
+                { "name": "projectId", "in": "path", "type": "string", "required": true },
+                { "name": "status", "in": "query", "type": "string", "required": false },
+                { "name": "item", "in": "query", "type": "string", "required": false },
+                { "name": "limit", "in": "query", "type": "string", "required": false },
+                { "name": "offset", "in": "query", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "GetDelivery",
+            "method": "GET",
+            "path": "/deliveries/:deliveryId",
+            "parameters": [
+                { "name": "deliveryId", "in": "path", "type": "string", "required": true },
+                { "name": "view", "in": "query", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "SubmitDelivery",
+            "method": "POST",
+            "path": "/items/:itemId/deliveries",
+            "parameters": [
+                { "name": "itemId", "in": "path", "type": "string", "required": true },
+                { "name": "summary", "in": "body", "type": "string", "required": true },
+                { "name": "title", "in": "body", "type": "string", "required": false },
+                { "name": "shortDescription", "in": "body", "type": "string", "required": false },
+                { "name": "verifyCommand", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "AmendDelivery",
+            "method": "PATCH",
+            "path": "/deliveries/:deliveryId",
+            "parameters": [
+                { "name": "deliveryId", "in": "path", "type": "string", "required": true },
+                { "name": "summary", "in": "body", "type": "string", "required": false },
+                { "name": "title", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "AcceptDelivery",
+            "method": "POST",
+            "path": "/deliveries/:deliveryId/accept",
+            "parameters": [
+                { "name": "deliveryId", "in": "path", "type": "string", "required": true },
+                { "name": "note", "in": "body", "type": "string", "required": false },
+                { "name": "actorUserId", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "ReturnDelivery",
+            "method": "POST",
+            "path": "/deliveries/:deliveryId/return",
+            "parameters": [
+                { "name": "deliveryId", "in": "path", "type": "string", "required": true },
+                { "name": "reason", "in": "body", "type": "string", "required": true },
+                { "name": "actorUserId", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "WithdrawDelivery",
+            "method": "POST",
+            "path": "/deliveries/:deliveryId/withdraw",
+            "parameters": [
+                { "name": "deliveryId", "in": "path", "type": "string", "required": true },
+                { "name": "reason", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "RecollectEvidence",
+            "method": "POST",
+            "path": "/deliveries/:deliveryId/recollect",
+            "parameters": [
+                { "name": "deliveryId", "in": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "AddDeliveryNote",
+            "method": "POST",
+            "path": "/deliveries/:deliveryId/notes",
+            "parameters": [
+                { "name": "deliveryId", "in": "path", "type": "string", "required": true },
+                { "name": "title", "in": "body", "type": "string", "required": false },
+                { "name": "body", "in": "body", "type": "string", "required": true }
+            ]
+        }
+    ]
+}

@@ -274,3 +274,55 @@ test("erro estruturado 200 com ok:false em NOT_FOUND", async () => {
     assert.equal(json.ok, false)
     assert.equal(json.code, "NOT_FOUND")
 })
+
+test("MPMR modelo de entrega ponta a ponta por HTTP", async () => {
+    // Migrar é ação humana e devolve o que mudou.
+    const proj = await srv.request("POST", "/projects", { name: "Entrega HTTP", keyPrefix: "EHT", status: "active" })
+    const pid = proj.json.data.id
+    const mig = await srv.request("POST", `/projects/${pid}/delivery-model`, {})
+    assert.equal(mig.json.ok, true)
+    assert.equal(mig.json.data.deliveryModel, true)
+
+    const item = await srv.request("POST", `/projects/${pid}/items`, { type: "task", title: "Fazer algo" })
+    const iid = item.json.data.id
+
+    // Entregar (aqui sem sessão de agente: o webservice é o caminho humano/GUI).
+    const ent = await srv.request("POST", `/items/${iid}/deliveries`, { summary: "Feito e verificado." })
+    assert.equal(ent.json.ok, true)
+    assert.equal(ent.json.data.round, 1)
+    const did = ent.json.data.id
+
+    // A Mesa mostra a entrega — como "em revisão pela IA", não como decisão
+    // pendente: ela ainda não é trabalho do humano, mas ele precisa saber que
+    // existe (senão a Mesa parece dizer que nada aconteceu).
+    const mesa = await srv.request("GET", `/review-desk?project=${pid}`)
+    assert.equal(mesa.json.ok, true)
+    assert.equal(mesa.json.data.counts.inAiReview, 1)
+    assert.equal(mesa.json.data.counts.deliveries, 0)
+
+    // O humano decide sem esperar o revisor: ele é a autoridade final.
+
+    // Devolver SEM motivo é recusado: é o defeito que mais desperdiça trabalho.
+    const semMotivo = await srv.request("POST", `/deliveries/${did}/return`, {})
+    assert.equal(semMotivo.json.ok, false)
+    assert.equal(semMotivo.json.code, "VALIDATION_ERROR")
+
+    const devolvida = await srv.request("POST", `/deliveries/${did}/return`, { reason: "faltou o teste" })
+    assert.equal(devolvida.json.ok, true)
+
+    // Reentrega e aceite.
+    const ent2 = await srv.request("POST", `/items/${iid}/deliveries`, { summary: "Agora com teste." })
+    assert.equal(ent2.json.data.round, 2)
+    const aceita = await srv.request("POST", `/deliveries/${ent2.json.data.id}/accept`, {})
+    assert.equal(aceita.json.data.status, "accepted")
+
+    const final = await srv.request("GET", `/items/${iid}`)
+    assert.equal(final.json.data.statusKey, "done")
+    assert.equal(final.json.data.reviewState, "accepted")
+
+    // Mandato pelo mesmo caminho.
+    const man = await srv.request("POST", `/projects/${pid}/mandates`, { title: "Rodada HTTP", maxUnreviewedDeliveries: 2 })
+    assert.equal(man.json.data.status, "active")
+    const lista = await srv.request("GET", `/projects/${pid}/mandates`)
+    assert.equal(lista.json.data.length, 1)
+})

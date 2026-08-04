@@ -1,0 +1,92 @@
+{
+    "name": "Mandates",
+    "endpoints": [
+        {
+            "summary": "ListMandates",
+            "method": "GET",
+            "path": "/projects/:projectId/mandates",
+            "parameters": [
+                { "name": "projectId", "in": "path", "type": "string", "required": true },
+                { "name": "status", "in": "query", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "CreateMandate",
+            "method": "POST",
+            "path": "/projects/:projectId/mandates",
+            "parameters": [
+                { "name": "projectId", "in": "path", "type": "string", "required": true },
+                { "name": "title", "in": "body", "type": "string", "required": true },
+                { "name": "shortDescription", "in": "body", "type": "string", "required": false },
+                { "name": "scope", "in": "body", "type": "object", "required": false },
+                { "name": "agent", "in": "body", "type": "string", "required": false },
+                { "name": "session", "in": "body", "type": "string", "required": false },
+                { "name": "expiresAt", "in": "body", "type": "string", "required": false },
+                { "name": "maxDeliveries", "in": "body", "type": "string", "required": false },
+                { "name": "maxUnreviewedDeliveries", "in": "body", "type": "string", "required": false },
+                { "name": "maxConsecutiveReturns", "in": "body", "type": "string", "required": false },
+                { "name": "stopOnOutOfScope", "in": "body", "type": "boolean", "required": false },
+                { "name": "actorUserId", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "GetMandate",
+            "method": "GET",
+            "path": "/mandates/:mandateId",
+            "parameters": [
+                { "name": "mandateId", "in": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "ExtendMandate",
+            "method": "POST",
+            "path": "/mandates/:mandateId/extend",
+            "parameters": [
+                { "name": "mandateId", "in": "path", "type": "string", "required": true },
+                { "name": "maxDeliveries", "in": "body", "type": "string", "required": false },
+                { "name": "maxUnreviewedDeliveries", "in": "body", "type": "string", "required": false },
+                { "name": "maxConsecutiveReturns", "in": "body", "type": "string", "required": false },
+                { "name": "expiresAt", "in": "body", "type": "string", "required": false },
+                { "name": "note", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "RevokeMandate",
+            "method": "POST",
+            "path": "/mandates/:mandateId/revoke",
+            "parameters": [
+                { "name": "mandateId", "in": "path", "type": "string", "required": true },
+                { "name": "reason", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "ListRoles",
+            "method": "GET",
+            "path": "/agent-roles",
+            "parameters": [
+                { "name": "project", "in": "query", "type": "string", "required": false },
+                { "name": "role", "in": "query", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "GrantRole",
+            "method": "POST",
+            "path": "/agent-roles",
+            "parameters": [
+                { "name": "agent", "in": "body", "type": "string", "required": false },
+                { "name": "session", "in": "body", "type": "string", "required": false },
+                { "name": "role", "in": "body", "type": "string", "required": true },
+                { "name": "project", "in": "body", "type": "string", "required": false },
+                { "name": "note", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "RevokeRole",
+            "method": "DELETE",
+            "path": "/agent-roles/:assignmentId",
+            "parameters": [
+                { "name": "assignmentId", "in": "path", "type": "string", "required": true }
+            ]
+        }
+    ]
+}

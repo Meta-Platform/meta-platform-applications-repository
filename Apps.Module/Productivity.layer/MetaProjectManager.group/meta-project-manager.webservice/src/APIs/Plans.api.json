@@ -1,0 +1,69 @@
+{
+    "name": "Plans",
+    "endpoints": [
+        {
+            "summary": "ListPlans",
+            "method": "GET",
+            "path": "/projects/:projectId/plans",
+            "parameters": [
+                { "name": "projectId", "in": "path", "type": "string", "required": true },
+                { "name": "status", "in": "query", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "GetPlan",
+            "method": "GET",
+            "path": "/plans/:planId",
+            "parameters": [
+                { "name": "planId", "in": "path", "type": "string", "required": true }
+            ]
+        },
+        {
+            "summary": "RevisePlan",
+            "method": "PATCH",
+            "path": "/plans/:planId/nodes/:nodeId",
+            "parameters": [
+                { "name": "planId", "in": "path", "type": "string", "required": true },
+                { "name": "nodeId", "in": "path", "type": "string", "required": true },
+                { "name": "updates", "in": "body", "type": "object", "required": true }
+            ]
+        },
+        {
+            "summary": "AcceptPlan",
+            "method": "POST",
+            "path": "/plans/:planId/accept",
+            "parameters": [
+                { "name": "planId", "in": "path", "type": "string", "required": true },
+                { "name": "createSprint", "in": "body", "type": "boolean", "required": false },
+                { "name": "createMandate", "in": "body", "type": "boolean", "required": false },
+                { "name": "actorUserId", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "RejectPlan",
+            "method": "POST",
+            "path": "/plans/:planId/reject",
+            "parameters": [
+                { "name": "planId", "in": "path", "type": "string", "required": true },
+                { "name": "reason", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "MigrateProject",
+            "method": "POST",
+            "path": "/projects/:projectId/delivery-model",
+            "parameters": [
+                { "name": "projectId", "in": "path", "type": "string", "required": true },
+                { "name": "actorUserId", "in": "body", "type": "string", "required": false }
+            ]
+        },
+        {
+            "summary": "RollbackProject",
+            "method": "DELETE",
+            "path": "/projects/:projectId/delivery-model",
+            "parameters": [
+                { "name": "projectId", "in": "path", "type": "string", "required": true }
+            ]
+        }
+    ]
+}
