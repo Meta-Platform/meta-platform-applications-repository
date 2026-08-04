@@ -7,7 +7,6 @@ import BacklogPage from "../Pages/Backlog.page"
 import ExecutionPage from "../Pages/Execution.page"
 import InboxPage   from "../Pages/Inbox.page"
 import RoadmapPage from "../Pages/Roadmap.page"
-import GanttPage   from "../Pages/Gantt.page"
 import SequencePage from "../Pages/Sequence.page"
 import DocsPage    from "../Pages/Docs.page"
 import RisksPage   from "../Pages/Risks.page"
@@ -19,6 +18,12 @@ import AgentGuidePage from "../Pages/AgentGuide.page"
 import GlossaryPage from "../Pages/Glossary.page"
 import AuditPage from "../Pages/Audit.page"
 import FeedbackPage from "../Pages/Feedback.page"
+// Modelo de entrega
+import ReviewDeskPage from "../Pages/ReviewDesk.page"
+import DeliveryReviewPage from "../Pages/DeliveryReview.page"
+import DeliveriesPage from "../Pages/Deliveries.page"
+import MandatesPage from "../Pages/Mandates.page"
+import PlanProposalPage from "../Pages/PlanProposal.page"
 
 export default {
     HomePage,
@@ -30,7 +35,6 @@ export default {
     ExecutionPage,
     InboxPage,
     RoadmapPage,
-    GanttPage,
     SequencePage,
     DocsPage,
     RisksPage,
@@ -41,5 +45,10 @@ export default {
     AgentGuidePage,
     GlossaryPage,
     AuditPage,
-    FeedbackPage
+    FeedbackPage,
+    ReviewDeskPage,
+    DeliveryReviewPage,
+    DeliveriesPage,
+    MandatesPage,
+    PlanProposalPage
 }

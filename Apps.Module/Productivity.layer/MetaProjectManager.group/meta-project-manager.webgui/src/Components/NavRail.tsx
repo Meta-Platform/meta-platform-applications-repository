@@ -10,7 +10,10 @@ import useLiveReload from "../Hooks/useLiveReload"
 // Navegação GLOBAL (não depende de projeto): rail estreito, só ícones.
 // A coluna ao lado (ProjectColumn) é dedicada ao projeto atual.
 export const GLOBAL_NAV: { key: string; label: string; icon: any; to: string; hint: string }[] = [
-    { key: "home",     label: "Projetos",   icon: "th large",    to: "/",         hint: "Todos os projetos — o container de tudo (produto/sistema/iniciativa)." },
+    // A MESA é a primeira entrada e a raiz: quem revisa abre o produto para
+    // saber o que espera por ele, não para escolher um projeto.
+    { key: "desk",     label: "Mesa",       icon: "inbox",       to: "/",         hint: "O que espera por você: entregas para revisar, agentes travados, aprovações e feedback." },
+    { key: "home",     label: "Projetos",   icon: "th large",    to: "/projects", hint: "Todos os projetos — o container de tudo (produto/sistema/iniciativa)." },
     { key: "archive",  label: "Arquivados", icon: "archive",     to: "/archive",  hint: "Projetos arquivados — navegação somente leitura, para consulta." },
     { key: "users",    label: "Usuários",   icon: "users",       to: "/users",    hint: "Pessoas e agentes de IA que colaboram nos projetos." },
     { key: "agents",   label: "Agentes",    icon: "microchip",   to: "/agents",   hint: "Sessões de agentes de IA e pedidos de aprovação pendentes." },

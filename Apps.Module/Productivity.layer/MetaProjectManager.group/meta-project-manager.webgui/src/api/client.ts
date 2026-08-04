@@ -27,6 +27,8 @@ import CreateDocsApi        from "./docs"
 import CreateRisksApi       from "./risks"
 import CreatePlanningDocsApi from "./planningDocs"
 import CreateSystemApi      from "./system"
+import CreateDeliveriesApi, { CreateReviewsApi } from "./deliveries"
+import CreateMandatesApi, { CreatePlansApi } from "./mandates"
 
 export class ApiError extends Error {
     code: string
@@ -96,7 +98,12 @@ export const createApiClient = (serverManagerInformation: any, options: { readOn
         docs:        CreateDocsApi(call),
         risks:       CreateRisksApi(call),
         planningDocs: CreatePlanningDocsApi(call),
-        system:      CreateSystemApi(call)
+        system:      CreateSystemApi(call),
+        // Modelo de entrega
+        deliveries:  CreateDeliveriesApi(call),
+        reviews:     CreateReviewsApi(call),
+        mandates:    CreateMandatesApi(call),
+        plans:       CreatePlansApi(call)
     }
 }
 

@@ -15,6 +15,10 @@ const PROJECT_NAV: { key: string; label: string; icon: any; path: (id: string) =
     { key: "board",    label: "Board",       icon: "columns", path: (id) => `/projects/${id}/board`,   hint: "Quadro Kanban: colunas de status por onde o trabalho flui." },
     { key: "list",     label: "Lista",       icon: "list",    path: (id) => `/projects/${id}/list`,    hint: "Lista hierárquica dos itens, com filtros e agrupamento." },
     { key: "execution", label: "Execução",   icon: "play circle", path: (id) => `/projects/${id}/execution`, hint: "O que está sendo executado agora, a fila na ordem em que será pega, o que travou e o que saiu nesta rodada." },
+    // Entregas e mandatos só existem no modelo de entrega — ficam ocultos em
+    // projeto legado (mesma técnica condicional do Board/Lista em planning).
+    { key: "deliveries", label: "Entregas",  icon: "shipping fast", path: (id) => `/projects/${id}/deliveries`, hint: "O que os agentes entregaram, por rodada, com a evidência colhida." },
+    { key: "mandates", label: "Mandatos",    icon: "id badge",   path: (id) => `/projects/${id}/mandates`, hint: "Até onde o agente anda sozinho neste projeto, e o que o faz parar." },
     { key: "backlog",  label: "Backlog",     icon: "clipboard list", path: (id) => `/projects/${id}/backlog`, hint: "Trabalho priorizado ainda não em execução (valor/esforço/clareza)." },
     { key: "inbox",    label: "Ideias",      icon: "inbox",   path: (id) => `/projects/${id}/inbox`,   hint: "Ideias cruas anotadas rápido, para triar depois (inbox, no jargão técnico)." },
     { key: "roadmap",  label: "Planejamento", icon: "road",   path: (id) => `/projects/${id}/roadmap`, hint: "O plano no tempo: entregas (por data) e horizontes (agora/próximo/depois)." },
@@ -82,7 +86,17 @@ const ProjectColumn = ({ active, activeProjectId, onCreateProject }: ProjectColu
     const activeStatus = switcherProjects.find((p) => p.id === activeProjectId)?.status
     const planningPhase = activeStatus === "planning" || activeStatus === "candidate"
     const EXECUTION_ONLY = new Set(["board", "list", "execution"])
-    const projectNav = PROJECT_NAV.filter((n) => !(planningPhase && EXECUTION_ONLY.has(n.key)))
+    // Modelo de ENTREGA: entregas e mandatos só fazem sentido onde ele está
+    // ligado; e o backlog manual — priorização feita à mão — sai de cena, porque
+    // ali quem ordena a fila é a dependência, não a curadoria humana.
+    const projeto = switcherProjects.find((p) => p.id === activeProjectId) as any
+    const modeloEntrega = !!(projeto && projeto.deliveryModel)
+    const DELIVERY_ONLY = new Set(["deliveries", "mandates"])
+    const LEGACY_ONLY = new Set(["backlog"])
+    const projectNav = PROJECT_NAV.filter((n) =>
+        !(planningPhase && EXECUTION_ONLY.has(n.key)) &&
+        !(!modeloEntrega && DELIVERY_ONLY.has(n.key)) &&
+        !(modeloEntrega && LEGACY_ONLY.has(n.key)))
 
     return <aside className="mpm-projcol">
         <ProjectSwitcher projects={switcherProjects} activeProjectId={activeProjectId} onCreateProject={onCreateProject} />

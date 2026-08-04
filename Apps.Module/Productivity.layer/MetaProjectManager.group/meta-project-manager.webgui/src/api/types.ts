@@ -847,3 +847,162 @@ export interface ListPackagesQuery {
     limit?: string
     offset?: string
 }
+
+// ── MODELO DE ENTREGA ───────────────────────────────────────────────────────
+
+export type EvidenceKind = "commit" | "file" | "verification" | "criteria" | "environment" | "activity" | "note" | "gap"
+export type EvidenceSeverity = "info" | "warning" | "blocking"
+export type EvidenceQuality = "verified" | "partial" | "unverified" | "none"
+
+// Uma linha de evidência. `attribution` diz COMO ela foi ligada ao item:
+// `key` = a chave estava na mensagem do commit (forte); `window` = só a janela
+// de tempo (fraca, e se declara fraca).
+export interface DeliveryEvidence {
+    id: ID
+    deliveryId: ID
+    kind: EvidenceKind
+    source: "auto" | "agent" | "system"
+    collectorName?: string
+    title?: string
+    ref?: string
+    body?: string
+    dataJson?: any
+    attribution?: "key" | "window" | "declared" | "none"
+    confidence?: "high" | "low"
+    exitCode?: number | null
+    severity: EvidenceSeverity
+    occurredAt?: string
+    collectedAt?: string
+}
+
+export interface Delivery {
+    id: ID
+    projectId: ID
+    workItemId: ID
+    key: string
+    round: number
+    status: "draft" | "collecting" | "ai-review" | "awaiting-human" | "accepted" | "returned" | "withdrawn"
+    title?: string
+    shortDescription?: string
+    summary?: string
+    executedBySessionId?: ID
+    provider?: string
+    model?: string
+    evidenceQuality?: EvidenceQuality
+    aiReviewState?: "pending" | "claimed" | "passed" | "returned" | "skipped" | "escalated"
+    aiVerdict?: string
+    aiVerdictReason?: string
+    humanDecision?: "accept" | "return"
+    returnReason?: string
+    verifyCommand?: string
+    verifyExitCode?: number | null
+    submittedAt?: string
+    decidedAt?: string
+    updatedAt?: string
+}
+
+export interface DeliveryDetail extends Delivery {
+    item?: { id: ID; key: string; title: string; type: string; description?: string; returnCount?: number }
+    evidence: DeliveryEvidence[]
+    reviews?: DeliveryReview[]
+    acceptanceCriteria?: Array<{ id: ID; text: string; met: boolean }>
+    previousRounds?: Array<Partial<Delivery>>
+    blockingGaps?: DeliveryEvidence[]
+    gaps?: Array<{ ref?: string; title?: string; severity?: EvidenceSeverity }>
+    warnings?: string[]
+}
+
+export interface DeliveryReview {
+    id: ID
+    deliveryId: ID
+    round: number
+    reviewerType: "ai" | "human"
+    reviewerSessionId?: ID
+    reviewerUserId?: ID
+    decision: "accept" | "return" | "escalate" | "abstain"
+    reason?: string
+    createdAt?: string
+}
+
+// O que espera pelo humano. `inAiReview` vem separado de propósito: está em
+// curso, não é decisão dele — misturar faria a Mesa mentir sobre quanto
+// trabalho é seu.
+export interface ReviewDesk {
+    deliveries: Array<Delivery & { item?: any; aiOpinion?: { verdict: string; reason?: string } }>
+    approvals: any[]
+    feedback: any[]
+    blocked: any[]
+    exhaustedMandates: AgentMandate[]
+    inAiReview: Delivery[]
+    counts: { deliveries: number; inAiReview: number; approvals: number; feedback: number; blocked: number; exhaustedMandates: number }
+}
+
+export interface AgentMandate {
+    id: ID
+    projectId: ID
+    title: string
+    shortDescription?: string
+    scopeJson?: any
+    status: "draft" | "pending" | "active" | "paused" | "exhausted" | "revoked" | "completed"
+    agentUserId?: ID
+    sessionId?: ID
+    expiresAt?: string
+    maxDeliveries?: number
+    maxUnreviewedDeliveries?: number
+    maxConsecutiveReturns?: number
+    maxItems?: number
+    deliveriesMade?: number
+    deliveriesUnreviewed?: number
+    consecutiveReturns?: number
+    itemsCompleted?: number
+    stopReason?: string
+    stoppedAt?: string
+    remaining?: { unreviewed?: number; consecutiveReturns?: number; deliveries?: number; items?: number; expiresAt?: string }
+}
+
+export interface AgentPlanNode {
+    id: ID
+    planId: ID
+    parentNodeId?: ID
+    order: number
+    type: string
+    title: string
+    shortDescription?: string
+    description?: string
+    acceptanceCriteriaJson?: string[]
+    effort?: string
+    value?: string
+    area?: string
+    dependsOnNodeIdsJson?: ID[]
+    verifyCommand?: string
+    createdItemId?: ID
+    editedByHuman?: boolean
+}
+
+export interface AgentPlan {
+    id: ID
+    projectId: ID
+    title: string
+    shortDescription?: string
+    rationale?: string
+    risksText?: string
+    status: "draft" | "submitted" | "accepted" | "rejected" | "superseded"
+    provider?: string
+    model?: string
+    submittedAt?: string
+    decidedAt?: string
+    rejectionReason?: string
+    nodes?: AgentPlanNode[]
+    nodeCount?: number
+}
+
+export interface AgentRoleAssignment {
+    id: ID
+    projectId?: ID
+    agentUserId?: ID
+    sessionId?: ID
+    role: "executor" | "reviewer" | "planner"
+    grantedAt?: string
+    revokedAt?: string
+    note?: string
+}

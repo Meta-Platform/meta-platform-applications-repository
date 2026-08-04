@@ -1,7 +1,7 @@
 [
     {
         "path": "/",
-        "page": "HomePage"
+        "page": "ReviewDeskPage"
     },
     {
         "path": "/archive",
@@ -42,10 +42,6 @@
     {
         "path": "/projects/:projectId/sequence",
         "page": "SequencePage"
-    },
-    {
-        "path": "/projects/:projectId/gantt",
-        "page": "GanttPage"
     },
     {
         "path": "/projects/:projectId/docs",
@@ -98,5 +94,33 @@
     {
         "path": "/audit",
         "page": "AuditPage"
+    },
+    {
+        "path": "/projects",
+        "page": "HomePage"
+    },
+    {
+        "path": "/deliveries/:deliveryId",
+        "page": "DeliveryReviewPage"
+    },
+    {
+        "path": "/projects/:projectId/deliveries",
+        "page": "DeliveriesPage"
+    },
+    {
+        "path": "/projects/:projectId/mandates",
+        "page": "MandatesPage"
+    },
+    {
+        "path": "/mandates",
+        "page": "MandatesPage"
+    },
+    {
+        "path": "/plans/:planId",
+        "page": "PlanProposalPage"
+    },
+    {
+        "path": "/projects/:projectId/plans/:planId",
+        "page": "PlanProposalPage"
     }
 ]
