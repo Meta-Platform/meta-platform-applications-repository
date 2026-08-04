@@ -1497,7 +1497,10 @@ test("MPMX2-13 inbox ordena por triagem (mais valor, menos esforço)", async () 
 })
 
 test("MPMX2-6 política de gate é a fonte única: criar entrega é livre, remover é gated", async () => {
-    const policy = store.AgentGatePolicy()
+    // Assíncrona desde o modelo de entrega: a política depende de QUAL projeto se
+    // pergunta (legado pergunta antes de agir, entrega revisa depois).
+    const policy = await store.AgentGatePolicy()
+    assert.equal(policy.model, "legacy", "sem projeto, responde a política legada")
     assert.deepEqual(policy.actions.create, ["project", "board", "column"])
     assert.ok(policy.actions.delete.includes("milestone"))
     assert.deepEqual(policy.statuses.start, ["in-progress"])
@@ -2299,4 +2302,249 @@ test("MPMR-6 banco PRÉ-EXISTENTE ganha as colunas novas sem quebrar o boot", as
     assert.equal(itens.length, 1)
     assert.equal(itens[0].title, "Item antigo")
     await migrado.sequelize.close()
+})
+
+// O revisor humano dos testes do modelo de entrega precisa existir de verdade:
+// aceitar um plano cria itens em nome dele.
+let _humanoId
+const humano = async () => (_humanoId ||= (await store.CreateUser({ type: "human", displayName: "Revisor Humano" })).id)
+
+test("MPMR ciclo completo: entregar, revisor devolve, reentregar, humano aceita", async () => {
+    const p = await store.CreateProject({ name: "Refundado", keyPrefix: "REF", status: "active", actor: { source: "cli" } })
+    await store.MigrateProjectToDeliveryModel({ project: p.id, actor: { source: "gui", actorUserId: await humano() } })
+
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Trocar o motor", actor: { source: "cli" } })
+    await store.AddAcceptanceCriteria({ item: item.id, text: "o motor liga" })
+
+    const executor = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "exec-1" } }
+    const revisor  = { source: "agent", session: { provider: "codex",  modelName: "gpt-6",         traceId: "rev-1"  } }
+
+    // Pegar trabalho tira o item da fila e o põe em execução — sem pedir nada.
+    const pego = await store.NextTask({ project: p.id, actor: executor })
+    assert.equal(pego.item.key, item.key)
+    assert.ok(/Cite REF-1/.test(pego.commitConvention), "a convenção de commit volta em todo ciclo")
+    assert.equal((await store.GetItem({ item: item.id })).executionState, "claimed")
+
+    // Entregar: sem gate, sem modal, sem aprovação.
+    const entrega = await store.SubmitDelivery({ item: item.id, summary: "Motor trocado e testado.", actor: executor })
+    assert.equal(entrega.key, "REF-1/D1")
+    assert.equal(entrega.status, "ai-review", "vai para o revisor-IA antes do humano")
+    assert.equal((await store.GetItem({ item: item.id })).statusKey, "review", "o board acompanha")
+
+    // Quem executou não revisa.
+    await assert.rejects(
+        () => store.SubmitReview({ delivery: entrega.id, decision: "pass", actor: executor }),
+        (e) => e.code === "SAME_SESSION_REVIEW")
+
+    // O revisor devolve — e devolver exige motivo.
+    await store.DeclareRole({ role: "reviewer", actor: revisor })
+    await assert.rejects(
+        () => store.SubmitReview({ delivery: entrega.id, decision: "return", actor: revisor }),
+        (e) => e.code === "VALIDATION_ERROR")
+    await store.SubmitReview({ delivery: entrega.id, decision: "return", reason: "Faltou testar a partida a frio.", actor: revisor })
+
+    const devolvido = await store.GetItem({ item: item.id })
+    assert.equal(devolvido.reviewState, "returned")
+    assert.equal(devolvido.returnCount, 1)
+    assert.equal(devolvido.claimedBySessionId, (await store.FindSessionByIdentity(executor.session)).id,
+        "volta para quem fez, não para a fila")
+    assert.ok((await store.Ready({ project: p.id })).every((i) => i.key !== item.key),
+        "item devolvido tem dono: não é oferecido a outro agente")
+
+    // A crítica chega como instrução, não como registro esquecido.
+    const comentarios = await store.ListComments({ item: item.id })
+    assert.ok(comentarios.some((c) => /partida a frio/.test(c.body)), "a crítica vira comentário no item")
+
+    // Reentrega: rodada 2.
+    const entrega2 = await store.SubmitDelivery({ item: item.id, summary: "Agora com partida a frio.", actor: executor })
+    assert.equal(entrega2.round, 2)
+    assert.equal(entrega2.key, "REF-1/D2")
+
+    // Revisor passa; sobe ao humano com o parecer, sem concluir nada.
+    await store.SubmitReview({ delivery: entrega2.id, decision: "pass", reason: "Critério coberto.", actor: revisor })
+    const esperando = await store.GetDelivery({ delivery: entrega2.id })
+    assert.equal(esperando.status, "awaiting-human")
+    assert.equal(esperando.aiReviewState, "passed")
+    assert.notEqual((await store.GetItem({ item: item.id })).statusKey, "done", "a IA não conclui sozinha")
+
+    // A Mesa mostra exatamente o que espera pelo humano.
+    const mesa = await store.ReviewDesk({ project: p.id })
+    assert.equal(mesa.counts.deliveries, 1)
+    assert.equal(mesa.deliveries[0].key, "REF-1/D2")
+    assert.equal(mesa.deliveries[0].aiOpinion.verdict, "pass")
+
+    // O humano aceita: é isto que conclui o item.
+    await store.AcceptDelivery({ delivery: entrega2.id, actor: { source: "gui", actorUserId: await humano() } })
+    const concluido = await store.GetItem({ item: item.id })
+    assert.equal(concluido.statusKey, "done")
+    assert.equal(concluido.executionState, "done")
+    assert.equal(concluido.reviewState, "accepted")
+    assert.equal(concluido.claimedBySessionId, null, "item aceito não tem mais dono")
+})
+
+test("MPMR projeto migrado conclui sem aprovação; projeto legado continua pedindo", async () => {
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "gate-1" } }
+
+    // LEGADO: o gate de sempre.
+    const legado = await store.CreateProject({ name: "Ainda legado", keyPrefix: "LEG", status: "active", actor: { source: "cli" } })
+    const i1 = await store.CreateItem({ project: legado.id, type: "task", title: "Tarefa antiga", actor: { source: "cli" } })
+    await assert.rejects(
+        () => store.SetStatus({ item: i1.id, status: "done", actor: agente }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED",
+        "projeto legado continua exigindo aprovação para concluir")
+
+    // MIGRADO: a mesma transição passa direto — quem decide é a revisão, depois.
+    const novo = await store.CreateProject({ name: "Já migrado", keyPrefix: "NOV", status: "active", actor: { source: "cli" } })
+    await store.MigrateProjectToDeliveryModel({ project: novo.id, actor: { source: "gui" } })
+    const i2 = await store.CreateItem({ project: novo.id, type: "task", title: "Tarefa nova", actor: { source: "cli" } })
+    const movido = await store.SetStatus({ item: i2.id, status: "review", actor: agente })
+    assert.equal(movido.statusKey, "review")
+
+    // Excluir continua sendo humano nos DOIS modelos: é o que não tem "depois".
+    await assert.rejects(
+        () => store.DeleteItem({ item: i2.id, actor: agente }),
+        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+})
+
+test("MPMR migração preserva o trabalho em curso e mata pedido pendente órfão", async () => {
+    const p = await store.CreateProject({ name: "Em pleno voo", keyPrefix: "VOO", status: "active", actor: { source: "cli" } })
+    const emCurso  = await store.CreateItem({ project: p.id, type: "task", title: "Já começada", actor: { source: "cli" } })
+    const emReview = await store.CreateItem({ project: p.id, type: "task", title: "Aguardando validação", actor: { source: "cli" } })
+    const feita    = await store.CreateItem({ project: p.id, type: "task", title: "Já concluída", actor: { source: "cli" } })
+    await store.SetStatus({ item: emCurso.id, status: "in-progress", actor: { source: "cli" } })
+    await store.SetStatus({ item: emReview.id, status: "review", actor: { source: "cli" } })
+    await store.SetStatus({ item: feita.id, status: "done", actor: { source: "cli" } })
+
+    // Um agente pede para concluir algo: fica pendente na fila do humano.
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "mig-1" } }
+    const item4 = await store.CreateItem({ project: p.id, type: "task", title: "Pedido pendente", actor: { source: "cli" } })
+    await store.SetStatus({ item: item4.id, status: "done", actor: agente }).catch(() => undefined)
+    assert.ok((await store.GetItem({ item: item4.id })).pendingStatusKey, "o pedido marcou o item")
+
+    const r = await store.MigrateProjectToDeliveryModel({ project: p.id, actor: { source: "gui" } })
+    assert.equal(r.migrated.items, 4)
+    assert.equal(r.migrated.retroactiveDeliveries, 1, "o item em validação vira entrega retroativa")
+    assert.equal(r.migrated.expiredRequests, 1)
+
+    // O pedido órfão não pode continuar mentindo no board.
+    const depois = await store.GetItem({ item: item4.id })
+    assert.equal(depois.pendingStatusKey, null)
+
+    assert.equal((await store.GetItem({ item: emCurso.id })).executionState, "executing")
+    assert.equal((await store.GetItem({ item: feita.id })).reviewState, "accepted")
+
+    // E a entrega retroativa diz que não tem evidência, em vez de fingir que tem.
+    const retro = (await store.ListDeliveries({ item: emReview.id }))[0]
+    assert.equal(retro.evidenceQuality, "none")
+    assert.equal(retro.status, "awaiting-human")
+})
+
+test("MPMR mandato para a linha quando o humano vira o gargalo", async () => {
+    const p = await store.CreateProject({ name: "Com mandato", keyPrefix: "MAN", status: "active", actor: { source: "cli" } })
+    await store.MigrateProjectToDeliveryModel({ project: p.id, actor: { source: "gui" } })
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "man-1" } }
+    const sessao = await store.ResolveOrCreateSessionByIdentity(agente.session, "test")
+
+    const itens = []
+    for(let n = 1; n <= 4; n++)
+        itens.push(await store.CreateItem({ project: p.id, type: "task", title: `Tarefa ${n}`, actor: { source: "cli" } }))
+
+    // O humano concede o mandato: 2 entregas sem revisão e a linha para.
+    const mandato = await store.CreateMandate({
+        project: p.id, title: "Rodada 1", session: sessao.id,
+        maxUnreviewedDeliveries: 2, actor: { source: "gui", actorUserId: await humano() }
+    })
+    assert.equal(mandato.status, "active")
+
+    for(const item of itens.slice(0, 2)){
+        await store.ClaimItem({ item: item.id, actor: agente })
+        await store.SubmitDelivery({ item: item.id, summary: "feito", actor: agente })
+    }
+
+    const parado = await store.GetMandate({ mandate: mandato.id })
+    assert.equal(parado.status, "exhausted")
+    assert.equal(parado.stopReason, "unreviewed-limit")
+
+    // O agente é barrado e recebe o que fazer em seguida — não fica tentando.
+    await assert.rejects(
+        () => store.ClaimItem({ item: itens[2].id, actor: agente }),
+        (e) => e.code === "MANDATE_EXHAUSTED" && Array.isArray(e.details.whatNow) && e.details.whatNow.length > 0)
+
+    // O humano revisa uma: a linha volta a andar sozinha. (Ele pode decidir sem
+    // esperar o revisor-IA — é a autoridade final, não o último da fila.)
+    const pendentes = await store.ListDeliveries({ project: p.id })
+    assert.equal(pendentes.length, 2)
+    await store.AcceptDelivery({ delivery: pendentes[0].id, actor: { source: "gui", actorUserId: await humano() } })
+    assert.equal((await store.GetMandate({ mandate: mandato.id })).status, "active",
+        "aceitar destrava o mandato que parou por excesso de entregas sem revisão")
+})
+
+test("MPMR entrega sem revisor sobe ao humano marcada como não revisada", async () => {
+    const p = await store.CreateProject({ name: "Sem revisor", keyPrefix: "SRV", status: "active", actor: { source: "cli" } })
+    await store.MigrateProjectToDeliveryModel({ project: p.id, actor: { source: "gui" } })
+    await store.UpdateProject({ project: p.id, aiReviewTimeoutMinutes: 30, actor: { source: "gui" } }).catch(() => undefined)
+
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "srv-1" } }
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Ninguém revisa", actor: { source: "cli" } })
+    const entrega = await store.SubmitDelivery({ item: item.id, summary: "feito", actor: agente })
+    assert.equal(entrega.status, "ai-review")
+
+    // Passa do prazo sem revisor nenhum aparecer.
+    await store.models.Delivery.update(
+        { submittedAt: new Date(Date.now() - 90 * 60000) }, { where: { id: entrega.id } })
+    const varrido = await store.SweepStaleAiReviews({ project: p.id })
+    assert.equal(varrido.escalated, 1)
+
+    const subiu = await store.GetDelivery({ delivery: entrega.id })
+    assert.equal(subiu.status, "awaiting-human")
+    assert.equal(subiu.aiVerdict, "unreviewed", "chega ao humano dizendo que ninguém revisou")
+    const mesa = await store.ReviewDesk({ project: p.id })
+    assert.equal(mesa.deliveries[0].aiOpinion.verdict, "unreviewed")
+})
+
+test("MPMR plano proposto vira backlog, rodada e mandato numa decisão só", async () => {
+    // keyPrefix próprio: WorkItem.key é único no BANCO todo, não por projeto —
+    // reusar o prefixo de outro teste faz PLA-1 colidir com PLA-1.
+    const p = await store.CreateProject({ name: "Planejado", keyPrefix: "PLNO", status: "active", actor: { source: "cli" } })
+    await store.MigrateProjectToDeliveryModel({ project: p.id, actor: { source: "gui" } })
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "pln-1" } }
+
+    const plano = await store.ProposePlan({
+        project: p.id, title: "Reescrever o importador",
+        rationale: "O atual não lê o formato novo.", risks: "Pode quebrar a carga noturna.",
+        nodes: [
+            { ref: "epico", type: "epic", title: "Importador v2" },
+            { ref: "parser", parentRef: "epico", type: "feature", title: "Ler o formato novo",
+              acceptanceCriteria: ["lê os 3 arquivos de exemplo"], effort: "m" },
+            { parentRef: "epico", type: "task", title: "Migrar a carga noturna", dependsOn: ["parser"] }
+        ],
+        actor: agente
+    })
+    assert.equal(plano.status, "submitted")
+    assert.equal(plano.nodeCount, 3)
+    // Enquanto é plano, não existe item nenhum: nada foi despejado no backlog.
+    assert.equal((await store.ListItems({ project: p.id })).length, 0)
+
+    // O humano edita antes de aceitar — e a edição fica marcada.
+    const noParser = plano.nodes.find((n) => n.title === "Ler o formato novo")
+    await store.RevisePlan({ plan: plano.id, node: noParser.id, updates: { effort: "l" }, actor: { source: "gui" } })
+
+    const aceito = await store.AcceptPlan({ plan: plano.id, actor: { source: "gui", actorUserId: await humano() } })
+    assert.equal(aceito.createdItems, 3)
+    assert.ok(aceito.sprintId, "a rodada nasce junto")
+    assert.ok(aceito.mandateId, "e o mandato que autoriza o agente a executá-la")
+
+    const itens = await store.ListItems({ project: p.id })
+    assert.equal(itens.length, 3)
+    const parser = itens.find((i) => i.title === "Ler o formato novo")
+    assert.equal(parser.effort, "l", "a edição do humano é o que virou item")
+    const nos = (await store.GetPlan({ plan: plano.id })).nodes
+    assert.ok(nos.find((n) => n.title === "Ler o formato novo").editedByHuman)
+
+    // A dependência declarada no plano existe como vínculo real.
+    const migrar = await store.GetItem({ item: itens.find((i) => i.title === "Migrar a carga noturna").id })
+    assert.ok(migrar.links.some((l) => l.relation === "depends"), "a dependência do plano virou vínculo")
+
+    // Aceitar o plano é uma decisão só: não pode ser aceito de novo.
+    assert.equal((await store.AcceptPlan({ plan: plano.id, actor: { source: "gui" } })).status, "accepted")
 })

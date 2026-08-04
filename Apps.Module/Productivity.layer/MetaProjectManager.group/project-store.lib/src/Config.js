@@ -285,9 +285,39 @@ const AGENT_GATE_POLICY = {
                     "checklist-item", "acceptance-criteria", "risk", "doc-page", "planning-doc"]
 }
 
-// Esta ação, sobre este tipo de alvo, exige aprovação humana quando feita por agente?
-const IsAgentGatedAction = ({ actionName, type } = {}) =>
-    Array.isArray(AGENT_GATE_POLICY[actionName]) && AGENT_GATE_POLICY[actionName].includes(type)
+// A política acima é a do modelo LEGADO — a que pergunta antes de agir.
+//
+// No modelo de ENTREGA a pergunta muda de lugar: o agente age livre e o humano
+// decide depois, olhando o que foi feito. Perguntar antes só continua fazendo
+// sentido onde o "depois" não existe — o que é destrutivo ou encerra algo.
+//
+// Some daqui, em relação à política legada: set-status, set-status-batch,
+// complete-epic (a conclusão passa a ser uma entrega revisada), e a estrutura do
+// fluxo (board, coluna, board padrão, campos do projeto), que é reversível e não
+// justificava interromper. Entra o que o modelo novo cria: conceder mandato e
+// aceitar plano — as duas decisões que o humano toma UMA vez para liberar muito
+// trabalho, e por isso precisam ser dele.
+const AGENT_GATE_POLICY_DELIVERY = {
+    delete:  ["project", "board", "item", "milestone", "sprint", "column",
+              "checklist-item", "acceptance-criteria", "risk", "doc-page", "planning-doc"],
+    archive: ["project"],
+    close:   ["project"],
+    grant:   ["mandate"],
+    accept:  ["plan"]
+}
+
+// Esta ação, sobre este tipo de alvo, exige aprovação humana quando feita por
+// agente? `model` diz sob qual política o projeto vive ("legacy" | "delivery").
+// Sem `model`, responde pela política legada — é o que mantém todo projeto
+// existente se comportando exatamente como antes durante a convivência.
+const IsAgentGatedAction = ({ actionName, type, model } = {}) => {
+    const policy = model === "delivery" ? AGENT_GATE_POLICY_DELIVERY : AGENT_GATE_POLICY
+    return Array.isArray(policy[actionName]) && policy[actionName].includes(type)
+}
+
+// A política inteira de um modelo — é daqui que sai o `get_guidance`, para que o
+// que o produto DIZ ao agente e o que o produto FAZ não possam divergir.
+const AgentGatePolicyFor = (model) => model === "delivery" ? AGENT_GATE_POLICY_DELIVERY : AGENT_GATE_POLICY
 
 // EXCEÇÕES da trava de PLANEJAMENTO (agentPlanningLock). A trava existe para que o
 // agente não trabalhe num projeto que o humano ainda está montando — mas recusar
@@ -318,6 +348,8 @@ module.exports = {
     AGENT_GATED_START_STATUSES,
     AGENT_GATED_DONE_STATUSES,
     AGENT_GATE_POLICY,
+    AGENT_GATE_POLICY_DELIVERY,
+    AgentGatePolicyFor,
     IsAgentGatedAction,
     PLANNING_LOCK_EXEMPTIONS,
     IsPlanningLockExempt,

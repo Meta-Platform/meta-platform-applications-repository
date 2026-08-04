@@ -2,6 +2,7 @@ const { Op, literal, fn, col, cast, where: whereExpression } = require("sequeliz
 const { NewId, Serialize, SerializeMany, PatchDiff, AssertShortDescription, NormalizeLabels } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
 const { WORK_ITEM_TYPES, WORK_ITEM_PRIORITIES, LINK_RELATIONS, WORK_ITEM_HORIZONS, WORK_ITEM_CLARITY, WORK_ITEM_EFFORTS, WORK_ITEM_VALUES, WORK_ITEM_CONFIDENCE, AGENT_GATED_START_STATUSES, AGENT_GATED_DONE_STATUSES } = require("../Config")
+const { DeriveStatusKey } = require("../Utils/deliveryState")
 
 const START_STATUS_SET = new Set(AGENT_GATED_START_STATUSES)
 const DONE_STATUS_SET = new Set(AGENT_GATED_DONE_STATUSES)
@@ -498,6 +499,13 @@ const WorkItemsStore = (ctx) => {
                 `Item já reivindicado por outra sessão até ${new Date(current.expiresAt).toISOString()}. Pegue outro da fila.`,
                 { itemId: instance.id, claim: current })
 
+        // O mandato decide se este agente pode pegar ESTE item agora: lança
+        // MANDATE_EXHAUSTED (a linha parou) ou OUT_OF_MANDATE (fora do escopo
+        // aprovado). Sem mandato nenhum, o agente trabalha como sempre.
+        const mandate = store.AssertMandate
+            ? await store.AssertMandate({ project: instance.projectId, item: instance, actor })
+            : undefined
+
         // Declarar os pacotes em jogo faz parte de reivindicar: é o que permite ao
         // próximo agente saber onde NÃO encostar (e ao `git add` sair por caminho).
         if(Array.isArray(packages) && packages.length && store.AddItemPackage)
@@ -506,7 +514,16 @@ const WorkItemsStore = (ctx) => {
 
         const ttl = Number(minutes) > 0 ? Number(minutes) : CLAIM_DEFAULT_MINUTES
         const expiresAt = new Date(Date.now() + ttl * 60000)
-        await instance.update({ claimedBySessionId: sessionId, claimedAt: new Date(), claimExpiresAt: expiresAt })
+        await instance.update({
+            claimedBySessionId: sessionId, claimedAt: new Date(), claimExpiresAt: expiresAt,
+            mandateId: mandate ? mandate.id : instance.mandateId
+        })
+        // Em projeto migrado, reivindicar JÁ é começar: manter o item na fila
+        // enquanto alguém trabalha nele é o que fazia dois agentes se encontrarem
+        // no mesmo arquivo.
+        if(store.ProjectGateModel && await store.ProjectGateModel(instance.projectId) === "delivery" &&
+           instance.executionState === "queued")
+            await store.SetExecutionState({ item: instance, executionState: "claimed", actor })
         await writeAudit({ projectId: instance.projectId, entityType: "work-item", entityId: instance.id, action: "claim", actor, metadata: { expiresAt, minutes: ttl } })
         emit("item.updated", Serialize(instance))
 
@@ -531,11 +548,18 @@ const WorkItemsStore = (ctx) => {
         if(!sessionId)
             throw new DomainError("VALIDATION_ERROR", "Só uma sessão de agente pega tarefa da fila.", { field: "actor" })
 
+        // O mandato desta sessão entra na montagem da fila: ele não filtra o que
+        // existe, marca o que está fora do escopo aprovado.
+        const mandate = store.CurrentMandate ? await store.CurrentMandate({ project, actor }).catch(() => undefined) : undefined
+
         // A fila é a MESMA do report_ready (desimpedido: sem bloqueio, dependências
         // fechadas, entrega liberada) — não uma segunda regra que diverge dela.
-        const ready = await store.Ready({ project, limit: 50 })
+        const ready = await store.Ready({ project, limit: 50, mandate })
         const queue = (ready && ready.items) || ready || []
         for(const candidate of queue){
+            // Fora do mandato aparece na fila (para o agente saber que existe),
+            // mas não é oferecido como próxima tarefa.
+            if(candidate.outOfMandate) continue
             if(area && candidate.area !== area) continue
             if(label && !(candidate.labels || []).includes(label)) continue
             if(type && candidate.type !== type) continue
@@ -550,8 +574,26 @@ const WorkItemsStore = (ctx) => {
             if(!taken) continue
             const item = await GetItem({ item: instance.id })
             const here = store.WhoIsHere ? await store.WhoIsHere({ project, actor }).catch(() => undefined) : undefined
+            const projeto = await store.ResolveProject(instance.projectId).catch(() => undefined)
+            const entrega = projeto && projeto.deliveryModel
+            // O que o agente precisa saber ANTES de escrever a primeira linha:
+            // a crítica que fez o item voltar, como o commit será correlacionado,
+            // e o que vai comprovar que funcionou.
+            const devolvido = entrega && item.reviewState === "returned" && store.ListDeliveries
+                ? (await store.ListDeliveries({ item: instance.id, status: "returned", limit: 1 }).catch(() => []))[0]
+                : undefined
             return {
                 item, claim: taken.claim,
+                mandate: mandate ? { id: mandate.id, title: mandate.title, remaining: mandate.remaining } : undefined,
+                priorityInstruction: devolvido && devolvido.returnReason
+                    ? `Esta tarefa voltou para você: ${devolvido.returnReason}`
+                    : undefined,
+                commitConvention: entrega
+                    ? `Cite ${item.key} na mensagem do commit — é assim que a evidência liga o commit a esta tarefa.`
+                    : undefined,
+                verifyCommand: entrega
+                    ? (item.verifyCommand || (projeto && projeto.verifyCommand) || undefined)
+                    : undefined,
                 warnings: taken.warnings,
                 packageCollisions: taken.packageCollisions,
                 // Quem mais está por aqui vem junto: pegar tarefa é o momento em
@@ -666,6 +708,39 @@ const WorkItemsStore = (ctx) => {
         return rows.map((r) => ({ id: r.id, text: r.text }))
     }
 
+    /**
+     * Move o item nos DOIS EIXOS do modelo de entrega e deixa o statusKey ser
+     * consequência.
+     *
+     * REGRA QUE NÃO PODE SER QUEBRADA: isto delega ao SetStatus em vez de gravar
+     * `statusKey` direto. `AnalyticsStore.ProjectFlow` e `ItemTimeline`
+     * reconstroem todo o histórico fazendo replay dos eventos `set-status` (com
+     * before/after) — escrever a coluna por fora produziria um item que muda de
+     * lugar no board sem deixar rastro, e o gráfico de fluxo ficaria cego a
+     * partir da migração.
+     *
+     * O ator chega aqui SEM sessão: as transições do modelo de entrega não são
+     * gated (quem decide é a revisão, depois), e um ator com sessão faria o
+     * SetStatus tentar abrir pedido de aprovação.
+     */
+    const SetExecutionState = async ({ item, executionState, reviewState, extra = {}, actor } = {}) => {
+        const instance = typeof item === "object" && item.id ? item : await ResolveItem(item)
+        const nextExecution = executionState || instance.executionState
+        const nextReview    = reviewState !== undefined ? reviewState : instance.reviewState
+        const statusKey = DeriveStatusKey({
+            executionState: nextExecution,
+            reviewState: nextReview,
+            blockedReason: instance.blockedReason,
+            currentStatusKey: instance.statusKey
+        })
+        await instance.update({ executionState: nextExecution, reviewState: nextReview, ...extra })
+        if(statusKey !== instance.statusKey)
+            await SetStatus({ item: instance.id, status: statusKey, actor: { ...actor, session: undefined } })
+        else
+            emit("item.updated", Serialize(instance))
+        return instance
+    }
+
     const SetStatus = async ({ item, status, actor } = {}) => {
         if(!status) throw new DomainError("VALIDATION_ERROR", "Status é obrigatório.", { field: "status" })
         const instance = await ResolveItem(item)
@@ -676,7 +751,12 @@ const WorkItemsStore = (ctx) => {
         // mover para o MESMO status. GateAgentAction LANÇA para agente (vira pedido
         // pendente e bloqueia até a decisão humana); humano/CLI passam direto e o
         // executor "set-status:work-item" reexecuta este método na aprovação.
-        if(store.IsAgentActor(actor) && status !== instance.statusKey){
+        //
+        // Em projeto MIGRADO nada disto acontece: iniciar e concluir deixaram de
+        // ser decisões prévias (a conclusão passa por entrega revisada), então
+        // nem o pedido nem a marca de status pendente fazem sentido ali.
+        const gateModel = store.ProjectGateModel ? await store.ProjectGateModel(instance.projectId) : "legacy"
+        if(store.IsAgentActor(actor) && status !== instance.statusKey && gateModel === "legacy"){
             const done = await _isDoneStatus(instance, status)
             const start = START_STATUS_SET.has(status)
             if(start || done){
@@ -1070,7 +1150,7 @@ const WorkItemsStore = (ctx) => {
     return {
         ResolveItem,
         ListProjectAreas, ListProjectLabels,
-        CreateItem, ListItems, CountItems, GetItem, UpdateItem, SetStatus, SetStatusBatch, Assign,
+        CreateItem, ListItems, CountItems, GetItem, UpdateItem, SetStatus, SetStatusBatch, SetExecutionState, Assign,
         MoveItem, MoveItemToProject, MoveToBoard, ReorderItem, ConvertItem, ConvertIdea, SetBlocked, CompleteEpic,
         ClaimItem, RenewItemClaim, ReleaseItem, GetItemClaim, NextTask, UnmetAcceptanceCriteria,
         LinkItem, UnlinkItem, DeleteItem,

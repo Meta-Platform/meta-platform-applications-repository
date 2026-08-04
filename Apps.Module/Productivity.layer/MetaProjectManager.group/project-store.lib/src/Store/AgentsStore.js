@@ -1,7 +1,7 @@
 const { NewId, Serialize, SerializeMany } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
 const {
-    AGENT_PROVIDERS, AGENT_GATE_POLICY, IsAgentGatedAction,
+    AGENT_PROVIDERS, AGENT_GATE_POLICY, IsAgentGatedAction, AgentGatePolicyFor,
     AGENT_GATED_START_STATUSES, AGENT_GATED_DONE_STATUSES
 } = require("../Config")
 
@@ -299,6 +299,30 @@ const AgentsStore = (ctx) => {
     const IsAgentActor = (actor) => !!(actor && actor.session)
     const IsAgentCreation = IsAgentActor // alias retrocompatível (gate de criação)
 
+    /**
+     * Sob qual política este projeto vive: "legacy" (pergunta antes) ou
+     * "delivery" (revisa depois).
+     *
+     * Memorizado por poucos segundos porque isto roda no caminho quente: uma
+     * operação em lote de 74 itens consultaria o mesmo projeto 74 vezes. A
+     * janela é curta de propósito — migrar um projeto passa a valer quase
+     * imediatamente, sem exigir reinício de nada.
+     */
+    const _MODEL_CACHE_MS = 5000
+    const _modelCache = new Map()   // projectId → { model, at }
+    const _projectModel = async (projectId) => {
+        if(!projectId) return "legacy"
+        const hit = _modelCache.get(projectId)
+        if(hit && Date.now() - hit.at < _MODEL_CACHE_MS) return hit.model
+        const row = await models.Project.findOne({ where: { id: projectId }, attributes: ["id", "deliveryModel"] }).catch(() => undefined)
+        const model = row && row.deliveryModel ? "delivery" : "legacy"
+        _modelCache.set(projectId, { model, at: Date.now() })
+        return model
+    }
+    // A migração invalida na hora: esperar os 5s faria a primeira ação depois de
+    // migrar ainda cair na política antiga.
+    const ForgetProjectModel = (projectId) => { _modelCache.delete(projectId) }
+
     // Cria um pedido de APROVAÇÃO pendente (não executa a ação ainda). Usado pelos
     // gates de create (project/board/milestone/sprint) e de delete (project/board/item).
     // Idempotência opcional via resumeToken. Retorna { request, session }.
@@ -347,7 +371,10 @@ const AgentsStore = (ctx) => {
         // A política (Config.AGENT_GATE_POLICY) decide o que é gated — a mesma que
         // alimenta a orientação lida pelo agente. Par (ação, tipo) fora dela passa
         // direto: nenhuma call-site pode inventar um gate que a orientação não anuncia.
-        if(!IsAgentGatedAction({ actionName, type })) return
+        //
+        // QUAL política depende do modelo do projeto: no de entrega, o humano
+        // decide DEPOIS (revisando), então quase nada interrompe antes.
+        if(!IsAgentGatedAction({ actionName, type, model: await _projectModel(projectId) })) return
         const { request } = await RequestApproval({
             actionName, type, targetId, projectId, payload, risk,
             resumeToken: actor.resumeToken, actor
@@ -615,7 +642,24 @@ const AgentsStore = (ctx) => {
         "create:column":    ({ payload, actor }) => store.AddColumn({ ...payload, actor }),
         "update:column":    ({ payload, targetId, actor }) => store.UpdateColumn({ ...payload, column: targetId, actor }),
         "move:column":      ({ payload, targetId, actor }) => store.MoveColumn({ column: targetId, order: payload.order, actor }),
-        "set-default:board": ({ targetId, actor }) => store.SetDefaultBoard({ board: targetId, actor })
+        "set-default:board": ({ targetId, actor }) => store.SetDefaultBoard({ board: targetId, actor }),
+
+        // ── MODELO DE ENTREGA ────────────────────────────────────────────────
+        // Nada acima foi removido: pedidos criados antes da migração de um
+        // projeto precisam continuar aprováveis, senão a fila do humano fica com
+        // itens que não executam mais.
+        //
+        // Encerrar o projeto (o passo que arquiva).
+        "close:project":    ({ payload, targetId, actor }) =>
+            store.CloseProject({ ...payload, project: targetId || (payload && payload.project), actor }),
+        // Conceder mandato: é a decisão que libera o agente a encadear trabalho
+        // sozinho, e por isso é a que continua sendo humana.
+        "grant:mandate":    ({ payload, targetId, actor }) =>
+            store.ActivateMandate({ mandate: targetId || (payload && payload.mandateId), actor }),
+        // Aceitar o plano proposto: cria a árvore de itens, a rodada e o mandato
+        // numa decisão só.
+        "accept:plan":      ({ payload, targetId, actor }) =>
+            store.AcceptPlan({ plan: targetId || (payload && payload.planId), nodes: payload && payload.nodes, actor })
     }
 
     // Quem decide um pedido é sempre uma pessoa: a GUI e a CLI rodam no desktop e
@@ -824,19 +868,40 @@ const AgentsStore = (ctx) => {
     // Política de gate EXECUTÁVEL: é o mesmo mapa que GateAgentAction consulta.
     // Quem documenta o gate para o agente (MCP get_guidance) lê daqui, em vez de
     // manter uma segunda lista à mão que envelhece em silêncio.
-    const AgentGatePolicy = () => ({
-        actions: AGENT_GATE_POLICY,
-        statuses: {
-            start: AGENT_GATED_START_STATUSES,
-            done: AGENT_GATED_DONE_STATUSES,
-            // Concluir também é gated em coluna marcada isDoneColumn, seja qual for o statusKey.
-            doneByColumn: true
-        },
-        humanOnly: ["aprovar pedido", "rejeitar pedido", "confirmar sessão"]
-    })
+    //
+    // `project` escolhe QUAL política responder: um agente trabalhando num
+    // projeto migrado precisa ler as regras do modelo de entrega, não as do
+    // legado. Sem projeto, responde a legada (o padrão da convivência).
+    const AgentGatePolicy = async ({ project } = {}) => {
+        let model = "legacy"
+        if(project){
+            const resolved = await store.ResolveProject(project).catch(() => undefined)
+            if(resolved) model = resolved.deliveryModel ? "delivery" : "legacy"
+        }
+        const delivery = model === "delivery"
+        return {
+            model,
+            actions: AgentGatePolicyFor(model),
+            statuses: delivery
+                // No modelo de entrega, mudar status não é mais o caminho da
+                // conclusão — logo não há transição gated.
+                ? { start: [], done: [], doneByColumn: false,
+                    note: "Concluir passa por entrega revisada (submit_delivery), não por mudança de status." }
+                : {
+                    start: AGENT_GATED_START_STATUSES,
+                    done: AGENT_GATED_DONE_STATUSES,
+                    // Concluir também é gated em coluna marcada isDoneColumn, seja qual for o statusKey.
+                    doneByColumn: true
+                },
+            humanOnly: delivery
+                ? ["aprovar pedido", "rejeitar pedido", "confirmar sessão",
+                   "aceitar ou devolver entrega", "conceder mandato", "aceitar plano"]
+                : ["aprovar pedido", "rejeitar pedido", "confirmar sessão"]
+        }
+    }
 
     return {
-        AgentGatePolicy,
+        AgentGatePolicy, ForgetProjectModel, ProjectGateModel: _projectModel,
         CreateAgent, ResolveAgent, ListAgents, GetAgent,
         RegisterSession, ResolveSession, ListSessions, GetSession,
         ConfirmSession, RejectSession, CloseSession,

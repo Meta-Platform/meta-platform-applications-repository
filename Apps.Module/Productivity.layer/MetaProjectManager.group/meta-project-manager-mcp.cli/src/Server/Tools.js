@@ -1641,8 +1641,8 @@ const BuildTools = ({ store, actor }) => {
         {
             name: "get_guidance",
             description: "Regras de operação deste gerenciador: o que é livre, o que exige aprovação humana, como escrever título/descrição, relações de vínculo válidas, códigos de erro e o fluxo recomendado. Chame UMA VEZ no início da sessão se você não recebeu as instruções do servidor.",
-            inputSchema: Obj({}),
-            handler: async () => ({
+            inputSchema: Obj({ project: Str("Projeto (id|slug|key) — a política depende do modelo dele") }),
+            handler: async ({ project } = {}) => ({
                 instructions: INSTRUCTIONS,
                 // Políticas de trabalho que TODO agente segue (não só as regras de API).
                 // Parte já é imposta por gate (iniciar/concluir tarefa); as demais são
@@ -1660,13 +1660,18 @@ const BuildTools = ({ store, actor }) => {
                     "Verifique o RESULTADO ao final (reconsulte/valide), não presuma sucesso.",
                     "Cheque list_feedback do projeto ANTES, DURANTE e ao FINALIZAR — não encerre com feedback aberto."
                 ],
-                constraints: (() => {
+                constraints: await (async () => {
                     // O gate é DERIVADO da mesma política que o store consulta ao decidir
                     // se bloqueia (store.AgentGatePolicy → Config.AGENT_GATE_POLICY). Uma
                     // lista escrita à mão aqui já anunciou gate em milestone/sprint que o
                     // código nunca aplicou, e o agente planejava esperas que não existiam.
-                    const policy = store.AgentGatePolicy()
+                    //
+                    // Com dois modelos convivendo, a política também depende do PROJETO:
+                    // responder a do legado a quem trabalha num projeto migrado o faria
+                    // esperar aprovações que não existem mais.
+                    const policy = await store.AgentGatePolicy({ project })
                     return {
+                        model: policy.model,
                         linkRelations: LINK_RELATIONS,
                         riskLinkRelations: RISK_LINK_RELATIONS,
                         milestoneLinkRelations: MILESTONE_LINK_RELATIONS,

@@ -1,5 +1,6 @@
 const { Op } = require("sequelize")
 const { SerializeMany, Serialize } = require("../Utils/helpers")
+const { IsQueueable } = require("../Utils/deliveryState")
 
 const DONE = new Set(["done", "archived", "completed"])
 
@@ -58,7 +59,7 @@ const ReportsStore = (ctx) => {
     //
     // A ordem é por quanto cada um DESTRAVA (unblocks) e depois por prioridade:
     // pegar primeiro o que libera mais trabalho para os outros.
-    const Ready = async ({ project, limit } = {}) => {
+    const Ready = async ({ project, limit, mandate } = {}) => {
         const { projectInstance, items } = await _projectItems(project)
         const byId = {}
         items.forEach((i) => { byId[i.id] = i })
@@ -109,9 +110,34 @@ const ReportsStore = (ctx) => {
         // "pronto para pegar" é convidar dois agentes para o mesmo trabalho.
         const claimAlive = (item) =>
             item.claimedBySessionId && item.claimExpiresAt && new Date(item.claimExpiresAt).getTime() > Date.now()
+        // Em projeto migrado, quem responde "já foi começado?" é o eixo de
+        // execução, não o statusKey: um item entregue está em `review` no board,
+        // mas o que o tira da fila é ter uma entrega esperando decisão. Item
+        // DEVOLVIDO também não volta para cá — ele tem dono (o agente que o
+        // entregou), e oferecê-lo a outro desperdiçaria o contexto da crítica.
+        const delivery = !!projectInstance.deliveryModel
+        const queueable = (item) => delivery
+            ? IsQueueable({ executionState: item.executionState, reviewState: item.reviewState })
+            : READY_STATUSES.has(item.statusKey)
+
+        // Mandato: o que está FORA do escopo não some da fila — é rebaixado. Some
+        // seria mentir sobre o que existe; o agente precisa saber que há trabalho
+        // ali que ele não foi autorizado a pegar.
+        const scope = mandate && mandate.scopeJson ? mandate.scopeJson : undefined
+        const inMandate = (item) => {
+            if(!scope) return true
+            if(Array.isArray(scope.itemKeys) && scope.itemKeys.length) return scope.itemKeys.includes(item.key)
+            if(scope.milestoneId && item.milestoneId !== scope.milestoneId) return false
+            if(scope.sprintId && item.sprintId !== scope.sprintId) return false
+            if(scope.area && item.area !== scope.area) return false
+            if(Array.isArray(scope.labels) && scope.labels.length)
+                return (item.labels || []).some((l) => scope.labels.includes(l))
+            return true
+        }
+
         const ready = []
         for(const item of items){
-            if(!READY_STATUSES.has(item.statusKey)) continue
+            if(!queueable(item)) continue
             if(item.blockedReason || item.statusKey === "blocked") continue
             if(claimAlive(item)) continue
             const pending = [...(needs.get(item.id) || [])].filter(isOpen)
@@ -121,11 +147,14 @@ const ReportsStore = (ctx) => {
             ready.push({
                 ...Serialize(item),
                 unblocks: releases.length,
-                unblocksKeys: releases.map((id) => byId[id] && byId[id].key).filter(Boolean)
+                unblocksKeys: releases.map((id) => byId[id] && byId[id].key).filter(Boolean),
+                outOfMandate: inMandate(item) ? undefined : true
             })
         }
 
         ready.sort((a, b) =>
+            // Fora do mandato desce, mas continua visível.
+            (a.outOfMandate ? 1 : 0) - (b.outOfMandate ? 1 : 0) ||
             b.unblocks - a.unblocks ||
             (PRIORITY_RANK[b.priority] || 0) - (PRIORITY_RANK[a.priority] || 0) ||
             String(a.key).localeCompare(String(b.key))

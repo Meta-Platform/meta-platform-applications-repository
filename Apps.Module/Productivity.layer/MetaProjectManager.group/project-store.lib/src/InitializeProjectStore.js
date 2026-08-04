@@ -24,6 +24,10 @@ const EcosystemStore  = require("./Store/EcosystemStore")
 const ActivityStore   = require("./Store/ActivityStore")
 const PresenceStore   = require("./Store/PresenceStore")
 const ImportExport    = require("./Store/ImportExportStore")
+const DeliveriesStore = require("./Store/DeliveriesStore")
+const ReviewsStore    = require("./Store/ReviewsStore")
+const MandatesStore   = require("./Store/MandatesStore")
+const PlansStore      = require("./Store/PlansStore")
 
 /**
  * Store do Meta Project Manager (domínio + persistência SQLite + auditoria).
@@ -231,6 +235,15 @@ const InitializeProjectStore = (options = {}) => {
     // EcosystemStore resolve itens e lê o disco (catálogo de pacotes).
     Object.assign(store, EcosystemStore(ctx))
     Object.assign(store, ImportExport(ctx))
+    // ── MODELO DE ENTREGA ────────────────────────────────────────────────────
+    // Entram por último e nesta ordem porque dependem de quase tudo acima:
+    // Deliveries usa ResolveItem/SetExecutionState/CreateNotice/AddComment;
+    // Reviews usa Deliveries; Mandates é chamado por Deliveries (contadores) e
+    // chama GateAgentAction; Plans cria itens, sprint e mandato ao aceitar.
+    Object.assign(store, MandatesStore(ctx))
+    Object.assign(store, DeliveriesStore(ctx))
+    Object.assign(store, ReviewsStore(ctx))
+    Object.assign(store, PlansStore(ctx))
 
     return store
 }

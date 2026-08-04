@@ -294,11 +294,109 @@ const ProjectsStore = (ctx) => {
         return `${projectInstance.keyPrefix}-${projectInstance.keySeq}`
     }
 
+    /**
+     * MIGRA o projeto para o modelo de entrega.
+     *
+     * Decisão HUMANA por definição: é ela que muda como o agente é governado ali,
+     * e um agente que pudesse se auto-liberar do gate tornaria o gate decorativo.
+     *
+     * Três passos, nesta ordem — e o primeiro é o que costuma ser esquecido:
+     * pedidos de status pendentes precisam MORRER antes, senão o campo de status
+     * pendente do item continua apontando para um pedido que nunca vai executar,
+     * e o board passa a mentir para sempre ("aguardando aprovação para concluir"
+     * num modelo onde concluir já não passa por aprovação).
+     */
+    const MigrateProjectToDeliveryModel = async ({ project, actor } = {}) => {
+        const instance = await ResolveProject(project)
+        if(store.IsAgentActor && store.IsAgentActor(actor))
+            throw new DomainError("AGENT_ACTION_REQUIRES_HUMAN",
+                "Migrar o projeto para o modelo de entrega é decisão humana — é ela que muda como você é governado aqui.",
+                { projectId: instance.id })
+        if(instance.deliveryModel) return { ...Serialize(instance), alreadyMigrated: true }
+
+        const { MapLegacyStatusToStates } = require("../Utils/deliveryState")
+        const { CreationRequest, WorkItem, Delivery } = models
+
+        // 1) pedidos de status pendentes viram história
+        const pendentes = await CreationRequest.findAll({
+            where: {
+                projectId: instance.id, status: "pending",
+                actionName: { [Op.in]: ["set-status", "set-status-batch", "complete-epic"] }
+            }
+        })
+        for(const req of pendentes)
+            await req.update({
+                status: "expired", decidedAt: new Date(),
+                rejectionReason: "projeto migrado para o modelo de entrega: concluir passa por entrega revisada"
+            })
+
+        // 2) cada item ganha os dois eixos
+        const itens = await WorkItem.findAll({ where: { projectId: instance.id, deletedAt: null } })
+        let retroativas = 0
+        for(const item of itens){
+            const { executionState, reviewState } = MapLegacyStatusToStates(item.statusKey)
+            const patch = {
+                executionState, reviewState,
+                pendingStatusKey: null, pendingStatusRequestId: null, pendingStatusAt: null
+            }
+
+            // Item que estava "em validação" já É uma entrega esperando humano —
+            // criá-la é o que impede esses itens de sumirem da Mesa. Ela nasce
+            // dizendo que não tem evidência: fingir que tem seria pior.
+            if(item.statusKey === "review"){
+                const delivery = await Delivery.create({
+                    id: NewId(), projectId: instance.id, workItemId: item.id,
+                    key: `${item.key}/D1`, round: 1, status: "awaiting-human",
+                    title: item.title, shortDescription: item.shortDescription,
+                    summary: "Entrega retroativa: este item já aguardava validação quando o projeto migrou. Nenhuma evidência foi colhida na época.",
+                    executedBySessionId: item.claimedBySessionId || undefined,
+                    submittedAt: item.updatedAt, evidenceCollectedAt: new Date(),
+                    evidenceQuality: "none", aiReviewState: "skipped",
+                    aiVerdict: "unreviewed", aiVerdictReason: "Entrega anterior à migração."
+                })
+                patch.currentDeliveryId = delivery.id
+                patch.deliveryCount = 1
+                retroativas++
+            }
+            await item.update(patch)
+        }
+
+        await instance.update({
+            deliveryModel: true, deliveryModelAt: new Date(),
+            deliveryModelByUserId: (actor && actor.actorUserId) || undefined
+        })
+        // A política nova precisa valer AGORA, não daqui a alguns segundos.
+        if(store.ForgetProjectModel) store.ForgetProjectModel(instance.id)
+
+        await writeAudit({
+            projectId: instance.id, entityType: "project", entityId: instance.id,
+            action: "migrate-delivery-model", actor,
+            metadata: { items: itens.length, retroactiveDeliveries: retroativas, expiredRequests: pendentes.length }
+        })
+        emit("project.updated", Serialize(instance))
+        return {
+            ...Serialize(instance),
+            migrated: { items: itens.length, retroactiveDeliveries: retroativas, expiredRequests: pendentes.length }
+        }
+    }
+
+    // Volta atrás: a flag desliga e o projeto reencontra o comportamento antigo.
+    // As entregas permanecem — são o registro do que aconteceu, não um modo.
+    const RollbackProjectToLegacy = async ({ project, actor } = {}) => {
+        const instance = await ResolveProject(project)
+        await instance.update({ deliveryModel: false, deliveryModelAt: null, deliveryModelByUserId: null })
+        if(store.ForgetProjectModel) store.ForgetProjectModel(instance.id)
+        await writeAudit({ projectId: instance.id, entityType: "project", entityId: instance.id, action: "rollback-delivery-model", actor })
+        emit("project.updated", Serialize(instance))
+        return Serialize(instance)
+    }
+
     return {
         ResolveProject, AssertProjectWritable,
         CreateProject, ListProjects, GetProject, UpdateProject,
         SetProjectReport, GetProjectReport,
         ArchiveProject, RestoreProject, DeleteProject, ProjectMetrics,
+        MigrateProjectToDeliveryModel, RollbackProjectToLegacy,
         NextItemKey
     }
 }
