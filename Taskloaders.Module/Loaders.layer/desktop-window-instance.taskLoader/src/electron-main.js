@@ -875,6 +875,13 @@ const CreateGuiHostWindow = async () => {
                 buildProfile:    config.webgui.buildProfile,
                 environmentPath: config.webgui.environmentPath,
                 generatedDirName:config.webgui.RT_ENV_GENERATED_DIR_NAME,
+                // O build sai deste processo. Uma janela desktop fica aberta por
+                // horas, e soltar as referências do build não devolve memória ao
+                // sistema: o V8 mantém o heap que reservou. Quem devolve página
+                // ao SO é o processo ao morrer — então o build acontece num
+                // filho efêmero, e este processo nunca chega a alocá-lo.
+                isolateBuild:    true,
+                buildIsolated:   config.params && config.params.RT_WEBGUI_BUILD_ISOLATED,
                 onChangeProgress: (percentage) => {
                     if(!window.isDestroyed() && !window.webContents.isDestroyed())
                         window.webContents.send("build:progress", percentage)
