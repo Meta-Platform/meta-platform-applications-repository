@@ -34,7 +34,11 @@
             "dependency": "@/container-manager.webservice/endpoint-group",
             "bound-params": {
                 "serverService": "@@/server-service",
-                "containerRuntimeConnectionService": "@@/container-runtime-connection-service"
+                "containerRuntimeConnectionService": "@@/container-runtime-connection-service",
+                "containerCatalogLib": "@/container-catalog.lib"
+            },
+            "params": {
+                "appDataDir": "{{appDataDir}}"
             }
         },
         {

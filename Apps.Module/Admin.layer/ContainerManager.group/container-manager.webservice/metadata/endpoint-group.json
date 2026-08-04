@@ -1,7 +1,8 @@
 {
     "bound-params": [
         "serverService",
-        "containerRuntimeConnectionService"
+        "containerRuntimeConnectionService",
+        "containerCatalogLib"
     ],
     "endpoints": [
         {
@@ -9,12 +10,17 @@
             "type": "controller",
             "params": {
                 "api-template": "APIs/ContainerConnections.api.json",
-                "controller": "Controllers/ContainerConnections.controller"
+                "controller": "Controllers/ContainerConnections.controller",
+                "dbFilePath": "{{dbFilePath}}",
+                "secretKeyPath": "{{secretKeyPath}}",
+                "stacksDir": "{{stacksDir}}",
+                "appDataDir": "{{appDataDir}}"
             },
             "bound-params": {
                 "serverService": "serverService",
                 "controller-params": {
-                    "containerRuntimeConnectionService": "containerRuntimeConnectionService"
+                    "containerRuntimeConnectionService": "containerRuntimeConnectionService",
+                    "containerCatalogLib": "containerCatalogLib"
                 }
             }
         },
@@ -23,12 +29,17 @@
             "type": "controller",
             "params": {
                 "api-template": "APIs/Containers.api.json",
-                "controller": "Controllers/Containers.controller"
+                "controller": "Controllers/Containers.controller",
+                "dbFilePath": "{{dbFilePath}}",
+                "secretKeyPath": "{{secretKeyPath}}",
+                "stacksDir": "{{stacksDir}}",
+                "appDataDir": "{{appDataDir}}"
             },
             "bound-params": {
                 "serverService": "serverService",
                 "controller-params": {
-                    "containerRuntimeConnectionService": "containerRuntimeConnectionService"
+                    "containerRuntimeConnectionService": "containerRuntimeConnectionService",
+                    "containerCatalogLib": "containerCatalogLib"
                 }
             }
         },
@@ -37,12 +48,17 @@
             "type": "controller",
             "params": {
                 "api-template": "APIs/Images.api.json",
-                "controller": "Controllers/Images.controller"
+                "controller": "Controllers/Images.controller",
+                "dbFilePath": "{{dbFilePath}}",
+                "secretKeyPath": "{{secretKeyPath}}",
+                "stacksDir": "{{stacksDir}}",
+                "appDataDir": "{{appDataDir}}"
             },
             "bound-params": {
                 "serverService": "serverService",
                 "controller-params": {
-                    "containerRuntimeConnectionService": "containerRuntimeConnectionService"
+                    "containerRuntimeConnectionService": "containerRuntimeConnectionService",
+                    "containerCatalogLib": "containerCatalogLib"
                 }
             }
         },
@@ -51,12 +67,17 @@
             "type": "controller",
             "params": {
                 "api-template": "APIs/Networks.api.json",
-                "controller": "Controllers/Networks.controller"
+                "controller": "Controllers/Networks.controller",
+                "dbFilePath": "{{dbFilePath}}",
+                "secretKeyPath": "{{secretKeyPath}}",
+                "stacksDir": "{{stacksDir}}",
+                "appDataDir": "{{appDataDir}}"
             },
             "bound-params": {
                 "serverService": "serverService",
                 "controller-params": {
-                    "containerRuntimeConnectionService": "containerRuntimeConnectionService"
+                    "containerRuntimeConnectionService": "containerRuntimeConnectionService",
+                    "containerCatalogLib": "containerCatalogLib"
                 }
             }
         },
@@ -65,14 +86,25 @@
             "type": "controller",
             "params": {
                 "api-template": "APIs/Volumes.api.json",
-                "controller": "Controllers/Volumes.controller"
+                "controller": "Controllers/Volumes.controller",
+                "dbFilePath": "{{dbFilePath}}",
+                "secretKeyPath": "{{secretKeyPath}}",
+                "stacksDir": "{{stacksDir}}",
+                "appDataDir": "{{appDataDir}}"
             },
             "bound-params": {
                 "serverService": "serverService",
                 "controller-params": {
-                    "containerRuntimeConnectionService": "containerRuntimeConnectionService"
+                    "containerRuntimeConnectionService": "containerRuntimeConnectionService",
+                    "containerCatalogLib": "containerCatalogLib"
                 }
             }
         }
+    ],
+    "params": [
+        "appDataDir",
+        "?dbFilePath",
+        "?secretKeyPath",
+        "?stacksDir"
     ]
 }

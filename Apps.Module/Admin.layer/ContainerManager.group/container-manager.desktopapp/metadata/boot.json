@@ -19,7 +19,8 @@
                 "iComponents": "@/i-components.icomponents",
                 "containerManagerGuiService": "@/container-manager-gui.service",
                 "containerManagerWebservice": "@/container-manager.webservice",
-                "containerRuntimeAdapterService": "@/container-runtime-adapter.service"
+                "containerRuntimeAdapterService": "@/container-runtime-adapter.service",
+                "containerCatalogLib": "@/container-catalog.lib"
             },
             "gui-host": {
                 "webgui": "containerManagerWebgui",
@@ -41,7 +42,8 @@
                             "containerRuntimeConnectionService": "containerRuntimeConnection"
                         },
                         "boundLibs": {
-                            "containerManagerWebservice": "containerManagerWebservice"
+                            "containerManagerWebservice": "containerManagerWebservice",
+                            "containerCatalogLib": "containerCatalogLib"
                         }
                     }
                 ]
