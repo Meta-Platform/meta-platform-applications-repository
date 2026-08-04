@@ -829,36 +829,16 @@ const CreateGuiHostWindow = async () => {
         // SmartRequire (essential) pelos PATHS injetados no env pelo OpenElectronWindow.
         // A lib é uma fábrica que recebe o SmartRequire.
         const WebInterfaceBuilder = require(process.env.META_WEB_INTERFACE_BUILDER_PATH)(require(process.env.META_SMART_REQUIRE_PATH))
-        const BuildCache = require("./BuildCache")
         const output = MountGuiOutputDir(config.webgui)
 
-        // Assinatura de conteúdo das entradas do build (fonte do webgui +
-        // node_modules). Se bate com a do último build e os artefatos existem,
-        // pula o webpack e carrega o bundle já montado — sem barra de build.
-        let fingerprint
-        try {
-            fingerprint = BuildCache.ComputeWebInterfaceFingerprint({
-                context:     config.webgui.context,
-                nodeModules: config.webgui.nodeModules,
-                componentLibraries: config.webgui.componentLibraries,
-                // O perfil entra na assinatura: um bundle minificado e um bundle
-                // de depuração vêm da mesma fonte, mas não são o mesmo artefato.
-                // Sem isto, trocar de perfil serviria o bundle do perfil anterior.
-                buildProfile: config.webgui.buildProfile
-            })
-        } catch(e) {
-            fingerprint = null
-        }
-
-        if(BuildCache.IsWebInterfaceFresh({ output, fingerprint })){
-            // Front-end já montado e sem atualização: carrega direto.
-            Log.info("electron-main", `[webgui] bundle atualizado — reaproveitando (sem build): ${output}`)
-            _LoadBundle(output)
-        } else {
-            Log.info("electron-main", `[webgui] montando front-end (build necessário): ${config.webgui.serverAppName}`)
-            // Primeira vez ou entradas alteradas: builda com webpack. Reporta o
-            // progresso ao daemon apenas quando o inteiro muda, para não inundar
-            // o socket com frações intermediárias.
+        {
+            // O cache de build agora é do próprio builder: ele assina as
+            // entradas, decide se há o que compilar e grava o manifesto. Este
+            // arquivo mantinha uma cópia dessa lógica, que precisava andar em
+            // sincronia com a do outro caminho — e não andava.
+            //
+            // Reporta o progresso ao daemon apenas quando o inteiro muda, para
+            // não inundar o socket com frações intermediárias.
             let lastReportedPct = -1
             const builder = await WebInterfaceBuilder({
                 entrypoint:     config.webgui.entrypoint,
@@ -892,12 +872,13 @@ const CreateGuiHostWindow = async () => {
                     }
                 }
             })
-            await builder.Run()
-            // Grava o fingerprint recém-buildado p/ permitir o reaproveitamento
-            // futuro. Calculado ANTES do build (o build só escreve no diretório
-            // de saída, que não participa da assinatura), então segue válido.
-            if(fingerprint)
-                BuildCache.WriteBuildManifest(output, { fingerprint, serverAppName: config.webgui.serverAppName })
+
+            const { fromCache } = await builder.Run()
+
+            Log.info("electron-main", fromCache
+                ? `[webgui] bundle atualizado — reaproveitando (sem build): ${output}`
+                : `[webgui] front-end montado: ${config.webgui.serverAppName}`)
+
             _LoadBundle(output)
         }
     } catch(e) {
