@@ -1,7 +1,46 @@
 const { Op } = require("sequelize")
 const { NewId, Serialize, SerializeMany } = require("../Utils/helpers")
 const { DomainError } = require("../Errors")
-const { AGENT_ROLES } = require("../Config")
+const { AGENT_ROLES, WORK_ITEM_TYPES, WORK_ITEM_EFFORTS, WORK_ITEM_VALUES } = require("../Config")
+
+/**
+ * Valida o nó do plano com as MESMAS regras que `CreateItem` vai aplicar no
+ * aceite — e normaliza a caixa antes de julgar.
+ *
+ * Sem isto, a proposta aceitava `effort: "M"` e o aceite quebrava em
+ * `VALIDATION_ERROR`, porque `CreateItem` só admite minúsculas. O efeito é o
+ * pior possível: o plano nasce **impossível de aceitar**. O humano lê a árvore
+ * inteira, decide, clica em Aceitar, recebe um erro sobre um campo que ele não
+ * escreveu, e não tem saída a não ser recusar um plano que ele queria.
+ *
+ * Validar na PROPOSTA é barato — o agente corrige e propõe de novo. Validar só
+ * no aceite cobra o preço de quem não errou.
+ */
+const _normalizarNo = (node, indice) => {
+    const onde = `nó ${indice + 1}${node && node.title ? ` ("${node.title}")` : ""}`
+    if(!node || !node.title)
+        throw new DomainError("VALIDATION_ERROR", `Todo nó do plano precisa de título (${onde}).`, { field: "title", index: indice })
+
+    const minusculo = (v) => (typeof v === "string" && v ? v.toLowerCase() : v)
+    const normalizado = {
+        ...node,
+        type: minusculo(node.type),
+        effort: minusculo(node.effort),
+        value: minusculo(node.value)
+    }
+
+    const checar = (valor, permitidos, campo) => {
+        if(valor === undefined || valor === null || valor === "") return
+        if(!permitidos.includes(valor))
+            throw new DomainError("VALIDATION_ERROR",
+                `Valor inválido para ${campo} no ${onde}: ${node[campo]}. Corrigir agora evita um plano que não pode ser aceito.`,
+                { field: campo, allowed: permitidos, index: indice })
+    }
+    checar(normalizado.type, WORK_ITEM_TYPES, "type")
+    checar(normalizado.effort, WORK_ITEM_EFFORTS, "effort")
+    checar(normalizado.value, WORK_ITEM_VALUES, "value")
+    return normalizado
+}
 
 /**
  * PLANOS PROPOSTOS e PAPÉIS de agente.
@@ -46,6 +85,10 @@ const PlansStore = (ctx) => {
         if(!Array.isArray(nodes) || !nodes.length)
             throw new DomainError("VALIDATION_ERROR", "Um plano sem itens não é um plano.", { field: "nodes" })
 
+        // TODOS os nós antes de criar QUALQUER um: um plano meio gravado é pior
+        // que um plano recusado — fica no banco sem ter sido decidido por ninguém.
+        const nosValidados = nodes.map(_normalizarNo)
+
         const session = await _sessionOf(actor)
         const plan = await AgentPlan.create({
             id: NewId(), projectId: projectInstance.id,
@@ -59,7 +102,7 @@ const PlansStore = (ctx) => {
 
         const porRef = {}
         let ordem = 0
-        for(const node of nodes){
+        for(const node of nosValidados){
             const row = await AgentPlanNode.create({
                 id: NewId(), planId: plan.id, projectId: projectInstance.id,
                 parentNodeId: node.parentRef ? porRef[String(node.parentRef).replace(/^@/, "")] : undefined,
@@ -115,6 +158,13 @@ const PlansStore = (ctx) => {
         const patch = {}
         for(const campo of permitido) if(updates[campo] !== undefined) patch[campo] = updates[campo]
         if(updates.acceptanceCriteria !== undefined) patch.acceptanceCriteriaJson = updates.acceptanceCriteria
+        // A edição passa pela MESMA porta da proposta: editar um nó para um valor
+        // que o aceite recusa é o caminho mais rápido de volta para o plano que
+        // não pode ser aceito. Só os campos TOCADOS voltam normalizados — o
+        // resto do nó não pode ser reescrito de carona numa edição de um campo.
+        const validado = _normalizarNo({ ...Serialize(alvo), ...patch }, alvo.order || 0)
+        for(const campo of ["type", "effort", "value"])
+            if(patch[campo] !== undefined) patch[campo] = validado[campo]
         if(!store.IsAgentActor(actor)) patch.editedByHuman = true
         await alvo.update(patch)
         emit("plan.updated", Serialize(row))

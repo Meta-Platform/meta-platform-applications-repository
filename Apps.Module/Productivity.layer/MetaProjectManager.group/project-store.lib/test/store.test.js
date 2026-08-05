@@ -2596,6 +2596,74 @@ test("MPMR plano proposto vira backlog, rodada e mandato numa decisão só", asy
     assert.equal((await store.ReviewDesk({ project: p.id })).counts.plans, 0)
 })
 
+// O plano PRECISA validar com as regras do aceite. Aceitar era o único caminho
+// de saída, e um valor que só `CreateItem` recusa produzia um plano impossível:
+// o humano lia a árvore inteira, clicava em Aceitar, recebia erro sobre um campo
+// que não escreveu, e não tinha alternativa senão recusar o que queria aprovar.
+test("MPMR plano com campo que o aceite recusa é barrado na PROPOSTA, não no aceite", async () => {
+    const p = await store.CreateProject({ name: "Plano válido", keyPrefix: "PLVA", status: "active", actor: { source: "cli" } })
+    await store.MigrateProjectToDeliveryModel({ project: p.id, actor: { source: "gui" } })
+    const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "pln-val" } }
+
+    // O CASO REAL: "M" maiúsculo passou na proposta e explodiu no aceite, porque
+    // `CreateItem` só admite ["xs","s","m","l","xl"]. Agora é normalizado na
+    // entrada — e a prova de que o buraco fechou é o aceite funcionando.
+    const caixaAlta = await store.ProposePlan({
+        project: p.id, title: "Esforço em caixa alta",
+        nodes: [
+            { ref: "a", type: "TASK", title: "Primeiro", effort: "M", value: "HIGH" },
+            { parentRef: "a", type: "task", title: "Segundo", effort: "S" }
+        ],
+        actor: agente
+    })
+    const primeiro = caixaAlta.nodes.find((n) => n.title === "Primeiro")
+    assert.equal(primeiro.effort, "m", "a caixa é normalizada na proposta")
+    assert.equal(primeiro.type, "task")
+    assert.equal(primeiro.value, "high")
+
+    const aceito = await store.AcceptPlan({ plan: caixaAlta.id, actor: { source: "api" } })
+    assert.equal(aceito.status, "accepted", "o aceite era o único caminho de saída e precisa funcionar")
+    assert.equal(aceito.createdItems, 2)
+
+    // Valor que não existe em caixa nenhuma: barrado na PROPOSTA.
+    await assert.rejects(
+        () => store.ProposePlan({
+            project: p.id, title: "Esforço inexistente",
+            nodes: [{ type: "task", title: "Fazer", effort: "enorme" }],
+            actor: agente
+        }),
+        (e) => e.code === "VALIDATION_ERROR" && e.details.field === "effort",
+        "recusado antes de virar plano, não depois de o humano decidir")
+
+    // Nada meio gravado: o plano inteiro é validado antes de qualquer escrita.
+    assert.ok(!(await store.ListPlans({ project: p.id })).some((pl) => pl.title === "Esforço inexistente"))
+
+    // E a validação vale para o lote todo, não só para o primeiro nó.
+    await assert.rejects(
+        () => store.ProposePlan({
+            project: p.id, title: "Segundo nó inválido",
+            nodes: [{ type: "task", title: "Bom", effort: "s" }, { type: "inventado", title: "Ruim" }],
+            actor: agente
+        }),
+        (e) => e.code === "VALIDATION_ERROR" && e.details.field === "type" && e.details.index === 1)
+    assert.ok(!(await store.ListPlans({ project: p.id })).some((pl) => pl.title === "Segundo nó inválido"),
+        "um plano meio gravado é pior que um plano recusado")
+
+    // Editar para um valor que o aceite recusa também é barrado na edição.
+    const outro = await store.ProposePlan({
+        project: p.id, title: "Para editar",
+        nodes: [{ type: "task", title: "Editável", effort: "s" }],
+        actor: agente
+    })
+    await assert.rejects(
+        () => store.RevisePlan({ plan: outro.id, node: outro.nodes[0].id, updates: { effort: "gigante" }, actor: { source: "gui" } }),
+        (e) => e.code === "VALIDATION_ERROR" && e.details.field === "effort")
+    // A edição válida em caixa alta passa, normalizada.
+    const editado = await store.RevisePlan({ plan: outro.id, node: outro.nodes[0].id, updates: { effort: "XL" }, actor: { source: "gui" } })
+    assert.equal(editado.nodes[0].effort, "xl")
+    assert.equal(editado.nodes[0].title, "Editável", "editar um campo não reescreve os outros")
+})
+
 // ── COLETA DE EVIDÊNCIA (MPMR F2) ───────────────────────────────────────────
 // Estes testes usam um repositório git DE VERDADE (criado no diretório temporário)
 // e um runner de verificação local. É o único jeito de provar que a correlação
