@@ -20,7 +20,28 @@ const { DELIVERY_STATUSES } = require("../Config")
  */
 const DeliveriesStore = (ctx) => {
     const { models, writeAudit, emit, store } = ctx
-    const { Delivery, DeliveryEvidence, WorkItem, Project } = models
+    const { Delivery, DeliveryEvidence, DeliveryReview, WorkItem, Project } = models
+
+    /**
+     * Registra a decisão HUMANA na mesma tabela que o revisor-IA usa.
+     *
+     * Sem isto, `delivery_reviews` só conteria pareceres de IA e o histórico de
+     * revisão mentiria por omissão: quem olhou a entrega de verdade — o humano —
+     * não apareceria em lugar nenhum além do audit log, que é linha de evento e
+     * não registro de revisão. As duas telas que listam revisões ficariam vazias
+     * justamente no caso que mais importa.
+     *
+     * Nunca lança: falhar aqui não pode desfazer uma decisão já tomada.
+     */
+    const _registrarRevisaoHumana = async ({ row, decision, reason, actor }) => {
+        if(!DeliveryReview) return
+        await DeliveryReview.create({
+            id: NewId(), projectId: row.projectId, deliveryId: row.id, workItemId: row.workItemId,
+            round: row.round, reviewerType: "human",
+            reviewerUserId: (actor && actor.actorUserId) || undefined,
+            decision, reason: reason ? String(reason).trim() : undefined
+        }).catch(() => undefined)
+    }
 
     const ResolveDelivery = async (ref) => {
         if(ref && typeof ref === "object" && ref.id) return ref
@@ -273,6 +294,8 @@ const DeliveriesStore = (ctx) => {
             decidedAt: new Date(),
             aiReviewState: reviewerType === "ai" ? "returned" : row.aiReviewState
         })
+        if(reviewerType === "human")
+            await _registrarRevisaoHumana({ row, decision: "return", reason, actor })
 
         // A sessão executora ainda está viva? É ela que recebe o item de volta.
         const sessao = row.executedBySessionId
@@ -341,6 +364,7 @@ const DeliveriesStore = (ctx) => {
             status: "accepted", humanDecision: "accept",
             decidedByUserId: (actor && actor.actorUserId) || undefined, decidedAt: new Date()
         })
+        await _registrarRevisaoHumana({ row, decision: "accept", reason: note, actor })
         if(item) await store.SetExecutionState({
             item, executionState: "done", reviewState: "accepted",
             extra: {

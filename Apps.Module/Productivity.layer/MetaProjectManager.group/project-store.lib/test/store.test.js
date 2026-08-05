@@ -2374,12 +2374,48 @@ test("MPMR ciclo completo: entregar, revisor devolve, reentregar, humano aceita"
     assert.equal(mesa.deliveries[0].aiOpinion.verdict, "pass")
 
     // O humano aceita: é isto que conclui o item.
-    await store.AcceptDelivery({ delivery: entrega2.id, actor: { source: "gui", actorUserId: await humano() } })
+    const revisorHumano = await humano()
+    await store.AcceptDelivery({ delivery: entrega2.id, actor: { source: "gui", actorUserId: revisorHumano } })
     const concluido = await store.GetItem({ item: item.id })
     assert.equal(concluido.statusKey, "done")
     assert.equal(concluido.executionState, "done")
     assert.equal(concluido.reviewState, "accepted")
     assert.equal(concluido.claimedBySessionId, null, "item aceito não tem mais dono")
+
+    // A decisão humana entra na MESMA trilha do parecer de IA. Sem isto o
+    // histórico de revisão mentiria por omissão: só apareceria quem opinou,
+    // nunca quem decidiu.
+    const revisoes = await store.models.DeliveryReview.findAll({ where: { workItemId: item.id }, order: [["createdAt", "ASC"]] })
+    const humanas = revisoes.filter((r) => r.reviewerType === "human")
+    assert.equal(humanas.length, 1, "o aceite humano fica registrado como revisão")
+    assert.equal(humanas[0].decision, "accept")
+    assert.equal(humanas[0].reviewerUserId, revisorHumano)
+    assert.equal(humanas[0].deliveryId, entrega2.id, "registrada na rodada que foi decidida")
+})
+
+test("MPMR devolver pela mesa registra a revisão humana com o motivo", async () => {
+    const executor = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "dev-humana" } }
+    const p = await store.CreateProject({ name: "Devolução humana", keyPrefix: "DVH", status: "active", actor: { source: "cli" } })
+    await store.MigrateProjectToDeliveryModel({ project: p.id, actor: { source: "cli" } })
+    await store.UpdateProject({ project: p.id, requireAiReview: false, actor: { source: "cli" } })
+
+    const item = await store.CreateItem({ project: p.id, type: "task", title: "Ajustar o cabeçalho", actor: { source: "cli" } })
+    await store.ClaimItem({ item: item.id, actor: executor })
+    const entrega = await store.SubmitDelivery({ item: item.id, summary: "Cabeçalho ajustado.", actor: executor })
+
+    const quem = await humano()
+    await store.ReturnDelivery({
+        delivery: entrega.id, reason: "A margem continua errada no modo escuro.",
+        reviewerType: "human", actor: { source: "gui", actorUserId: quem }
+    })
+
+    const revisoes = await store.models.DeliveryReview.findAll({ where: { deliveryId: entrega.id } })
+    assert.equal(revisoes.length, 1)
+    assert.equal(revisoes[0].reviewerType, "human")
+    assert.equal(revisoes[0].decision, "return")
+    assert.equal(revisoes[0].reason, "A margem continua errada no modo escuro.")
+    assert.equal(revisoes[0].reviewerUserId, quem)
+    assert.equal(revisoes[0].round, 1)
 })
 
 test("MPMR projeto migrado conclui sem aprovação; projeto legado continua pedindo", async () => {
