@@ -1,6 +1,8 @@
 {
     "bound-params": [
-        "projectStoreLib"
+        "projectStoreLib",
+        "gitStatusLib",
+        "instanceManagerClientLib"
     ],
     "commands": [
         {
@@ -2103,7 +2105,9 @@
                         }
                     ],
                     "parametersToLoad": [
-                        "projectStoreLib"
+                        "projectStoreLib",
+                        "gitStatusLib",
+                        "instanceManagerClientLib"
                     ]
                 },
                 {
@@ -2168,6 +2172,25 @@
                     ],
                     "parametersToLoad": [
                         "projectStoreLib"
+                    ]
+                },
+                {
+                    "namespace": "DeliveryRecollect",
+                    "path": "Commands/DeliveryRecollect.command",
+                    "command": "recollect [delivery]",
+                    "description": "Recolher a evidência de novo (o commit pode ter chegado depois)",
+                    "parameters": [
+                        {
+                            "key": "delivery",
+                            "paramType": "positional",
+                            "valueType": "string",
+                            "describe": "Entrega (id|key, ex.: MPMR-5/D1)"
+                        }
+                    ],
+                    "parametersToLoad": [
+                        "projectStoreLib",
+                        "gitStatusLib",
+                        "instanceManagerClientLib"
                     ]
                 },
                 {

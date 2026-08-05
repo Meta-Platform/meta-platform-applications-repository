@@ -4,14 +4,18 @@
             "dependency": "@//command-group",
             "executableName": "mpm",
             "bound-params": {
-                "projectStoreLib": "@/project-store.lib"
+                "projectStoreLib": "@/project-store.lib",
+                "gitStatusLib": "@/git-status.lib",
+                "instanceManagerClientLib": "@/instance-manager-client.lib"
             }
         },
         {
             "dependency": "@//command-group",
             "executableName": "meta-project-manager",
             "bound-params": {
-                "projectStoreLib": "@/project-store.lib"
+                "projectStoreLib": "@/project-store.lib",
+                "gitStatusLib": "@/git-status.lib",
+                "instanceManagerClientLib": "@/instance-manager-client.lib"
             }
         }
     ]

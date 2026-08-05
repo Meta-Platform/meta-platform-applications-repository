@@ -1,12 +1,30 @@
 const { Ok, Fail } = require("./output")
 
-// Inicializa o store de domínio a partir dos startup-params + a lib injetada.
+// Runner do comando de verificação, pelo daemon (execução centralizada). A
+// montagem mora na lib de domínio: era montá-la aqui, no MCP e no webservice
+// que fazia os três divergirem e a verificação nunca rodar em lugar nenhum.
+const _buildVerificationRunner = ({ params, startupParams }) => {
+    const { BuildVerificationRunner } = params.projectStoreLib.require("Utils/verificationRunner")
+    return BuildVerificationRunner({
+        instanceManagerClientLib: params.instanceManagerClientLib,
+        ecosystemDataPath: startupParams.MPM_ECOSYSTEM_DATA_PATH,
+        onUnavailable: (motivo) => console.error(`[mpm] verificação indisponível: ${motivo}`)
+    })
+}
+
+// Inicializa o store de domínio a partir dos startup-params + as libs injetadas.
 const InitStore = async ({ startupParams, params }) => {
     const InitializeProjectStore = params.projectStoreLib.require("InitializeProjectStore")
     const store = InitializeProjectStore({
         storage: startupParams.MPM_DB_FILE_PATH,
         attachmentsDirPath: startupParams.MPM_ATTACHMENTS_DIR_PATH,
-        maxAttachmentBytes: startupParams.MPM_MAX_ATTACHMENT_BYTES
+        maxAttachmentBytes: startupParams.MPM_MAX_ATTACHMENT_BYTES,
+        // COLETA DE EVIDÊNCIA. `mpm delivery submit` é um caminho de entrega tão
+        // real quanto o do MCP — e sem estas duas injeções ele produz entregas
+        // com três lacunas e qualidade "unverified", que é pior que não entregar:
+        // parece apurado e não é. Ausência de qualquer uma vira lacuna registrada.
+        gitLib: params.gitStatusLib,
+        runVerification: _buildVerificationRunner({ params, startupParams })
     })
     await store.ConnectAndSync()
     return store

@@ -212,3 +212,38 @@ test("MPMR mesa de revisão e mandato pela CLI", async () => {
     assert.equal(desk.json.ok, true)
     assert.equal(typeof desk.json.data.counts.deliveries, "number")
 })
+
+// O bound-param de um .cli precisa ser declarado em TRÊS lugares: boot.json,
+// `bound-params` do command-group E `parametersToLoad` do comando. Faltar no
+// último não dá erro nenhum — o param chega undefined e o comando degrada em
+// silêncio. Foi exatamente assim que `delivery submit` passou a produzir
+// entregas com três lacunas e qualidade "unverified": parecia apurado e não era.
+test("comandos que colhem evidência carregam as libs de coleta", () => {
+    const grupo = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "metadata", "command-group.json"), "utf8"))
+    const boot = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "metadata", "boot.json"), "utf8"))
+
+    const EXIGIDAS = ["projectStoreLib", "gitStatusLib", "instanceManagerClientLib"]
+    const COLETAM = ["DeliverySubmit", "DeliveryRecollect"]
+
+    for(const lib of EXIGIDAS){
+        assert.ok(grupo["bound-params"].includes(lib), `${lib} ausente em bound-params do command-group`)
+        for(const exe of boot.executables)
+            assert.ok(exe["bound-params"][lib], `${lib} ausente no boot.json de ${exe.executableName}`)
+    }
+
+    const achar = (nodes, ns) => {
+        for(const n of nodes){
+            if(n.namespace === ns) return n
+            const filho = n.children && achar(n.children, ns)
+            if(filho) return filho
+        }
+    }
+    for(const ns of COLETAM){
+        const cmd = achar(grupo.commands, ns)
+        assert.ok(cmd, `comando ${ns} não registrado`)
+        for(const lib of EXIGIDAS)
+            assert.ok((cmd.parametersToLoad || []).includes(lib),
+                `${ns}.parametersToLoad não carrega ${lib} — o coletor chegaria undefined e a lacuna seria silenciosa`)
+        assert.ok(fs.existsSync(path.join(__dirname, "..", "src", cmd.path + ".js")), `${cmd.path} não existe`)
+    }
+})

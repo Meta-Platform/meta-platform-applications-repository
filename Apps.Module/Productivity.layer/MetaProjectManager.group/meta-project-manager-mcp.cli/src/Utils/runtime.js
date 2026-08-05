@@ -4,13 +4,14 @@
 // dentro da lib; este servidor é apenas um adaptador de transporte (MCP stdio).
 // Runner do comando de verificação, pelo daemon (execução centralizada). Se o
 // daemon não estiver no ar, devolve undefined e a coleta registra a lacuna.
-const _buildVerificationRunner = (params) => {
-    try {
-        if(!params.instanceManagerClientLib) return undefined
-        const { CreateVerificationRunner } = params.projectStoreLib.require("Utils/verificationRunner")
-        const client = params.instanceManagerClientLib.require("CreateInstanceManagerClient")({})
-        return CreateVerificationRunner({ instanceManagerClient: client })
-    } catch(e){ return undefined }
+const _buildVerificationRunner = ({ params, startupParams }) => {
+    const { BuildVerificationRunner } = params.projectStoreLib.require("Utils/verificationRunner")
+    return BuildVerificationRunner({
+        instanceManagerClientLib: params.instanceManagerClientLib,
+        ecosystemDataPath: startupParams.MPM_ECOSYSTEM_DATA_PATH,
+        // stdout é o transporte MCP: diagnóstico vai para stderr, sempre.
+        onUnavailable: (motivo) => console.error(`[mpm-mcp] verificação indisponível: ${motivo}`)
+    })
 }
 
 const InitStore = async ({ startupParams, params }) => {
@@ -35,7 +36,7 @@ const InitStore = async ({ startupParams, params }) => {
         // acreditar no que ele disse. Ausência de qualquer uma delas não impede
         // a entrega — vira lacuna registrada.
         gitLib: params.gitStatusLib,
-        runVerification: _buildVerificationRunner(params)
+        runVerification: _buildVerificationRunner({ params, startupParams })
     })
     await store.ConnectAndSync()
     return store

@@ -54,18 +54,23 @@ const GetContext = ({ projectStoreLib, dbFilePath, attachmentsDirPath, maxAttach
     // As duas dependências EXTERNAS da coleta de evidência. O store não as
     // requer — ele as recebe, e sem elas registra a lacuna em vez de quebrar.
     // Aqui, no composition root, é onde elas realmente existem.
-    const { CreateVerificationRunner } = projectStoreLib.require("Utils/verificationRunner")
-    let runVerification
-    try {
-        const client = instanceManagerClientLib && instanceManagerClientLib.require("CreateInstanceManagerClient")({
-            socketPath: instanceManagerSocketPath
-        })
-        runVerification = CreateVerificationRunner({ instanceManagerClient: client })
-    } catch(e){
-        // Daemon indisponível não pode impedir o app de subir: a verificação
-        // simplesmente não roda, e a entrega registra isso.
-        runVerification = undefined
-    }
+    // Daemon indisponível não pode impedir o app de subir: a verificação
+    // simplesmente não roda, e a entrega registra isso. Mas o motivo vai para o
+    // log — uma verificação silenciosamente desligada é pior que ausente,
+    // porque toda entrega passa a nascer "unverified" sem ninguém saber por quê.
+    const { BuildVerificationRunner } = projectStoreLib.require("Utils/verificationRunner")
+    const runVerification = BuildVerificationRunner({
+        instanceManagerClientLib,
+        socketPath: instanceManagerSocketPath,
+        ecosystemDataPath,
+        // `Log` é global injetado pela plataforma em runtime e NÃO existe no
+        // harness de teste — referenciá-lo direto derrubaria a suíte inteira.
+        onUnavailable: (motivo) => {
+            const msg = `Verificação de entrega indisponível: ${motivo}`
+            if(typeof Log !== "undefined" && Log && Log.warn) Log.warn(msg)
+            else console.error(msg)
+        }
+    })
 
     const store = InitializeProjectStore({
         storage: dbFilePath,
