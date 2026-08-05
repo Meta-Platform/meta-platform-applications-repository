@@ -933,8 +933,9 @@ export interface ReviewDesk {
     feedback: any[]
     blocked: any[]
     exhaustedMandates: AgentMandate[]
+    plans: any[]
     inAiReview: Delivery[]
-    counts: { deliveries: number; inAiReview: number; approvals: number; feedback: number; blocked: number; exhaustedMandates: number }
+    counts: { deliveries: number; inAiReview: number; approvals: number; feedback: number; blocked: number; exhaustedMandates: number; plans: number }
 }
 
 export interface AgentMandate {

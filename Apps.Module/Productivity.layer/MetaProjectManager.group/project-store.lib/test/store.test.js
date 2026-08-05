@@ -2561,6 +2561,14 @@ test("MPMR plano proposto vira backlog, rodada e mandato numa decisão só", asy
     // Enquanto é plano, não existe item nenhum: nada foi despejado no backlog.
     assert.equal((await store.ListItems({ project: p.id })).length, 0)
 
+    // E ele PRECISA aparecer na Mesa. A tela do plano e a rota existiam desde o
+    // início, mas nada na navegação levava até lá: um plano proposto ficava
+    // esperando um humano que não tinha como saber da existência dele.
+    const mesaComPlano = await store.ReviewDesk({ project: p.id })
+    assert.equal(mesaComPlano.counts.plans, 1, "plano submetido é decisão pendente")
+    assert.equal(mesaComPlano.plans[0].id, plano.id)
+    assert.equal(mesaComPlano.plans[0].title, "Reescrever o importador")
+
     // O humano edita antes de aceitar — e a edição fica marcada.
     const noParser = plano.nodes.find((n) => n.title === "Ler o formato novo")
     await store.RevisePlan({ plan: plano.id, node: noParser.id, updates: { effort: "l" }, actor: { source: "gui" } })
@@ -2583,6 +2591,9 @@ test("MPMR plano proposto vira backlog, rodada e mandato numa decisão só", asy
 
     // Aceitar o plano é uma decisão só: não pode ser aceito de novo.
     assert.equal((await store.AcceptPlan({ plan: plano.id, actor: { source: "gui" } })).status, "accepted")
+
+    // Decidido, sai da Mesa: ela mostra o que ESPERA, não o que já foi resolvido.
+    assert.equal((await store.ReviewDesk({ project: p.id })).counts.plans, 0)
 })
 
 // ── COLETA DE EVIDÊNCIA (MPMR F2) ───────────────────────────────────────────

@@ -42,7 +42,7 @@ const NavRail = ({ active }: { active: string }) => {
             .then((d) => {
                 const c = d && d.counts
                 setPendingDecisions(c
-                    ? c.deliveries + c.approvals + c.feedback + c.blocked + c.exhaustedMandates
+                    ? c.deliveries + c.approvals + c.feedback + c.blocked + c.exhaustedMandates + (c.plans || 0)
                     : 0)
             })
             .catch(() => setPendingDecisions(0))

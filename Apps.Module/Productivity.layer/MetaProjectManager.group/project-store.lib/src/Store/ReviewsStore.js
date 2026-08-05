@@ -336,6 +336,17 @@ const ReviewsStore = (ctx) => {
             ? await store.ListMandates({ project: projectId, status: "exhausted" }).catch(() => [])
             : []
 
+        // PLANOS submetidos também esperam decisão humana — e são a decisão mais
+        // cara das cinco, porque um plano aceito cria itens, rodada e mandato de
+        // uma vez. Sem esta fila, um plano proposto por agente não tinha COMO ser
+        // encontrado: a rota e a tela existiam, mas nada na navegação levava até
+        // lá, e o trabalho ficava esperando um humano que não sabia da existência
+        // dele.
+        const planos = store.ListPlans
+            ? await store.ListPlans({ project: projectId, status: "submitted" }).catch(() => [])
+            : []
+        const planosPendentes = Array.isArray(planos) ? planos : (planos.items || [])
+
         // Em revisão pela IA: NÃO exige decisão do humano, mas ele precisa saber
         // que existe. Sem isto, uma entrega recém-feita simplesmente some da
         // vista até o prazo do revisor estourar, e a Mesa parece dizer que nada
@@ -361,6 +372,7 @@ const ReviewsStore = (ctx) => {
             feedback: Array.isArray(feedback) ? feedback : (feedback.items || []),
             blocked: bloqueados,
             exhaustedMandates: Array.isArray(mandatosParados) ? mandatosParados : (mandatosParados.items || []),
+            plans: planosPendentes,
             // Em curso, não esperando por você — fica numa lista separada de
             // propósito: misturá-la com a fila de decisão faria a Mesa mentir
             // sobre quanto trabalho é seu.
@@ -371,7 +383,8 @@ const ReviewsStore = (ctx) => {
                 approvals: (Array.isArray(aprovacoes) ? aprovacoes : (aprovacoes.items || [])).length,
                 feedback: (Array.isArray(feedback) ? feedback : (feedback.items || [])).length,
                 blocked: bloqueados.length,
-                exhaustedMandates: (Array.isArray(mandatosParados) ? mandatosParados : (mandatosParados.items || [])).length
+                exhaustedMandates: (Array.isArray(mandatosParados) ? mandatosParados : (mandatosParados.items || [])).length,
+                plans: planosPendentes.length
             }
         }
     }

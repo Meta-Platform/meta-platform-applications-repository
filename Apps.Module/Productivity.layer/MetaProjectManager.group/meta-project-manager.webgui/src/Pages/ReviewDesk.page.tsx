@@ -56,8 +56,8 @@ const ReviewDeskPage = () => {
 
     if (loading) return <AppShell active="desk" title="Mesa"><Loading /></AppShell>
 
-    const c = desk ? desk.counts : { deliveries: 0, inAiReview: 0, approvals: 0, feedback: 0, blocked: 0, exhaustedMandates: 0 }
-    const total = c.deliveries + c.approvals + c.feedback + c.blocked + c.exhaustedMandates
+    const c = desk ? desk.counts : { deliveries: 0, inAiReview: 0, approvals: 0, feedback: 0, blocked: 0, exhaustedMandates: 0, plans: 0 }
+    const total = c.deliveries + c.approvals + c.feedback + c.blocked + c.exhaustedMandates + (c.plans || 0)
     const legados = projetos.filter((p: any) => !p.deliveryModel).length
 
     return (
@@ -75,7 +75,30 @@ const ReviewDeskPage = () => {
                 <Counter n={c.approvals} label="aprovações pendentes" icon="shield" />
                 <Counter n={c.feedback} label="feedback sem resposta" icon="comment" />
                 <Counter n={c.exhaustedMandates} label="mandatos parados" icon="pause circle" />
+                <Counter n={c.plans || 0} label="planos para decidir" icon="sitemap" />
             </div>
+
+            {desk && desk.plans && desk.plans.length ? (
+                <section className="mpm-desk-section">
+                    <h3>Planos para decidir</h3>
+                    <p className="mpm-muted">
+                        Aceitar cria os itens, a rodada e o mandato de uma vez. Enquanto você não decidir, nada disto existe.
+                    </p>
+                    <ul className="mpm-desk-list">
+                        {desk.plans.map((p: any) => (
+                            <li key={p.id} className="mpm-desk-row" onClick={() => navigate(`/plans/${p.id}`)}>
+                                <div className="mpm-desk-row-main">
+                                    <strong>{p.title}</strong>
+                                    {p.shortDescription ? <span className="mpm-muted">{p.shortDescription}</span> : null}
+                                </div>
+                                <div className="mpm-desk-row-meta">
+                                    <span className="mpm-muted">{p.provider}/{p.model}</span>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            ) : null}
 
             <section className="mpm-desk-section">
                 <h3>Entregas para revisar</h3>
