@@ -30,6 +30,26 @@ const NavRail = ({ active }: { active: string }) => {
     const { all } = useApprovalQueue()
     const pendingCreations = all.length
 
+    // O QUE ESPERA POR VOCÊ, no ícone da Mesa.
+    //
+    // Vem do MESMO endpoint que a Mesa desenha, e não de uma contagem própria:
+    // um badge que discorda da tela que ele aponta é pior que badge nenhum —
+    // quem abre a Mesa e encontra menos do que o número prometia para de
+    // confiar nos dois. Por isso o total é somado do `counts` da própria Mesa.
+    const [pendingDecisions, setPendingDecisions] = useState(0)
+    const loadDesk = useCallback(() => {
+        api.reviews.desk()
+            .then((d) => {
+                const c = d && d.counts
+                setPendingDecisions(c
+                    ? c.deliveries + c.approvals + c.feedback + c.blocked + c.exhaustedMandates
+                    : 0)
+            })
+            .catch(() => setPendingDecisions(0))
+    }, [api])
+    useEffect(() => { loadDesk() }, [loadDesk])
+    useLiveReload(loadDesk, { always: true })
+
     // Feedbacks esperando um agente: o mesmo destaque dos pedidos de aprovação.
     const [openFeedback, setOpenFeedback] = useState(0)
     const loadFeedback = useCallback(() => {
@@ -48,6 +68,9 @@ const NavRail = ({ active }: { active: string }) => {
                 onClick={() => navigate(n.to)}>
                 <Icon name={n.icon} />
                 <span className="mpm-rail__label">{n.label}</span>
+                {n.key === "desk" && pendingDecisions > 0
+                    ? <span className="mpm-rail__badge" title="decisões esperando por você">{pendingDecisions}</span>
+                    : null}
                 {n.key === "agents" && pendingCreations > 0
                     ? <span className="mpm-rail__badge" title="pedidos pendentes">{pendingCreations}</span>
                     : null}

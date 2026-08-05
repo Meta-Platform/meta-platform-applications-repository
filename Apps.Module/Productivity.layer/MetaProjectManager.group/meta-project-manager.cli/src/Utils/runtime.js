@@ -4,6 +4,13 @@ const { Ok, Fail } = require("./output")
 // montagem mora na lib de domínio: era montá-la aqui, no MCP e no webservice
 // que fazia os três divergirem e a verificação nunca rodar em lugar nenhum.
 const _buildVerificationRunner = ({ params, startupParams }) => {
+    // A maioria dos comandos não declara a lib do daemon em `parametersToLoad`,
+    // e está certa: só quem COLHE evidência precisa dela. Avisar nesses casos
+    // encheria toda saída de ruído — e ruído constante é como um aviso útil
+    // deixa de ser lido. Quem pediu a lib e mesmo assim não conseguir montar o
+    // runner (daemon fora do ar, socket errado) continua sendo reportado.
+    if(!params.instanceManagerClientLib) return undefined
+
     const { BuildVerificationRunner } = params.projectStoreLib.require("Utils/verificationRunner")
     return BuildVerificationRunner({
         instanceManagerClientLib: params.instanceManagerClientLib,
