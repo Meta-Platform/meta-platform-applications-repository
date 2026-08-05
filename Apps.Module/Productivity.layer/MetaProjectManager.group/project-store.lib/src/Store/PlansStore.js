@@ -187,14 +187,6 @@ const PlansStore = (ctx) => {
         const nodes = await AgentPlanNode.findAll({ where: { planId: row.id }, order: [["order", "ASC"]] })
         const executor = { ...actor, session: undefined }   // criar os itens não é ação de agente pendente de nada
 
-        let sprint
-        if(createSprint && store.CreateSprint)
-            sprint = await store.CreateSprint({
-                project: row.projectId, name: row.title,
-                shortDescription: row.shortDescription || `Rodada criada ao aceitar o plano "${row.title}".`,
-                actor: executor
-            }).catch(() => undefined)
-
         // 1) itens (pais antes dos filhos — a lista já vem em ordem de árvore)
         const porNode = {}
         for(const node of nodes){
@@ -204,7 +196,6 @@ const PlansStore = (ctx) => {
                 shortDescription: node.shortDescription, description: node.description,
                 effort: node.effort, value: node.value, area: node.area,
                 parent: node.parentNodeId ? porNode[node.parentNodeId] : undefined,
-                sprint: sprint ? sprint.id : undefined,
                 acceptanceCriteria: node.acceptanceCriteriaJson || [],
                 actor: executor
             })
@@ -215,7 +206,27 @@ const PlansStore = (ctx) => {
                 if(store.AddItemPackage) await store.AddItemPackage({ item: criado.id, package: ref, actor: executor }).catch(() => undefined)
         }
 
-        // 2) dependências, agora que todos existem
+        // 2) rodada — DEPOIS dos itens, de propósito.
+        //
+        // Nascendo antes, uma falha na criação de item deixava a rodada órfã no
+        // projeto: vazia, sem plano aceito, sem nada que explicasse a existência
+        // dela. E o vínculo ia por `sprint:` quando `CreateItem` lê `sprintId:` —
+        // o parâmetro era descartado em silêncio e a rodada nascia vazia mesmo
+        // quando o aceite dava certo, que é a forma mais discreta de quebrar a
+        // promessa de "cria os itens, a rodada e o mandato".
+        let sprint
+        if(createSprint && store.CreateSprint){
+            sprint = await store.CreateSprint({
+                project: row.projectId, name: row.title,
+                shortDescription: row.shortDescription || `Rodada criada ao aceitar o plano "${row.title}".`,
+                actor: executor
+            }).catch(() => undefined)
+            if(sprint)
+                for(const id of Object.values(porNode))
+                    await store.UpdateItem({ item: id, sprintId: sprint.id, actor: executor }).catch(() => undefined)
+        }
+
+        // 3) dependências, agora que todos existem
         for(const node of nodes){
             for(const dep of node.dependsOnNodeIdsJson || []){
                 const origem = porNode[node.id], alvo = porNode[dep]
@@ -224,7 +235,7 @@ const PlansStore = (ctx) => {
             }
         }
 
-        // 3) mandato cobrindo exatamente o que o humano acabou de aprovar
+        // 4) mandato cobrindo exatamente o que o humano acabou de aprovar
         let mandate
         if(createMandate && store.CreateMandate){
             const keys = []

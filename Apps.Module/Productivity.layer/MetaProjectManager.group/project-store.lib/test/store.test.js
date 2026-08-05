@@ -2625,6 +2625,19 @@ test("MPMR plano com campo que o aceite recusa é barrado na PROPOSTA, não no a
     assert.equal(aceito.status, "accepted", "o aceite era o único caminho de saída e precisa funcionar")
     assert.equal(aceito.createdItems, 2)
 
+    // A rodada não pode nascer VAZIA: o aceite promete "cria os itens, a rodada e
+    // o mandato", e uma rodada sem os itens quebra a promessa em silêncio — foi o
+    // que acontecia quando o vínculo ia por `sprint:` e CreateItem lê `sprintId:`.
+    assert.ok(aceito.sprintId, "a rodada nasce")
+    const naRodada = (await store.ListItems({ project: p.id })).filter((i) => i.sprintId === aceito.sprintId)
+    assert.equal(naRodada.length, 2, "os itens do plano entram na rodada que o aceite criou")
+
+    // E o mandato cobre exatamente essas chaves.
+    const mandato = await store.GetMandate({ mandate: aceito.mandateId })
+    const escopo = mandato.scopeJson || {}
+    assert.deepEqual([...(escopo.itemKeys || [])].sort(), naRodada.map((i) => i.key).sort())
+    assert.equal(escopo.sprintId, aceito.sprintId)
+
     // Valor que não existe em caixa nenhuma: barrado na PROPOSTA.
     await assert.rejects(
         () => store.ProposePlan({
