@@ -18,8 +18,8 @@
             },
             "bound-params": {
                 "launcherWebgui": "@/launcher.webgui",
-                "iComponents": "@/i-components.icomponents",
-                "instanceComponents": "@/instance-manager.icomponents",
+                "iComponents": "@/i-components.uilib",
+                "instanceComponents": "@/instance-manager.uilib",
                 "launcherGuiService": "@/launcher-gui.service",
                 "launcherWebservice": "@/launcher.webservice",
                 "commandLineRuntimeService": "@/command-line-runtime.service",

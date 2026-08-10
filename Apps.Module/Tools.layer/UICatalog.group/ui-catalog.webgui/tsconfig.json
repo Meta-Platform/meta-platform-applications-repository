@@ -14,10 +14,10 @@
       "react/*": ["node_modules/@types/react/*"],
       "semantic-ui-react": ["node_modules/semantic-ui-react"],
       "styled-components": ["node_modules/styled-components"],
-      "@i-components": ["../../../../Base.Module/Library.layer/i-components.icomponents/src"],
-      "@i-components/*": ["../../../../Base.Module/Library.layer/i-components.icomponents/src/*"],
-      "@instance-components": ["../../../InstanceManager.layer/instance-manager.icomponents/src"],
-      "@instance-components/*": ["../../../InstanceManager.layer/instance-manager.icomponents/src/*"]
+      "@i-components": ["../../../../../ecosystem-core-repository/UserInterface.Module/Libraries.layer/i-components.uilib/src"],
+      "@i-components/*": ["../../../../../ecosystem-core-repository/UserInterface.Module/Libraries.layer/i-components.uilib/src/*"],
+      "@instance-components": ["../../../InstanceManager.layer/instance-manager.uilib/src"],
+      "@instance-components/*": ["../../../InstanceManager.layer/instance-manager.uilib/src/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]

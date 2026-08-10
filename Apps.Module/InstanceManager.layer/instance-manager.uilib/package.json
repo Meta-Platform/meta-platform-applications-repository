@@ -1,5 +1,5 @@
 {
-  "name": "instance-manager.icomponents",
+  "name": "instance-manager.uilib",
   "version": "0.1.0",
   "description": "Componentes compartilhados por Launcher e Instance Executor Control Panel.",
   "license": "BSD-3-Clause",

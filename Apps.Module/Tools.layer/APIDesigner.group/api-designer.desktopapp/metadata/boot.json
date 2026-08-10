@@ -15,7 +15,7 @@
             },
             "bound-params": {
                 "apiDesignerWebgui": "@/api-designer.webgui",
-                "iComponents": "@/i-components.icomponents",
+                "iComponents": "@/i-components.uilib",
                 "apiDesignerGuiService": "@/api-designer-gui.service",
                 "apiDesignerWebservice": "@/api-designer.webservice",
                 "apiAuthoringLib": "@/api-authoring.lib"

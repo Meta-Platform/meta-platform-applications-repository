@@ -14,10 +14,10 @@
       "react": ["../node_modules/@types/react/index.d.ts"],
       "react/jsx-runtime": ["../node_modules/@types/react/jsx-runtime.d.ts"],
       "@i-components": [
-        "../../../../Base.Module/Library.layer/i-components.icomponents/src/index.ts"
+        "../../../../../ecosystem-core-repository/UserInterface.Module/Libraries.layer/i-components.uilib/src/index.ts"
       ],
       "@i-components/*": [
-        "../../../../Base.Module/Library.layer/i-components.icomponents/src/*"
+        "../../../../../ecosystem-core-repository/UserInterface.Module/Libraries.layer/i-components.uilib/src/*"
       ]
     }
   },

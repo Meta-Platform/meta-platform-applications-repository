@@ -12,10 +12,10 @@
         "baseUrl": ".",
         "paths": {
             "*": ["node_modules/*"],
-            "@i-components": ["../../../../Base.Module/Library.layer/i-components.icomponents/src"],
-            "@i-components/*": ["../../../../Base.Module/Library.layer/i-components.icomponents/src/*"],
-            "@instance-components": ["../../instance-manager.icomponents/src"],
-            "@instance-components/*": ["../../instance-manager.icomponents/src/*"]
+            "@i-components": ["../../../../../ecosystem-core-repository/UserInterface.Module/Libraries.layer/i-components.uilib/src"],
+            "@i-components/*": ["../../../../../ecosystem-core-repository/UserInterface.Module/Libraries.layer/i-components.uilib/src/*"],
+            "@instance-components": ["../../instance-manager.uilib/src"],
+            "@instance-components/*": ["../../instance-manager.uilib/src/*"]
         }
     }
 }

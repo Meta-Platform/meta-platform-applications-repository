@@ -6,7 +6,7 @@ module.exports = {
     roots: ["<rootDir>/test"],
     moduleNameMapper: {
         "\\.(css|scss|sass)$": "identity-obj-proxy",
-        "^@i-components(.*)$": "<rootDir>/../../../../Base.Module/Library.layer/i-components.icomponents/src$1"
+        "^@i-components(.*)$": "<rootDir>/../../../../../ecosystem-core-repository/UserInterface.Module/Libraries.layer/i-components.uilib/src$1"
     },
     setupFilesAfterEnv: ["<rootDir>/test/setup.ts"],
     testMatch: ["**/test/**/*.test.(ts|tsx)"],

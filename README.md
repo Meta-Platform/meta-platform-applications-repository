@@ -48,7 +48,7 @@ a desenvolvimento. Executáveis publicados em
 | Package | Tipo | Módulo | Layer | Group | Função | Estado | Dependências (namespaces) | Executável |
 |---------|------|--------|-------|-------|--------|--------|---------------------------|------------|
 | `container-manager.webapp` | webapp | Apps | Admin | ContainerManager | Composição da app de gestão de containers | Desenvolvido | `@@/server-service`, `@/container-runtime-adapter.service` (core), `@/container-manager.{webgui,webservice}` | `container-manager` |
-| `container-manager.webgui` | webgui | Apps | Admin | ContainerManager | Front-end: conexões, containers, imagens, redes e volumes | Desenvolvido | `@@/server-service`, `@/i-components.icomponents` | — |
+| `container-manager.webgui` | webgui | Apps | Admin | ContainerManager | Front-end: conexões, containers, imagens, redes e volumes | Desenvolvido | `@@/server-service`, `@/i-components.uilib` | — |
 | `container-manager.webservice` | webservice | Apps | Admin | ContainerManager | API HTTP sobre o gerenciador de conexões | Desenvolvido | `@@/server-service`, `@/container-runtime-adapter.service` (core) | — |
 | `container-manager.desktopapp` | desktopapp | Apps | Admin | ContainerManager | Janela Electron (GUI-host, sem HTTP) | Desenvolvido | `@/container-manager.{webgui,webservice}`, `@/container-manager-gui.service`, `@/container-runtime-adapter.service` (core) | `container-manager-desktop` |
 | `container-manager-gui.service` | service | Apps | Admin | ContainerManager | Hospeda os controllers do webservice via IPC (modo GUI-host) | Desenvolvido | `@/container-manager.webservice` | — |

@@ -12,4 +12,4 @@ coleções específicas de cada subpacote.
 ```
 
 O procedimento de provisionamento, a arquitetura, as verificações e o histórico
-da entrega estão em `docs/icomponents-ui-catalog-delivery.md`.
+da entrega estão em `docs/uilib-ui-catalog-delivery.md`.

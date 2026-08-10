@@ -7,7 +7,7 @@ import CommandGroupForm from "../components/CommandGroupForm"
 // Manager (Launcher + Instance Executor Control Panel). Tudo que serve a
 // qualquer aplicativo mora no kit comum @i-components.
 
-const SOURCE = "@/instance-manager.icomponents"
+const SOURCE = "@/instance-manager.uilib"
 
 const Story = (story: Omit<ComponentStory, "sourcePackage">): ComponentStory => ({
     sourcePackage: SOURCE,

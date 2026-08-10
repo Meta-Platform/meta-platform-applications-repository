@@ -21,10 +21,10 @@
                 "node_modules/*"
             ],
             "@i-components": [
-                "../../../../Base.Module/Library.layer/i-components.icomponents/src"
+                "../../../../../ecosystem-core-repository/UserInterface.Module/Libraries.layer/i-components.uilib/src"
             ],
             "@i-components/*": [
-                "../../../../Base.Module/Library.layer/i-components.icomponents/src/*"
+                "../../../../../ecosystem-core-repository/UserInterface.Module/Libraries.layer/i-components.uilib/src/*"
             ]
         }
     },

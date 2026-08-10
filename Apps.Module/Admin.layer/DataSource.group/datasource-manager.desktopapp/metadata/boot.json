@@ -15,7 +15,7 @@
             },
             "bound-params": {
                 "datasourceWebgui": "@/datasource-manager.webgui",
-                "iComponents": "@/i-components.icomponents",
+                "iComponents": "@/i-components.uilib",
                 "datasourceGuiService": "@/datasource-gui.service",
                 "datasourceManagerWebservice": "@/datasource-manager.webservice",
                 "datasourceManagerService": "@/datasource-manager.service"

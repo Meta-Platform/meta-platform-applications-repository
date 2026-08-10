@@ -8,8 +8,8 @@
     "params": { "serverName": "{{serverName}}" },
     "bound-params": {
       "uiCatalogWebgui": "@/ui-catalog.webgui",
-      "iComponents": "@/i-components.icomponents",
-      "instanceComponents": "@/instance-manager.icomponents"
+      "iComponents": "@/i-components.uilib",
+      "instanceComponents": "@/instance-manager.uilib"
     },
     "gui-host": {
       "webgui": "uiCatalogWebgui",

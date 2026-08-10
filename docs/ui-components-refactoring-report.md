@@ -90,3 +90,19 @@ arquivos `.ts`, `.tsx` e `.css` dentro de `src`, excluindo `node_modules`.
 soma esses consumidores, as duas `.icomponents` e o novo catálogo; o código de
 infraestrutura do Core/Essential/task loader não entra nessa comparação para
 não misturar capacidade nova com a redução do frontend.
+
+---
+
+## Nota de 10/08/2026 — mudança de nome e de endereço
+
+Os nomes citados acima são os da época. O tipo de pacote `.icomponents` passou a
+chamar-se **`.uilib`**, e o kit comum saiu deste repositório: hoje é
+`EcosystemCoreRepo:UserInterface.Module/Libraries.layer/i-components.uilib`.
+
+O motivo do endereço novo é o `ecosystem-control-panel.webgui`, que mantinha uma
+cópia própria de toda a matriz visual. O grafo de repositórios impede o ecosystem
+core de depender do Application Repository, então a única arquitetura em que os
+dois bebem da mesma fonte é o kit morar no core.
+
+`instance-manager.icomponents` virou `instance-manager.uilib` e continua aqui —
+biblioteca de área fica no repositório da área.

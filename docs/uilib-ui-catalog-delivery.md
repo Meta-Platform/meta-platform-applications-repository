@@ -178,3 +178,13 @@ funcionais próprios permanecem no WebGui consumidor.
 
 Cada promoção deve incluir história no catálogo, typecheck do pacote,
 typecheck dos consumidores e uma abertura real do desktopapp.
+
+---
+
+## Nota de 10/08/2026
+
+Relatório histórico: os nomes acima são os da entrega de 29/07/2026. O tipo de
+pacote passou a chamar-se `.uilib`, o kit comum mudou de endereço para
+`EcosystemCoreRepo:UserInterface.Module/Libraries.layer/i-components.uilib`, e
+`instance-manager.icomponents` virou `instance-manager.uilib`. O arquivo também
+foi renomeado (era `icomponents-ui-catalog-delivery.md`).

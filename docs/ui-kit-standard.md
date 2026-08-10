@@ -1,7 +1,7 @@
 # Padrão de UI do Application Repository
 
 Todo aplicativo desktop deste repositório monta a interface com os componentes
-do **UI kit** (`i-components.icomponents`, alias `@i-components`) e documenta
+do **UI kit** (`i-components.uilib`, alias `@i-components`) e documenta
 cada componente no **UI Catalog** (`ui-catalog.desktopapp`). O catálogo e o kit
 são a mesma obra vista de dois lados: o kit é o que se importa, o catálogo é
 onde se vê o que existe e como usar.
@@ -17,19 +17,27 @@ onde se vê o que existe e como usar.
    aplicativo redefine uma classe `.mp-*` do design system.
 3. **Componente que serve a mais de um aplicativo sobe para o kit** — com
    história no catálogo. O que é do domínio de UM aplicativo fica nele; o que é
-   de uma ÁREA vai para a biblioteca da área (ex.: `instance-manager.icomponents`).
+   de uma ÁREA vai para a biblioteca da área (ex.: `instance-manager.uilib`).
 
 ## Onde cada coisa mora
 
 | Camada | Pacote | Alias | O que entra |
 |---|---|---|---|
-| Kit comum | `Base.Module/Library.layer/i-components.icomponents` | `@i-components` | Primitivas, formulários, feedback, sobreposições, dados, cabeçalhos, shell, tokens e temas |
-| Área | `Apps.Module/<Área>.layer/<área>.icomponents` | ex.: `@instance-components` | Componentes que só fazem sentido naquela área |
+| Kit comum | `EcosystemCoreRepo:UserInterface.Module/Libraries.layer/i-components.uilib` | `@i-components` | Primitivas, formulários, feedback, sobreposições, dados, cabeçalhos, shell, tokens e temas |
+| Área | `Apps.Module/<Área>.layer/<área>.uilib` | ex.: `@instance-components` | Componentes que só fazem sentido naquela área |
 | Aplicativo | `…/<app>.webgui/src` | — | Telas, containers e componentes do domínio do próprio aplicativo |
 
-O aplicativo declara as bibliotecas que consome em `metadata/package.json`
-(`bound-params` + `componentLibraries` no endpoint `web-graphic-user-interface`),
-e o desktopapp repassa o mesmo mapa no `gui-host` do `boot.json`.
+> O kit comum **não mora mais neste repositório**. Ele é um pacote do ecosystem
+> core, para que os WebGui de lá (`ecosystem-control-panel`, `server-manager`)
+> possam consumi-lo: o grafo de repositórios impede o core de depender do
+> Application Repository. A especificação do tipo `.uilib` está em
+> `ecosystem-core-repository/docs/ui-libraries.md`.
+
+O aplicativo declara as bibliotecas que consome em `metadata/endpoint-group.json`
+(`bound-params` + `componentLibraries` no endpoint `web-graphic-user-interface`);
+o `metadata/package.json` do WebGui só carrega o `namespace`. O host
+(`.desktopapp` / `.webapp`) liga o nome do parâmetro ao **namespace** da
+biblioteca no `boot.json`, e o desktopapp repassa o mesmo mapa no `gui-host`.
 
 ## Como migrar um aplicativo para o padrão
 

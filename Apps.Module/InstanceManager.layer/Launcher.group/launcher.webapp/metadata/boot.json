@@ -56,8 +56,8 @@
             },
             "bound-params": {
                 "serverService": "@@/server-service",
-                "iComponents": "@/i-components.icomponents",
-                "instanceComponents": "@/instance-manager.icomponents"
+                "iComponents": "@/i-components.uilib",
+                "instanceComponents": "@/instance-manager.uilib"
             }
         },
         {

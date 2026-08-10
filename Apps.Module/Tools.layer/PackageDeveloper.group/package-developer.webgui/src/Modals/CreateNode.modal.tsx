@@ -4,7 +4,7 @@ import { Button, Modal, Form, Dropdown, Message, Icon } from "semantic-ui-react"
 
 const KIND_LABEL:any = { module: "Module", layer: "Layer", group: "Group", package: "Pacote" }
 
-const EXT_OPTIONS = ["lib", "cli", "service", "webapp", "webgui", "webservice", "app", "desktopapp"]
+const EXT_OPTIONS = ["lib", "cli", "service", "webapp", "webgui", "webservice", "app", "desktopapp", "uilib"]
     .map((e) => ({ key: e, value: e, text: e }))
 
 // Modal genérico para criar um nó da hierarquia (Module/Layer/Group/Pacote).

@@ -20,7 +20,7 @@ import { apps, WaveLabel } from "./apps"
 // O próprio catálogo é escrito só com componentes do kit: se um padrão não
 // serve para montar esta tela, ele não serve para os outros aplicativos.
 
-// As coleções chegam das bibliotecas .icomponents (cada uma publica as suas
+// As coleções chegam das bibliotecas .uilib (cada uma publica as suas
 // histórias no manifesto webgui-library.json → catalog.stories).
 const collections: StoryCollection[] = [ commonStories, instanceManagerStories ]
 

@@ -21,7 +21,7 @@
             },
             "bound-params": {
                 "metaProjectManagerWebgui": "@/meta-project-manager.webgui",
-                "iComponents": "@/i-components.icomponents",
+                "iComponents": "@/i-components.uilib",
                 "metaProjectManagerGuiService": "@/meta-project-manager-gui.service",
                 "metaProjectManagerWebservice": "@/meta-project-manager.webservice",
                 "projectStoreLib": "@/project-store.lib"

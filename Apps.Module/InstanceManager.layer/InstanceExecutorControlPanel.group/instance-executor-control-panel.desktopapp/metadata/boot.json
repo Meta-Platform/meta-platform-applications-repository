@@ -18,8 +18,8 @@
             },
             "bound-params": {
                 "instanceExecutorControlPanelWebgui": "@/instance-executor-control-panel.webgui",
-                "iComponents": "@/i-components.icomponents",
-                "instanceComponents": "@/instance-manager.icomponents",
+                "iComponents": "@/i-components.uilib",
+                "instanceComponents": "@/instance-manager.uilib",
                 "instanceExecutorControlPanelGuiService": "@/instance-executor-control-panel-gui.service",
                 "instanceExecutorControlPanelWebservice": "@/instance-executor-control-panel.webservice",
                 "commandLineRuntimeService": "@/command-line-runtime.service",

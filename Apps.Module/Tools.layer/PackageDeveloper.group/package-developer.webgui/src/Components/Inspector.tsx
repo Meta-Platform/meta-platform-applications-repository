@@ -5,7 +5,7 @@ import { pkgContext } from "../Utils/pkgContext"
 
 const TYPE_LABEL:any = {
     lib: "Biblioteca", cli: "CLI", service: "Serviço", webservice: "Web Service",
-    webapp: "Web App", webgui: "Web GUI", app: "Aplicação", desktopapp: "Desktop App"
+    webapp: "Web App", webgui: "Web GUI", app: "Aplicação", desktopapp: "Desktop App", uilib: "UI Library"
 }
 
 const Section = ({ title, children }:any) =>

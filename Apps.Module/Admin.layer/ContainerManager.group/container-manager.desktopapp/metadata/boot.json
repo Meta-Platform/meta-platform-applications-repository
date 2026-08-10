@@ -16,7 +16,7 @@
             },
             "bound-params": {
                 "containerManagerWebgui": "@/container-manager.webgui",
-                "iComponents": "@/i-components.icomponents",
+                "iComponents": "@/i-components.uilib",
                 "containerManagerGuiService": "@/container-manager-gui.service",
                 "containerManagerWebservice": "@/container-manager.webservice",
                 "containerRuntimeAdapterService": "@/container-runtime-adapter.service",

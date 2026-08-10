@@ -21,7 +21,7 @@
             },
             "bound-params": {
                 "homeScreenWebgui": "@/home-screen.webgui",
-                "iComponents": "@/i-components.icomponents",
+                "iComponents": "@/i-components.uilib",
                 "desktopGuiService": "@/desktop-gui.service",
                 "executionManagerWebservice": "@/execution-manager.webservice",
                 "repositoryManagerService": "@/repository-manager.service",

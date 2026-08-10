@@ -45,7 +45,7 @@
             },
             "bound-params": {
                 "serverService": "@@/server-service",
-                "iComponents": "@/i-components.icomponents"
+                "iComponents": "@/i-components.uilib"
             }
         }
     ]
