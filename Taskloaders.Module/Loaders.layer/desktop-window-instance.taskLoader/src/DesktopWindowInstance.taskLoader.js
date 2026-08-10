@@ -41,6 +41,10 @@ const _ComponentLibraryDescriptor = (alias, handle) => {
         alias: alias || manifest.alias,
         sourcePath: handle.getSourcePath(),
         nodeModulesPath: handle.getNodeModulesPath(),
+        // Só a biblioteca que instalou o runtime do framework responde. A guarda
+        // cobre um ecosystem-core anterior a este recurso: sem o campo, o builder
+        // cai no comportamento antigo (react do consumidor).
+        frameworkModulesPath: handle.getFrameworkModulesPath && handle.getFrameworkModulesPath(),
         framework: manifest.framework
     }
 }

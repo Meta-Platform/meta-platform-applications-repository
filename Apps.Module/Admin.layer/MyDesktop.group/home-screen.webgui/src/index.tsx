@@ -3,7 +3,6 @@ import ReactDOM                         from "react-dom/client"
 import { Provider }                     from "react-redux"
 import { combineReducers, createStore } from "redux"
 
-import "semantic-ui-css/semantic.css"
 import "@i-components/styles/index.css"
 import "./Styles/desktop.css"
 

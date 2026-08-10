@@ -3,7 +3,6 @@ import ReactDOM                         from "react-dom/client"
 import { Provider }                     from "react-redux"
 import { combineReducers, createStore } from "redux"
 
-import "semantic-ui-css/semantic.css"
 // Design system Meta Platform "Retro-Brutalist" (mesmo dos outros painéis).
 import "@i-components/styles/index.css"
 import "@instance-components/styles/index.css"
