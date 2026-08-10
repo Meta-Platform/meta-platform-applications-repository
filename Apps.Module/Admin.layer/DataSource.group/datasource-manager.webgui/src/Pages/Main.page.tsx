@@ -1,12 +1,13 @@
 import * as React from "react"
 import { useEffect, useState, useMemo, useCallback } from "react"
 import { connect } from "react-redux"
-import { Icon } from "semantic-ui-react"
+
+import { AppShell, Banner, Button, EmptyState, EntityHeader, Tabs } from "@i-components"
 
 import Api from "../Utils/Api"
 import { toast, errMessage } from "../Utils/toast"
 
-import Topbar           from "../Components/Menu"
+import AppTopbar        from "../Components/Menu"
 import Toasts           from "../Components/Workbench/Toasts"
 import Sidebar          from "../Components/Workbench/Sidebar"
 import Welcome          from "../Components/Workbench/Welcome"
@@ -16,6 +17,12 @@ import StructurePanel   from "../Components/Workbench/StructurePanel"
 import CreateTableModal from "../Components/Workbench/CreateTableModal"
 
 type Tab = "data" | "sql" | "structure"
+
+const TABS = [
+    { key: "data",      label: "Dados",     icon: "table" },
+    { key: "sql",       label: "SQL",       icon: "terminal" },
+    { key: "structure", label: "Estrutura", icon: "columns" }
+]
 
 const stripExt = (name:string) => name.replace(/\.(sqlite|db|sqlite3|db3)$/i, "")
 
@@ -93,33 +100,25 @@ const MainPage = ({HTTPServerManager}:any) => {
 
         const status = (selectedSource.status || "").toUpperCase()
         if(status === "ERROR" || connError)
-            return <div className="ds-welcome"><div className="ds-welcome__card">
-                <div className="ds-welcome__icon">⚠️</div>
-                <h2>Conexão indisponível</h2>
-                <p>{connError || selectedSource.message || "Não foi possível conectar a esta base."}</p>
-            </div></div>
+            return <div className="ds-center">
+                <EmptyState
+                    icon    = "warning sign"
+                    title   = "Conexão indisponível"
+                    message = {connError || selectedSource.message || "Não foi possível conectar a esta base."}/>
+            </div>
 
         return <>
-            <div className="ds-main__head">
-                <div>
-                    <div className="ds-main__title">
-                        {selectedTable
-                            ? <><Icon name="table"/><span className="mono">{selectedTable}</span></>
-                            : <><Icon name="database"/>{selectedSource.name}</>}
-                    </div>
-                    <div className="ds-main__sub">{selectedSource.name} · sqlite</div>
-                </div>
-                <div className="ds-main__spacer"/>
-                <button className="ds-btn ds-btn--sm" onClick={()=>setCreateOpen(true)}><Icon name="plus square outline" fitted/> Nova tabela</button>
-            </div>
+            <EntityHeader
+                className = "ds-entity"
+                icon      = {selectedTable ? "table" : "database"}
+                title     = {selectedTable || selectedSource.name}
+                subtitle  = {`${selectedSource.name} · sqlite`}
+                typeLabel = {selectedTable ? "tabela" : "base"}
+                actions   = {<Button size="sm" icon="plus square outline" onClick={()=>setCreateOpen(true)}>Nova tabela</Button>}/>
 
             {selectedTable
                 ? <>
-                    <div className="ds-tabs">
-                        <button className={`ds-tab ${activeTab==="data"?"is-active":""}`} onClick={()=>setActiveTab("data")}><Icon name="table" fitted/> Dados</button>
-                        <button className={`ds-tab ${activeTab==="sql"?"is-active":""}`} onClick={()=>setActiveTab("sql")}><Icon name="terminal" fitted/> SQL</button>
-                        <button className={`ds-tab ${activeTab==="structure"?"is-active":""}`} onClick={()=>setActiveTab("structure")}><Icon name="columns" fitted/> Estrutura</button>
-                    </div>
+                    <Tabs className="ds-tabs" tabs={TABS} activeKey={activeTab} onChange={(key:Tab)=>setActiveTab(key)}/>
                     {activeTab==="data" &&
                         <DataGridPanel api={api} keystone={selectedKeystone} tableName={selectedTable}/>}
                     {activeTab==="sql" &&
@@ -132,10 +131,9 @@ const MainPage = ({HTTPServerManager}:any) => {
         </>
     }
 
-    return <div className="ds-app">
-        <Topbar/>
-        {error && <div className="ds-banner err">{error}</div>}
-        <div className="ds-body">
+    return <AppShell
+        topbar    = {<AppTopbar subtitle={selectedSource ? selectedSource.name : "nenhuma base conectada"}/>}
+        sidebar   = {
             <Sidebar
                 sources            = {sources}
                 selectedKeystone   = {selectedKeystone}
@@ -146,15 +144,19 @@ const MainPage = ({HTTPServerManager}:any) => {
                 onOpenSqlite       = {handleOpenSqlite}
                 onReload           = {loadSources}
                 onRemove           = {handleRemove}/>
-            <div className="ds-main">
-                {renderMain()}
-            </div>
+        }>
+
+        {error && <Banner className="ds-strip" tone="danger" title="Erro">{error}</Banner>}
+
+        <div className="ds-workbench">
+            {renderMain()}
         </div>
+
         {selectedKeystone &&
             <CreateTableModal api={api} keystone={selectedKeystone} open={createOpen}
                 onClose={()=>setCreateOpen(false)} onCreated={handleCreated}/>}
         <Toasts/>
-    </div>
+    </AppShell>
 }
 
 const mapStateToProps = ({HTTPServerManager}:any) => ({ HTTPServerManager })

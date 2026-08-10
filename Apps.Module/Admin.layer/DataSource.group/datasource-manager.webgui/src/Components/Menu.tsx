@@ -1,32 +1,46 @@
 import * as React from "react"
 import { useState } from "react"
-import { Icon } from "semantic-ui-react"
 
-import { THEMES, ApplyTheme, GetSavedTheme, ThemeName } from "@i-components/theme"
+import {
+    Topbar, Menu, Popover, IconButton,
+    THEMES, ThemeName, GetSavedTheme, ApplyTheme
+} from "@i-components"
 
-// Barra de sistema (topbar) do Datasource Manager — mesmo padrão eco-main-menu
-// dos demais apps. Marca à esquerda + seletor de tema à direita.
-const Topbar = () => {
+type Props = { subtitle?:string }
 
-    const [theme, setTheme] = useState<ThemeName>(GetSavedTheme())
+// Barra de sistema do Datasource Manager. A identidade e o seletor de tema são
+// os do kit (`Topbar` + `Popover`/`Menu`): a barra deixou de ser uma composição
+// local de <div> e passou a ser a mesma dos demais aplicativos.
+const AppTopbar = ({subtitle}:Props) => {
 
-    const handleTheme = (event:React.ChangeEvent<HTMLSelectElement>) => {
-        const value = event.target.value as ThemeName
+    const [theme, setTheme]         = useState<ThemeName>(GetSavedTheme())
+    const [themeOpen, setThemeOpen] = useState(false)
+
+    const handleTheme = (value:ThemeName) => {
         setTheme(value)
         ApplyTheme(value)
+        setThemeOpen(false)
     }
 
-    return <div className="ds-topbar">
-                <div className="ds-topbar__brand">
-                    <span className="ds-logo"><Icon name="database" fitted/></span>
-                    Datasource Manager
-                </div>
-                <div className="ds-topbar__spacer"/>
-                <Icon name="paint brush" style={{opacity:.6}}/>
-                <select className="ds-input" value={theme} onChange={handleTheme} title="Tema">
-                    {THEMES.map(({key, label}) => <option key={key} value={key}>{label}</option>)}
-                </select>
-            </div>
+    return <Topbar
+        brand    = "Datasource Manager"
+        subtitle = {subtitle}
+        right    = {
+            <Popover
+                open    = {themeOpen}
+                align   = "right"
+                onClose = {() => setThemeOpen(false)}
+                trigger = {<IconButton icon="paint brush" label="trocar tema" onClick={() => setThemeOpen(!themeOpen)}/>}>
+                <Menu
+                    onClose = {() => setThemeOpen(false)}
+                    items   = {THEMES.map(({key, label, icon}) => ({
+                        key,
+                        icon,
+                        label   : `${label}${key === theme ? " ✓" : ""}`,
+                        onSelect: () => handleTheme(key)
+                    }))}/>
+            </Popover>
+        }/>
 }
 
-export default Topbar
+export default AppTopbar

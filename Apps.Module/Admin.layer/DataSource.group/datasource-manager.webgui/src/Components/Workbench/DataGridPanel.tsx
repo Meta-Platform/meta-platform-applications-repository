@@ -1,12 +1,20 @@
 import * as React from "react"
 import { useEffect, useState, useCallback } from "react"
-import { Icon } from "semantic-ui-react"
+
+import {
+    Banner, Button, DataColumn, DataTable, IconButton,
+    SelectInput, Spinner, TextInput, Toolbar
+} from "@i-components"
 
 import { toast, errMessage } from "../../Utils/toast"
 
 type Props = { api:(name:string)=>any, keystone:string, tableName:string }
 
 type ColMeta = { name:string, type?:string, allowNull?:boolean, primaryKey?:boolean }
+
+// Linha como a grade a enxerga: o registro do banco mais a posição, porque a
+// edição é endereçada por posição (a tabela pode não ter chave primária).
+type GridRow = { __row?:any, __index?:number, __draft?:boolean }
 
 const isNumericType = (type?:string) =>
     /INT|DECIMAL|NUMERIC|FLOAT|REAL|DOUBLE/i.test(type || "")
@@ -20,6 +28,8 @@ const coerce = (raw:string, meta?:ColMeta) => {
     }
     return raw
 }
+
+const PAGE_SIZES = [50, 100, 500, 1000]
 
 const DataGridPanel = ({api, keystone, tableName}:Props) => {
 
@@ -73,12 +83,6 @@ const DataGridPanel = ({api, keystone, tableName}:Props) => {
         return keys.reduce((w:any, k:string) => { w[k] = row[k]; return w }, {})
     }
 
-    const handleSort = (col:string) => {
-        if(orderBy === col) setOrderDir(orderDir === "ASC" ? "DESC" : "ASC")
-        else { setOrderBy(col); setOrderDir("ASC") }
-        setOffset(0)
-    }
-
     const startEdit = (i:number, col:string, current:any) => {
         setEditing({i, col})
         setEditValue(current === null || current === undefined ? "" : String(current))
@@ -117,72 +121,105 @@ const DataGridPanel = ({api, keystone, tableName}:Props) => {
     const from = total === 0 ? 0 : offset + 1
     const to   = offset + rows.length
 
-    return <div className="ds-tabpanel">
-        <div className="ds-toolbar">
-            <button className="ds-btn ds-btn--sm" onClick={loadRows}><Icon name="refresh" fitted/> Recarregar</button>
-            <button className="ds-btn ds-btn--sm primary" onClick={() => setDraft({})} disabled={!!draft}><Icon name="plus" fitted/> Inserir linha</button>
-            <div className="ds-toolbar__spacer"/>
+    // A ordenação mora na barra de ferramentas, não no cabeçalho: a `DataTable`
+    // do kit é dirigida por dados e não expõe clique de coluna. O cabeçalho
+    // continua mostrando por onde a grade está ordenada.
+    const changeOrderBy = (col:string) => { setOrderBy(col || undefined); setOffset(0) }
+    const toggleOrderDir = () => { setOrderDir(orderDir === "ASC" ? "DESC" : "ASC"); setOffset(0) }
+
+    const header = (col:string) => [
+        col,
+        pkColumns.indexOf(col) >= 0 ? "· PK" : "",
+        orderBy === col ? (orderDir === "DESC" ? "▼" : "▲") : ""
+    ].filter(Boolean).join(" ")
+
+    const renderValue = (row:any, index:number, col:string) => {
+        if(editing && editing.i === index && editing.col === col)
+            return <TextInput
+                className = "ds-cellinput"
+                autoFocus
+                value     = {editValue}
+                onChange  = {(e:any)=>setEditValue(e.target.value)}
+                onBlur    = {commitEdit}
+                onKeyDown = {(e:any)=>{ if(e.key==="Enter") commitEdit(); if(e.key==="Escape") setEditing(null) }}/>
+
+        const value = row[col]
+        return <span className="ds-cell ds-cell--editable" title="duplo-clique para editar" onDoubleClick={()=>startEdit(index, col, value)}>
+            { value === null || value === undefined
+                ? <span className="ds-null">NULL</span>
+                : (typeof value === "object" ? JSON.stringify(value) : String(value)) }
+        </span>
+    }
+
+    const gridColumns:DataColumn[] = [
+        {
+            key    : "__gutter",
+            header : "",
+            width  : 40,
+            align  : "center",
+            render : (item:GridRow) => item.__draft
+                ? <IconButton icon="save" label="Salvar linha" size="sm" onClick={saveDraft}/>
+                : <IconButton icon="trash alternate outline" label="Excluir linha" size="sm" onClick={()=>deleteRow(item.__row)}/>
+        },
+        ...columns.map((col) => ({
+            key    : col,
+            header : header(col),
+            mono   : true,
+            render : (item:GridRow) => item.__draft
+                ? <TextInput
+                    className   = "ds-cellinput"
+                    autoFocus   = {col === columns[0]}
+                    value       = {(draft && draft[col]) || ""}
+                    placeholder = {metaByName(col)?.allowNull ? "NULL" : ""}
+                    onChange    = {(e:any)=>setDraft({...(draft||{}), [col]:e.target.value})}/>
+                : renderValue(item.__row, item.__index as number, col)
+        }))
+    ]
+
+    const gridRows:GridRow[] = [
+        ...(draft ? [ { __draft:true } ] : []),
+        ...rows.map((row, index) => ({ __row:row, __index:index }))
+    ]
+
+    return <div className="ds-panel">
+        <Toolbar className="ds-toolbar">
+            <Button size="sm" icon="refresh" onClick={loadRows}>Recarregar</Button>
+            <Button size="sm" variant="primary" icon="plus" onClick={() => setDraft({})} disabled={!!draft}>Inserir linha</Button>
+            <Toolbar.Separator/>
+            <SelectInput
+                className   = "ds-order"
+                placeholder = "sem ordenação"
+                options     = {columns.map((col) => ({ value: col, label: col }))}
+                value       = {orderBy || ""}
+                onChange    = {(e:any)=>changeOrderBy(e.target.value)}/>
+            <IconButton
+                icon     = {orderDir === "DESC" ? "sort content descending" : "sort down"}
+                label    = {orderDir === "DESC" ? "ordem decrescente" : "ordem crescente"}
+                size     = "sm"
+                disabled = {!orderBy}
+                onClick  = {toggleOrderDir}/>
+            <Toolbar.Spacer/>
             <span className="ds-pageinfo">{from}–{to} de {total}</span>
-            <button className="ds-btn ds-btn--sm" disabled={offset<=0} onClick={() => setOffset(Math.max(0, offset-limit))}><Icon name="chevron left" fitted/></button>
-            <button className="ds-btn ds-btn--sm" disabled={to>=total} onClick={() => setOffset(offset+limit)}><Icon name="chevron right" fitted/></button>
-            <select className="ds-input" value={limit} onChange={(e)=>{setLimit(Number(e.target.value)); setOffset(0)}}>
-                {[50,100,500,1000].map((n)=><option key={n} value={n}>{n} / pág</option>)}
-            </select>
-        </div>
+            <IconButton icon="chevron left"  label="página anterior" size="sm" disabled={offset<=0}  onClick={() => setOffset(Math.max(0, offset-limit))}/>
+            <IconButton icon="chevron right" label="próxima página"  size="sm" disabled={to>=total} onClick={() => setOffset(offset+limit)}/>
+            <SelectInput
+                className = "ds-pagesize"
+                options   = {PAGE_SIZES.map((n) => ({ value: String(n), label: `${n} / pág` }))}
+                value     = {String(limit)}
+                onChange  = {(e:any)=>{ setLimit(Number(e.target.value)); setOffset(0) }}/>
+        </Toolbar>
 
-        {noPk && <div className="ds-warnbar"><Icon name="warning sign" fitted/> Tabela sem chave primária — edição/exclusão usam a linha inteira como filtro (pode afetar linhas idênticas).</div>}
-        {error && <div className="ds-banner err">{error}</div>}
-        {loading && <div className="ds-loading">carregando…</div>}
+        {noPk && <Banner className="ds-strip" tone="warning">Tabela sem chave primária — edição/exclusão usam a linha inteira como filtro (pode afetar linhas idênticas).</Banner>}
+        {error && <Banner className="ds-strip" tone="danger" title="Erro">{error}</Banner>}
+        {loading && <div className="ds-loading"><Spinner label="carregando linhas"/> carregando…</div>}
 
-        <div className="ds-grid__scroll">
-            <table className="ds-grid">
-                <thead>
-                    <tr>
-                        <th className="ds-rowgutter"></th>
-                        {columns.map((col) =>
-                            <th key={col} className={pkColumns.includes(col)?"pk":""} onClick={()=>handleSort(col)}>
-                                {col}{orderBy===col && <span className="ds-sortdir">{orderDir==="DESC"?"▼":"▲"}</span>}
-                            </th>)}
-                    </tr>
-                </thead>
-                <tbody>
-                    {draft && <tr>
-                        <td className="ds-rowgutter">
-                            <Icon name="save" title="Salvar" style={{cursor:"pointer"}} onClick={saveDraft}/>
-                        </td>
-                        {columns.map((col) =>
-                            <td key={col}>
-                                <input className="ds-cellinput" autoFocus={col===columns[0]}
-                                    value={draft[col] ?? ""}
-                                    placeholder={metaByName(col)?.allowNull ? "NULL" : ""}
-                                    onChange={(e)=>setDraft({...draft, [col]:e.target.value})}/>
-                            </td>)}
-                    </tr>}
-                    {rows.map((row, i) =>
-                        <tr key={i}>
-                            <td className="ds-rowgutter">
-                                <Icon name="trash alternate outline" title="Excluir" style={{cursor:"pointer"}} onClick={()=>deleteRow(row)}/>
-                            </td>
-                            {columns.map((col) => {
-                                const editingHere = editing && editing.i===i && editing.col===col
-                                const value = row[col]
-                                return <td key={col}
-                                        className={value===null?"ds-null":""}
-                                        onDoubleClick={()=>startEdit(i, col, value)}>
-                                    {editingHere
-                                        ? <input className="ds-cellinput" autoFocus value={editValue}
-                                            onChange={(e)=>setEditValue(e.target.value)}
-                                            onBlur={commitEdit}
-                                            onKeyDown={(e)=>{ if(e.key==="Enter") commitEdit(); if(e.key==="Escape") setEditing(null) }}/>
-                                        : (value===null||value===undefined ? "NULL" : (typeof value==="object"?JSON.stringify(value):String(value)))}
-                                </td>
-                            })}
-                        </tr>)}
-                    {!loading && rows.length===0 && !draft &&
-                        <tr><td colSpan={columns.length+1} className="ds-tables__empty">tabela vazia</td></tr>}
-                </tbody>
-            </table>
-        </div>
+        <DataTable
+            className    = "ds-grid"
+            dense        = {true}
+            columns      = {gridColumns}
+            rows         = {gridRows}
+            rowKey       = {(item:GridRow) => item.__draft ? "draft" : `row-${item.__index}`}
+            emptyMessage = "tabela vazia"/>
     </div>
 }
 

@@ -1,77 +1,60 @@
-import * as React            from "react"
+import * as React from "react"
 import {useState, useEffect} from "react"
-import styled                from "styled-components"
-import { connect }           from "react-redux"
+import { connect } from "react-redux"
+
+import {
+    Banner, ContentArea, EmptyState, KeyValueList,
+    PageMasthead, Panel, StatusChip, Surface
+} from "@i-components"
 
 import GetRequestByServer from "../Utils/GetRequestByServer"
 
-import { 
-	Container,
-	Segment,
-	Header,
-	Label,
-	Table,
-	Grid
-} from "semantic-ui-react"
-
-
-const GetColorByStatus = (status:string) => {
-	switch(status){
-		case "PENDING":
-			return "grey"
-		case "WAITING":
-			return "olive"
-		case "READY":
-			return "green"	
-		case "ERROR":
-			return "red"
-		default:
-			return "grey"
-	}
+// Tom do status da fonte. Os status daqui (PENDING/WAITING/READY/ERROR) são do
+// serviço de dados e não estão no vocabulário do StatusBadge da plataforma —
+// por isso o chip com tom explícito, e não o badge.
+const GetToneByStatus = (status:string) => {
+    switch(status){
+        case "WAITING": return "warning"
+        case "READY"  : return "success"
+        case "ERROR"  : return "danger"
+        default       : return "neutral"
+    }
 }
 
-const SegmentGroupStyle = styled(Segment.Group)`
-	margin-bottom:10px!important;
-`
+const SECTIONS = [
+    { type: "FSService",        title: "File System",              icon: "folder" },
+    { type: "ORMService",       title: "Object Relational Mapper",  icon: "database" },
+    { type: "DataStoreService", title: "Data Store",                icon: "hdd" }
+]
 
-const Source = (source:any) => 
-	<SegmentGroupStyle>
-		<Segment tertiary>
-			<Label 
-				size="mini" 
-				title={source.message} 
-				color={GetColorByStatus(source.status)}
-				horizontal>
-				{source.status}
-			</Label>
-			<strong>{source.name}</strong></Segment>
-		<Segment>
-			<Table basic="very" celled collapsing>
-				<Table.Body>
-					{
-						Object.keys(source)
-						.filter((property:string) => {
-							return property !== "type"
-							&& property !== "name"
-							&& property !== "status"
-						})
-						.map((property, key) =>
-							<Table.Row key={key} error={property === "message"}>
-								<Table.Cell><strong>{property}</strong></Table.Cell>
-								<Table.Cell>
-									{
-										property !== "cwd" 
-										? source[property]
-										: <span style={{fontSize:"0.9em"}}>{source[property]}</span>
-									}
-								</Table.Cell>
-							</Table.Row>)
-					}
-					
-				</Table.Body>
-				</Table>
-		</Segment>
-	</SegmentGroupStyle>
+// Propriedades já mostradas no cabeçalho do cartão.
+const HEADER_PROPERTIES = [ "type", "name", "status" ]
+
+const MONO_PROPERTIES = [ "cwd", "keystone", "filename", "storage", "dialect" ]
+
+const Source = (source:any) =>
+    <Surface className="ds-status-card">
+        <div className="ds-status-card__head">
+            <strong className="ds-status-card__name">{source.name}</strong>
+            <StatusChip label={source.status} tone={GetToneByStatus(source.status)}/>
+        </div>
+
+        { source.status === "ERROR" && source.message &&
+            <Banner tone="danger">{source.message}</Banner> }
+
+        <KeyValueList
+            items = {
+                Object.keys(source)
+                .filter((property:string) => HEADER_PROPERTIES.indexOf(property) < 0)
+                .map((property:string) => ({
+                    label : property,
+                    value : source[property] === null || source[property] === undefined
+                        ? undefined
+                        : String(source[property]),
+                    mono  : MONO_PROPERTIES.indexOf(property) >= 0
+                }))
+            }/>
+    </Surface>
 
 const StatusContainer = ({HTTPServerManager}:any) => {
 
@@ -92,62 +75,26 @@ const StatusContainer = ({HTTPServerManager}:any) => {
 		.then(({data}:any) => setStatus(data))
 	}
 
+    const SourcesOf = (type:string) => (status || []).filter((source:any) => source.type === type)
 
+    return <ContentArea wide>
+        <PageMasthead
+            icon     = "database"
+            title    = "Status das fontes de dados"
+            subtitle = "Serviços registrados no gerenciador, atualizados a cada 500 ms."/>
 
-    return <Container>
-				<Header dividing as='h2'>File System</Header>
-				<Grid columns={3}>
-					<Grid.Row>
-						{
-							status 
-							//@ts-ignore
-							&& status
-							.filter(({type}:{type:string}) => type === "FSService")
-							.map((source:any, key:any) => 
-								<Grid.Column key={key}>
-									<Source {...source}/>
-								</Grid.Column>)
-						}
-					</Grid.Row>
-				</Grid>
-				
-                <Header dividing as='h2'>Object Relational Mapper</Header>
-				<Grid columns={3}>
-					<Grid.Row>
-						{
-							//@ts-ignore
-							status 
-							//@ts-ignore
-							&& status
-							.filter(({type}:{type:string}) => type === "ORMService")
-							.map((source:any, key:any) => 
-								<Grid.Column key={key}>
-									<Source {...source}/>
-								</Grid.Column>)
-						}
-					</Grid.Row>
-				</Grid>
-				
-				<Header dividing as='h2'>Data Store</Header>
-				<Grid columns={3}>
-					<Grid.Row>
-						{
-							//@ts-ignore
-							status 
-							//@ts-ignore
-							&& status
-							.filter(({type}:{type:string}) => type === "DataStoreService")
-							.map((source:any, key:any) => 
-								<Grid.Column key={key}>
-									<Source {...source}/>
-								</Grid.Column>)
-						}
-					</Grid.Row>
-				</Grid>
-            </Container>
+        { SECTIONS.map(({type, title, icon}) => {
+            const sources = SourcesOf(type)
+            return <Panel key={type} title={title} icon={icon} className="ds-status-panel">
+                { sources.length === 0
+                    ? <EmptyState icon="inbox" message="Nenhuma fonte deste tipo."/>
+                    : <div className="ds-status-grid">
+                        { sources.map((source:any, key:number) => <Source key={key} {...source}/>) }
+                    </div> }
+            </Panel>
+        }) }
+    </ContentArea>
 }
-    
-
 
 const mapStateToProps = ({HTTPServerManager}:any) => ({
 	HTTPServerManager

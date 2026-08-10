@@ -1,13 +1,20 @@
 import * as React from "react"
 import { useRef } from "react"
-import { Icon } from "semantic-ui-react"
 
-type Props = { onOpen:(path:string, name:string)=>void, className?:string, label?:string }
+import { Button, ButtonVariant } from "@i-components"
+
+type Props = {
+    onOpen  : (path:string, name:string)=>void
+    variant ?: ButtonVariant
+    label   ?: string
+    block   ?: boolean
+    size    ?: "sm" | "md" | "lg"
+}
 
 // Botão "Abrir SQLite". No Electron (renderer) o objeto File expõe `.path` com o
 // caminho absoluto do arquivo escolhido — usado como `storage` do Sequelize.
 // Fora do Electron cai num prompt de caminho manual (fallback).
-const OpenSqliteButton = ({onOpen, className, label="Abrir SQLite"}:Props) => {
+const OpenSqliteButton = ({onOpen, variant = "primary", label = "Abrir SQLite", block = false, size = "md"}:Props) => {
 
     const inputRef = useRef<HTMLInputElement>(null)
 
@@ -31,9 +38,7 @@ const OpenSqliteButton = ({onOpen, className, label="Abrir SQLite"}:Props) => {
     }
 
     return <>
-        <button className={className || "ds-btn primary"} onClick={handleClick}>
-            <Icon name="folder open" fitted/> {label}
-        </button>
+        <Button variant={variant} size={size} block={block} icon="folder open" onClick={handleClick}>{label}</Button>
         <input ref={inputRef} type="file" className="ds-hidden-file"
             accept=".sqlite,.db,.sqlite3,.db3" onChange={handleChange}/>
     </>

@@ -1,6 +1,7 @@
 import * as React from "react"
 import { useState } from "react"
-import { Icon } from "semantic-ui-react"
+
+import { Banner, Button, CodeBlock, TextArea, Toolbar } from "@i-components"
 
 import ResultGrid from "./ResultGrid"
 import { toast, errMessage } from "../../Utils/toast"
@@ -27,26 +28,35 @@ const SqlConsolePanel = ({api, keystone, initialSql}:Props) => {
         if((e.ctrlKey || e.metaKey) && e.key === "Enter") run()
     }
 
-    return <div className="ds-tabpanel ds-sql">
-        <textarea className="ds-sql__editor" placeholder="-- SQL (Ctrl+Enter para executar)"
-            value={sql} onChange={(e)=>setSql(e.target.value)} onKeyDown={handleKey}/>
-        <div className="ds-toolbar">
-            <button className="ds-btn ds-btn--sm primary" onClick={run} disabled={running}>
-                <Icon name="play" fitted/> Executar
-            </button>
+    return <div className="ds-panel ds-sql">
+        <TextArea
+            className   = "ds-sql__editor"
+            rows        = {6}
+            placeholder = "-- SQL (Ctrl+Enter para executar)"
+            value       = {sql}
+            onChange    = {(e:any)=>setSql(e.target.value)}
+            onKeyDown   = {handleKey}/>
+
+        <Toolbar className="ds-toolbar">
+            <Button size="sm" variant="primary" icon="play" onClick={run} loading={running}>Executar</Button>
             <span className="ds-pageinfo">Ctrl+Enter</span>
-        </div>
+        </Toolbar>
+
         <div className="ds-sql__result">
-            {error && <div className="ds-sql__msg err">{error}</div>}
-            {result && result.kind === "select" &&
-                (result.rows.length
-                    ? <>
-                        <div className="ds-sql__msg ok">{result.rowCount} linha(s)</div>
-                        <ResultGrid columns={result.columns} rows={result.rows}/>
-                      </>
-                    : <div className="ds-sql__msg ok">0 linha(s)</div>)}
+            {/* O erro do banco é texto técnico (com quebras): vai em bloco de
+                código, não espremido dentro da faixa. */}
+            {error && <>
+                <Banner tone="danger" title="Falha ao executar"/>
+                <CodeBlock language="text">{error}</CodeBlock>
+            </>}
+
+            {result && result.kind === "select" && <>
+                <Banner tone="info">{result.rowCount} linha(s)</Banner>
+                {result.rows.length > 0 && <ResultGrid columns={result.columns} rows={result.rows}/>}
+            </>}
+
             {result && result.kind === "write" &&
-                <div className="ds-sql__msg ok">Comando executado com sucesso.</div>}
+                <Banner tone="success">Comando executado com sucesso.</Banner>}
         </div>
     </div>
 }

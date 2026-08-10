@@ -1,6 +1,10 @@
 import * as React from "react"
 import { useEffect, useState, useCallback } from "react"
-import { Icon } from "semantic-ui-react"
+
+import {
+    Banner, Button, CheckboxInput, DataColumn, DataTable, FormField,
+    Icon, IconButton, KeyValueList, Panel, SelectInput, TextInput
+} from "@i-components"
 
 import { toast, errMessage } from "../../Utils/toast"
 
@@ -10,6 +14,8 @@ type Props = {
 }
 
 const TYPES = ["STRING","TEXT","INTEGER","BIGINT","FLOAT","REAL","DECIMAL","BOOLEAN","DATE","DATEONLY","TIME","JSON","BLOB","UUID"]
+
+const TYPE_OPTIONS = TYPES.map((type) => ({ value: type, label: type }))
 
 const StructurePanel = ({api, keystone, tableName, onChanged, onDropped}:Props) => {
 
@@ -50,55 +56,101 @@ const StructurePanel = ({api, keystone, tableName, onChanged, onDropped}:Props) 
         .then(()=>{ toast.ok(`Tabela "${tableName}" removida`); onChanged && onChanged(); onDropped && onDropped() }).catch(fail)
     }
 
-    return <div className="ds-tabpanel ds-struct">
-        {error && <div className="ds-banner err" style={{marginBottom:12}}>{error}</div>}
+    const primaryKeys = cols.filter((c) => c.primaryKey).map((c) => c.name)
 
-        <h4>Colunas</h4>
-        <table className="ds-grid" style={{width:"100%", fontFamily:"var(--mp-font-ui)"}}>
-            <thead><tr><th>Nome</th><th>Tipo</th><th>Nulo?</th><th>Default</th><th>PK</th><th></th></tr></thead>
-            <tbody>
-                {cols.map((c)=>
-                    <tr key={c.name}>
-                        <td>{c.name}</td>
-                        <td>{String(c.type)}</td>
-                        <td>{c.allowNull ? "sim" : "não"}</td>
-                        <td>{c.defaultValue===null||c.defaultValue===undefined?<span className="ds-null">—</span>:String(c.defaultValue)}</td>
-                        <td>{c.primaryKey ? <Icon name="key" color="yellow"/> : ""}</td>
-                        <td><Icon name="trash alternate outline" title="Remover coluna" style={{cursor:"pointer"}} onClick={()=>removeColumn(c.name)}/></td>
-                    </tr>)}
-                {adding && <tr>
-                    <td><input className="ds-input" placeholder="nome" value={newCol.name} onChange={(e)=>setNewCol({...newCol, name:e.target.value})}/></td>
-                    <td><select className="ds-input" value={newCol.type} onChange={(e)=>setNewCol({...newCol, type:e.target.value})}>{TYPES.map(t=><option key={t}>{t}</option>)}</select></td>
-                    <td><input type="checkbox" checked={newCol.allowNull} onChange={(e)=>setNewCol({...newCol, allowNull:e.target.checked})}/></td>
-                    <td><input className="ds-input" placeholder="default" value={newCol.defaultValue} onChange={(e)=>setNewCol({...newCol, defaultValue:e.target.value})}/></td>
-                    <td></td>
-                    <td>
-                        <Icon name="check" title="Adicionar" style={{cursor:"pointer"}} onClick={addColumn}/>
-                        <Icon name="close" title="Cancelar" style={{cursor:"pointer"}} onClick={()=>setAdding(false)}/>
-                    </td>
-                </tr>}
-            </tbody>
-        </table>
+    const columnColumns:DataColumn[] = [
+        { key: "name",         header: "Nome",    mono: true },
+        { key: "type",         header: "Tipo",    render: (c:any) => String(c.type) },
+        { key: "allowNull",    header: "Nulo?",   render: (c:any) => c.allowNull ? "sim" : "não" },
+        { key: "defaultValue", header: "Default", mono: true,
+          render: (c:any) => c.defaultValue === null || c.defaultValue === undefined
+                ? <span className="ds-null">—</span>
+                : String(c.defaultValue) },
+        { key: "primaryKey",   header: "PK", align: "center",
+          render: (c:any) => c.primaryKey ? <Icon name="key" tone="warning" title="chave primária"/> : null },
+        { key: "__actions",    header: "", width: 44, align: "center",
+          render: (c:any) => <IconButton icon="trash alternate outline" label="Remover coluna" size="sm" onClick={()=>removeColumn(c.name)}/> }
+    ]
 
-        <div style={{margin:"12px 0", display:"flex", gap:8}}>
-            <button className="ds-btn ds-btn--sm primary" onClick={()=>setAdding(true)} disabled={adding}><Icon name="plus" fitted/> Adicionar coluna</button>
-            <button className="ds-btn ds-btn--sm danger" onClick={dropTable}><Icon name="trash" fitted/> Dropar tabela</button>
-        </div>
+    const indexColumns:DataColumn[] = [
+        { key: "name",   header: "Nome",   mono: true },
+        { key: "unique", header: "Único",  render: (idx:any) => idx.unique ? "sim" : "não" },
+        { key: "fields", header: "Campos", mono: true,
+          render: (idx:any) => (idx.fields||[]).map((f:any)=>f.attribute||f.name||f).join(", ") }
+    ]
 
-        {indexes.length>0 && <>
-            <h4 style={{marginTop:20}}>Índices</h4>
-            <table className="ds-grid" style={{width:"100%", fontFamily:"var(--mp-font-ui)"}}>
-                <thead><tr><th>Nome</th><th>Único</th><th>Campos</th></tr></thead>
-                <tbody>
-                    {indexes.map((idx:any, i:number)=>
-                        <tr key={i}>
-                            <td>{idx.name}</td>
-                            <td>{idx.unique ? "sim" : "não"}</td>
-                            <td>{(idx.fields||[]).map((f:any)=>f.attribute||f.name||f).join(", ")}</td>
-                        </tr>)}
-                </tbody>
-            </table>
-        </>}
+    return <div className="ds-panel ds-struct">
+        {error && <Banner tone="danger" title="Erro">{error}</Banner>}
+
+        <KeyValueList
+            columns = {3}
+            items   = {[
+                { label: "Tabela",        value: tableName,                                 mono: true },
+                { label: "Colunas",       value: String(cols.length) },
+                { label: "Chave primária", value: primaryKeys.length ? primaryKeys.join(", ") : "—", mono: true }
+            ]}/>
+
+        <Panel
+            title   = "Colunas"
+            icon    = "columns"
+            actions = {<>
+                <Button size="sm" variant="primary" icon="plus" onClick={()=>setAdding(true)} disabled={adding}>Adicionar coluna</Button>
+                <Button size="sm" variant="danger" icon="trash" onClick={dropTable}>Dropar tabela</Button>
+            </>}>
+
+            <DataTable
+                className    = "ds-struct__table"
+                dense        = {true}
+                columns      = {columnColumns}
+                rows         = {cols}
+                rowKey       = {(c:any) => c.name}
+                emptyMessage = "sem colunas"/>
+
+            {/* O formulário de nova coluna deixou de ser uma linha de inputs
+                dentro da tabela: a DataTable do kit é dirigida por dados. */}
+            {adding &&
+                <div className="ds-form">
+                    <FormField label="Nome" required>
+                        <TextInput
+                            autoFocus
+                            placeholder = "nome da coluna"
+                            value       = {newCol.name}
+                            onChange    = {(e:any)=>setNewCol({...newCol, name:e.target.value})}/>
+                    </FormField>
+                    <FormField label="Tipo">
+                        <SelectInput
+                            options  = {TYPE_OPTIONS}
+                            value    = {newCol.type}
+                            onChange = {(e:any)=>setNewCol({...newCol, type:e.target.value})}/>
+                    </FormField>
+                    <FormField label="Default">
+                        <TextInput
+                            placeholder = "sem default"
+                            value       = {newCol.defaultValue}
+                            onChange    = {(e:any)=>setNewCol({...newCol, defaultValue:e.target.value})}/>
+                    </FormField>
+                    <FormField label="Aceita nulo">
+                        <CheckboxInput
+                            label    = "NULL permitido"
+                            checked  = {newCol.allowNull}
+                            onChange = {(e:any)=>setNewCol({...newCol, allowNull:e.target.checked})}/>
+                    </FormField>
+                    <div className="ds-form__actions">
+                        <Button size="sm" onClick={()=>setAdding(false)}>Cancelar</Button>
+                        <Button size="sm" variant="primary" icon="check" onClick={addColumn}>Adicionar</Button>
+                    </div>
+                </div>}
+        </Panel>
+
+        {indexes.length > 0 &&
+            <Panel title="Índices" icon="list layout">
+                <DataTable
+                    className = "ds-struct__table"
+                    dense     = {true}
+                    columns   = {indexColumns}
+                    rows      = {indexes}
+                    rowKey    = {(idx:any, i:number) => idx.name || String(i)}/>
+            </Panel>}
     </div>
 }
 

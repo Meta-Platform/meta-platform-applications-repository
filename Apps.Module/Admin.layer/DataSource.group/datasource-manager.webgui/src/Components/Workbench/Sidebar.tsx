@@ -1,5 +1,6 @@
 import * as React from "react"
-import { Icon } from "semantic-ui-react"
+
+import { SidePanel, TreeRow, IconButton, Icon, IconTone } from "@i-components"
 
 import OpenSqliteButton from "./OpenSqliteButton"
 
@@ -15,53 +16,68 @@ type Props = {
     onRemove           : (keystone:string) => void
 }
 
-const statusClass = (status:string) => {
+// Tom do ponto de status da conexão. Não é cor solta: cai nos tons do kit
+// (success/danger/warning), os mesmos de todo indicador da plataforma.
+const statusTone = (status:string):IconTone => {
     const s = (status || "").toUpperCase()
-    if(s === "READY") return "ready"
-    if(s === "ERROR") return "error"
-    return "waiting"
+    if(s === "READY") return "success"
+    if(s === "ERROR") return "danger"
+    return "warning"
 }
 
+// Árvore conexão → tabelas. Cada nó é um `TreeRow` do kit; a ação de remover
+// fica FORA do botão principal do nó (botão dentro de botão é HTML inválido).
 const Sidebar = ({sources, selectedKeystone, tables, selectedTable, onSelectConnection, onSelectTable, onOpenSqlite, onReload, onRemove}:Props) =>
-    <div className="ds-sidebar">
-        <div className="ds-sidebar__head">
-            <span className="ds-sidebar__title">Conexões</span>
-            <span style={{display:"flex", alignItems:"center", gap:6}}>
-                <button className="ds-iconbtn" title="Recarregar conexões" onClick={onReload}><Icon name="refresh" fitted/></button>
-                <span className="ds-sidebar__title">{sources.length}</span>
-            </span>
+    <SidePanel
+        className = "ds-sidebar"
+        title     = "Conexões"
+        actions   = {<>
+            <span className="ds-count">{sources.length}</span>
+            <IconButton icon="refresh" label="Recarregar conexões" onClick={onReload}/>
+        </>}>
+
+        <div className="ds-sidebar__action">
+            <OpenSqliteButton onOpen={onOpenSqlite} block size="sm"/>
         </div>
-        <div className="ds-sidebar__scroll">
-            {sources.length === 0 && <div className="ds-tree__hint">Nenhuma conexão. Abra um arquivo SQLite.</div>}
-            {sources.map((src) => {
-                const active = src.keystone === selectedKeystone
-                return <div className="ds-conn" key={src.keystone}>
-                    <div className={`ds-conn__row ${active?"is-active":""}`}
-                        onClick={() => onSelectConnection(active ? "" : (src.keystone as string))}>
-                        <span className="ds-conn__caret">{active ? "▾" : "▸"}</span>
-                        <Icon name="database" fitted/>
-                        <span className="ds-conn__name" title={src.name}>{src.name}</span>
-                        <span className={`ds-conn__dot ${statusClass(src.status)}`} title={src.status}/>
-                        <Icon name="close" title="Remover conexão" style={{cursor:"pointer", opacity:.5}}
-                            onClick={(e:any)=>{ e.stopPropagation(); onRemove(src.keystone as string) }}/>
-                    </div>
-                    {active && <div className="ds-tables">
-                        {src.status && src.status.toUpperCase() !== "READY" &&
-                            <div className="ds-tables__empty">{src.message || "indisponível"}</div>}
-                        {src.status && src.status.toUpperCase() === "READY" && tables.length === 0 &&
-                            <div className="ds-tables__empty">sem tabelas</div>}
-                        {tables.map((t) =>
-                            <div key={t} className={`ds-table__row ${t===selectedTable?"is-active":""}`}
-                                onClick={()=>onSelectTable(t)}>
-                                <Icon name="table" fitted/> {t}
-                            </div>)}
-                    </div>}
+
+        {sources.length === 0 && <div className="ds-hint">Nenhuma conexão. Abra um arquivo SQLite.</div>}
+
+        {sources.map((src) => {
+            const active = src.keystone === selectedKeystone
+            const ready  = (src.status || "").toUpperCase() === "READY"
+            return <div key={src.keystone}>
+                <div className="ds-node">
+                    <TreeRow
+                        className   = "ds-node__row"
+                        label       = {src.name}
+                        icon        = "database"
+                        hasChildren = {true}
+                        expanded    = {active}
+                        selected    = {active}
+                        meta        = {<Icon name="dot circle" tone={statusTone(src.status)} title={src.status}/>}
+                        onToggle    = {() => onSelectConnection(active ? "" : (src.keystone as string))}
+                        onSelect    = {() => onSelectConnection(active ? "" : (src.keystone as string))}/>
+                    <IconButton
+                        icon    = "close"
+                        label   = "Remover conexão"
+                        size    = "sm"
+                        onClick = {() => onRemove(src.keystone as string)}/>
                 </div>
-            })}
-        </div>
-        <div className="ds-sidebar__foot">
-            <OpenSqliteButton onOpen={onOpenSqlite} className="ds-btn primary" label="Abrir SQLite"/>
-        </div>
-    </div>
+
+                {active && <>
+                    {!ready && <div className="ds-hint ds-hint--nested">{src.message || "indisponível"}</div>}
+                    {ready && tables.length === 0 && <div className="ds-hint ds-hint--nested">sem tabelas</div>}
+                    {tables.map((t) =>
+                        <TreeRow
+                            key      = {t}
+                            depth    = {1}
+                            label    = {t}
+                            icon     = "table"
+                            selected = {t === selectedTable}
+                            onSelect = {() => onSelectTable(t)}/>)}
+                </>}
+            </div>
+        })}
+    </SidePanel>
 
 export default Sidebar
