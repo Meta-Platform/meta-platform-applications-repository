@@ -1,10 +1,14 @@
 import * as React from "react"
 import { useEffect, useRef, useState } from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 // Menu de contexto (botão direito) posicionado em x,y. Fecha ao clicar fora,
 // rolar ou pressionar Esc. Itens com `danger` ficam em vermelho; itens com
 // `children` viram submenu expansível; `checked` mostra um "✓".
+//
+// A caixa e os itens são os do kit (`.mp-menu*`, iguais aos do ContextMenu de
+// @i-components). O que fica aqui é só o que o kit não tem e a área de trabalho
+// precisa: submenu expansível em linha, marca de seleção e recorte na viewport.
 export type ContextMenuItem = {
     label: string
     icon?: string
@@ -54,49 +58,54 @@ const ContextMenu = ({ x, y, items, onClose }:ContextMenuProps) => {
         <button
             key={key}
             type="button"
-            className={`myd-ctx-item ${isChild ? "myd-ctx-item--child" : ""} ${item.danger ? "myd-ctx-item--danger" : ""}`}
+            role="menuitem"
+            className={`mp-menu__item ${isChild ? "myd-ctx-item--child" : ""} ${item.danger ? "is-danger" : ""}`}
             disabled={item.disabled}
             onClick={() => { onClose(); item.onClick && item.onClick() }}>
             { item.checked
-                ? <Icon name="check"/>
+                ? <Icon name="check" tone="info"/>
                 : item.icon
-                    ? <Icon name={item.icon as any}/>
+                    ? <Icon name={item.icon}/>
                     : <span className="myd-ctx-icon-gap"/> }
-            <span>{item.label}</span>
+            <span className="mp-menu__label">{item.label}</span>
         </button>
 
     return <>
-        <div className="myd-ctx-scrim" onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose() }}/>
-        <div ref={ref} className="myd-ctx-menu" style={{ left: pos.x, top: pos.y }}>
-            {
-                items.map((item, key) => {
-                    if(item.divider)
-                        return <div key={key} className="myd-ctx-divider"/>
+        <div className="mp-menu__scrim" onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose() }}/>
+        <div ref={ref} className="mp-menu-anchor" style={{ left: pos.x, top: pos.y }}>
+            <div className="mp-menu" role="menu">
+                {
+                    items.map((item, key) => {
+                        if(item.divider)
+                            return <span key={key} className="mp-menu__sep" aria-hidden="true"/>
 
-                    if(item.children && item.children.length > 0){
-                        const isExpanded = expandedIndex === key
-                        return <React.Fragment key={key}>
-                            <button
-                                type="button"
-                                className={`myd-ctx-item ${isExpanded ? "myd-ctx-item--open" : ""}`}
-                                disabled={item.disabled}
-                                onClick={() => setExpandedIndex(isExpanded ? undefined : key)}>
-                                { item.icon ? <Icon name={item.icon as any}/> : <span className="myd-ctx-icon-gap"/> }
-                                <span>{item.label}</span>
-                                <Icon name={isExpanded ? "angle down" : "angle right"} className="myd-ctx-chevron"/>
-                            </button>
-                            {
-                                isExpanded && item.children.map((child, childKey) =>
-                                    child.divider
-                                        ? <div key={childKey} className="myd-ctx-divider"/>
-                                        : _RenderLeaf(child, childKey, true))
-                            }
-                        </React.Fragment>
-                    }
+                        if(item.children && item.children.length > 0){
+                            const isExpanded = expandedIndex === key
+                            return <React.Fragment key={key}>
+                                <button
+                                    type="button"
+                                    role="menuitem"
+                                    aria-expanded={isExpanded}
+                                    className={`mp-menu__item ${isExpanded ? "myd-ctx-item--open" : ""}`}
+                                    disabled={item.disabled}
+                                    onClick={() => setExpandedIndex(isExpanded ? undefined : key)}>
+                                    { item.icon ? <Icon name={item.icon}/> : <span className="myd-ctx-icon-gap"/> }
+                                    <span className="mp-menu__label">{item.label}</span>
+                                    <Icon name={isExpanded ? "angle down" : "angle right"} tone="muted"/>
+                                </button>
+                                {
+                                    isExpanded && item.children.map((child, childKey) =>
+                                        child.divider
+                                            ? <span key={childKey} className="mp-menu__sep" aria-hidden="true"/>
+                                            : _RenderLeaf(child, childKey, true))
+                                }
+                            </React.Fragment>
+                        }
 
-                    return _RenderLeaf(item, key, false)
-                })
-            }
+                        return _RenderLeaf(item, key, false)
+                    })
+                }
+            </div>
         </div>
     </>
 }

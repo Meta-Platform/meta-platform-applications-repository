@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon, StatusChip } from "@i-components"
 
 // Barra de sistema no topo (estilo desktop clássico): a marca à esquerda abre o
 // menu de sistema (adicionar app, repositórios, organizar, tema, sobre…); à
@@ -48,14 +48,20 @@ const SystemMenuBar = ({ appCount, onOpenMenu, onOpenLauncher }:SystemMenuBarPro
             <button className="myd-menubar__brand" onClick={handleBrandClick} title="Menu do MyDesktop" aria-haspopup="menu">
                 <span className="myd-menubar__mark">◆</span>
                 MyDesktop
-                <Icon name="angle down" className="myd-menubar__brand-caret"/>
+                <Icon name="angle down" tone="muted" className="myd-menubar__brand-caret"/>
             </button>
         </div>
 
         <div className="myd-menubar__right">
-            <button className="myd-menubar__chip" onClick={handleAppsClick} title="Todos os aplicativos" aria-haspopup="menu">
-                <Icon name="th" /> {appCount} {appCount === 1 ? "app" : "apps"}
-            </button>
+            { /* chip de contagem do kit; o `title` fica no invólucro porque o
+                 StatusChip não repassa atributos soltos. */ }
+            <span title="Todos os aplicativos">
+                <StatusChip
+                    icon="th"
+                    count={appCount}
+                    label={appCount === 1 ? "app" : "apps"}
+                    onClick={handleAppsClick}/>
+            </span>
             <span className="myd-menubar__clock">
                 <strong>{time}</strong>
                 <small>{date}</small>

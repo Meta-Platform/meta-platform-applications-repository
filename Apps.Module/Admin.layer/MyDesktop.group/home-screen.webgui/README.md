@@ -26,15 +26,18 @@ Consome o `execution-manager.webservice` (irmão):
 
 ## Identidade visual
 
-Reutiliza **verbatim** o design system "Meta System Retro-Brutalist UI" do
-`ecosystem-control-panel.webgui` (`src/Styles/tokens.css`, `themes.css`,
-`theme-retro-brutalist.css`, `CorporateTheme.css`, `components.css` e
-`Utils/theme.ts`). Os cinco temas (light/dark/gray/blue/cyberpunk) são trocáveis
-pela barra superior e persistem em `localStorage`.
+Monta a interface sobre o **UI kit** `@i-components` (o `.uilib` do ecosystem
+core): tokens, temas e componentes vêm de `@i-components/styles/index.css` e de
+`@i-components`. Nenhum componente de terceiro é importado direto — em especial,
+**nada de `semantic-ui-react`** (o kit é quem o encapsula). Os cinco temas
+(light/dark/gray/blue/cyberpunk) são trocáveis pelo menu de sistema e persistem
+em `localStorage` (`@i-components/theme`).
 
-O estilo específico da área de trabalho (janelas com "traffic lights", grade de
-ícones, dock e barra de sistema) está em `src/Styles/desktop.css`, todo baseado
-nos tokens `--mp-*` — por isso funciona em qualquer tema sem regra extra.
+Em `src/Styles/desktop.css` fica **só o que é exclusivo de uma área de
+trabalho** — janela com "traffic lights", grade de ícones arrastáveis, dock,
+barra de sistema com relógio, popover de aplicativos —, todo prefixado `.myd-*`
+e 100% sobre os tokens `--mp-*`, sem cor crua e sem valor de reserva. Botão,
+campo, busca, chip, menu, spinner e popover são do kit.
 
 ## Estrutura
 

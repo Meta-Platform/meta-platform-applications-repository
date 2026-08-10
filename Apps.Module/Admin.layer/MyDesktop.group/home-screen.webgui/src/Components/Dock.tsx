@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState } from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 // Item do dock: ícone pequeno com fallback de glifo, rótulo em balão ao passar
 // o mouse, ciclo de lançamento (spinner → barra de build), indicador discreto de

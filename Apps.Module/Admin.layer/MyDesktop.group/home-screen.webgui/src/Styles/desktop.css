@@ -1,10 +1,22 @@
 /*
  * MyDesktop — home-screen.webgui
  * ------------------------------------------------------------------
- * Área de trabalho retrô-brutalista. TODO estilo referencia os tokens
- * --mp-* do design system "Meta System Retro-Brutalist UI" (copiado do
- * Ecosystem Control Panel), então todos os temas (light/dark/gray/blue/
- * cyberpunk) funcionam sem regra extra.
+ * SÓ o que é exclusivo de uma ÁREA DE TRABALHO: barra de sistema com relógio,
+ * grade de ícones arrastáveis, dock, janela com "traffic lights", popover de
+ * aplicativos e os gerenciadores. Tudo que é controle genérico (botão, campo,
+ * busca, chip, menu, spinner, popover) vem do kit `@i-components`, importado
+ * ANTES deste arquivo em `src/index.tsx`.
+ *
+ * Regras deste arquivo:
+ *   - 100% sobre tokens --mp-* do kit — nada de cor crua e nada de valor de
+ *     reserva (`var(--x, #fff)`): a reserva pinta em silêncio quando o token
+ *     está escrito errado, e o aplicativo para de acompanhar o tema;
+ *   - todo seletor com prefixo `.myd-*`;
+ *   - nenhuma redefinição de classe `.mp-*` do design system.
+ *
+ * A única exceção ao "nada de cor crua" é `#fff` como TINTA sobre um acento
+ * sólido (rótulo selecionado, badge de execução): o acento não muda com o
+ * tema, então a tinta de contraste também não pode mudar.
  */
 
 html, body, #gui { height: 100%; margin: 0; }
@@ -24,6 +36,11 @@ html, body, #gui { height: 100%; margin: 0; }
 
 /* ============================================================ */
 /* Barra de sistema (topo)                                      */
+/* ------------------------------------------------------------ */
+/* Não é o `Topbar` do kit de propósito: a barra de um sistema   */
+/* operacional é FINA (40px, contra os 56px do shell de painel), */
+/* a marca é um BOTÃO que abre o menu de sistema e a direita     */
+/* carrega relógio. É geometria de área de trabalho, não de app. */
 /* ============================================================ */
 .myd-menubar {
     flex: 0 0 auto;
@@ -57,38 +74,10 @@ html, body, #gui { height: 100%; margin: 0; }
     border-radius: var(--mp-radius-sm);
 }
 .myd-menubar__brand:hover { background: var(--mp-surface-2); }
+.myd-menubar__brand:focus-visible { outline: 2px solid var(--mp-accent-blue); outline-offset: 1px; }
 .myd-menubar__mark { color: var(--mp-accent-orange); font-size: 1.05em; }
-.myd-menubar__brand-caret.icon { font-size: 11px; margin: 0 0 0 3px; color: var(--mp-muted); }
+.myd-menubar__brand-caret { font-size: 11px; }
 
-.myd-menubar__chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font: inherit;
-    font-size: var(--mp-text-xs);
-    font-weight: 800;
-    line-height: 1;
-    color: var(--mp-ink-2);
-    background: var(--mp-surface);
-    border: 1.5px solid var(--mp-line-soft);
-    border-radius: 999px;
-    padding: 3px 11px;
-    cursor: pointer;
-    transition: background .1s ease, border-color .1s ease;
-}
-.myd-menubar__chip:hover { background: var(--mp-surface-2); border-color: var(--mp-line); }
-.myd-menubar__chip:focus-visible { outline: 2px solid var(--mp-accent-blue); outline-offset: 1px; }
-/* o glifo do semantic-ui vem com height/line-height/margem que desalinham no
-   flex — normaliza para casar com o baseline do texto */
-.myd-menubar__chip .icon {
-    margin: 0;
-    height: auto;
-    width: auto;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    font-size: 0.95em;
-}
 .myd-menubar__clock {
     display: flex;
     flex-direction: column;
@@ -98,7 +87,12 @@ html, body, #gui { height: 100%; margin: 0; }
     min-width: 84px;
 }
 .myd-menubar__clock strong { font-size: var(--mp-text-md); color: var(--mp-ink); }
-.myd-menubar__clock small { font-size: 10px; color: var(--mp-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.myd-menubar__clock small {
+    font-size: var(--mp-text-xs);
+    color: var(--mp-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
 
 /* ============================================================ */
 /* Superfície da área de trabalho + grade de ícones             */
@@ -113,15 +107,6 @@ html, body, #gui { height: 100%; margin: 0; }
     display: flex;
     align-items: center;
     justify-content: center;
-}
-.myd-icon-grid {
-    display: flex;
-    flex-direction: column;
-    flex-wrap: wrap;
-    align-content: flex-start;
-    gap: var(--mp-space-4) var(--mp-space-5);
-    height: 100%;
-    max-height: 100%;
 }
 
 /* superfície-canvas: ícones em posição absoluta (arrastáveis) */
@@ -148,8 +133,10 @@ html, body, #gui { height: 100%; margin: 0; }
 /* durante o arrasto o ícone segue o ponteiro; pointer-events:none deixa o
    hit-test (elementFromPoint) enxergar a dock por baixo para soltar lá */
 .myd-icon--dragging { z-index: 6; opacity: .9; cursor: grabbing; pointer-events: none; }
-.myd-icon:hover { background: color-mix(in srgb, var(--mp-surface) 55%, transparent); }
-.myd-icon:hover { transform: translateY(-1px); }
+.myd-icon:hover {
+    background: color-mix(in srgb, var(--mp-surface) 55%, transparent);
+    transform: translateY(-1px);
+}
 /* Seleção estilo desktop clássico: sem caixa pesada. O quadro do ícone ganha
  * um leve tint e o RÓTULO vira uma "pílula" de destaque (texto sobre acento). */
 .myd-icon--selected { background: transparent; border-color: transparent; box-shadow: none; }
@@ -207,14 +194,34 @@ html, body, #gui { height: 100%; margin: 0; }
     padding: 0 4px;
     border-radius: 9px;
     color: #fff;
-    font-size: 11px;
+    font-size: var(--mp-text-xs);
     font-weight: 700;
     line-height: 1;
     font-variant-numeric: tabular-nums;
 }
 .myd-icon__running--count::after { content: none; }
+
+/* Contador de pendências no ícone. Canto OPOSTO ao marcador de execução: são
+   perguntas diferentes ("está rodando?" vs "precisa de mim?"), e sobrepô-las
+   faria uma esconder a outra. */
+.myd-icon__notify {
+    position: absolute;
+    top: -4px; left: -4px;
+    min-width: 18px; height: 18px; padding: 0 5px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--mp-danger);
+    color: #fff;
+    font-size: var(--mp-text-xs);
+    font-weight: 700;
+    line-height: 1;
+    border-radius: 9px;
+    border: 2px solid var(--mp-surface);
+    box-sizing: content-box;
+    z-index: 3;
+}
+
 .myd-icon__img { width: 64px; height: 64px; object-fit: contain; }
-.myd-icon__glyph.icon { font-size: 52px; margin: 0; color: var(--mp-ink-2); }
+.myd-icon__glyph { font-size: 52px; color: var(--mp-ink-2); }
 
 /* ---- ciclo de lançamento no ícone (spinner → barra → aberto) ----
    Segue o neobrutalismo do sistema: bordas grossas, sombras DURAS (offset
@@ -238,8 +245,8 @@ html, body, #gui { height: 100%; margin: 0; }
 @keyframes myd-icon-spin { to { transform: rotate(360deg); } }
 
 /* barra de progresso do build na base do quadro (fase window-ready/building):
-   caixa de borda grossa, preenchimento chapado e blocado por "ticks" */
-/* Durante o build, o card reserva uma faixa na base para a barra: o ícone sobe
+   caixa de borda grossa, preenchimento chapado e blocado por "ticks".
+   Durante o build, o card reserva uma faixa na base para a barra: o ícone sobe
    (encolhe um pouco) e a barra ocupa o rodapé DENTRO do card, encaixada nas
    bordas inferiores — sem sobrepor a arte. */
 .myd-icon--building .myd-icon__frame { padding-bottom: 16px; }
@@ -305,8 +312,22 @@ html, body, #gui { height: 100%; margin: 0; }
     outline-offset: 2px;
 }
 
+/* ---- retângulo de seleção (marquee) ---- */
+.myd-marquee {
+    position: absolute;
+    z-index: 4;
+    background: color-mix(in srgb, var(--mp-accent-blue) 16%, transparent);
+    border: 1.5px solid var(--mp-accent-blue);
+    border-radius: var(--mp-radius-sm);
+    pointer-events: none;
+}
+
 /* ============================================================ */
 /* Janela de sistema (chrome retrô)                             */
+/* ------------------------------------------------------------ */
+/* É a "janela" que os outros aplicativos imitam: barra de       */
+/* título com traffic lights, corpo e rodapé de ações. O Dialog  */
+/* do kit é outra coisa (modal de painel) e não a substitui.     */
 /* ============================================================ */
 .myd-window {
     background: var(--mp-surface);
@@ -359,6 +380,7 @@ html, body, #gui { height: 100%; margin: 0; }
 .myd-window__actions {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
     gap: var(--mp-space-2);
     padding: var(--mp-space-3) var(--mp-space-4);
     background: var(--mp-surface-2);
@@ -396,7 +418,7 @@ html, body, #gui { height: 100%; margin: 0; }
     white-space: nowrap;
 }
 
-/* scrim de modal */
+/* scrim de modal (a janela retrô é montada por cima dele) */
 .myd-modal-scrim {
     position: fixed;
     inset: 0;
@@ -512,11 +534,20 @@ html, body, #gui { height: 100%; margin: 0; }
 .myd-dock__item:hover { transform: translateY(-3px); }
 .myd-dock__item:active { transform: translateY(0); }
 .myd-dock__img { width: 44px; height: 44px; object-fit: contain; }
-.myd-dock__glyph.icon { font-size: 36px; margin: 0; color: var(--mp-ink-2); }
+.myd-dock__glyph { font-size: 36px; color: var(--mp-ink-2); }
 
-/* em execução: indicador DISCRETO no canto superior direito (ponto), sem
-   moldura pesada. */
+/* em execução: borda verde + ponto discreto sob o item */
 .myd-dock__item--running { border-color: var(--mp-success); }
+.myd-dock__item--running::after {
+    content: "";
+    position: absolute;
+    bottom: -6px; left: 50%;
+    transform: translateX(-50%);
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--mp-success);
+    box-shadow: 0 0 0 1.5px var(--mp-line-strong);
+}
 .myd-dock__run-dot {
     position: absolute;
     top: -5px; right: -5px;
@@ -546,7 +577,7 @@ html, body, #gui { height: 100%; margin: 0; }
     padding: 0 4px;
     border-radius: 8px;
     color: #fff;
-    font-size: 10px;
+    font-size: var(--mp-text-xs);
     font-weight: 700;
     line-height: 1;
     font-variant-numeric: tabular-nums;
@@ -569,8 +600,8 @@ html, body, #gui { height: 100%; margin: 0; }
 
 /* durante o build, reserva a base do item para a barra (o ícone sobe) */
 .myd-dock__item--building { padding-bottom: 10px; }
-.myd-dock__item--building .myd-dock__img       { width: 34px; height: 34px; }
-.myd-dock__item--building .myd-dock__glyph.icon { font-size: 28px; }
+.myd-dock__item--building .myd-dock__img   { width: 34px; height: 34px; }
+.myd-dock__item--building .myd-dock__glyph { font-size: 28px; }
 
 /* barra de build encaixada na base do item, usando as bordas inferiores */
 .myd-dock__progress {
@@ -624,7 +655,7 @@ html, body, #gui { height: 100%; margin: 0; }
     transform: translateX(-50%);
     border: 5px solid transparent; border-top-color: var(--mp-ink);
 }
-.myd-dock__label-run { font-size: 10px; font-weight: 800; color: var(--mp-success); }
+.myd-dock__label-run { font-size: var(--mp-text-xs); font-weight: 800; color: var(--mp-success); }
 .myd-dock__item:hover .myd-dock__label { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* ============================================================ */
@@ -638,68 +669,31 @@ html, body, #gui { height: 100%; margin: 0; }
 }
 
 /* ============================================================ */
-/* Menu de contexto (botão direito)                             */
+/* Menu de contexto — só o que o Menu do kit não tem            */
+/* ------------------------------------------------------------ */
+/* A caixa e os itens são `.mp-menu*` do kit; aqui ficam apenas  */
+/* o submenu expansível em linha e o alinhamento dos rótulos     */
+/* sem ícone (a área de trabalho tem menus com hierarquia).      */
 /* ============================================================ */
-.myd-ctx-scrim {
-    position: fixed;
-    inset: 0;
-    z-index: var(--mp-z-palette);
-    background: transparent;
-}
-.myd-ctx-menu {
-    position: fixed;
-    z-index: calc(var(--mp-z-palette) + 1);
-    min-width: 210px;
-    padding: 5px;
-    background: var(--mp-surface);
-    border: var(--mp-border-strong);
-    border-radius: var(--mp-radius-md);
-    box-shadow: var(--mp-shadow-2);
-}
-.myd-ctx-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 8px 10px;
-    border: none;
-    background: transparent;
-    border-radius: var(--mp-radius-sm);
-    color: var(--mp-ink);
-    font-size: var(--mp-text-sm);
-    font-weight: 600;
-    text-align: left;
-    cursor: pointer;
-}
-.myd-ctx-item .icon { color: var(--mp-muted); margin: 0; }
-.myd-ctx-item:hover { background: var(--mp-accent-blue-tint); }
-.myd-ctx-item:hover .icon { color: var(--mp-ink); }
-.myd-ctx-item--danger { color: var(--mp-danger); }
-.myd-ctx-item--danger .icon { color: var(--mp-danger); }
-.myd-ctx-item--danger:hover { background: var(--mp-danger-tint); }
-.myd-ctx-item:disabled { opacity: .5; cursor: default; }
-.myd-ctx-divider { border-top: 1px solid var(--mp-line-faint); margin: 4px 2px; }
+.myd-ctx-item--open  { background: var(--mp-surface-2); }
+.myd-ctx-item--child { padding-left: 30px; }
+.myd-ctx-icon-gap    { display: inline-block; width: 1.18em; flex: 0 0 auto; }
 
 /* ============================================================ */
-/* Popover "Todos os aplicativos" (botão de apps na barra)      */
+/* Popover "Todos os aplicativos" (grade de ícones)             */
+/* ------------------------------------------------------------ */
+/* A caixa é o `Popover` do kit; o âncora fixo em x,y e a grade  */
+/* de ícones de pacote é que são da área de trabalho.            */
 /* ============================================================ */
-.myd-launcher-scrim {
+.myd-launcher-anchor {
     position: fixed;
-    inset: 0;
     z-index: var(--mp-z-palette);
-    background: transparent;
 }
 .myd-app-launcher {
-    position: fixed;
-    z-index: calc(var(--mp-z-palette) + 1);
     width: 340px;
+    max-width: 88vw;
     max-height: 70vh;
     overflow-y: auto;
-    padding: 8px;
-    background: var(--mp-surface);
-    border: var(--mp-border-strong);
-    border-radius: var(--mp-radius-md);
-    box-shadow: var(--mp-shadow-2);
 }
 .myd-app-launcher__head {
     font-family: var(--mp-font-display);
@@ -708,9 +702,9 @@ html, body, #gui { height: 100%; margin: 0; }
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--mp-muted);
-    padding: 4px 6px 8px;
+    padding: 0 2px 8px;
 }
-.myd-app-launcher__empty { padding: 16px; text-align: center; color: var(--mp-muted); font-size: var(--mp-text-sm); }
+.myd-app-launcher__empty { padding: var(--mp-space-4); text-align: center; color: var(--mp-muted); font-size: var(--mp-text-sm); }
 .myd-app-launcher__grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
@@ -733,7 +727,7 @@ html, body, #gui { height: 100%; margin: 0; }
 .myd-launcher__item:hover { background: var(--mp-accent-blue-tint); }
 .myd-launcher__frame { position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
 .myd-launcher__img { width: 44px; height: 44px; object-fit: contain; pointer-events: none; }
-.myd-launcher__glyph.icon { font-size: 34px; margin: 0; color: var(--mp-ink-2); }
+.myd-launcher__glyph { font-size: 34px; color: var(--mp-ink-2); }
 .myd-launcher__pins {
     position: absolute;
     bottom: -3px; right: -5px;
@@ -743,7 +737,7 @@ html, body, #gui { height: 100%; margin: 0; }
     background: var(--mp-surface);
     box-shadow: var(--mp-shadow-1);
 }
-.myd-launcher__pin.icon { font-size: 9px; margin: 0; color: var(--mp-accent-blue); }
+.myd-launcher__pin { font-size: 9px; color: var(--mp-accent-blue); }
 .myd-launcher__label {
     font-size: var(--mp-text-xs);
     font-weight: 600;
@@ -786,41 +780,22 @@ html, body, #gui { height: 100%; margin: 0; }
     opacity: 0.92;
 }
 .myd-drag-ghost__img { width: 40px; height: 40px; object-fit: contain; }
-.myd-drag-ghost__glyph.icon { font-size: 32px; margin: 0; color: var(--mp-ink-2); }
+.myd-drag-ghost__glyph { font-size: 32px; color: var(--mp-ink-2); }
 .myd-drag-ghost__label { font-size: var(--mp-text-xs); font-weight: 700; color: var(--mp-ink); max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ============================================================ */
-/* Gerenciador de aplicações                                    */
+/* Gerenciadores (aplicações e repositórios) dentro da janela   */
 /* ============================================================ */
 .myd-mgr .myd-window__body { padding: 0; }
 .myd-mgr__toolbar { padding: var(--mp-space-4); border-bottom: var(--mp-border); background: var(--mp-paper-2); }
+.myd-mgr__filters { margin-top: 10px; }
 
-/* ---- chips de filtro por tipo ---- */
-.myd-appmgr__filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.myd-chip {
-    display: inline-flex; align-items: center; gap: 6px;
-    border: 1.5px solid var(--mp-line-soft);
-    background: var(--mp-surface);
-    color: var(--mp-ink-2);
-    font-family: var(--mp-font-display);
-    font-weight: 700; font-size: var(--mp-text-xs);
-    padding: 5px 12px;
-    border-radius: 999px;
-    cursor: pointer;
-}
-.myd-chip:hover { border-color: var(--mp-line-strong); color: var(--mp-ink); }
-.myd-chip--active {
-    background: var(--mp-accent-blue);
-    border-color: var(--mp-accent-blue);
-    color: #fff;
-}
-.myd-chip__count {
-    font-size: 11px; font-weight: 800;
-    background: color-mix(in srgb, currentColor 18%, transparent);
-    color: inherit;
-    border-radius: 999px;
-    padding: 0 6px; min-width: 18px; text-align: center;
-}
+/* etiqueta do tipo de aplicação: o rótulo já diz DESKTOP/APP/CLI; o tint só
+   ajuda a varrer a lista com o olho (nunca é a única pista). */
+.myd-apptype { font-size: var(--mp-text-xs); }
+.myd-apptype--desktop { background: var(--mp-accent-blue-tint); }
+.myd-apptype--app     { background: var(--mp-accent-cyan-tint); }
+.myd-apptype--cli     { background: var(--mp-accent-orange-tint); }
 
 /* ---- grupos por repositório ---- */
 .myd-appgroup__head {
@@ -833,8 +808,8 @@ html, body, #gui { height: 100%; margin: 0; }
 }
 .myd-appgroup__head:hover { background: var(--mp-surface-2); }
 .myd-appgroup:first-child .myd-appgroup__head { border-top: none; }
-.myd-appgroup__chevron.icon { color: var(--mp-muted); margin: 0; font-size: 13px; }
-.myd-appgroup__icon.icon { color: var(--mp-muted); margin: 0; }
+.myd-appgroup__chevron { color: var(--mp-muted); font-size: 13px; }
+.myd-appgroup__icon { color: var(--mp-muted); }
 .myd-appgroup__name { font-weight: 800; color: var(--mp-ink); font-size: var(--mp-text-sm); }
 .myd-appgroup__count {
     margin-left: auto;
@@ -852,67 +827,12 @@ html, body, #gui { height: 100%; margin: 0; }
 }
 .myd-mgr__list { max-height: 52vh; overflow-y: auto; }
 .myd-mgr__empty { padding: var(--mp-space-8); text-align: center; color: var(--mp-muted); }
-.myd-mgr__row {
-    display: flex;
-    align-items: center;
-    gap: var(--mp-space-3);
-    padding: 10px var(--mp-space-4);
-    border-bottom: 1px solid var(--mp-line-faint);
-}
-.myd-mgr__row:hover { background: var(--mp-surface-2); }
-.myd-mgr__icon {
-    flex: 0 0 auto;
-    width: 40px; height: 40px;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--mp-surface);
-    border: var(--mp-border);
-    border-radius: var(--mp-radius-md);
-    box-shadow: var(--mp-shadow-1);
-}
-.myd-mgr__icon img { width: 26px; height: 26px; object-fit: contain; }
-.myd-mgr__glyph.icon { font-size: 20px; margin: 0; color: var(--mp-ink-2); }
-.myd-mgr__info { flex: 1 1 auto; min-width: 0; }
-.myd-mgr__name { font-weight: 800; color: var(--mp-ink); font-family: var(--mp-font-display); }
-.myd-mgr__meta { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
-.myd-mgr__meta code { font-size: var(--mp-text-xs); }
-.myd-mgr__status { flex: 0 0 auto; }
-.myd-mgr__badge {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: var(--mp-text-xs); font-weight: 800; color: var(--mp-muted);
-}
-.myd-mgr__badge--on { color: var(--mp-success); }
-.myd-mgr__action { flex: 0 0 auto; }
 .myd-mgr__summary { margin-right: auto; color: var(--mp-muted); font-size: var(--mp-text-sm); align-self: center; }
 
-/* ---- submenu do menu de contexto (ex.: Tema) ---- */
-.myd-ctx-item--open { background: var(--mp-surface-2); }
-.myd-ctx-item--child { padding-left: 30px; }
-.myd-ctx-chevron.icon { margin-left: auto !important; margin-right: 0 !important; color: var(--mp-muted) !important; }
-.myd-ctx-icon-gap { display: inline-block; width: 1.18em; flex: 0 0 auto; }
-.myd-ctx-item .check.icon { color: var(--mp-accent-blue); }
-
-/* ---- retângulo de seleção (marquee) ---- */
-.myd-marquee {
-    position: absolute;
-    z-index: 4;
-    background: color-mix(in srgb, var(--mp-accent-blue) 16%, transparent);
-    border: 1.5px solid var(--mp-accent-blue);
-    border-radius: var(--mp-radius-sm);
-    pointer-events: none;
-}
-
-/* ---- ponto de "em execução" no dock ---- */
-.myd-dock__item--running::after {
-    content: "";
-    position: absolute;
-    bottom: -6px; left: 50%;
-    transform: translateX(-50%);
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--mp-success);
-    box-shadow: 0 0 0 1.5px var(--mp-line-strong);
-}
-.myd-dock__item { position: relative; }
+/* pilha de ObjectCard (aplicações de um repositório) */
+.myd-cards { display: grid; gap: var(--mp-space-2); padding: var(--mp-space-3) var(--mp-space-4); }
+/* a moldura do ícone é do ObjectCard; aqui só a arte do pacote dentro dela */
+.myd-mgr__icon-img { width: 26px; height: 26px; object-fit: contain; }
 
 /* ============================================================ */
 /* Gestão de repositórios e fontes                              */
@@ -931,64 +851,35 @@ html, body, #gui { height: 100%; margin: 0; }
     border-bottom: var(--mp-border);
 }
 .myd-repo__toolbar-spacer { flex: 1 1 auto; }
-.myd-repo__toolbar .ui.button { margin: 0; }
 
 /* ---- painel (área rolável das abas) ---- */
 .myd-repo__panel { max-height: 58vh; overflow-y: auto; }
 
-/* ---- lista de cards (aba Repositórios) ---- */
-.myd-repo__ricon.icon { color: var(--mp-muted); flex: 0 0 auto; font-size: 22px; }
-.myd-repo__cards { display: flex; flex-direction: column; }
-.myd-repo__card { border-bottom: var(--mp-border); }
-.myd-repo__card:last-child { border-bottom: none; }
-.myd-repo__head {
-    display: flex;
-    align-items: center;
-    gap: var(--mp-space-3);
-    padding: 12px var(--mp-space-4);
-}
+/* ---- pilha de cartões (ObjectCard) por repositório ---- */
+.myd-repo__cards { display: grid; gap: var(--mp-space-3); padding: var(--mp-space-4); }
+.myd-repo__group { display: grid; gap: 6px; }
 
-/* ---- fontes aninhadas dentro de um repositório ---- */
+/* ---- fontes aninhadas dentro de um repositório (ListRow do kit) ---- */
 .myd-repo__sources {
-    display: flex;
-    flex-direction: column;
+    display: grid;
     gap: 6px;
-    padding: 0 var(--mp-space-4) 12px calc(var(--mp-space-4) + 34px);
+    padding-left: calc(var(--mp-space-4) + 22px);
 }
-.myd-repo__src {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+/* fonte que está de fato instalada: o único acréscimo ao ListRow */
+.myd-repo__src--active { background: var(--mp-success-tint); }
+.myd-repo__nosrc {
+    display: flex; align-items: center; gap: 8px;
     padding: 7px 10px;
-    background: var(--mp-surface-2);
-    border: 1px solid var(--mp-line-faint);
-    border-radius: var(--mp-radius-sm);
-}
-.myd-repo__src--active {
-    background: var(--mp-success-tint);
-    border-color: var(--mp-success);
-}
-.myd-repo__src--empty {
     color: var(--mp-muted);
     font-size: var(--mp-text-sm);
-    background: transparent;
-    border-style: dashed;
-}
-.myd-repo__src-icon.icon { flex: 0 0 auto; color: var(--mp-ink-2); font-size: 16px; margin: 0; }
-.myd-repo__src-body { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
-.myd-repo__src-type { font-weight: 700; font-size: var(--mp-text-xs); color: var(--mp-ink-2); white-space: nowrap; }
-.myd-repo__src-loc {
-    font-family: var(--mp-font-mono);
-    font-size: var(--mp-text-xs);
-    color: var(--mp-muted);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    border: 1.5px dashed var(--mp-line-soft);
+    border-radius: var(--mp-radius-sm);
 }
 .myd-repo__src-flag {
     flex: 0 0 auto;
     display: inline-flex; align-items: center; gap: 3px;
     font-size: var(--mp-text-xs); font-weight: 800; color: var(--mp-success);
 }
-.myd-repo__src .ui.button { flex: 0 0 auto; white-space: nowrap; margin: 0; }
 .myd-repo__addsrc {
     align-self: flex-start;
     display: inline-flex; align-items: center; gap: 6px;
@@ -1004,20 +895,12 @@ html, body, #gui { height: 100%; margin: 0; }
 .myd-repo__addsrc:hover:not(:disabled) { color: var(--mp-accent-blue); border-color: var(--mp-accent-blue); }
 .myd-repo__addsrc:disabled { opacity: 0.5; cursor: default; }
 
-/* ---- formulário (aba Nova fonte) ---- */
+/* ---- formulário (aba Nova fonte): os campos são FormField do kit ---- */
 .myd-repo__form {
     display: flex;
     flex-direction: column;
-    gap: var(--mp-space-2);
+    gap: var(--mp-space-3);
     padding: var(--mp-space-4);
-}
-.myd-repo__field-label {
-    font-weight: 700;
-    font-size: var(--mp-text-xs);
-    color: var(--mp-ink-2);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    margin-top: 6px;
 }
 .myd-repo__form-actions {
     display: flex;
@@ -1026,44 +909,43 @@ html, body, #gui { height: 100%; margin: 0; }
     margin-top: var(--mp-space-3);
 }
 
-/* ── NOTIFICAÇÕES DE APLICAÇÕES ────────────────────────────────────────────
-   Avisos que outros apps do ecossistema mandam para a área de trabalho
-   (Notification.StreamNotifications). O visual reusa o toast de lançamento de
-   propósito: a pessoa já aprendeu que aquele retângulo no canto é o desktop
-   falando com ela. */
-
+/* ============================================================ */
+/* Notificações de aplicações                                   */
+/* ------------------------------------------------------------ */
+/* Avisos que outros apps do ecossistema mandam para a área de   */
+/* trabalho (Notification.StreamNotifications). O visual reusa o */
+/* toast de lançamento de propósito: a pessoa já aprendeu que    */
+/* aquele retângulo no canto é o desktop falando com ela.        */
+/* ============================================================ */
 .myd-notification-stack {
-    position: fixed; right: 18px; bottom: 96px;
+    position: fixed;
+    right: var(--mp-space-5);
+    bottom: calc(var(--mp-space-4) + 96px);
     display: flex; flex-direction: column-reverse; gap: 8px;
-    z-index: var(--mp-z-toast, 900);
+    z-index: var(--mp-z-toast);
 }
 .myd-notification-toast {
-    position: static;                 /* a pilha posiciona; o item, não */
+    /* a PILHA posiciona (fixed); o item só serve de referência para o botão
+       de fechar — daí `relative`, e não o `fixed` do toast de lançamento. */
+    position: relative;
     min-width: 280px; max-width: 380px;
     padding: 12px 32px 12px 14px;
-    border-left: 4px solid var(--mp-accent, #7c3aed);
+    background: var(--mp-surface);
+    border: var(--mp-border-strong);
+    border-left: 4px solid var(--mp-accent-violet);
+    border-radius: var(--mp-radius-md);
+    box-shadow: var(--mp-shadow-2);
+    color: var(--mp-ink);
     cursor: pointer;
 }
-.myd-notification-toast--warning { border-left-color: #f97316 }
-.myd-notification-toast--error   { border-left-color: #dc2626 }
-.myd-notification-toast__title { font-weight: 700; margin-bottom: 2px }
-.myd-notification-toast__body  { font-size: 13px; opacity: .85 }
+.myd-notification-toast--warning { border-left-color: var(--mp-warning); }
+.myd-notification-toast--error   { border-left-color: var(--mp-danger); }
+.myd-notification-toast__title { font-weight: 700; margin-bottom: 2px; }
+.myd-notification-toast__body  { font-size: var(--mp-text-sm); color: var(--mp-ink-2); }
 .myd-notification-toast__close {
     position: absolute; top: 6px; right: 8px;
     background: none; border: none; cursor: pointer;
-    font-size: 16px; line-height: 1; opacity: .6;
+    font-size: var(--mp-text-md); line-height: 1;
+    color: var(--mp-muted);
 }
-.myd-notification-toast__close:hover { opacity: 1 }
-
-/* Contador de pendências no ícone. Canto OPOSTO ao marcador de execução: são
-   perguntas diferentes ("está rodando?" vs "precisa de mim?"), e sobrepô-las
-   faria uma esconder a outra. */
-.myd-icon__notify {
-    position: absolute; top: -4px; left: -4px;
-    min-width: 18px; height: 18px; padding: 0 5px;
-    display: flex; align-items: center; justify-content: center;
-    background: #dc2626; color: #fff;
-    font-size: 11px; font-weight: 700; line-height: 1;
-    border-radius: 9px; border: 2px solid var(--mp-surface-1, #fff);
-    box-sizing: content-box;
-}
+.myd-notification-toast__close:hover { color: var(--mp-ink); }

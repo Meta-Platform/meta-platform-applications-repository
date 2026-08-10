@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Button, Icon } from "semantic-ui-react"
+import { Button, Icon } from "@i-components"
 
 import Window from "./Window"
 
@@ -16,7 +16,7 @@ const WelcomeWindow = ({ appCount, onClose }:WelcomeWindowProps) =>
             width={520}
             onClose={onClose}
             className="myd-welcome"
-            footer={<Button primary onClick={onClose}>Vamos lá</Button>}>
+            footer={<Button variant="primary" onClick={onClose}>Vamos lá</Button>}>
 
             <div className="myd-welcome__body">
                 <div className="myd-welcome__art">

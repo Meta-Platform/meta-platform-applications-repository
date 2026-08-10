@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState, useEffect, useMemo } from "react"
-import { Button, Icon, Label, Input, Loader } from "semantic-ui-react"
+import { Badge, Button, Icon, ObjectCard, SearchInput, Spinner, StatusChip, StatusStrip } from "@i-components"
 
 import GetAPI            from "../Utils/GetAPI"
 import GetManagedIconURL from "../Utils/GetManagedIconURL"
@@ -16,8 +16,6 @@ type ManagedApp = {
     isDebug?: boolean
 }
 
-const APP_TYPE_COLOR:any = { DESKTOP: "blue", APP: "teal", CLI: "orange" }
-
 // Filtros por tipo (a chip "Todos" sempre presente; as demais espelham appType).
 const TYPE_FILTERS = [
     { key: "ALL",     label: "Todos" },
@@ -28,16 +26,15 @@ const TYPE_FILTERS = [
 
 const NO_REPO = "(sem repositório)"
 
-// Ícone de linha com fallback de glifo.
+// Ícone do pacote, com fallback de glifo. O ícone chega por protocolo
+// (metaicon://) — regra de domínio da área de trabalho, e por isso é <img>
+// daqui e não um ícone do kit. Vai no slot `iconNode` do ObjectCard, que já
+// desenha a moldura.
 const RowIcon = ({ iconUrl }:{ iconUrl?:string }) => {
     const [ failed, setFailed ] = useState(false)
-    return <span className="myd-mgr__icon">
-        {
-            iconUrl && !failed
-                ? <img src={iconUrl} alt="" onError={() => setFailed(true)}/>
-                : <Icon name="cube" className="myd-mgr__glyph"/>
-        }
-    </span>
+    return iconUrl && !failed
+        ? <img className="myd-mgr__icon-img" src={iconUrl} alt="" onError={() => setFailed(true)}/>
+        : <Icon name="cube"/>
 }
 
 // Gerenciador de aplicações: lista tudo que é declarado pelos repositórios
@@ -150,32 +147,27 @@ const ApplicationManager = ({ serverManagerInformation, onClose, onChanged }:App
             hasPackageIcon: app.hasPackageIcon
         })
         const busy = busyExec === app.executableName
-        return <div key={app.executableName} className="myd-mgr__row">
-            <RowIcon iconUrl={iconUrl}/>
-            <div className="myd-mgr__info">
-                <div className="myd-mgr__name">{FormatAppName(app.executableName)}</div>
-                <div className="myd-mgr__meta">
-                    <code>{app.executableName}</code>
-                    { app.appType && <Label size="mini" color={APP_TYPE_COLOR[app.appType] || "grey"}>{app.appType}</Label> }
-                </div>
-            </div>
-            <div className="myd-mgr__status">
-                {
-                    app.isInstalled
-                        ? <span className="myd-mgr__badge myd-mgr__badge--on"><Icon name="check circle"/> instalado</span>
-                        : <span className="myd-mgr__badge"><Icon name="circle outline"/> disponível</span>
-                }
-            </div>
-            <div className="myd-mgr__action">
-                {
-                    app.isInstalled
-                        ? <Button size="small" basic color="red" loading={busy} disabled={!!busyExec}
-                            onClick={() => handleUninstall(app)}><Icon name="trash"/> Remover</Button>
-                        : <Button size="small" primary loading={busy} disabled={!!busyExec}
-                            onClick={() => handleInstall(app)}><Icon name="download"/> Instalar</Button>
-                }
-            </div>
-        </div>
+        return <ObjectCard
+            key={app.executableName}
+            iconNode={<RowIcon iconUrl={iconUrl}/>}
+            title={FormatAppName(app.executableName)}
+            meta={app.executableName}
+            status={
+                app.isInstalled
+                    ? <StatusChip tone="success" icon="check circle" label="instalado"/>
+                    : <StatusChip tone="neutral" icon="circle outline" label="disponível"/>
+            }
+            chips={
+                app.appType &&
+                <Badge className={`myd-apptype myd-apptype--${app.appType.toLowerCase()}`}>{app.appType}</Badge>
+            }
+            right={
+                app.isInstalled
+                    ? <Button variant="danger" size="sm" icon="trash" loading={busy} disabled={!!busyExec}
+                        onClick={() => handleUninstall(app)}>Remover</Button>
+                    : <Button variant="primary" size="sm" icon="download" loading={busy} disabled={!!busyExec}
+                        onClick={() => handleInstall(app)}>Instalar</Button>
+            }/>
     }
 
     return <div className="myd-modal-scrim">
@@ -186,27 +178,25 @@ const ApplicationManager = ({ serverManagerInformation, onClose, onChanged }:App
             className="myd-mgr"
             footer={<>
                 <span className="myd-mgr__summary">{installedCount} de {apps.length} instaladas</span>
-                <Button onClick={fetchApps} disabled={isLoading}><Icon name="refresh"/> Recarregar</Button>
-                <Button primary onClick={onClose}>Fechar</Button>
+                <Button icon="refresh" onClick={fetchApps} disabled={isLoading}>Recarregar</Button>
+                <Button variant="primary" onClick={onClose}>Fechar</Button>
             </>}>
 
             <div className="myd-mgr__toolbar">
-                <Input
-                    icon="search"
-                    iconPosition="left"
+                <SearchInput
                     placeholder="Buscar por nome, tipo ou repositório…"
                     value={search}
-                    onChange={(_e, { value }) => setSearch(value)}
-                    fluid/>
-                <div className="myd-appmgr__filters">
+                    onValueChange={setSearch}/>
+                <StatusStrip className="myd-mgr__filters">
                     {
-                        TYPE_FILTERS.map((t) => <button key={t.key}
-                            className={`myd-chip ${typeFilter === t.key ? "myd-chip--active" : ""}`}
-                            onClick={() => setTypeFilter(t.key)}>
-                            {t.label}<span className="myd-chip__count">{typeCounts[t.key] || 0}</span>
-                        </button>)
+                        TYPE_FILTERS.map((t) => <StatusChip key={t.key}
+                            tone="info"
+                            label={t.label}
+                            count={typeCounts[t.key] || 0}
+                            active={typeFilter === t.key}
+                            onClick={() => setTypeFilter(t.key)}/>)
                     }
-                </div>
+                </StatusStrip>
             </div>
 
             {
@@ -217,20 +207,20 @@ const ApplicationManager = ({ serverManagerInformation, onClose, onChanged }:App
             <div className="myd-mgr__list">
                 {
                     isLoading
-                        ? <div className="myd-mgr__empty"><Loader active inline="centered">carregando…</Loader></div>
+                        ? <div className="myd-mgr__empty"><Spinner label="carregando aplicações"/> carregando…</div>
                         : groups.length === 0
                             ? <div className="myd-mgr__empty">Nenhuma aplicação encontrada.</div>
                             : groups.map(([ ns, list ]) => {
                                 const isCollapsed = collapsed.has(ns)
                                 const installed = list.filter((a) => a.isInstalled).length
                                 return <div key={ns} className="myd-appgroup">
-                                    <button className="myd-appgroup__head" onClick={() => toggleGroup(ns)}>
+                                    <button type="button" className="myd-appgroup__head" onClick={() => toggleGroup(ns)}>
                                         <Icon name={isCollapsed ? "chevron right" : "chevron down"} className="myd-appgroup__chevron"/>
                                         <Icon name="cubes" className="myd-appgroup__icon"/>
                                         <span className="myd-appgroup__name">{ns}</span>
                                         <span className="myd-appgroup__count">{installed}/{list.length}</span>
                                     </button>
-                                    { !isCollapsed && list.map(renderRow) }
+                                    { !isCollapsed && <div className="myd-cards">{list.map(renderRow)}</div> }
                                 </div>
                             })
                 }

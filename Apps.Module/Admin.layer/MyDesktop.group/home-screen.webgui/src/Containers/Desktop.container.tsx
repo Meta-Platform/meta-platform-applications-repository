@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState, useEffect, useRef } from "react"
-import { Loader, Button, Icon } from "semantic-ui-react"
+import { Button, Icon, Spinner } from "@i-components"
 
 import GetAPI                 from "../Utils/GetAPI"
 import GetBuildProgressSocket from "../Utils/GetBuildProgressSocket"
@@ -1052,12 +1052,14 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
 
     const renderSurface = () => {
         if(isLoading)
-            return <div className="myd-surface myd-surface--centered"><Loader active inline="centered">carregando aplicações…</Loader></div>
+            return <div className="myd-surface myd-surface--centered">
+                <Spinner size="lg" label="carregando aplicações…"/>
+            </div>
 
         if(loadError)
             return <div className="myd-surface myd-surface--centered" onContextMenu={openDesktopMenu}>
                 <Window title="Erro de sistema" tone="danger" width={440}
-                    footer={<Button onClick={fetchApplicationList}>Tentar de novo</Button>}>
+                    footer={<Button icon="redo" onClick={fetchApplicationList}>Tentar de novo</Button>}>
                     <div className="myd-dialog"><Icon name="warning sign" size="big"/><p>{loadError}</p></div>
                 </Window>
             </div>
@@ -1065,7 +1067,7 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
         if(appViews.length === 0)
             return <div className="myd-surface myd-surface--centered" onContextMenu={openDesktopMenu}>
                 <Window title="Área de trabalho vazia" width={480}
-                    footer={<Button primary onClick={() => setIsManagerOpen(true)}><Icon name="plus"/> Adicionar aplicativo</Button>}>
+                    footer={<Button variant="primary" icon="plus" onClick={() => setIsManagerOpen(true)}>Adicionar aplicativo</Button>}>
                     <div className="myd-dialog">
                         <Icon name="folder open outline" size="big"/>
                         <p>Nenhuma aplicação de desktop instalada. Clique com o botão direito na área de trabalho (ou use o botão abaixo) para <strong>adicionar aplicativos</strong>.</p>
@@ -1173,7 +1175,7 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
             isAboutOpen &&
             <div className="myd-modal-scrim">
                 <Window title="Sobre este computador" width={420} onClose={() => setIsAboutOpen(false)}
-                    footer={<Button primary onClick={() => setIsAboutOpen(false)}>Fechar</Button>}>
+                    footer={<Button variant="primary" onClick={() => setIsAboutOpen(false)}>Fechar</Button>}>
                     <div className="myd-about">
                         <div className="myd-about__mark">◆</div>
                         <h2>MyDesktop</h2>
@@ -1195,7 +1197,7 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
                     onClose={() => setConfirm(undefined)}
                     footer={<>
                         <Button onClick={() => setConfirm(undefined)}>Cancelar</Button>
-                        <Button color={confirm.danger ? "red" : undefined} primary={!confirm.danger} onClick={confirm.onConfirm}>{confirm.confirmLabel}</Button>
+                        <Button variant={confirm.danger ? "danger" : "primary"} onClick={confirm.onConfirm}>{confirm.confirmLabel}</Button>
                     </>}>
                     <div className="myd-dialog">
                         <Icon name={confirm.danger ? "trash" : "question circle"} size="big"/>
@@ -1214,8 +1216,8 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
                             toast.iconUrl
                                 ? <img className="myd-toast-appicon" src={toast.iconUrl} alt=""/>
                                 : toast.spinner
-                                    ? <Loader active inline size="small"/>
-                                    : <Icon name={toast.tone === "danger" ? "warning sign" : "check circle"} color={toast.tone === "danger" ? "red" : "green"}/>
+                                    ? <Spinner size="sm" label="em andamento…"/>
+                                    : <Icon name={toast.tone === "danger" ? "warning sign" : "check circle"} tone={toast.tone === "danger" ? "danger" : "success"}/>
                         }
                         <span>{RenderRichMessage(toast.message)}</span>
                     </div>

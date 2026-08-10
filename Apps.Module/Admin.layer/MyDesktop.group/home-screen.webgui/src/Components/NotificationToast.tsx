@@ -27,7 +27,7 @@ export interface DesktopNotification {
 const NotificationToast = ({ notification, onClose, onOpen }:
     { notification: DesktopNotification; onClose: () => void; onOpen?: (n: DesktopNotification) => void }) => (
     <div
-        className={`myd-launch-toast myd-notification-toast myd-notification-toast--${notification.level || "info"}`}
+        className={`myd-notification-toast myd-notification-toast--${notification.level || "info"}`}
         role="status"
         onClick={() => { if(onOpen) onOpen(notification) }}
     >
