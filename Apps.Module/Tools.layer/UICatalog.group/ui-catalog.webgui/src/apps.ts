@@ -54,6 +54,22 @@ export const apps: AppRecord[] = [
         migrated: true
     },
     {
+        // Nasceu depois do plano das ondas, já sobre o kit: entrou no placar em
+        // 10/08/2026, quando o último import de semantic-ui-react saiu.
+        id: "container-manager",
+        title: "Container Manager",
+        area: "Admin / ContainerManager",
+        description: "Docker e Podman por conexão: aplicações, containers, imagens, redes e volumes.",
+        guiPackage: "@/container-manager.webgui",
+        desktopExecutable: "container-manager-desktop",
+        libraries: [ "@i-components" ],
+        localComponents: 12,
+        semanticFiles: 0,
+        cssLines: 275,
+        wave: 1,
+        migrated: true
+    },
+    {
         id: "launcher",
         title: "Launcher",
         area: "Instance Manager",

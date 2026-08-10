@@ -1,13 +1,12 @@
 import * as React             from "react"
 import {useEffect}            from "react"
-import { Dimmer, Loader}      from "semantic-ui-react"
 //@ts-ignore
 import { Routes, BrowserRouter, HashRouter, Route }  from "react-router-dom"
 import { connect }            from "react-redux"
 import { bindActionCreators } from "redux"
 import axios                  from "axios"
 
-import { HTTPServerManagerActionsCreator } from "@i-components"
+import { HTTPServerManagerActionsCreator, LoadingOverlay } from "@i-components"
 
 const fetchHTTPServersRunning = async () => {
     // Electron GUI-host: não há servidor HTTP — o transporte é IPC (window.metaGui).
@@ -81,10 +80,8 @@ const AppContainer = ({
 				}
 				</Routes>
 			</HashRouter>
-		: <Dimmer active>
-				<Loader>loading web services running...</Loader>
-			</Dimmer>
-	
+		: <LoadingOverlay message="Carregando serviços em execução…"/>
+
 }
 
 const mapDispatchToProps = (dispatch:any) =>

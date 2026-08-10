@@ -2,44 +2,46 @@
     Estilo do Container Manager.
 
     Só o que o kit comum (@i-components) não cobre: composições locais desta
-    tela. Nada de cor crua — tudo sai dos tokens --mp-*, para o aplicativo
-    acompanhar tema claro e escuro sem regra própria.
+    tela. Nada de cor crua e nada de valor de reserva — os tokens --mp-* já
+    chegam por "@i-components/styles/index.css", que é importado antes deste
+    arquivo. Um valor de reserva mascara o token escrito errado: a reserva
+    pinta em silêncio e o aplicativo para de acompanhar o tema.
 */
 
 .cm-page {
     display: flex;
     flex-direction: column;
-    gap: var(--mp-space-3, 12px);
-    padding: var(--mp-space-4, 16px);
+    gap: var(--mp-space-3);
+    padding: var(--mp-space-4);
     min-width: 0;
 }
 
 .cm-page__title {
-    font-size: var(--mp-font-lg, 1.05rem);
+    font-size: var(--mp-text-lg);
     letter-spacing: 0.02em;
 }
 
 .cm-subtitle {
-    margin-top: var(--mp-space-4, 16px);
-    margin-bottom: var(--mp-space-2, 8px);
+    margin-top: var(--mp-space-4);
+    margin-bottom: var(--mp-space-2);
     font-weight: 600;
     letter-spacing: 0.02em;
 }
 
 .cm-muted {
-    color: var(--mp-text-muted, #8a8a8a);
+    color: var(--mp-muted);
 }
 
 .cm-mt {
-    margin-top: var(--mp-space-2, 8px);
+    margin-top: var(--mp-space-2);
 }
 
 /* Linha de campos repetíveis (porta, montagem, variável de ambiente). */
 .cm-row {
     display: flex;
     align-items: center;
-    gap: var(--mp-space-2, 8px);
-    margin-bottom: var(--mp-space-2, 8px);
+    gap: var(--mp-space-2);
+    margin-bottom: var(--mp-space-2);
 }
 
 .cm-row--between {
@@ -47,62 +49,62 @@
 }
 
 .cm-row__arrow {
-    color: var(--mp-text-muted, #8a8a8a);
-    font-family: var(--mp-font-mono, monospace);
+    color: var(--mp-muted);
+    font-family: var(--mp-font-mono);
 }
 
 /* Seletor de conexão na barra de topo. */
 .cm-connection-picker {
     display: inline-flex;
     align-items: center;
-    gap: var(--mp-space-2, 8px);
+    gap: var(--mp-space-2);
     min-width: 260px;
 }
 
 .cm-connection-name {
     display: inline-flex;
     align-items: center;
-    gap: var(--mp-space-2, 8px);
+    gap: var(--mp-space-2);
 }
 
 .cm-badge-active {
-    font-size: var(--mp-font-xs, 0.72rem);
+    font-size: var(--mp-text-xs);
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    padding: 0 var(--mp-space-2, 8px);
-    border: var(--mp-border-width, 2px) solid var(--mp-accent, #d9a300);
-    color: var(--mp-accent, #d9a300);
+    padding: 0 var(--mp-space-2);
+    border: 2px solid var(--mp-accent-yellow);
+    color: var(--mp-accent-yellow);
 }
 
 .cm-status-cell {
     display: inline-flex;
     align-items: center;
-    gap: var(--mp-space-2, 8px);
+    gap: var(--mp-space-2);
 }
 
 .cm-status-version {
-    font-family: var(--mp-font-mono, monospace);
-    font-size: var(--mp-font-xs, 0.72rem);
-    color: var(--mp-text-muted, #8a8a8a);
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-xs);
+    color: var(--mp-muted);
 }
 
 /* Runtimes encontrados na máquina e ainda não cadastrados. */
 .cm-suggestions {
-    margin-top: var(--mp-space-4, 16px);
-    padding: var(--mp-space-3, 12px);
-    border: var(--mp-border-width, 2px) dashed var(--mp-border, #3a3a3a);
+    margin-top: var(--mp-space-4);
+    padding: var(--mp-space-3);
+    border: 2px dashed var(--mp-line);
 }
 
 .cm-suggestions__title {
     font-weight: 600;
-    margin-bottom: var(--mp-space-2, 8px);
+    margin-bottom: var(--mp-space-2);
 }
 
 .cm-suggestion {
     display: flex;
     align-items: center;
-    gap: var(--mp-space-3, 12px);
-    padding: var(--mp-space-2, 8px) 0;
+    gap: var(--mp-space-3);
+    padding: var(--mp-space-2) 0;
 }
 
 .cm-suggestion__desc {
@@ -111,43 +113,12 @@
 
 .cm-suggestion__endpoint {
     flex: 1;
-    font-family: var(--mp-font-mono, monospace);
-    font-size: var(--mp-font-sm, 0.85rem);
-    color: var(--mp-text-muted, #8a8a8a);
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-sm);
+    color: var(--mp-muted);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-/* Navegação de arquivos dentro do volume. */
-.cm-path {
-    font-family: var(--mp-font-mono, monospace);
-}
-
-.cm-entry {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--mp-space-2, 8px);
-    min-width: 0;
-}
-
-.cm-entry a {
-    cursor: pointer;
-    text-decoration: underline;
-}
-
-/* Envio de arquivo: o <input type=file> nativo é escondido atrás do botão. */
-.cm-upload {
-    position: relative;
-    overflow: hidden;
-    cursor: pointer;
-}
-
-.cm-upload input[type="file"] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
 }
 
 /* ---- Aplicações (CTMG-24) ---- */
@@ -155,16 +126,16 @@
 .cm-app-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
-    gap: var(--mp-space-3, 12px);
+    gap: var(--mp-space-3);
 }
 
 .cm-app {
     display: flex;
     flex-direction: column;
-    gap: var(--mp-space-2, 8px);
-    padding: var(--mp-space-3, 12px);
-    border: var(--mp-border-width, 2px) solid var(--mp-border, #3a3a3a);
-    background: var(--mp-surface, transparent);
+    gap: var(--mp-space-2);
+    padding: var(--mp-space-3);
+    border: var(--mp-border);
+    background: var(--mp-surface);
 }
 
 /* Aplicação parada continua na lista, mas recuada visualmente: some da vista
@@ -176,38 +147,38 @@
 .cm-app__head {
     display: flex;
     align-items: center;
-    gap: var(--mp-space-2, 8px);
+    gap: var(--mp-space-2);
 }
 
 .cm-app__name {
-    font-size: var(--mp-font-md, 0.95rem);
+    font-size: var(--mp-text-md);
 }
 
 .cm-app__count {
-    font-size: var(--mp-font-xs, 0.72rem);
-    color: var(--mp-text-muted, #8a8a8a);
+    font-size: var(--mp-text-xs);
+    color: var(--mp-muted);
 }
 
 .cm-app__uptime {
     margin-left: auto;
-    font-family: var(--mp-font-mono, monospace);
-    font-size: var(--mp-font-xs, 0.72rem);
-    color: var(--mp-text-muted, #8a8a8a);
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-xs);
+    color: var(--mp-muted);
 }
 
 .cm-app__meta {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--mp-space-3, 12px);
-    font-size: var(--mp-font-sm, 0.85rem);
-    color: var(--mp-text-muted, #8a8a8a);
+    gap: var(--mp-space-3);
+    font-size: var(--mp-text-sm);
+    color: var(--mp-muted);
 }
 
 .cm-app__metrics {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--mp-space-2, 8px);
-    margin-top: var(--mp-space-2, 8px);
+    gap: var(--mp-space-2);
+    margin-top: var(--mp-space-2);
 }
 
 .cm-metric {
@@ -217,31 +188,31 @@
 }
 
 .cm-metric__label {
-    font-size: var(--mp-font-xs, 0.72rem);
+    font-size: var(--mp-text-xs);
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--mp-text-muted, #8a8a8a);
+    color: var(--mp-muted);
 }
 
 .cm-metric__value {
-    font-family: var(--mp-font-mono, monospace);
+    font-family: var(--mp-font-mono);
 }
 
 .cm-app__container-name {
-    font-family: var(--mp-font-mono, monospace);
-    font-size: var(--mp-font-xs, 0.72rem);
-    color: var(--mp-text-muted, #8a8a8a);
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-xs);
+    color: var(--mp-muted);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-/* ---- Log ao vivo e terminal ---- */
+/* ---- Log ao vivo ---- */
 
 .cm-live {
     display: flex;
     flex-direction: column;
-    gap: var(--mp-space-2, 8px);
+    gap: var(--mp-space-2);
     min-height: 0;
 }
 
@@ -250,41 +221,21 @@
     min-height: 320px;
     max-height: 52vh;
     overflow: auto;
-    padding: var(--mp-space-2, 8px);
-    border: var(--mp-border-width, 2px) solid var(--mp-border, #3a3a3a);
-    font-family: var(--mp-font-mono, monospace);
-    font-size: var(--mp-font-sm, 0.85rem);
+    padding: var(--mp-space-2);
+    border: var(--mp-border);
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-sm);
     white-space: pre-wrap;
     word-break: break-word;
-}
-
-.cm-live__area--term {
-    min-height: 360px;
 }
 
 /* stderr precisa se distinguir sem depender só de cor: além do tom, ganha
    uma barra à esquerda. */
 .cm-live__err {
-    color: var(--mp-danger, #d05c5c);
-    border-left: 3px solid var(--mp-danger, #d05c5c);
-    padding-left: var(--mp-space-2, 8px);
+    color: var(--mp-danger);
+    border-left: 3px solid var(--mp-danger);
+    padding-left: var(--mp-space-2);
     display: inline-block;
-}
-
-.cm-term__input {
-    display: flex;
-    align-items: center;
-    gap: var(--mp-space-2, 8px);
-}
-
-.cm-term__input .mp-input {
-    flex: 1;
-    font-family: var(--mp-font-mono, monospace);
-}
-
-.cm-term__prompt {
-    font-family: var(--mp-font-mono, monospace);
-    color: var(--mp-accent, #d9a300);
 }
 
 /* ---- Métricas ---- */
@@ -292,19 +243,19 @@
 .cm-metrics {
     display: flex;
     flex-direction: column;
-    gap: var(--mp-space-3, 12px);
+    gap: var(--mp-space-3);
 }
 
 .cm-metrics__head {
     display: flex;
     align-items: center;
-    gap: var(--mp-space-2, 8px);
+    gap: var(--mp-space-2);
 }
 
 .cm-metrics__title {
     display: flex;
     align-items: baseline;
-    gap: var(--mp-space-2, 8px);
+    gap: var(--mp-space-2);
     margin-bottom: 4px;
 }
 
@@ -314,11 +265,11 @@
     gap: 1px;
     height: 44px;
     margin-top: 4px;
-    border-bottom: 1px solid var(--mp-border, #3a3a3a);
+    border-bottom: 1px solid var(--mp-line);
 }
 
 .cm-spark__bar {
     flex: 1;
     min-width: 2px;
-    background: var(--mp-accent, #d9a300);
+    background: var(--mp-accent-yellow);
 }
