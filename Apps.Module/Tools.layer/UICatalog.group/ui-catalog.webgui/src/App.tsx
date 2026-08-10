@@ -21,7 +21,7 @@ import { apps, WaveLabel } from "./apps"
 // serve para montar esta tela, ele não serve para os outros aplicativos.
 
 // As coleções chegam das bibliotecas .uilib (cada uma publica as suas
-// histórias no manifesto webgui-library.json → catalog.stories).
+// histórias no manifesto uilib.json → catalog.stories).
 const collections: StoryCollection[] = [ commonStories, instanceManagerStories ]
 
 type Section = "components" | "apps"
