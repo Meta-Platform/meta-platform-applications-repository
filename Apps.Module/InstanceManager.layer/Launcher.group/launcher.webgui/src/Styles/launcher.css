@@ -1,0 +1,168 @@
+/*
+    Launcher — CSS EXCLUSIVO desta tela.
+
+    Só entra aqui o que o kit não resolve: a geometria de duas colunas com
+    rolagem interna (lista à esquerda, execução à direita), a faixa de ação que
+    não cabe dentro do ObjectCard (um <button> não pode conter outro botão) e a
+    moldura do terminal, cujo interior é pintado pelo xterm.
+
+    Regras: tudo sobre tokens --mp-*, prefixo .lnc-* próprio, nenhuma cor
+    literal e nenhuma classe .mp-* redefinida.
+*/
+
+/* ------------------------------------------------------------------ */
+/* Página                                                             */
+/* ------------------------------------------------------------------ */
+.lnc-page {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--mp-space-3);
+}
+
+/* A busca vive na barra de topo e não deve ocupar a faixa inteira. */
+.lnc-search { max-width: 420px; }
+
+/* O <select> do kit nasce fluido; na faixa de filtros ele tem largura fixa. */
+.lnc-repo-select { width: 220px; flex: 0 0 auto; }
+
+.lnc-columns {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    gap: var(--mp-space-3);
+}
+
+/* ------------------------------------------------------------------ */
+/* Colunas                                                            */
+/* ------------------------------------------------------------------ */
+.lnc-column {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--mp-surface);
+    border: var(--mp-border);
+    border-radius: var(--mp-radius-lg);
+    box-shadow: var(--mp-shadow-1);
+    overflow: hidden;
+}
+
+.lnc-column--list   { width: 380px; flex: 0 0 auto; }
+.lnc-column--detail { flex: 1 1 auto; min-width: 0; }
+
+.lnc-column__head {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--mp-space-2);
+    padding: var(--mp-space-2) var(--mp-space-3);
+    background: var(--mp-paper-2);
+    border-bottom: var(--mp-border);
+    font-family: var(--mp-font-display);
+    font-size: var(--mp-text-xs);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--mp-ink-2);
+}
+
+.lnc-column__title { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+
+.lnc-column__scope {
+    text-transform: none;
+    font-family: var(--mp-font-mono);
+    font-weight: 400;
+    color: var(--mp-muted);
+}
+
+.lnc-column__count {
+    font-family: var(--mp-font-mono);
+    font-weight: 400;
+    color: var(--mp-muted);
+}
+
+.lnc-column__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: var(--mp-space-2);
+}
+
+/* ------------------------------------------------------------------ */
+/* Resultados                                                         */
+/* ------------------------------------------------------------------ */
+/* O cartão é o ObjectCard do kit; a área clicável envolve o cartão para que os
+   botões de ação (▶ / abrir) fiquem FORA do <button> do cartão. */
+.lnc-result { display: block; margin-bottom: 6px; }
+.lnc-result-actions { display: inline-flex; align-items: center; gap: 4px; }
+
+/* ------------------------------------------------------------------ */
+/* Árvore                                                             */
+/* ------------------------------------------------------------------ */
+/* O TreeRow do kit desenha o ícone por NOME; o pacote tem ícone próprio
+   (imagem servida pelo repositório), então ele entra no rótulo. */
+.lnc-tree-label { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.lnc-tree-label > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lnc-tree-meta  { display: inline-flex; align-items: center; gap: 6px; }
+.lnc-tree-count {
+    font-family: var(--mp-font-mono);
+    font-size: var(--mp-text-xs);
+    color: var(--mp-muted);
+}
+.lnc-tree-count--running { color: var(--mp-success); font-weight: 700; }
+
+/* ------------------------------------------------------------------ */
+/* Detalhe                                                            */
+/* ------------------------------------------------------------------ */
+.lnc-detail-stack { display: flex; flex-direction: column; gap: var(--mp-space-2); }
+.lnc-tabpanel     { padding-top: var(--mp-space-3); }
+.lnc-scroll-40    { overflow: auto; max-height: 40vh; }
+
+/* ------------------------------------------------------------------ */
+/* Startup params                                                     */
+/* ------------------------------------------------------------------ */
+.lnc-params-form {
+    display: grid;
+    gap: var(--mp-space-2);
+    overflow: auto;
+    max-height: 35vh;
+    padding: var(--mp-space-3);
+    background: var(--mp-surface-2);
+    border: var(--mp-border);
+    border-radius: var(--mp-radius-sm);
+}
+
+/* Campo cujo valor difere do que o pacote declara — a instância vai subir com
+   ESTE valor, então o desvio precisa ser visível antes de clicar em executar. */
+.lnc-input-modified {
+    border-color: var(--mp-accent-orange);
+    background: var(--mp-accent-orange-tint);
+}
+
+/* ------------------------------------------------------------------ */
+/* Terminal                                                           */
+/* ------------------------------------------------------------------ */
+.lnc-terminal-block { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+
+.lnc-terminal-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--mp-space-2);
+    flex-wrap: wrap;
+    margin-bottom: var(--mp-space-2);
+}
+
+.lnc-terminal-path { min-width: 420px; }
+.lnc-terminal-args { min-width: 220px; }
+
+/* Moldura do xterm: o interior é pintado pelo próprio terminal. */
+.lnc-terminal-screen {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 6px;
+    background: var(--mp-terminal-bg);
+    border: var(--mp-border-strong);
+    border-top: 3px solid var(--mp-titlebar-exec);
+}

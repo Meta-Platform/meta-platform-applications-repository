@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import ExtractURL from "../../Utils/ExtractURL"
 
@@ -13,7 +13,7 @@ const PackageIcon = ({ packageInformation, serverManagerInformation, size = 18 }
     const showFallback = !packageInformation?.hasIcon || hasFailed
 
     if(showFallback)
-        return <Icon name="cube" style={{ margin: 0, color: "var(--mp-muted)", flex: "0 0 auto" }}/>
+        return <Icon name="cube" tone="muted" style={{ flex: "0 0 auto" }}/>
 
     return <img
         src={ExtractURL({

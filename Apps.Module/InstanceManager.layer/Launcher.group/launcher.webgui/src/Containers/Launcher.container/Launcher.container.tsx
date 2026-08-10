@@ -3,13 +3,26 @@ import { useState, useEffect, useMemo } from "react"
 import { connect } from "react-redux"
 import { bindActionCreators } from "redux"
 
-import { Button, Checkbox, Dropdown, Icon, Input, Loader, Segment } from "semantic-ui-react"
+import {
+    AppShell,
+    Button,
+    ButtonGroup,
+    CheckboxInput,
+    ContentArea,
+    EmptyState,
+    Icon,
+    IconButton,
+    SearchInput,
+    SelectInput,
+    SkeletonList,
+    StatusChip,
+    StatusStrip,
+    Topbar,
+    QueryParamsActionsCreator
+} from "@i-components"
 
 import GetAPI from "../../Utils/GetAPI"
 import { useWebSocket } from "@instance-components"
-import { QueryParamsActionsCreator } from "@i-components"
-
-import { PageMasthead, StatusStrip, StatusChip } from "@instance-components"
 
 import PackageTree, { PackageInformation, PackageKey, IsBootable, IsRunning } from "./PackageTree"
 import PackageResults from "./PackageResults"
@@ -217,48 +230,54 @@ const LauncherContainer = ({ serverManagerInformation, QueryParams, AddQueryPara
     const totalRunning = basePackages.filter((p) => IsRunning(p)).length
 
     const repoOptions = [
-        { key: "__all", text: "todos os repositórios", value: "", icon: "database" },
-        ...repoNames.map((namespace:string) => ({ key: namespace, text: namespace, value: namespace, icon: "cubes" }))
+        { value: "", label: "todos os repositórios" },
+        ...repoNames.map((namespace:string) => ({ value: namespace, label: namespace }))
     ]
 
-    return <div style={{ padding: "16px", height: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
-
-        <PageMasthead
-            icon="rocket"
-            title="Launcher"
-            subtitle="Ache um pacote e execute-o num clique."
-            actions={
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Input
-                        icon="search"
-                        size="small"
-                        placeholder="buscar pacote em todos os repositórios..."
-                        value={search}
-                        onChange={(e:any, { value }:any) => handleChangeSearch(value)}
-                        style={{ width: "320px" }}/>
-                    <Button size="small" primary onClick={() => setIsRegisterModalOpen(true)}>
-                        <Icon name="plus"/> registrar repositório
+    return <AppShell
+        topbar={
+            <Topbar
+                brand="Launcher"
+                subtitle="ache um pacote e execute-o num clique"
+                right={
+                    <Button variant="primary" size="sm" icon="plus" onClick={() => setIsRegisterModalOpen(true)}>
+                        registrar repositório
                     </Button>
-                </div>
-            }>
+                }>
+                <SearchInput
+                    className="lnc-search"
+                    value={search}
+                    placeholder="buscar pacote em todos os repositórios…"
+                    onValueChange={handleChangeSearch}/>
+            </Topbar>
+        }>
+
+        <ContentArea wide className="lnc-page">
+
             <StatusStrip right={<>
-                <Dropdown
-                    selection
-                    compact
+                <SelectInput
+                    className="lnc-repo-select"
                     options={repoOptions}
                     value={repoFilter}
-                    text={repoFilter || "todos os repositórios"}
-                    onChange={(e:any, { value }:any) => handleChangeRepo(value)}
-                    style={{ minWidth: "200px" }}/>
-                <Checkbox toggle label="só em execução" checked={runningOnly} onChange={(e:any, { checked }:any) => setRunningOnly(checked)}/>
-                <Button.Group size="mini" basic>
-                    <Button icon active={viewMode === "list"} onClick={() => handleChangeViewMode("list")} title="lista">
-                        <Icon name="list"/>
-                    </Button>
-                    <Button icon active={viewMode === "tree"} onClick={() => handleChangeViewMode("tree")} title="navegar pela estrutura">
-                        <Icon name="sitemap"/>
-                    </Button>
-                </Button.Group>
+                    onChange={(event:any) => handleChangeRepo(event.target.value)}/>
+                <CheckboxInput
+                    label="só em execução"
+                    checked={runningOnly}
+                    onChange={(event:any) => setRunningOnly(event.target.checked)}/>
+                <ButtonGroup>
+                    <IconButton
+                        icon="list"
+                        label="lista"
+                        size="sm"
+                        variant={viewMode === "list" ? "primary" : "default"}
+                        onClick={() => handleChangeViewMode("list")}/>
+                    <IconButton
+                        icon="sitemap"
+                        label="navegar pela estrutura"
+                        size="sm"
+                        variant={viewMode === "tree" ? "primary" : "default"}
+                        onClick={() => handleChangeViewMode("tree")}/>
+                </ButtonGroup>
             </>}>
                 <StatusChip
                     icon="rocket"
@@ -289,40 +308,42 @@ const LauncherContainer = ({ serverManagerInformation, QueryParams, AddQueryPara
                     <StatusChip icon="circle" tone="success" count={totalRunning} label="no ar" active={runningOnly} onClick={() => setRunningOnly(!runningOnly)}/>
                 }
             </StatusStrip>
-        </PageMasthead>
 
-        <div style={{ flex: "1 1 auto", minHeight: 0, display: "flex", gap: "10px" }}>
+            <div className="lnc-columns">
 
-            { /* coluna 1 — resultados (lista) ou árvore (navegar) */ }
-            <Segment style={{ width: "380px", flex: "0 0 auto", overflow: "auto", margin: 0, padding: "8px" }}>
-                <div style={{ color: "var(--mp-muted)", fontSize: ".78em", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", padding: "4px 6px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span>
-                        <Icon name={viewMode === "list" ? "list" : "sitemap"}/>
-                        { viewMode === "list" ? "pacotes" : "navegar" }
-                        { viewMode === "tree" && effectiveTreeRepo && <span style={{ textTransform: "none", fontWeight: 400 }}> · {effectiveTreeRepo}</span> }
-                    </span>
-                    { viewMode === "list" && <span style={{ fontWeight: 400 }}>{visiblePackages.length}</span> }
-                </div>
-                {
-                    isLoading
-                    ? <Loader active inline="centered" style={{ margin: "40px" }}/>
-                    : viewMode === "list"
-                        ? <PackageResults
-                            packageList={visiblePackages}
-                            selectedKey={selectedPackageKey}
-                            onSelectPackage={handleSelectPackage}
-                            onRunPackage={quickRunPackage}
-                            serverManagerInformation={serverManagerInformation}/>
-                        : <PackageTree
-                            packageList={visiblePackages.filter((p) => p.repositoryParams.namespaceRepo === effectiveTreeRepo)}
-                            selectedKey={selectedPackageKey}
-                            onSelectPackage={handleSelectPackage}
-                            serverManagerInformation={serverManagerInformation}/>
-                }
-            </Segment>
+                { /* coluna 1 — resultados (lista) ou árvore (navegar) */ }
+                <section className="lnc-column lnc-column--list">
+                    <header className="lnc-column__head">
+                        <span className="lnc-column__title">
+                            <Icon name={viewMode === "list" ? "list" : "sitemap"}/>
+                            { viewMode === "list" ? "pacotes" : "navegar" }
+                            { viewMode === "tree" && effectiveTreeRepo &&
+                                <span className="lnc-column__scope">· {effectiveTreeRepo}</span> }
+                        </span>
+                        { viewMode === "list" &&
+                            <span className="lnc-column__count">{visiblePackages.length}</span> }
+                    </header>
+                    <div className="lnc-column__body">
+                        {
+                            isLoading
+                            ? <SkeletonList rows={6}/>
+                            : viewMode === "list"
+                                ? <PackageResults
+                                    packageList={visiblePackages}
+                                    selectedKey={selectedPackageKey}
+                                    onSelectPackage={handleSelectPackage}
+                                    onRunPackage={quickRunPackage}
+                                    serverManagerInformation={serverManagerInformation}/>
+                                : <PackageTree
+                                    packageList={visiblePackages.filter((p) => p.repositoryParams.namespaceRepo === effectiveTreeRepo)}
+                                    selectedKey={selectedPackageKey}
+                                    onSelectPackage={handleSelectPackage}
+                                    serverManagerInformation={serverManagerInformation}/>
+                        }
+                    </div>
+                </section>
 
-            { /* coluna 2 — detalhe e execução */ }
-            <div style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden", display: "flex" }}>
+                { /* coluna 2 — detalhe e execução */ }
                 {
                     selectedPackage
                     ? <PackageDetails
@@ -331,16 +352,17 @@ const LauncherContainer = ({ serverManagerInformation, QueryParams, AddQueryPara
                         onRunPackage={runPackage}
                         onStopPackage={stopPackage}
                         onClose={() => setSelectedPackageKey(undefined)}/>
-                    : <Segment placeholder style={{ flex: 1, margin: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <div style={{ textAlign: "center", color: "var(--mp-muted)" }}>
-                            <Icon name="rocket" size="huge" style={{ color: "var(--mp-line-soft)" }}/>
-                            <div style={{ marginTop: "12px", fontWeight: 700 }}>Nenhum pacote selecionado</div>
-                            <div style={{ marginTop: "4px", fontSize: ".9em" }}>Busque, filtre por tipo e clique num pacote para executá-lo. Apps têm ▶ direto na lista.</div>
+                    : <section className="lnc-column lnc-column--detail">
+                        <div className="lnc-column__body">
+                            <EmptyState
+                                icon="rocket"
+                                title="Nenhum pacote selecionado"
+                                message="Busque, filtre por tipo e clique num pacote para executá-lo. Apps têm ▶ direto na lista."/>
                         </div>
-                    </Segment>
+                    </section>
                 }
             </div>
-        </div>
+        </ContentArea>
 
         {
             isRegisterModalOpen &&
@@ -348,7 +370,7 @@ const LauncherContainer = ({ serverManagerInformation, QueryParams, AddQueryPara
                 onCancel={() => setIsRegisterModalOpen(false)}
                 onRegister={handleRegisterRepository}/>
         }
-    </div>
+    </AppShell>
 }
 
 const mapDispatchToProps = (dispatch:any) => bindActionCreators({

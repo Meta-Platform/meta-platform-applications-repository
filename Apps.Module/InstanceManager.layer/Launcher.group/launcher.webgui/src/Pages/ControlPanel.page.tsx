@@ -3,15 +3,11 @@ import { connect } from "react-redux"
 
 import LauncherContainer from "../Containers/Launcher.container"
 
-// Aplicação Launcher — tela única, sem barra superior (a própria janela já se
-// chama "Launcher"). Lista repositórios/pacotes, mostra árvore + detalhes +
-// diagrama de dependências e lança pacotes.
+// Aplicação Launcher — tela única. O esqueleto (barra de topo + área de
+// conteúdo) é montado pelo AppShell do kit dentro do próprio container, porque
+// a barra carrega a busca e as ações, que são estado da tela.
 const ControlPanelPage = ({ HTTPServerManager }:any) =>
-    <div className="eco-control-shell">
-        <div className="eco-control-body" style={{ height: "100vh", paddingTop: 0, boxSizing: "border-box", overflow: "hidden" }}>
-            <LauncherContainer serverManagerInformation={HTTPServerManager}/>
-        </div>
-    </div>
+    <LauncherContainer serverManagerInformation={HTTPServerManager}/>
 
 const mapStateToProps = ({ HTTPServerManager }:any) => ({ HTTPServerManager })
 

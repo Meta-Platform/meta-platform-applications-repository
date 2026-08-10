@@ -1,13 +1,13 @@
 import * as React from "react"
 import { useState } from "react"
 
-import { Icon, Label } from "semantic-ui-react"
+import { EmptyState, Icon, TreeRow } from "@i-components"
 
 import PackageIcon from "./PackageIcon"
 
 // Árvore de navegação de pacotes de um repositório, no padrão do modo Navegação
 // do Package Developer: module → layer → group → package, com expand/collapse
-// local por nó e destaque de seleção (.eco-nav-active).
+// local por nó e destaque de seleção. Cada linha é o TreeRow do kit.
 //
 // Cada folha é um pacote e carrega o seu estado de execução, porque este é o
 // ponto de partida para lançar uma instância.
@@ -110,37 +110,36 @@ const CountRunning = (node:TreeNodeData):number =>
 const StatusDot = ({ packageInformation }:any) => {
     if(!IsRunning(packageInformation)) return null
     const status = packageInformation.applicationInServiceState?.status
-    const color = status === "ACTIVE" ? "green" : "orange"
     return <Icon
         name="circle"
         size="small"
-        color={color as any}
-        title={status}
-        style={{ flex: "0 0 auto", margin: 0 }}/>
+        tone={status === "ACTIVE" ? "success" : "warning"}
+        title={status}/>
 }
 
-const PackageLeaf = ({ packageInformation, isSelected, onSelect, serverManagerInformation }:any) => {
+// O TreeRow do kit desenha o ícone a partir de um NOME; o pacote tem ícone
+// próprio (imagem servida pelo repositório), então ele entra no rótulo.
+const PackageLeaf = ({ packageInformation, isSelected, onSelect, depth, serverManagerInformation }:any) => {
     const { packageName, ext } = packageInformation.repositoryParams
-    return <div
-        className={`eco-nav-leaf${isSelected ? " eco-nav-active" : ""}`}
-        onClick={() => onSelect(packageInformation)}
-        title={`${packageName}.${ext}`}
-        style={{
-            display: "flex", alignItems: "center", gap: "6px", padding: "3px 6px 3px 22px",
-            cursor: "pointer", borderRadius: "4px",
-            background: isSelected ? "var(--mp-accent-soft, rgba(45,116,196,.12))" : undefined,
-            boxShadow: isSelected ? "inset 3px 0 0 var(--mp-accent-blue)" : undefined
-        }}>
-        <PackageIcon
-            packageInformation={packageInformation}
-            serverManagerInformation={serverManagerInformation}
-            size={16}/>
-        <span style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {packageName}
-        </span>
-        <StatusDot packageInformation={packageInformation}/>
-        <Label size="mini" basic style={{ flex: "0 0 auto", padding: "2px 4px" }}>{ext}</Label>
-    </div>
+    return <TreeRow
+        depth={depth}
+        selected={isSelected}
+        onSelect={() => onSelect(packageInformation)}
+        label={
+            <span className="lnc-tree-label" title={`${packageName}.${ext}`}>
+                <PackageIcon
+                    packageInformation={packageInformation}
+                    serverManagerInformation={serverManagerInformation}
+                    size={16}/>
+                <span>{packageName}</span>
+            </span>
+        }
+        meta={
+            <span className="lnc-tree-meta">
+                <StatusDot packageInformation={packageInformation}/>
+                {ext}
+            </span>
+        }/>
 }
 
 const TreeNode = ({
@@ -148,7 +147,6 @@ const TreeNode = ({
     node,
     depth = 0,
     icon,
-    iconColor,
     defaultOpen = false,
     selectedKey,
     onSelectPackage,
@@ -164,23 +162,25 @@ const TreeNode = ({
     const running = CountRunning(node)
 
     return <div>
-        <div
-            onClick={() => setIsOpen(!isOpen)}
-            style={{
-                display: "flex", alignItems: "center", gap: "6px", padding: "4px 6px",
-                paddingLeft: `${6 + depth * 12}px`, cursor: "pointer", borderRadius: "4px"
-            }}>
-            <Icon name={isOpen ? "caret down" : "caret right"} style={{ flex: "0 0 auto", margin: 0, color: "var(--mp-muted)" }}/>
-            <Icon name={icon} style={{ flex: "0 0 auto", margin: 0, color: iconColor }}/>
-            <span style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600 }}>
-                {name}
-            </span>
-            { running > 0 && <Label size="mini" color="green" circular style={{ flex: "0 0 auto" }} title={`${running} em execução`}>{running}</Label> }
-            <Label size="mini" circular basic style={{ flex: "0 0 auto" }}>{total}</Label>
-        </div>
+        <TreeRow
+            label={name}
+            icon={icon}
+            depth={depth}
+            hasChildren={true}
+            expanded={isOpen}
+            onToggle={() => setIsOpen(!isOpen)}
+            onSelect={() => setIsOpen(!isOpen)}
+            meta={
+                <span className="lnc-tree-meta">
+                    { running > 0 &&
+                        <span className="lnc-tree-count lnc-tree-count--running" title={`${running} em execução`}>
+                            {running} no ar
+                        </span> }
+                    <span className="lnc-tree-count">{total}</span>
+                </span>
+            }/>
         {
-            isOpen &&
-            <div style={{ paddingLeft: `${depth > 0 ? 8 : 4}px` }}>
+            isOpen && <>
                 {
                     childNames.map((childName:string) =>
                         <TreeNode
@@ -189,7 +189,6 @@ const TreeNode = ({
                             node={node.__children[childName]}
                             depth={depth + 1}
                             icon={depth === 0 ? "clone outline" : "folder"}
-                            iconColor={depth === 0 ? "var(--mp-accent-cyan)" : "var(--mp-accent-orange)"}
                             defaultOpen={false}
                             selectedKey={selectedKey}
                             onSelectPackage={onSelectPackage}
@@ -200,13 +199,14 @@ const TreeNode = ({
                         const key = PackageKey(packageInformation.repositoryParams)
                         return <PackageLeaf
                             key={key}
+                            depth={depth + 1}
                             packageInformation={packageInformation}
                             isSelected={key === selectedKey}
                             onSelect={onSelectPackage}
                             serverManagerInformation={serverManagerInformation}/>
                     })
                 }
-            </div>
+            </>
         }
     </div>
 }
@@ -222,11 +222,9 @@ const PackageTree = ({
     const moduleNames = Object.keys(tree.__children).sort()
 
     if(moduleNames.length === 0)
-        return <div style={{ color: "var(--mp-muted-2)", padding: "20px", textAlign: "center" }}>
-            nenhum pacote encontrado
-        </div>
+        return <EmptyState icon="sitemap" title="nenhum pacote encontrado"/>
 
-    return <div style={{ fontSize: ".95em" }}>
+    return <div role="tree">
         {
             moduleNames.map((moduleName:string) =>
                 <TreeNode
@@ -235,7 +233,6 @@ const PackageTree = ({
                     node={tree.__children[moduleName]}
                     depth={0}
                     icon="cubes"
-                    iconColor="var(--mp-muted)"
                     defaultOpen={true}
                     selectedKey={selectedKey}
                     onSelectPackage={onSelectPackage}

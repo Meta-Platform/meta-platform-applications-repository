@@ -6,6 +6,7 @@ import { combineReducers, createStore } from "redux"
 // Design system Meta Platform "Retro-Brutalist" (mesmo dos outros painéis).
 import "@i-components/styles/index.css"
 import "@instance-components/styles/index.css"
+import "./Styles/launcher.css"
 
 import { applySavedTheme } from "@i-components/theme"
 

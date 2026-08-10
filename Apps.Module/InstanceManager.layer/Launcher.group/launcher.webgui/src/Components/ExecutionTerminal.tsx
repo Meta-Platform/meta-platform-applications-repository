@@ -4,7 +4,7 @@ import { Terminal } from "@xterm/xterm"
 import { FitAddon } from "@xterm/addon-fit"
 import "@xterm/xterm/css/xterm.css"
 
-import { Input, Button, Label, Icon } from "semantic-ui-react"
+import { Button, StatusChip, TextInput } from "@i-components"
 
 import GetAPI from "../Utils/GetAPI"
 
@@ -157,37 +157,49 @@ const ExecutionTerminal = forwardRef<ExecutionTerminalHandle, any>(({
 
     useImperativeHandle(ref, () => ({ Run: handleRun, Kill: handleKill }))
 
-    const statusColor:any = { idle: "grey", running: "orange", exited: "grey", error: "red" }
+    // Estados locais do terminal (não são status de instância do daemon), então
+    // a apresentação sai do StatusChip do kit, com tom e ícone por estado.
+    const STATUS_TONE:any = { idle: "neutral", running: "warning", exited: "neutral", error: "danger" }
+    const STATUS_ICON:any = {
+        idle    : "clock outline",
+        running : "spinner",
+        exited  : "check circle outline",
+        error   : "times circle"
+    }
 
-    return <div style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: "1 1 auto" }}>
+    const isFinished = status === "exited" || status === "error"
+
+    return <div className="lnc-terminal-block">
         {
             showControls &&
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
+            <div className="lnc-terminal-controls">
                 {
                     editablePath &&
-                    <Input
+                    <TextInput
+                        className="lnc-terminal-path"
                         placeholder="Caminho do pacote CLI"
                         value={typedPath}
-                        onChange={(e:any) => setTypedPath(e.target.value)}
-                        style={{ minWidth: 420 }}/>
+                        onChange={(event:any) => setTypedPath(event.target.value)}/>
                 }
-                <Input
+                <TextInput
+                    className="lnc-terminal-args"
                     placeholder="argumentos (ex: tasks)"
                     value={commandLineArgs}
-                    onChange={(e:any) => setCommandLineArgs(e.target.value)}/>
-                <Button primary onClick={() => handleRun()} disabled={!packagePath}>
-                    <Icon name={status === "exited" || status === "error" ? "redo" : "play"}/>
-                    { status === "exited" || status === "error" ? "Executar de novo" : "Executar" }
+                    onChange={(event:any) => setCommandLineArgs(event.target.value)}/>
+                <Button
+                    variant="primary"
+                    icon={isFinished ? "redo" : "play"}
+                    onClick={() => handleRun()}
+                    disabled={!packagePath}>
+                    { isFinished ? "Executar de novo" : "Executar" }
                 </Button>
-                <Button basic onClick={handleKill} disabled={status !== "running"}>
-                    <Icon name="stop"/> Encerrar
+                <Button icon="stop" onClick={handleKill} disabled={status !== "running"}>
+                    Encerrar
                 </Button>
-                <Label color={statusColor[status]} size="small">{status}</Label>
+                <StatusChip label={status} tone={STATUS_TONE[status]} icon={STATUS_ICON[status]}/>
             </div>
         }
-        <div
-            ref={termElementRef}
-            style={{ height, background: "#000", padding: 6, flex: "1 1 auto", minHeight: 0, border: "2px solid var(--mp-line-strong)", borderTop: "3px solid var(--mp-titlebar-exec)" }}/>
+        <div ref={termElementRef} className="lnc-terminal-screen" style={{ height }}/>
     </div>
 })
 

@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useState } from "react"
 
-import { Button, Icon, Label } from "semantic-ui-react"
+import { EmptyState, Icon, IconButton, ObjectCard, StatusBadge } from "@i-components"
 
 import PackageIcon from "./PackageIcon"
 import {
@@ -19,25 +19,17 @@ import {
 // filtrados/buscados e aparecem lado a lado, com o caminho apenas como legenda
 // apagada. A ideia é reconhecer o pacote pelo nome e lançá-lo num clique: apps
 // executáveis ganham um botão ▶ inline; o que já está no ar sobe para o topo.
+//
+// Cada resultado é um ObjectCard do kit. O clique de seleção fica no invólucro
+// e não no cartão: os botões de ação (▶ / abrir) são <button>, e um <button>
+// não pode conter outro.
 
 const CATEGORY_LABEL:any = { app: "app", cli: "cli", service: "serviço", other: "—" }
-const CATEGORY_COLOR:any = { app: "blue", cli: "teal", service: "violet", other: "grey" }
+const CATEGORY_ICON:any  = { app: "rocket", cli: "terminal", service: "cogs", other: "cube" }
 
-const PathLabel = ({ repositoryParams }:any) => {
+const PackagePath = ({ repositoryParams }:any) => {
     const { namespaceRepo, moduleName, layerName, parentGroup } = repositoryParams
-    const path = [ namespaceRepo, moduleName, layerName, parentGroup ].filter(Boolean).join(" · ")
-    return <span
-        style={{ display: "block", fontSize: ".78em", color: "var(--mp-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-        title={path}>
-        {path}
-    </span>
-}
-
-const StatusDot = ({ packageInformation }:any) => {
-    if(!IsRunning(packageInformation)) return null
-    const status = packageInformation.applicationInServiceState?.status
-    const color = status === "ACTIVE" ? "green" : "orange"
-    return <Icon name="circle" size="small" color={color as any} title={status} style={{ flex: "0 0 auto", margin: 0 }}/>
+    return [ namespaceRepo, moduleName, layerName, parentGroup ].filter(Boolean).join(" · ")
 }
 
 const ResultRow = ({ packageInformation, isSelected, onSelect, onRun, serverManagerInformation }:any) => {
@@ -55,60 +47,62 @@ const ResultRow = ({ packageInformation, isSelected, onSelect, onRun, serverMana
     const canQuickRun = IsBootable(packageInformation) && !IsCommandLine(packageInformation) && !running
     const canOpen     = running && status === "ACTIVE" && port
 
-    const handleQuickRun = async (e:any) => {
-        e.stopPropagation()
+    const handleQuickRun = async (event:any) => {
+        event.stopPropagation()
         setIsBusy(true)
         try { await onRun(packageInformation) } catch(err){ console.log(err) } finally { setIsBusy(false) }
     }
 
-    return <div
-        className="launcher-result"
-        onClick={() => onSelect(packageInformation)}
-        style={{
-            display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px",
-            cursor: "pointer", borderRadius: "6px", marginBottom: "3px",
-            background: isSelected ? "var(--mp-accent-soft, rgba(45,116,196,.12))" : undefined,
-            boxShadow: isSelected ? "inset 3px 0 0 var(--mp-accent-blue)" : undefined
-        }}>
-
-        <span style={{ flex: "0 0 auto", display: "flex", width: 22, justifyContent: "center" }}>
-            <PackageIcon packageInformation={packageInformation} serverManagerInformation={serverManagerInformation} size={20}/>
-        </span>
-
-        <div style={{ flex: "1 1 auto", minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {packageName}
+    return <div className="lnc-result" onClick={() => onSelect(packageInformation)}>
+        <ObjectCard
+            className="is-clickable"
+            selected={isSelected}
+            iconNode={
+                <PackageIcon
+                    packageInformation={packageInformation}
+                    serverManagerInformation={serverManagerInformation}
+                    size={20}/>
+            }
+            title={packageName}
+            meta={PackagePath(packageInformation)}
+            status={ running ? <StatusBadge status={status}/> : undefined }
+            chips={<>
+                <span className="mp-type-chip">{ext}</span>
+                {
+                    // A intenção só vira chip quando ela ACRESCENTA algo ao tipo
+                    // (desktopapp → app); num .cli seria repetir a mesma palavra.
+                    CATEGORY_LABEL[category] !== ext &&
+                    <span className="mp-type-chip">
+                        <Icon name={CATEGORY_ICON[category]}/> {CATEGORY_LABEL[category]}
+                    </span>
+                }
+            </>}
+            right={
+                (canOpen || canQuickRun) &&
+                <span className="lnc-result-actions">
+                    {
+                        canOpen &&
+                        <IconButton
+                            icon="external"
+                            label="abrir"
+                            size="sm"
+                            onClick={(event:any) => {
+                                event.stopPropagation()
+                                window.open(`http://localhost:${port}`, "_blank")
+                            }}/>
+                    }
+                    {
+                        canQuickRun &&
+                        <IconButton
+                            icon="play"
+                            label="executar"
+                            size="sm"
+                            variant="primary"
+                            disabled={isBusy}
+                            onClick={handleQuickRun}/>
+                    }
                 </span>
-                <Label size="mini" basic color={CATEGORY_COLOR[category]} style={{ flex: "0 0 auto", padding: "2px 5px" }}>
-                    {ext}
-                </Label>
-                <StatusDot packageInformation={packageInformation}/>
-            </div>
-            <PathLabel repositoryParams={packageInformation.repositoryParams}/>
-        </div>
-
-        <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: "4px" }}>
-            {
-                canOpen &&
-                <Button
-                    color="green" size="mini" compact
-                    onClick={(e:any) => { e.stopPropagation(); window.open(`http://localhost:${port}`, "_blank") }}
-                    title="abrir">
-                    <Icon name="external" style={{ margin: 0 }}/>
-                </Button>
-            }
-            {
-                canQuickRun &&
-                <Button
-                    primary size="mini" compact
-                    loading={isBusy} disabled={isBusy}
-                    onClick={handleQuickRun}
-                    title="executar">
-                    <Icon name="play" style={{ margin: 0 }}/>
-                </Button>
-            }
-        </div>
+            }/>
     </div>
 }
 
@@ -121,11 +115,10 @@ const PackageResults = ({
 }:any) => {
 
     if(packageList.length === 0)
-        return <div style={{ color: "var(--mp-muted-2)", padding: "40px 20px", textAlign: "center" }}>
-            <Icon name="search" size="big" style={{ color: "var(--mp-line-soft)" }}/>
-            <div style={{ marginTop: "10px" }}>nenhum pacote encontrado</div>
-            <div style={{ marginTop: "4px", fontSize: ".85em" }}>ajuste a busca ou os filtros acima.</div>
-        </div>
+        return <EmptyState
+            icon="search"
+            title="nenhum pacote encontrado"
+            message="ajuste a busca ou os filtros acima."/>
 
     // Em execução primeiro (o que importa acompanhar), depois alfabético.
     const sorted = [...packageList].sort((a:PackageInformation, b:PackageInformation) => {
@@ -135,7 +128,7 @@ const PackageResults = ({
         return a.repositoryParams.packageName.localeCompare(b.repositoryParams.packageName)
     })
 
-    return <div style={{ padding: "2px" }}>
+    return <div>
         {
             sorted.map((packageInformation:PackageInformation) => {
                 const key = PackageKey(packageInformation.repositoryParams)
@@ -152,4 +145,4 @@ const PackageResults = ({
 }
 
 export default PackageResults
-export { CATEGORY_LABEL, CATEGORY_COLOR }
+export { CATEGORY_LABEL, CATEGORY_ICON }

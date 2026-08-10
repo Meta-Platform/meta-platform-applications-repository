@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useState } from "react"
 
-import { Button, Form, Icon, Input, Message, Modal } from "semantic-ui-react"
+import { Banner, Button, Dialog, FormField, TextInput } from "@i-components"
 
 // Registra a instalação de um repositório existente no filesystem. Substitui a
 // linha de formulário que ficava embutida na antiga tela de Repositories.
@@ -26,40 +26,40 @@ const RegisterRepositoryModal = ({ onCancel, onRegister }:any) => {
         }
     }
 
-    return <Modal size="small" open={true} onClose={onCancel}>
-        <Modal.Header><Icon name="database"/> Registrar repositório</Modal.Header>
-        <Modal.Content>
-            <Form>
-                <Form.Field>
-                    <label>namespace</label>
-                    <Input
-                        autoFocus
-                        placeholder="ex.: ecosystem-core"
-                        value={namespace}
-                        onChange={(e:any, { value }:any) => setNamespace(value)}/>
-                </Form.Field>
-                <Form.Field>
-                    <label>caminho da instalação</label>
-                    <Input
-                        placeholder="ex.: /home/user/repos/ecosystem-core-repository"
-                        value={path}
-                        onChange={(e:any, { value }:any) => setPath(value)}/>
-                </Form.Field>
-            </Form>
-            {
-                errorMessage &&
-                <Message negative size="tiny">
-                    <Icon name="warning sign"/> {errorMessage}
-                </Message>
-            }
-        </Modal.Content>
-        <Modal.Actions>
+    return <Dialog
+        open={true}
+        size="sm"
+        icon="database"
+        title="Registrar repositório"
+        onClose={isRegistering ? undefined : onCancel}
+        actions={<>
             <Button onClick={onCancel} disabled={isRegistering}>cancelar</Button>
-            <Button primary loading={isRegistering} disabled={isDisabled} onClick={handleRegister}>
-                <Icon name="plus"/> registrar
+            <Button variant="primary" icon="plus" loading={isRegistering} disabled={isDisabled} onClick={handleRegister}>
+                registrar
             </Button>
-        </Modal.Actions>
-    </Modal>
+        </>}>
+
+        <div className="lnc-detail-stack">
+            <FormField label="namespace" htmlFor="lnc-register-namespace" required>
+                <TextInput
+                    id="lnc-register-namespace"
+                    autoFocus
+                    placeholder="ex.: ecosystem-core"
+                    value={namespace}
+                    onChange={(event:any) => setNamespace(event.target.value)}/>
+            </FormField>
+
+            <FormField label="caminho da instalação" htmlFor="lnc-register-path" required>
+                <TextInput
+                    id="lnc-register-path"
+                    placeholder="ex.: /home/user/repos/ecosystem-core-repository"
+                    value={path}
+                    onChange={(event:any) => setPath(event.target.value)}/>
+            </FormField>
+
+            { errorMessage && <Banner tone="danger">{errorMessage}</Banner> }
+        </div>
+    </Dialog>
 }
 
 export default RegisterRepositoryModal
