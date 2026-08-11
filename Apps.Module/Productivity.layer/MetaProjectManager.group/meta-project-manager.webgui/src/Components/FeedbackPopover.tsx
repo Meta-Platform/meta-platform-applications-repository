@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useEffect, useRef, useState } from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import useApi from "../Hooks/useApi"
 import { FeedbackTarget } from "../Utils/feedbackTarget"

@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useMemo, useRef, useState } from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 import MDEditor, { commands } from "@uiw/react-md-editor"
 
 // Markdown não tem sublinhado — usamos <u>…</u> (o renderer sanitiza com DOMPurify,

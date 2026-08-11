@@ -1,13 +1,12 @@
 import * as React             from "react"
 import {useEffect}            from "react"
-import { Dimmer, Loader}      from "semantic-ui-react"
 //@ts-ignore
 import { Routes, BrowserRouter, HashRouter, Route }  from "react-router-dom"
 import { connect }            from "react-redux"
 import { bindActionCreators } from "redux"
 import axios                  from "axios"
 
-import { HTTPServerManagerActionsCreator } from "@i-components"
+import { HTTPServerManagerActionsCreator, LoadingOverlay } from "@i-components"
 import { EventsProvider } from "../Hooks/useEvents"
 import { ToastProvider } from "../Hooks/useToasts"
 import { ApprovalQueueProvider } from "../Hooks/useApprovalQueue"
@@ -93,10 +92,8 @@ const AppContainer = ({
 					</EventsProvider>
 				</ReadOnlyProvider>
 			</HashRouter>
-		: <Dimmer active>
-				<Loader>loading web services running...</Loader>
-			</Dimmer>
-	
+		: <LoadingOverlay message="carregando serviços web…"/>
+
 }
 
 const mapDispatchToProps = (dispatch:any) =>

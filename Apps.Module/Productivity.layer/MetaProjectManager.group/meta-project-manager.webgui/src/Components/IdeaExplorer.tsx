@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useCallback, useEffect, useState } from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import useApi from "../Hooks/useApi"
 import { WorkItem, AgentFeedback, WORK_ITEM_TYPES, Milestone, Sprint } from "../api/types"

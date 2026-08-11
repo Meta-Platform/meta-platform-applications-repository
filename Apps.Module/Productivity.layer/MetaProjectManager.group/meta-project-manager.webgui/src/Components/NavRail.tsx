@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import useApprovalQueue from "../Hooks/useApprovalQueue"
 import useApi from "../Hooks/useApi"

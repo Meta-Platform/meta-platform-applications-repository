@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import { THEMES, ThemeName, ApplyTheme, GetSavedTheme } from "@i-components/theme"
 import useApi from "../Hooks/useApi"

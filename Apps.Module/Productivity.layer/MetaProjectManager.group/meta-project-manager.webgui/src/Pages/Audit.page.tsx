@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import useApi from "../Hooks/useApi"
 import useEvents from "../Hooks/useEvents"

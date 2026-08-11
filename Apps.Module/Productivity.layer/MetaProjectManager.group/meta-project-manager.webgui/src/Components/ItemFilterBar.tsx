@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useEffect, useState } from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import { ListItemsQuery } from "../api/items"
 import {

@@ -1,7 +1,7 @@
 import * as React from "react"
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 import { useLocation } from "react-router-dom"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import FeedbackPopover, { FeedbackAnchor } from "../Components/FeedbackPopover"
 import { targetAt, excerptAt } from "../Utils/feedbackTarget"

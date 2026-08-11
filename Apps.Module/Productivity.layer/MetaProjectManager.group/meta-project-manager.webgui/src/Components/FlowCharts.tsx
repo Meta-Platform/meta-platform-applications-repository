@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import { FlowReport } from "../api/types"
 

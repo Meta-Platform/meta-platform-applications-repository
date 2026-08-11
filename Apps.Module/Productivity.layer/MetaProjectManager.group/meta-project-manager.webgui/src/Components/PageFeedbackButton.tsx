@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useLocation } from "react-router-dom"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import useFeedback from "../Hooks/useFeedback"
 

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import { WorkItem, User } from "../api/types"
 import { priorityClass, statusClass, valueClass, horizonClass, horizonLabel, initials } from "../Utils/format"

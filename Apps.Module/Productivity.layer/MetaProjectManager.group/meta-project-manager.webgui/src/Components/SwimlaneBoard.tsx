@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useMemo, useState } from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import { Board, BoardColumn, WorkItem, User, Sprint } from "../api/types"
 import WorkItemCard from "./WorkItemCard"
