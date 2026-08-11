@@ -77,11 +77,11 @@ export const apps: AppRecord[] = [
         guiPackage: "@/launcher.webgui",
         desktopExecutable: "launcher-desktop",
         libraries: [ "@i-components", "@instance-components" ],
-        localComponents: 3,
-        semanticFiles: 10,
-        cssLines: 0,
+        localComponents: 2,
+        semanticFiles: 0,
+        cssLines: 168,
         wave: 1,
-        migrated: false
+        migrated: true
     },
     {
         id: "datasource-manager",
@@ -92,10 +92,10 @@ export const apps: AppRecord[] = [
         desktopExecutable: "sources-desktop",
         libraries: [ "@i-components" ],
         localComponents: 10,
-        semanticFiles: 11,
-        cssLines: 266,
+        semanticFiles: 0,
+        cssLines: 252,
         wave: 1,
-        migrated: false
+        migrated: true
     },
     {
         id: "home-screen",
@@ -105,11 +105,15 @@ export const apps: AppRecord[] = [
         guiPackage: "@/home-screen.webgui",
         desktopExecutable: "my-desktop",
         libraries: [ "@i-components" ],
-        localComponents: 9,
-        semanticFiles: 10,
-        cssLines: 1027,
+        // Medido em 10/08/2026, ao fim da migração (APPUI-143..148). Os 10
+        // componentes que sobram são os que SÓ uma área de trabalho tem:
+        // janela retrô, ícone/dock de pacote, popover de aplicativos, menu de
+        // contexto com submenu e os dois gerenciadores.
+        localComponents: 10,
+        semanticFiles: 0,
+        cssLines: 951,
         wave: 2,
-        migrated: false
+        migrated: true
     },
     {
         id: "instance-executor",
@@ -119,11 +123,15 @@ export const apps: AppRecord[] = [
         guiPackage: "@/instance-executor-control-panel.webgui",
         desktopExecutable: "executor-panel-desktop",
         libraries: [ "@i-components", "@instance-components" ],
-        localComponents: 7,
-        semanticFiles: 13,
-        cssLines: 1370,
+        // Migrado em 10/08/2026 (APPUI-150..155). O que ficou local é o que o
+        // kit ainda não tem: grid denso com coluna redimensionável/ordenável,
+        // medidor em linha, série temporal e visualizador de log ao vivo — os
+        // dois últimos viram componentes do kit na fase 6.
+        localComponents: 4,
+        semanticFiles: 0,
+        cssLines: 1001,
         wave: 2,
-        migrated: false
+        migrated: true
     },
     {
         id: "meta-project-manager",
