@@ -148,6 +148,13 @@ export const apps: AppRecord[] = [
         migrated: false
     },
     {
+        // Migrado em 11/08/2026 (APPUI-170..177): 64 arquivos deixaram de
+        // importar semantic-ui-react e 14 deixaram de usar styled-components.
+        // O CSS CRESCEU de propósito: as folhas dos styled-components viraram
+        // classes .pdx-* em Styles/components.css — o estilo mudou de lugar,
+        // não de tamanho. Junto saíram as 29 definições locais de token --mp-*
+        // (Styles/Global.style.ts e Styles/workbench.css), as últimas da
+        // plataforma fora do kit.
         id: "package-developer",
         title: "Package Developer",
         area: "Tools",
@@ -155,11 +162,11 @@ export const apps: AppRecord[] = [
         guiPackage: "@/package-developer.webgui",
         desktopExecutable: "developer-desktop",
         libraries: [ "@i-components" ],
-        localComponents: 55,
-        semanticFiles: 64,
-        cssLines: 1606,
+        localComponents: 53,
+        semanticFiles: 0,
+        cssLines: 2732,
         wave: 3,
-        migrated: false
+        migrated: true
     },
     {
         id: "ui-catalog",
