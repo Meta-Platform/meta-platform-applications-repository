@@ -7,17 +7,8 @@ export { instanceManagerStories } from "./catalog/stories"
 export { default as useWebSocket } from "./hooks/useWebSocket"
 export * from "./utils/CommandGroup"
 
-// Compatibilidade: estes componentes foram PROMOVIDOS para o kit comum (o CSS
-// deles já vivia lá). Importe de "@i-components" — estes re-exports saem quando
-// o Instance Executor Control Panel migrar (onda 2).
-export {
-    CopyableMonoText,
-    EntityHeader,
-    PageMasthead,
-    StatusBadge,
-    StatusStrip,
-    StatusChip,
-    SystemBanner,
-    GetStatusMeta,
-    GetSeverityRank
-} from "@i-components"
+// CopyableMonoText, EntityHeader, PageMasthead, StatusBadge, StatusStrip,
+// StatusChip, SystemBanner, GetStatusMeta e GetSeverityRank foram PROMOVIDOS
+// para o kit comum e já não são re-exportados daqui: importe-os de
+// "@i-components". Os dois consumidores da área (launcher.webgui e
+// instance-executor-control-panel.webgui) já apontam para lá.

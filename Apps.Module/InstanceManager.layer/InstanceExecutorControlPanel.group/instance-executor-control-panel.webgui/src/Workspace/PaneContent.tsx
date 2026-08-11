@@ -1,7 +1,9 @@
 import * as React from "react"
 import { createContext, useContext, useEffect } from "react"
 
-import { EmptyState, LogViewer } from "../Components/system"
+import { EmptyState } from "@i-components"
+
+import { LogViewer } from "../Components/system"
 
 import OverviewView from "../Containers/PanelShell/OverviewView"
 import PerformanceView from "../Containers/PanelShell/PerformanceView"
@@ -62,7 +64,7 @@ const PaneContent = ({ pane }: { pane: Pane }) => {
         return <EmptyState
             icon="power off"
             title="instância encerrada"
-            hint="este painel acompanhava uma instância que não está mais em execução. O log dela continua disponível na seção Logs."/>
+            message="este painel acompanhava uma instância que não está mais em execução. O log dela continua disponível na seção Logs."/>
 
     switch (pane.kind) {
         case "overview":
@@ -146,7 +148,7 @@ const PaneContent = ({ pane }: { pane: Pane }) => {
             </div>
 
         default:
-            return <EmptyState icon="question" title="painel desconhecido" hint={pane.kind}/>
+            return <EmptyState icon="question" title="painel desconhecido" message={pane.kind}/>
     }
 }
 

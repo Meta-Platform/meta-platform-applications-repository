@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useState } from "react"
 
-import { Icon } from "semantic-ui-react"
+import { Button, ButtonGroup, IconButton, TextInput } from "@i-components"
 
 import { Workspace } from "./Model"
 
@@ -51,9 +51,8 @@ const WorkspaceBar = ({
 
         {
             renaming
-            ? <input
-                className="iep-field"
-                style={{ width: 180 }}
+            ? <TextInput
+                className="iep-wsbar__rename"
                 autoFocus
                 value={draftName}
                 onChange={(event) => setDraftName(event.target.value)}
@@ -73,11 +72,11 @@ const WorkspaceBar = ({
             </button>)
         }
 
-        <button type="button" className="iep-iconbtn" title="novo espaço de trabalho" onClick={() => onCreate("Novo espaço")}>
-            <Icon name="plus" style={{ margin: 0 }}/>
-        </button>
+        <IconButton
+            size="sm" icon="plus" label="novo espaço de trabalho"
+            onClick={() => onCreate("Novo espaço")}/>
 
-        <span className="iep-toolbar__spacer"/>
+        <span className="iep-barspacer"/>
 
         {
             floatingCount > 0 &&
@@ -86,37 +85,35 @@ const WorkspaceBar = ({
             </span>
         }
 
-        <div style={{ display: "flex", gap: 2 }}>
-            <button
-                type="button"
-                className={`iep-btn${mode === "docked" ? " iep-btn--active" : ""}`}
+        <ButtonGroup>
+            <Button
+                size="sm"
+                icon="columns"
+                variant={mode === "docked" ? "primary" : "default"}
                 title="arranjo em abas e divisões"
                 onClick={() => onSetMode("docked")}>
-                <Icon name="columns" style={{ margin: 0 }}/> abas
-            </button>
-            <button
-                type="button"
-                className={`iep-btn${mode === "grid" ? " iep-btn--active" : ""}`}
+                abas
+            </Button>
+            <Button
+                size="sm"
+                icon="th"
+                variant={mode === "grid" ? "primary" : "default"}
                 title="mural de blocos de acompanhamento"
                 onClick={() => onSetMode("grid")}>
-                <Icon name="th" style={{ margin: 0 }}/> mural
-            </button>
-        </div>
+                mural
+            </Button>
+        </ButtonGroup>
 
-        <button type="button" className="iep-iconbtn" title="renomear espaço" onClick={_StartRename} disabled={!activeWorkspace}>
-            <Icon name="pencil" style={{ margin: 0 }}/>
-        </button>
-        <button
-            type="button" className="iep-iconbtn" title="duplicar espaço"
-            onClick={() => activeWorkspace && onDuplicate(activeWorkspace.id)} disabled={!activeWorkspace}>
-            <Icon name="copy outline" style={{ margin: 0 }}/>
-        </button>
-        <button
-            type="button" className="iep-iconbtn" title="excluir espaço"
+        <IconButton
+            size="sm" icon="pencil" label="renomear espaço"
+            onClick={_StartRename} disabled={!activeWorkspace}/>
+        <IconButton
+            size="sm" icon="copy outline" label="duplicar espaço"
+            onClick={() => activeWorkspace && onDuplicate(activeWorkspace.id)} disabled={!activeWorkspace}/>
+        <IconButton
+            size="sm" icon="trash alternate outline" label="excluir espaço"
             onClick={() => activeWorkspace && onDelete(activeWorkspace.id)}
-            disabled={!activeWorkspace || workspaces.length < 2}>
-            <Icon name="trash alternate outline" style={{ margin: 0 }}/>
-        </button>
+            disabled={!activeWorkspace || workspaces.length < 2}/>
     </div>
 }
 

@@ -1,11 +1,10 @@
 import * as React from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 
-import { Icon } from "semantic-ui-react"
+import { Button, SearchInput, Toolbar } from "@i-components"
 
 import { useWebSocket } from "@instance-components"
 import GetAPI from "../../Utils/GetAPI"
-import { SearchField } from "./Indicators"
 import { FormatBytes } from "./Format"
 
 /**
@@ -119,34 +118,40 @@ const LogViewer = ({ instance, serverManagerInformation, height }: any) => {
     }
 
     return <div className={`iep-log${wrap ? " iep-log--wrap" : ""}`} style={height ? { height, flex: "0 0 auto" } : undefined}>
-        <div className="iep-log__bar">
-            <SearchField value={filter} onChange={setFilter} placeholder="filtrar no log" width={200}/>
+        <Toolbar className="iep-log__bar">
+            <SearchInput
+                className="iep-searchfield"
+                value={filter}
+                onValueChange={setFilter}
+                placeholder="filtrar no log"/>
 
-            <button
-                type="button"
-                className={`iep-btn${follow ? " iep-btn--active" : ""}`}
+            <Button
+                size="sm"
+                icon="arrow down"
+                variant={follow ? "primary" : "default"}
                 title="rolar automaticamente conforme chegam linhas"
                 onClick={() => setFollow((current) => !current)}>
-                <Icon name="arrow down" style={{ margin: 0 }}/> acompanhar
-            </button>
+                acompanhar
+            </Button>
 
-            <button
-                type="button"
-                className={`iep-btn${wrap ? " iep-btn--active" : ""}`}
+            <Button
+                size="sm"
+                icon="align left"
+                variant={wrap ? "primary" : "default"}
                 title="quebrar linhas longas em vez de rolar na horizontal"
                 onClick={() => setWrap((current) => !current)}>
-                <Icon name="align left" style={{ margin: 0 }}/> quebrar
-            </button>
+                quebrar
+            </Button>
 
-            <button type="button" className="iep-btn" onClick={() => { setLines([]); setDropped(0) }}>
-                <Icon name="eraser" style={{ margin: 0 }}/> limpar
-            </button>
+            <Button size="sm" icon="eraser" onClick={() => { setLines([]); setDropped(0) }}>
+                limpar
+            </Button>
 
-            <button type="button" className="iep-btn" onClick={_Copy} disabled={visibleLines.length === 0}>
-                <Icon name="copy outline" style={{ margin: 0 }}/> copiar
-            </button>
+            <Button size="sm" icon="copy outline" onClick={_Copy} disabled={visibleLines.length === 0}>
+                copiar
+            </Button>
 
-            <span className="iep-toolbar__spacer"/>
+            <Toolbar.Spacer/>
 
             <span className="iep-log__meta">
                 {filter ? `${visibleLines.length}/${lines.length}` : `${lines.length}`} linhas
@@ -157,7 +162,7 @@ const LogViewer = ({ instance, serverManagerInformation, height }: any) => {
                     {connected ? "ao vivo" : "desconectado"}
                 </span>
             </span>
-        </div>
+        </Toolbar>
 
         <div className="iep-log__body" ref={bodyRef} onScroll={_OnScroll}>
             {

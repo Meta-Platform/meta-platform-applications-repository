@@ -1,10 +1,9 @@
 import * as React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { Icon } from "semantic-ui-react"
+import { EmptyState, Icon, IconButton } from "@i-components"
 
 import PaneContent from "./PaneContent"
-import { EmptyState } from "../Components/system"
 
 import { IsTabs, LayoutNode, Pane, TabGroup, Workspace } from "./Model"
 
@@ -99,42 +98,35 @@ const TabGroupView = ({ group, workspace, actions, isOnly }: any) => {
                     onDragStart={(event) => event.dataTransfer.setData("text/pane-id", pane.id)}
                     onClick={() => actions.SetActivePane(group.id, pane.id)}
                     title={pane.subtitle || pane.title}>
-                    <Icon name={PANE_ICON[pane.kind] || "window maximize outline"} style={{ margin: 0 }}/>
+                    <Icon name={PANE_ICON[pane.kind] || "window maximize outline"}/>
                     <span className="iep-panetab__label">{pane.title}</span>
                     <Icon
                         name="close"
+                        link
                         className="iep-panetab__close"
                         onClick={(event: any) => { event.stopPropagation(); actions.ClosePane(pane.id) }}/>
                 </div>)
             }
 
-            <span className="iep-toolbar__spacer"/>
+            <span className="iep-barspacer"/>
 
             {
                 activePane &&
                 <div className="iep-panetabs__actions">
-                    <button
-                        type="button" className="iep-iconbtn" title="dividir ao lado"
+                    <IconButton
+                        size="sm" icon="columns" label="dividir ao lado"
                         disabled={panes.length < 2}
-                        onClick={() => actions.SplitGroup(group.id, activePane.id, "row")}>
-                        <Icon name="columns" style={{ margin: 0 }}/>
-                    </button>
-                    <button
-                        type="button" className="iep-iconbtn" title="dividir abaixo"
+                        onClick={() => actions.SplitGroup(group.id, activePane.id, "row")}/>
+                    <IconButton
+                        size="sm" icon="window minimize outline" label="dividir abaixo"
                         disabled={panes.length < 2}
-                        onClick={() => actions.SplitGroup(group.id, activePane.id, "column")}>
-                        <Icon name="window minimize outline" style={{ margin: 0 }}/>
-                    </button>
-                    <button
-                        type="button" className="iep-iconbtn" title="destacar em janela flutuante"
-                        onClick={() => actions.FloatPane(activePane.id)}>
-                        <Icon name="external" style={{ margin: 0 }}/>
-                    </button>
-                    <button
-                        type="button" className="iep-iconbtn" title="fixar no mural"
-                        onClick={() => actions.AddToGrid(activePane.id)}>
-                        <Icon name="th" style={{ margin: 0 }}/>
-                    </button>
+                        onClick={() => actions.SplitGroup(group.id, activePane.id, "column")}/>
+                    <IconButton
+                        size="sm" icon="external" label="destacar em janela flutuante"
+                        onClick={() => actions.FloatPane(activePane.id)}/>
+                    <IconButton
+                        size="sm" icon="th" label="fixar no mural"
+                        onClick={() => actions.AddToGrid(activePane.id)}/>
                 </div>
             }
         </div>
@@ -154,7 +146,7 @@ const TabGroupView = ({ group, workspace, actions, isOnly }: any) => {
                 : <EmptyState
                     icon={isOnly ? "window restore outline" : "add"}
                     title="área vazia"
-                    hint="abra um painel pela navegação à esquerda ou por uma instância da lista."/>
+                    message="abra um painel pela navegação à esquerda ou por uma instância da lista."/>
             }
         </div>
     </div>
@@ -279,15 +271,15 @@ const FloatingWindow = ({ placement, pane, actions }: any) => {
         onMouseDown={() => actions.FocusPane(pane.id)}>
 
         <div className="iep-floating__bar" onMouseDown={_Start("move")}>
-            <Icon name={PANE_ICON[pane.kind] || "window maximize outline"} style={{ margin: 0 }}/>
+            <Icon name={PANE_ICON[pane.kind] || "window maximize outline"}/>
             <span className="iep-floating__title" title={pane.subtitle || pane.title}>{pane.title}</span>
-            <span className="iep-toolbar__spacer"/>
-            <button type="button" className="iep-iconbtn" title="reancorar" onClick={() => actions.DockPane(pane.id)}>
-                <Icon name="window restore outline" style={{ margin: 0 }}/>
-            </button>
-            <button type="button" className="iep-iconbtn" title="fechar" onClick={() => actions.ClosePane(pane.id)}>
-                <Icon name="close" style={{ margin: 0 }}/>
-            </button>
+            <span className="iep-barspacer"/>
+            <IconButton
+                size="sm" icon="window restore outline" label="reancorar"
+                onClick={() => actions.DockPane(pane.id)}/>
+            <IconButton
+                size="sm" icon="close" label="fechar"
+                onClick={() => actions.ClosePane(pane.id)}/>
         </div>
 
         <div className="iep-floating__body">
@@ -352,7 +344,7 @@ const WidgetGrid = ({ workspace, actions }: any) => {
         return <EmptyState
             icon="th"
             title="mural vazio"
-            hint="abra um painel e use “fixar no mural” para montar seu acompanhamento."/>
+            message="abra um painel e use “fixar no mural” para montar seu acompanhamento."/>
 
     return <div className="iep-widgetgrid" ref={containerRef}>
         {
@@ -367,15 +359,15 @@ const WidgetGrid = ({ workspace, actions }: any) => {
                         gridRow: `${placement.y + 1} / span ${placement.h}`
                     }}>
                     <div className="iep-widget__bar" onMouseDown={_Start(placement.paneId, "move", placement)}>
-                        <Icon name={PANE_ICON[pane.kind] || "window maximize outline"} style={{ margin: 0 }}/>
+                        <Icon name={PANE_ICON[pane.kind] || "window maximize outline"}/>
                         <span className="iep-widget__title" title={pane.subtitle || pane.title}>{pane.title}</span>
-                        <span className="iep-toolbar__spacer"/>
-                        <button type="button" className="iep-iconbtn" title="abrir como aba" onClick={() => actions.DockPane(placement.paneId)}>
-                            <Icon name="expand" style={{ margin: 0 }}/>
-                        </button>
-                        <button type="button" className="iep-iconbtn" title="tirar do mural" onClick={() => actions.RemoveFromGrid(placement.paneId)}>
-                            <Icon name="close" style={{ margin: 0 }}/>
-                        </button>
+                        <span className="iep-barspacer"/>
+                        <IconButton
+                            size="sm" icon="expand" label="abrir como aba"
+                            onClick={() => actions.DockPane(placement.paneId)}/>
+                        <IconButton
+                            size="sm" icon="close" label="tirar do mural"
+                            onClick={() => actions.RemoveFromGrid(placement.paneId)}/>
                     </div>
                     <div className="iep-widget__body">
                         <PaneContent pane={pane}/>

@@ -1,16 +1,21 @@
 import * as React from "react"
 import { useMemo } from "react"
 
-import { Icon } from "semantic-ui-react"
+import {
+    DataColumn,
+    DataTable,
+    Icon,
+    Panel,
+    StatusBadge,
+    SystemBanner,
+    Tile,
+    TileRow,
+    Toolbar
+} from "@i-components"
 
 import {
-    Card,
-    StatCard,
-    DataGrid,
-    GridColumn,
     KindIcon,
     Meter,
-    StateLabel,
     TimeSeriesChart,
     FormatBytes,
     FormatDuration,
@@ -79,113 +84,114 @@ const OverviewView = ({
             .slice(0, 6),
         [instanceList])
 
-    const failedColumns: GridColumn[] = [
+    const failedColumns: DataColumn[] = [
         {
             key: "taskId",
-            label: "tid",
+            header: "tid",
             width: 56,
             align: "right"
         },
         {
             key: "name",
-            label: "tarefa",
-            flex: true,
-            minWidth: 180,
-            value: (task: any) => GetTaskName(task)
+            header: "tarefa",
+            render: (task: any) => GetTaskName(task)
         },
         {
             key: "status",
-            label: "estado",
-            width: 120,
-            render: (task: any) => <StateLabel status={task.status} reason={task.statusReason}/>
+            header: "estado",
+            width: 132,
+            render: (task: any) => <StatusBadge status={task.status} reason={task.statusReason}/>
         },
         {
             key: "statusReason",
-            label: "motivo",
+            header: "motivo",
             width: 260,
             mono: true,
-            value: (task: any) => task.statusReason || "—",
-            title: (task: any) => task.statusReason
+            render: (task: any) => <span title={task.statusReason}>{task.statusReason || "—"}</span>
         }
     ]
 
     return <div className="iep-view">
-        <div className="iep-toolbar">
+        <Toolbar className="iep-view__toolbar">
             <span className="iep-toolbar__title">Visão geral</span>
             <span className="iep-toolbar__subtitle">
                 estado do ecossistema em tempo real
             </span>
-        </div>
+        </Toolbar>
 
         <div className="iep-view__body">
             {
                 !daemonOnline &&
-                <Card title="daemon fora do ar" icon="warning sign">
-                    <div style={{ color: "var(--mp-danger)", fontWeight: 600, marginBottom: 6 }}>
-                        O painel não consegue falar com o serviço de execução da plataforma.
-                    </div>
-                    <div style={{ color: "var(--mp-muted)" }}>
-                        Nada roda e nada é monitorado sem ele. Abra um terminal e execute
-                        {" "}<code style={{ fontFamily: "var(--mp-font-mono)" }}>executor-manager</code>.
-                    </div>
-                </Card>
+                <SystemBanner tone="danger" icon="warning sign" title="daemon fora do ar">
+                    O painel não consegue falar com o serviço de execução da plataforma.
+                    Nada roda e nada é monitorado sem ele. Abra um terminal e execute
+                    {" "}<code style={{ fontFamily: "var(--mp-font-mono)" }}>executor-manager</code>.
+                </SystemBanner>
             }
 
-            <div className="iep-cards">
-                <StatCard
-                    title="instâncias no ar"
+            <TileRow className="iep-tiles">
+                <Tile
                     icon="server"
-                    value={instanceList.length}
-                    hint={`${kindCounts.app || 0} app · ${kindCounts.desktop || 0} desktop · ${kindCounts.cli || 0} cli`}/>
+                    count={instanceList.length}
+                    title="instâncias no ar"
+                    sub={`${kindCounts.app || 0} app · ${kindCounts.desktop || 0} desktop · ${kindCounts.cli || 0} cli`}/>
 
-                <StatCard
-                    title="tarefas ativas"
+                <Tile
                     icon="tasks"
-                    value={activeTasks}
-                    hint={`${(taskList || []).length} tarefas conhecidas pelo daemon`}/>
+                    count={activeTasks}
+                    title="tarefas ativas"
+                    sub={`${(taskList || []).length} tarefas conhecidas pelo daemon`}/>
 
-                <StatCard
-                    title="cpu do ecossistema"
+                <Tile
                     icon="microchip"
-                    value={FormatPercent(totals.cpuPercent, 0)}
-                    hint={`máquina em ${systemSample ? FormatPercent(systemSample.cpuPercent, 0) : "—"} · ${systemSample ? systemSample.cpuCount : "—"} núcleos`}>
-                    <div style={{ marginTop: 8 }}>
-                        <Meter percent={systemSample && systemSample.cpuPercent} value={FormatPercent(systemSample && systemSample.cpuPercent, 0)}/>
-                    </div>
-                </StatCard>
+                    count={FormatPercent(totals.cpuPercent, 0)}
+                    title="cpu do ecossistema"
+                    sub={`máquina em ${systemSample ? FormatPercent(systemSample.cpuPercent, 0) : "—"} · ${systemSample ? systemSample.cpuCount : "—"} núcleos`}/>
 
-                <StatCard
-                    title="memória do ecossistema"
+                <Tile
                     icon="database"
-                    value={FormatBytes(totals.rssBytes)}
-                    hint={systemSample ? `máquina: ${FormatBytes(systemSample.usedMemBytes)} de ${FormatBytes(systemSample.totalMemBytes)}` : undefined}>
-                    <div style={{ marginTop: 8 }}>
-                        <Meter percent={memoryPercent} value={FormatPercent(memoryPercent, 0)}/>
-                    </div>
-                </StatCard>
-            </div>
+                    count={FormatBytes(totals.rssBytes)}
+                    title="memória do ecossistema"
+                    sub={systemSample ? `máquina: ${FormatBytes(systemSample.usedMemBytes)} de ${FormatBytes(systemSample.totalMemBytes)}` : undefined}/>
+            </TileRow>
+
+            {/* Os medidores da MÁQUINA continuam ao lado dos contadores: o Tile
+                do kit é só ícone + número + legenda, e a proporção de uso é o
+                que responde "está apertado?". */}
+            <Panel title="uso da máquina agora" icon="dashboard">
+                <div style={{ display: "flex", flexDirection: "column", gap: "var(--mp-space-3)" }}>
+                    <Meter
+                        label="cpu"
+                        percent={systemSample && systemSample.cpuPercent}
+                        value={FormatPercent(systemSample && systemSample.cpuPercent, 0)}/>
+                    <Meter
+                        label="mem"
+                        percent={memoryPercent}
+                        value={FormatPercent(memoryPercent, 0)}/>
+                </div>
+            </Panel>
 
             <div className="iep-panelgrid">
-                <Card title="cpu da máquina" icon="chart line">
+                <Panel title="cpu da máquina" icon="chart line">
                     <TimeSeriesChart
                         height={140}
                         yMax={100}
                         formatValue={(value: number) => `${value.toFixed(0)}%`}
                         series={cpuSeries}
                         showLegend={false}/>
-                </Card>
+                </Panel>
 
-                <Card title="memória da máquina" icon="chart area">
+                <Panel title="memória da máquina" icon="chart area">
                     <TimeSeriesChart
                         height={140}
                         yMax={systemSample ? systemSample.totalMemBytes : undefined}
                         formatValue={(value: number) => FormatBytes(value)}
                         series={memorySeries}
                         showLegend={false}/>
-                </Card>
+                </Panel>
             </div>
 
-            <Card title="instâncias que mais consomem" icon="fire">
+            <Panel title="instâncias que mais consomem" icon="fire">
                 {
                     topInstances.length === 0
                     ? <div style={{ color: "var(--mp-muted)" }}>nenhuma instância medida no momento.</div>
@@ -195,7 +201,7 @@ const OverviewView = ({
                                 key={instance.instanceId}
                                 style={{ display: "flex", alignItems: "center", gap: "var(--mp-space-2)", cursor: "pointer" }}
                                 onClick={() => onOpenInstance(instance.instanceId)}>
-                                <KindIcon kind={instance.kind} style={{ margin: 0, color: "var(--mp-muted)" }}/>
+                                <KindIcon kind={instance.kind} tone="muted"/>
                                 <span style={{ width: 190, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={instance.packagePath}>
                                     {PackageName(instance.packagePath)}
                                 </span>
@@ -210,26 +216,23 @@ const OverviewView = ({
                                 <span style={{ fontFamily: "var(--mp-font-mono)", fontSize: "var(--mp-text-xs)", color: "var(--mp-muted-2)", width: 70, textAlign: "right" }}>
                                     {FormatDuration(instance.metrics.uptimeSeconds)}
                                 </span>
-                                <Icon name="angle right" style={{ color: "var(--mp-muted-2)", margin: 0 }}/>
+                                <Icon name="angle right" tone="muted"/>
                             </div>)
                         }
                     </div>
                 }
-            </Card>
+            </Panel>
 
-            <Card title="tarefas que terminaram mal" icon="warning circle" flush>
-                {
-                    failedTasks.length === 0
-                    ? <div style={{ padding: "var(--mp-space-3)", color: "var(--mp-muted)" }}>
-                        nenhuma falha registrada nas tarefas conhecidas.
-                    </div>
-                    : <DataGrid
-                        columns={failedColumns}
-                        rows={failedTasks}
-                        rowKey={(task: any) => task.taskId}
-                        sortable={false}/>
-                }
-            </Card>
+            {/* Leitura pura, sem ordenar nem redimensionar: aqui a tabela do
+                kit basta e o grid denso seria exagero. */}
+            <Panel title="tarefas que terminaram mal" icon="warning circle">
+                <DataTable
+                    dense
+                    columns={failedColumns}
+                    rows={failedTasks}
+                    rowKey={(task: any) => String(task.taskId)}
+                    emptyMessage="nenhuma falha registrada nas tarefas conhecidas."/>
+            </Panel>
         </div>
     </div>
 }

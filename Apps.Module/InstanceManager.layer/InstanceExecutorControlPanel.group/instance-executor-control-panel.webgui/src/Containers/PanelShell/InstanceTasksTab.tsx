@@ -1,12 +1,20 @@
 import * as React from "react"
 import { useMemo, useState } from "react"
 
-import { Icon } from "semantic-ui-react"
+import {
+    Button,
+    EmptyState,
+    Icon,
+    IconButton,
+    SearchInput,
+    StatusBadge,
+    Toolbar
+} from "@i-components"
 
 import { useWebSocket } from "@instance-components"
 import GetAPI from "../../Utils/GetAPI"
 
-import { DataGrid, GridColumn, SearchField, StateLabel, EmptyState } from "../../Components/system"
+import { DataGrid, GridColumn } from "../../Components/system"
 
 import {
     Task,
@@ -108,11 +116,10 @@ const TaskTree = ({ tasks = [], loaded = true, onStopTasks }: any) => {
                     ? <Icon
                         className="iep-grid__twisty"
                         name={task.collapsedNow ? "caret right" : "caret down"}
-                        onClick={(event: any) => { event.stopPropagation(); _ToggleCollapse(task.taskId) }}
-                        style={{ margin: 0 }}/>
+                        onClick={(event: any) => { event.stopPropagation(); _ToggleCollapse(task.taskId) }}/>
                     : <span className="iep-grid__twisty"/>
                 }
-                <Icon name={GetIconByLoaderType(task.objectLoaderType) as any} style={{ margin: 0, color: "var(--mp-muted)" }}/>
+                <Icon name={GetIconByLoaderType(task.objectLoaderType) as any} tone="muted"/>
                 <strong>{GetTaskName(task)}</strong>
                 {GetTaskDetail(task) && <span className="iep-grid__detail">{GetTaskDetail(task)}</span>}
             </span>
@@ -125,7 +132,7 @@ const TaskTree = ({ tasks = [], loaded = true, onStopTasks }: any) => {
             label: "estado",
             width: 124,
             sortable: true,
-            render: (task: any) => <StateLabel status={task.status} reason={task.statusReason}/>
+            render: (task: any) => <StatusBadge status={task.status} reason={task.statusReason}/>
         },
         {
             key: "objectLoaderType",
@@ -146,13 +153,13 @@ const TaskTree = ({ tasks = [], loaded = true, onStopTasks }: any) => {
         {
             key: "actions",
             label: "",
-            width: 34,
+            width: 40,
             render: (task: any) => IsTaskAlive(task)
-                ? <Icon
-                    name="stop circle"
-                    link
-                    title="encerrar tarefa"
-                    style={{ margin: 0, color: "var(--mp-danger)" }}
+                ? <IconButton
+                    size="sm"
+                    variant="danger"
+                    icon="stop circle"
+                    label="encerrar tarefa"
                     onClick={(event: any) => { event.stopPropagation(); onStopTasks([task.taskId]) }}/>
                 : null
         }
@@ -161,26 +168,34 @@ const TaskTree = ({ tasks = [], loaded = true, onStopTasks }: any) => {
     const rowsWithCollapseState = rows.map((row: any) => ({ ...row, collapsedNow: collapsed.has(row.taskId) }))
 
     if (!loaded)
-        return <EmptyState icon="wait" title="conectando ao processo da instância…" hint="as tarefas aparecem assim que o processo responde."/>
+        return <EmptyState
+            icon="wait"
+            title="conectando ao processo da instância…"
+            message="as tarefas aparecem assim que o processo responde."/>
 
     return <div className="iep-view">
-        <div className="iep-toolbar">
-            <SearchField value={filter} onChange={setFilter} placeholder="filtrar tarefas"/>
-            <button
-                type="button"
-                className="iep-btn"
+        <Toolbar className="iep-view__toolbar">
+            <SearchInput
+                className="iep-searchfield"
+                value={filter}
+                onValueChange={setFilter}
+                placeholder="filtrar tarefas"/>
+            <Button
+                size="sm"
+                icon="expand"
                 onClick={() => setCollapsed(new Set())}
                 disabled={collapsed.size === 0}>
-                <Icon name="expand" style={{ margin: 0 }}/> expandir tudo
-            </button>
-            <button
-                type="button"
-                className={`iep-btn${showParams ? " iep-btn--active" : ""}`}
+                expandir tudo
+            </Button>
+            <Button
+                size="sm"
+                icon="tags"
+                variant={showParams ? "primary" : "default"}
                 title="mostrar a coluna de parâmetros estáticos"
                 onClick={() => setShowParams((current) => !current)}>
-                <Icon name="tags" style={{ margin: 0 }}/> parâmetros
-            </button>
-            <span className="iep-toolbar__spacer"/>
+                parâmetros
+            </Button>
+            <Toolbar.Spacer/>
             <span className="iep-toolbar__subtitle">
                 {
                     Object.keys(countByStatus).length === 0
@@ -190,7 +205,7 @@ const TaskTree = ({ tasks = [], loaded = true, onStopTasks }: any) => {
                         .join("  ·  ")
                 }
             </span>
-        </div>
+        </Toolbar>
         <div className="iep-view__body iep-view__body--flush" style={{ padding: "var(--mp-space-2)" }}>
             <DataGrid
                 columns={columns}

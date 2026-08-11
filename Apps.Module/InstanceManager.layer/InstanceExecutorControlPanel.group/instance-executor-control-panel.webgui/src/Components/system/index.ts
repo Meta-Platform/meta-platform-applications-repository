@@ -1,27 +1,20 @@
 // Componentes de painel de sistema do Instance Executor.
 //
-// São primitivas de monitor (grid denso, medidor, série temporal, visualizador
-// de log) construídas sobre os tokens --mp-* do design system — não dependem de
-// nada específico deste painel e podem ser levadas para os outros.
+// Aqui ficam SÓ as primitivas de monitor que o kit comum (@i-components) ainda
+// não tem: grid denso redimensionável, série temporal, visualizador de log ao
+// vivo e os selos de domínio da execução (tipo, versão, origem, medidor).
+// Tudo o que é genérico — botão, busca, cartão, contador, estado, vazio,
+// tabela, shell — vem do kit.
 export { default as DataGrid } from "./DataGrid"
 export { default as TimeSeriesChart, Sparkline } from "./TimeSeriesChart"
 export { default as LogViewer } from "./LogViewer"
 
 export {
-    StatusDot,
-    StateLabel,
-    GetStateFamily,
     KindTag,
     KindIcon,
     VersionTag,
     OriginTag,
-    Meter,
-    KeyValueList,
-    Card,
-    StatCard,
-    EmptyState,
-    Tabs,
-    SearchField
+    Meter
 } from "./Indicators"
 
 export {

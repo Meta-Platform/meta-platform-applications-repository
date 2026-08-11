@@ -4,7 +4,7 @@ import { connect } from "react-redux"
 //@ts-ignore
 import { useNavigate, useLocation, useParams } from "react-router-dom"
 
-import { Icon } from "semantic-ui-react"
+import { AppShell, NavRail, SidePanel, StatusChip, Topbar } from "@i-components"
 
 import useEcosystemMonitor from "../../Hooks/useEcosystemMonitor"
 import useWorkspaces from "../../Workspace/useWorkspaces"
@@ -127,44 +127,48 @@ const PanelShell = ({ HTTPServerManager }: any) => {
         onSelectInstance: setSelectedInstanceId
     }), [monitor, HTTPServerManager, OpenInstancePane, selectedInstanceId])
 
-    return <div className="iep-shell">
-        <nav className="iep-shell__nav">
-            <div className="iep-brand">
-                <span className="iep-brand__mark"><Icon name="server" style={{ margin: 0 }}/></span>
-                <span className="iep-brand__text">
-                    <span className="iep-brand__title">Instance Executor</span>
-                    <span className="iep-brand__subtitle">monitor da plataforma</span>
-                </span>
-            </div>
+    // A navegação não troca de tela: cada item ABRE um painel no espaço de
+    // trabalho. Por isso a trilha é montada com os dados das seções e a rota
+    // continua sendo atualizada em paralelo (é ela que o META_INITIAL_ROUTE lê).
+    const navItems = SECTIONS.map((entry) => ({
+        key: entry.key,
+        label: entry.label,
+        icon: entry.icon,
+        count: entry.key === "instances" ? monitor.instanceList.length : undefined
+    }))
 
-            <div className="iep-nav">
-                <div className="iep-nav__section">monitoramento</div>
-                {
-                    SECTIONS.map((entry) => <button
-                        key={entry.key}
-                        type="button"
-                        className={`iep-nav__item${section === entry.key ? " iep-nav__item--active" : ""}`}
-                        title={`abrir ${entry.label} no espaço de trabalho`}
-                        onClick={() => { navigate(entry.path); OpenSectionPane(entry.key) }}>
-                        <span className="iep-nav__icon"><Icon name={entry.icon as any} style={{ margin: 0 }}/></span>
-                        <span className="iep-nav__label">{entry.label}</span>
-                        {
-                            entry.key === "instances" &&
-                            <span className="iep-nav__count">{monitor.instanceList.length}</span>
-                        }
-                    </button>)
-                }
-            </div>
+    const daemonChip = <StatusChip
+        icon={monitor.daemonOnline ? "check circle" : "warning circle"}
+        tone={monitor.daemonOnline ? "success" : "danger"}
+        label={monitor.daemonOnline ? "executor-manager" : "daemon fora do ar"}/>
 
-            <div className="iep-nav__foot">
-                <div style={{ fontSize: "var(--mp-text-xs)", color: "var(--iep-muted)", display: "flex", alignItems: "center", gap: 6 }}>
-                    <span className={`iep-dot iep-dot--${monitor.daemonOnline ? "running" : "failed"}`}/>
-                    {monitor.daemonOnline ? "executor-manager" : "daemon fora do ar"}
-                </div>
-            </div>
-        </nav>
+    return <AppShell
+        className="iep-shell"
+        topbar={<Topbar
+            brand="Instance Executor"
+            subtitle="monitor da plataforma"
+            right={daemonChip}/>}
+        sidebar={<SidePanel className="iep-sidenav" title="monitoramento">
+            <NavRail
+                items={navItems}
+                activeKey={section}
+                onSelect={(key: PaneKind) => {
+                    const entry = SECTIONS.find((item) => item.key === key)
+                    if (!entry) return
+                    navigate(entry.path)
+                    OpenSectionPane(entry.key)
+                }}/>
+        </SidePanel>}
+        dock={<StatusBar
+            systemSample={monitor.systemSample}
+            systemHistory={monitor.systemHistory}
+            totals={monitor.totals}
+            instanceCount={monitor.instanceList.length}
+            taskCount={monitor.taskCount}
+            daemonOnline={monitor.daemonOnline}
+            metricsOnline={monitor.metricsOnline}/>}>
 
-        <main className="iep-shell__main">
+        <div className="iep-shell__main">
             <WorkspaceBar
                 workspaces={workspaces}
                 activeWorkspace={activeWorkspace}
@@ -181,19 +185,8 @@ const PanelShell = ({ HTTPServerManager }: any) => {
                     <WorkspaceHost workspace={activeWorkspace} actions={actions}/>
                 </WorkspaceProvider>
             }
-        </main>
-
-        <div className="iep-shell__status">
-            <StatusBar
-                systemSample={monitor.systemSample}
-                systemHistory={monitor.systemHistory}
-                totals={monitor.totals}
-                instanceCount={monitor.instanceList.length}
-                taskCount={monitor.taskCount}
-                daemonOnline={monitor.daemonOnline}
-                metricsOnline={monitor.metricsOnline}/>
         </div>
-    </div>
+    </AppShell>
 }
 
 const mapStateToProps = ({ HTTPServerManager }: any) => ({ HTTPServerManager })

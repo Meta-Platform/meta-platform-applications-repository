@@ -1,17 +1,22 @@
 import * as React from "react"
 import { useMemo, useState } from "react"
 
-import { Icon } from "semantic-ui-react"
+import {
+    Icon,
+    IconButton,
+    SearchInput,
+    StatusBadge,
+    StatusChip,
+    StatusStrip,
+    Toolbar
+} from "@i-components"
 
 import {
     DataGrid,
     GridColumn,
     KindIcon,
-    KindTag,
     VersionTag,
-    SearchField,
     Sparkline,
-    StateLabel,
     FormatBytes,
     FormatDuration,
     FormatPercent,
@@ -81,7 +86,7 @@ export const InstancesView = ({
             value: (row: any) => PackageName(row.packagePath),
             title: (row: any) => row.packagePath,
             render: (row: any) => <span className="iep-grid__namecell">
-                <KindIcon kind={row.kind} style={{ margin: 0, color: "var(--mp-muted)" }}/>
+                <KindIcon kind={row.kind} tone="muted"/>
                 <strong>{PackageName(row.packagePath)}</strong>
             </span>
         },
@@ -136,7 +141,7 @@ export const InstancesView = ({
             render: (row: any) => row.metrics && row.metrics.available
                 ? <span title={row.metrics.shared ? "medição compartilhada com o daemon" : undefined}>
                     {FormatBytes(row.metrics.rssBytes)}
-                    {row.metrics.shared && <Icon name="linkify" size="small" style={{ marginLeft: 4, opacity: .6 }}/>}
+                    {row.metrics.shared && <Icon name="linkify" size="small" tone="muted" style={{ marginLeft: 4 }}/>}
                 </span>
                 : "—"
         },
@@ -166,7 +171,7 @@ export const InstancesView = ({
             label: "estado",
             width: 118,
             sortable: true,
-            render: (row: any) => <StateLabel status={row.status}/>
+            render: (row: any) => <StatusBadge status={row.status}/>
         },
         {
             key: "open",
@@ -174,48 +179,58 @@ export const InstancesView = ({
             width: 108,
             render: (row: any) => <span style={{ display: "inline-flex", gap: 1 }}>
                 {
-                    OPEN_ACTIONS.map((action) => <button
+                    OPEN_ACTIONS.map((action) => <IconButton
                         key={action.kind}
-                        type="button"
-                        className="iep-iconbtn"
-                        title={`${action.label} — abre como painel`}
-                        onClick={(event: any) => { event.stopPropagation(); onOpenInstancePane(action.kind, row) }}>
-                        <Icon name={action.icon} style={{ margin: 0 }}/>
-                    </button>)
+                        size="sm"
+                        icon={action.icon}
+                        label={`${action.label} — abre como painel`}
+                        onClick={(event: any) => { event.stopPropagation(); onOpenInstancePane(action.kind, row) }}/>)
                 }
             </span>
         },
         {
             key: "actions",
             label: "",
-            width: 34,
-            render: (row: any) => <Icon
-                name="stop circle"
-                link
-                title="encerrar instância"
-                style={{ margin: 0, color: "var(--mp-danger)" }}
+            width: 40,
+            render: (row: any) => <IconButton
+                size="sm"
+                variant="danger"
+                icon="stop circle"
+                label="encerrar instância"
                 onClick={(event: any) => { event.stopPropagation(); onStopInstance(row) }}/>
         }
     ]
 
+    // Contagem por tipo direto no chip do filtro: o filtro deixa de ser um
+    // botão cego e passa a dizer quanto há de cada coisa antes do clique.
+    const _CountOfKind = (key: string) => key === "all"
+        ? instanceList.length
+        : instanceList.filter((instance: any) => instance.kind === key).length
+
     return <div className="iep-view">
-        <div className="iep-toolbar">
+        <Toolbar className="iep-view__toolbar">
             <span className="iep-toolbar__title">Instâncias</span>
-            <SearchField value={filter} onChange={setFilter} placeholder="filtrar instâncias"/>
-            {
-                KIND_FILTERS.map((entry) => <button
-                    key={entry.key}
-                    type="button"
-                    className={`iep-btn${kindFilter === entry.key ? " iep-btn--active" : ""}`}
-                    onClick={() => setKindFilter(entry.key)}>
-                    {entry.label}
-                </button>)
-            }
-            <span className="iep-toolbar__spacer"/>
+            <SearchInput
+                className="iep-searchfield"
+                value={filter}
+                onValueChange={setFilter}
+                placeholder="filtrar instâncias"/>
+            <StatusStrip>
+                {
+                    KIND_FILTERS.map((entry) => <StatusChip
+                        key={entry.key}
+                        label={entry.label}
+                        count={_CountOfKind(entry.key)}
+                        active={kindFilter === entry.key}
+                        tone={kindFilter === entry.key ? "info" : "neutral"}
+                        onClick={() => setKindFilter(entry.key)}/>)
+                }
+            </StatusStrip>
+            <Toolbar.Spacer/>
             <span className="iep-toolbar__subtitle">
                 {rows.length} de {instanceList.length} instâncias
             </span>
-        </div>
+        </Toolbar>
 
         <div className="iep-view__body iep-view__body--flush" style={{ padding: "var(--mp-space-2)" }}>
             <DataGrid

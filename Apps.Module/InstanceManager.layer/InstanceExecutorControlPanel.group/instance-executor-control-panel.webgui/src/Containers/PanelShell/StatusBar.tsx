@@ -1,12 +1,13 @@
 import * as React from "react"
 
-import { Icon } from "semantic-ui-react"
+import { Icon, StatusBar as ShellStatusBar } from "@i-components"
 
 import { Sparkline } from "../../Components/system"
 import { FormatBytes, FormatDuration, FormatPercent } from "../../Components/system"
 
 // Barra de status permanente, no rodapé — o "está tudo bem?" que fica visível
-// em qualquer tela, como no Gerenciador de Tarefas.
+// em qualquer tela, como no Gerenciador de Tarefas. A moldura é a `StatusBar`
+// do kit (dock do AppShell); o conteúdo dos grupos é de domínio.
 //
 // Traz o estado da máquina (CPU/memória com a forma dos últimos minutos), o que
 // o ecossistema está consumindo e, principalmente, se o daemon está de pé: sem
@@ -32,7 +33,7 @@ const StatusBar = ({
         ? (systemSample.usedMemBytes / systemSample.totalMemBytes) * 100
         : undefined
 
-    return <div className="iep-statusbar">
+    const left = <>
         <span className="iep-statusbar__group">
             <span className="iep-statusbar__label">cpu</span>
             <Sparkline points={cpuPoints} max={100} color="var(--iep-cpu)"/>
@@ -67,9 +68,9 @@ const StatusBar = ({
             <span className="iep-statusbar__label">tarefas</span>
             <span className="iep-statusbar__value">{taskCount}</span>
         </span>
+    </>
 
-        <span className="iep-statusbar__spacer"/>
-
+    const right = <>
         {
             systemSample && systemSample.loadAverage &&
             <span className="iep-statusbar__group iep-statusbar__group--secondary" title="carga média em 1, 5 e 15 minutos">
@@ -89,7 +90,9 @@ const StatusBar = ({
         }
 
         <span className={`iep-statusbar__group iep-statusbar__daemon${daemonOnline ? "" : " iep-statusbar__daemon--offline"}`}>
-            <span className={`iep-dot iep-dot--${daemonOnline ? "running" : "failed"}`}/>
+            <Icon
+                name={daemonOnline ? "check circle" : "warning circle"}
+                tone={daemonOnline ? "success" : "danger"}/>
             {
                 daemonOnline
                 ? <span className="iep-statusbar__value">daemon conectado</span>
@@ -98,11 +101,13 @@ const StatusBar = ({
             {
                 daemonOnline && !metricsOnline &&
                 <span title="o daemon está no ar, mas não está reportando desempenho — versão antiga ou /proc indisponível">
-                    <Icon name="warning sign" style={{ color: "var(--mp-warning)", margin: "0 0 0 6px" }}/>
+                    <Icon name="warning sign" tone="warning"/>
                 </span>
             }
         </span>
-    </div>
+    </>
+
+    return <ShellStatusBar className="iep-statusbar" left={left} right={right}/>
 }
 
 export default StatusBar

@@ -1,17 +1,20 @@
 import * as React from "react"
 import { useMemo } from "react"
 
-import { Icon } from "semantic-ui-react"
+import {
+    Button,
+    CopyableMonoText,
+    EntityHeader,
+    Icon,
+    KeyValueList,
+    Panel
+} from "@i-components"
 
 import {
-    Card,
-    KeyValueList,
     KindTag,
     VersionTag,
     OriginTag,
-    LogViewer,
     Meter,
-    StateLabel,
     TimeSeriesChart,
     FormatBytes,
     FormatDateTime,
@@ -19,8 +22,6 @@ import {
     FormatPercent,
     PackageName
 } from "../../Components/system"
-
-import { CopyableMonoText } from "@instance-components"
 
 // Painéis de UMA instância, hospedados pelo espaço de trabalho: "o que é isso"
 // (resumo) e "quanto está custando" (desempenho). Tarefas e log têm componentes
@@ -53,53 +54,61 @@ export const SummaryTab = ({ instance, sample, history, systemSample, onStopInst
     return <div className="iep-view__body">
         {
             (onStopInstance || onFocusInstance) &&
-            <div className="iep-entity">
-                <div className="iep-entity__body">
-                    <div className="iep-entity__title">
-                        <span className="iep-entity__name" title={instance.packagePath}>
-                            {PackageName(instance.packagePath)}
-                        </span>
-                        <KindTag kind={instance.kind}/>
-                        <VersionTag identity={instance.identity} installedVersion={instance.installedVersion}/>
-                        <OriginTag identity={instance.identity}/>
-                        <StateLabel status={instance.status}/>
-                    </div>
-                    <div className="iep-entity__meta">
-                        {instance.pid ? `pid ${instance.pid}` : instance.taskId != null ? `task ${instance.taskId}` : "—"}
-                        {"  ·  "}lançado por {instance.launchedBy || "—"}
-                    </div>
-                </div>
-                <div className="iep-entity__actions">
+            <EntityHeader
+                icon="cube"
+                title={PackageName(instance.packagePath)}
+                subtitle={instance.packagePath}
+                status={instance.status}
+                badges={<>
+                    <KindTag kind={instance.kind}/>
+                    <VersionTag identity={instance.identity} installedVersion={instance.installedVersion}/>
+                    <OriginTag identity={instance.identity}/>
+                </>}
+                meta={[
+                    { label: "processo", value: instance.pid
+                        ? `pid ${instance.pid}`
+                        : instance.taskId != null ? `task ${instance.taskId}` : "—" },
+                    { label: "lançado por", value: instance.launchedBy || "—" }
+                ]}
+                actions={<>
                     {
                         // Só instância desktop tem janela para trazer à frente.
                         instance.kind === "desktop" && onFocusInstance &&
-                        <button type="button" className="iep-btn" title="trazer a janela para frente" onClick={() => onFocusInstance(instance)}>
-                            <Icon name="external square" style={{ margin: 0 }}/> focar
-                        </button>
+                        <Button
+                            size="sm"
+                            icon="external square"
+                            title="trazer a janela para frente"
+                            onClick={() => onFocusInstance(instance)}>
+                            focar
+                        </Button>
                     }
                     {
                         // Instância externa não foi lançada pelo daemon: ele não
                         // tem o processo para encerrar. Oferecer o botão seria
                         // prometer uma ação que falha.
                         onStopInstance && instance.kind !== "external" &&
-                        <button type="button" className="iep-btn iep-btn--danger" title="encerrar instância" onClick={() => onStopInstance(instance)}>
-                            <Icon name="stop" style={{ margin: 0 }}/> encerrar
-                        </button>
+                        <Button
+                            size="sm"
+                            variant="danger"
+                            icon="stop"
+                            title="encerrar instância"
+                            onClick={() => onStopInstance(instance)}>
+                            encerrar
+                        </Button>
                     }
                     {
                         instance.kind === "external" &&
                         <span style={{ fontSize: "var(--mp-text-xs)", color: "var(--mp-muted)" }}
                             title="Quem iniciou este processo (ex.: o cliente de IA que subiu o MCP) é quem o encerra.">
-                            <Icon name="info circle"/> processo externo — encerrado por quem o iniciou
+                            <Icon name="info circle" spaced/> processo externo — encerrado por quem o iniciou
                         </span>
                     }
-                </div>
-            </div>
+                </>}/>
         }
 
         <div className="iep-panelgrid">
-            <Card title="identidade" icon="id card outline">
-                <KeyValueList entries={[
+            <Panel title="identidade" icon="id card outline">
+                <KeyValueList items={[
                     // Caminho de pacote quebrava a coluna em oito linhas: agora
                     // trunca no meio (começo e fim são o que identificam) e o
                     // valor inteiro sai pelo botão de copiar.
@@ -123,9 +132,9 @@ export const SummaryTab = ({ instance, sample, history, systemSample, onStopInst
                         ? `${instance.identity.branch || "?"} · ${instance.identity.commit}`
                         : undefined }
                 ]}/>
-            </Card>
+            </Panel>
 
-            <Card title="consumo agora" icon="dashboard">
+            <Panel title="consumo agora" icon="dashboard">
                 {
                     sample && sample.available
                     ? <div style={{ display: "flex", flexDirection: "column", gap: "var(--mp-space-3)" }}>
@@ -138,16 +147,16 @@ export const SummaryTab = ({ instance, sample, history, systemSample, onStopInst
                             percent={memoryPercent}
                             value={FormatBytes(sample.rssBytes)}
                             tone={memoryPercent === undefined ? "" : undefined}/>
-                        <KeyValueList entries={[
+                        <KeyValueList columns={2} items={[
                             { label: "processos", value: sample.processCount },
                             { label: "threads",   value: sample.threads },
-                            { label: "leitura",   value: FormatBytes(sample.ioReadBytes) },
-                            { label: "escrita",   value: FormatBytes(sample.ioWriteBytes) }
+                            { label: "leitura",   value: FormatBytes(sample.ioReadBytes), mono: true },
+                            { label: "escrita",   value: FormatBytes(sample.ioWriteBytes), mono: true }
                         ]}/>
                         {
                             sample.shared &&
                             <div style={{ fontSize: "var(--mp-text-xs)", color: "var(--mp-muted)" }}>
-                                <Icon name="info circle"/>
+                                <Icon name="info circle" spaced/>
                                 esta instância roda <strong>dentro do daemon</strong>: o consumo mostrado é o do
                                 processo do daemon inteiro, não só dela.
                             </div>
@@ -157,21 +166,21 @@ export const SummaryTab = ({ instance, sample, history, systemSample, onStopInst
                         sem medição disponível para esta instância.
                     </div>
                 }
-            </Card>
+            </Panel>
 
-            <Card title="tarefas internas" icon="sitemap">
+            <Panel title="tarefas internas" icon="sitemap">
                 {
                     taskEntries.length === 0
                     ? <div style={{ color: "var(--mp-muted)" }}>nenhuma tarefa reportada.</div>
-                    : <KeyValueList entries={taskEntries.map((status) => ({
+                    : <KeyValueList columns={2} items={taskEntries.map((status) => ({
                         label: status.toLowerCase(),
                         value: sample.tasksByStatus[status]
                     }))}/>
                 }
-            </Card>
+            </Panel>
         </div>
 
-        <Card title="cpu e memória — últimos minutos" icon="chart area">
+        <Panel title="cpu e memória — últimos minutos" icon="chart area">
             <TimeSeriesChart
                 height={130}
                 yMax={100}
@@ -182,7 +191,7 @@ export const SummaryTab = ({ instance, sample, history, systemSample, onStopInst
                     color: "var(--iep-cpu)",
                     points: history.map((item: any) => ({ x: item.at, y: item.cpuPercent }))
                 }]}/>
-        </Card>
+        </Panel>
     </div>
 }
 
@@ -214,41 +223,41 @@ export const PerformanceTab = ({ instance, sample, history }: any) => {
         {
             sample && sample.shared &&
             <div style={{ fontSize: "var(--mp-text-xs)", color: "var(--mp-muted)" }}>
-                <Icon name="info circle"/>
+                <Icon name="info circle" spaced/>
                 instância <strong>in-process</strong>: os números abaixo são do processo do daemon, que hospeda
                 esta e outras instâncias `app`.
             </div>
         }
 
         <div className="iep-panelgrid">
-            <Card title="cpu" icon="microchip">
+            <Panel title="cpu" icon="microchip">
                 <TimeSeriesChart
                     height={140}
                     yMax={100}
                     formatValue={(value: number) => `${value.toFixed(0)}%`}
                     series={cpuSeries}/>
-            </Card>
+            </Panel>
 
-            <Card title="memória residente" icon="database">
+            <Panel title="memória residente" icon="database">
                 <TimeSeriesChart
                     height={140}
                     formatValue={(value: number) => FormatBytes(value)}
                     series={memorySeries}/>
-            </Card>
+            </Panel>
 
-            <Card title="threads e processos" icon="sitemap">
+            <Panel title="threads e processos" icon="sitemap">
                 <TimeSeriesChart
                     height={140}
                     formatValue={(value: number) => value.toFixed(0)}
                     series={concurrencySeries}/>
-            </Card>
+            </Panel>
 
-            <Card title="entrada e saída em disco" icon="hdd outline">
+            <Panel title="entrada e saída em disco" icon="hdd outline">
                 <TimeSeriesChart
                     height={140}
                     formatValue={(value: number) => `${FormatBytes(value)}/s`}
                     series={ioSeries}/>
-            </Card>
+            </Panel>
         </div>
     </div>
 }

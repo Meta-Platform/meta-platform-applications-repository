@@ -1,8 +1,9 @@
 import * as React from "react"
 import { useMemo, useState } from "react"
 
+import { Button, Panel, Toolbar } from "@i-components"
+
 import {
-    Card,
     TimeSeriesChart,
     ChartSeries,
     FormatBytes,
@@ -66,12 +67,12 @@ const PerformanceView = ({ instanceList, historyByInstance, systemSample, system
     const hiddenCount = ordered.length - visible.length
 
     return <div className="iep-view">
-        <div className="iep-toolbar">
+        <Toolbar className="iep-view__toolbar">
             <span className="iep-toolbar__title">Desempenho</span>
             <span className="iep-toolbar__subtitle">
                 comparação entre as instâncias em execução
             </span>
-            <span className="iep-toolbar__spacer"/>
+            <Toolbar.Spacer/>
             {
                 systemSample &&
                 <span className="iep-toolbar__subtitle">
@@ -79,10 +80,10 @@ const PerformanceView = ({ instanceList, historyByInstance, systemSample, system
                     {" "}{FormatBytes(systemSample.usedMemBytes)} de {FormatBytes(systemSample.totalMemBytes)}
                 </span>
             }
-        </div>
+        </Toolbar>
 
         <div className="iep-view__body">
-            <Card title="instâncias no gráfico" icon="eye">
+            <Panel title="instâncias no gráfico" icon="eye">
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--mp-space-2)" }}>
                     {
                         ordered.length === 0
@@ -90,17 +91,17 @@ const PerformanceView = ({ instanceList, historyByInstance, systemSample, system
                         : ordered.map((instance: any) => {
                             const index = visible.findIndex((item: any) => item.instanceId === instance.instanceId)
                             const isVisible = index >= 0
-                            return <button
+                            return <Button
                                 key={instance.instanceId}
-                                type="button"
-                                className={`iep-btn${isVisible ? " iep-btn--active" : ""}`}
+                                size="sm"
+                                variant={isVisible ? "default" : "subtle"}
                                 title={instance.packagePath}
                                 onClick={() => _Toggle(instance.instanceId)}>
                                 <span
                                     className="iep-legend__swatch"
                                     style={{ background: isVisible ? SERIES_COLORS[index % SERIES_COLORS.length] : "var(--mp-muted-2)" }}/>
                                 {PackageName(instance.packagePath)}
-                            </button>
+                            </Button>
                         })
                     }
                 </div>
@@ -111,23 +112,23 @@ const PerformanceView = ({ instanceList, historyByInstance, systemSample, system
                         para continuar legível. O gráfico individual de cada uma está na aba Desempenho da instância.
                     </div>
                 }
-            </Card>
+            </Panel>
 
-            <Card title="cpu por instância" icon="microchip">
+            <Panel title="cpu por instância" icon="microchip">
                 <TimeSeriesChart
                     height={190}
                     formatValue={(value: number) => `${value.toFixed(0)}%`}
                     series={_Series("cpuPercent")}/>
-            </Card>
+            </Panel>
 
-            <Card title="memória residente por instância" icon="database">
+            <Panel title="memória residente por instância" icon="database">
                 <TimeSeriesChart
                     height={190}
                     formatValue={(value: number) => FormatBytes(value)}
                     series={_Series("rssBytes")}/>
-            </Card>
+            </Panel>
 
-            <Card title="cpu e memória da máquina" icon="server">
+            <Panel title="cpu e memória da máquina" icon="server">
                 <div className="iep-panelgrid">
                     <TimeSeriesChart
                         height={150}
@@ -152,7 +153,7 @@ const PerformanceView = ({ instanceList, historyByInstance, systemSample, system
                         }]}
                         showLegend={false}/>
                 </div>
-            </Card>
+            </Panel>
         </div>
     </div>
 }

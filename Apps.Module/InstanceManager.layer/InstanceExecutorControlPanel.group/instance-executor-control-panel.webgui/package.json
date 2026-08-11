@@ -22,7 +22,6 @@
     "redux": "^5.0.1",
     "sass": "^1.81.0",
     "sass-loader": "^16.0.3",
-    "semantic-ui-react": "^2.1.5",
     "source-map-loader": "^5.0.0",
     "style-loader": "^4.0.0",
     "ts-loader": "^9.5.1",

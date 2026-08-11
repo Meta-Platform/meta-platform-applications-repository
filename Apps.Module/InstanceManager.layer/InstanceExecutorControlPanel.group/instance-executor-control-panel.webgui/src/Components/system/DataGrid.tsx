@@ -1,19 +1,19 @@
 import * as React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 /**
  * Grid denso de dados, no espírito da lista de processos de um monitor de
  * sistema (Gerenciador de Tarefas / GNOME System Monitor / htop).
  *
- * Substitui a `<Table>` do semantic-ui, que era a causa direta do layout
- * quebrado do painel: com `tableLayout: fixed` e larguras em doze avos, o
- * conteúdo real (caminho de pacote, tipo de loader) não cabia e era cortado no
- * meio — sem tooltip, sem como alargar a coluna, e a página ainda ganhava
- * scroll horizontal.
+ * NÃO é o `DataTable` do kit, e a diferença é funcional, não estética: aqui a
+ * coluna é redimensionável arrastando a divisória, a ordenação é por clique no
+ * cabeçalho, a linha aceita recuo de árvore e o cabeçalho fica fixo na
+ * rolagem. Numa lista de processos essas quatro coisas são a ferramenta. O
+ * `DataTable` do kit é usado onde a tabela é só leitura (ver OverviewView).
  *
- * O que muda aqui:
+ * O que muda em relação a uma `<table>`:
  * - CSS grid com largura POR COLUNA, redimensionável arrastando a divisória;
  * - uma coluna elástica (`flex`) que absorve a sobra, em vez de todas
  *   encolherem juntas;
@@ -170,8 +170,7 @@ const DataGrid = ({
                                 isSorted &&
                                 <Icon
                                     className="iep-grid__sort"
-                                    name={sort!.direction === "asc" ? "caret up" : "caret down"}
-                                    style={{ margin: 0 }}/>
+                                    name={sort!.direction === "asc" ? "caret up" : "caret down"}/>
                             }
                             {
                                 !column.flex &&

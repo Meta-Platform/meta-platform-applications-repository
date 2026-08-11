@@ -1,7 +1,14 @@
 import * as React from "react"
 import { useEffect, useMemo, useState } from "react"
 
-import { Icon } from "semantic-ui-react"
+import {
+    Button,
+    EmptyState,
+    EntityHeader,
+    SearchInput,
+    StatusChip,
+    Toolbar
+} from "@i-components"
 
 import GetAPI from "../../Utils/GetAPI"
 
@@ -10,9 +17,6 @@ import {
     GridColumn,
     KindTag,
     LogViewer,
-    SearchField,
-    StatusDot,
-    EmptyState,
     FormatBytes,
     FormatDateTime,
     PackageName
@@ -75,8 +79,10 @@ const LogsView = ({ instanceList, selectedInstanceId, onSelectInstance, serverMa
             sortable: true,
             value: (row: any) => PackageName(row.packagePath),
             title: (row: any) => `${row.packagePath || "—"}\n${row.instanceId}`,
+            // "encerrada" só aparece quando é o caso: numa coluna estreita o
+            // rótulo "em execução" roubaria do nome do pacote, que é o que
+            // identifica a linha.
             render: (row: any) => <span className="iep-grid__namecell">
-                <StatusDot status={row.isRunning ? "RUNNING" : "STOPPED"}/>
                 <strong>{PackageName(row.packagePath)}</strong>
                 {!row.isRunning && <span className="iep-grid__detail">encerrada</span>}
             </span>
@@ -107,17 +113,21 @@ const LogsView = ({ instanceList, selectedInstanceId, onSelectInstance, serverMa
     ]
 
     return <div className="iep-view">
-        <div className="iep-toolbar">
+        <Toolbar className="iep-view__toolbar">
             <span className="iep-toolbar__title">Logs</span>
-            <SearchField value={filter} onChange={setFilter} placeholder="filtrar por pacote"/>
-            <button type="button" className="iep-btn" onClick={_Load} disabled={loading}>
-                <Icon name="refresh" style={{ margin: 0 }}/> atualizar
-            </button>
-            <span className="iep-toolbar__spacer"/>
+            <SearchInput
+                className="iep-searchfield"
+                value={filter}
+                onValueChange={setFilter}
+                placeholder="filtrar por pacote"/>
+            <Button size="sm" icon="refresh" onClick={_Load} disabled={loading}>
+                atualizar
+            </Button>
+            <Toolbar.Spacer/>
             <span className="iep-toolbar__subtitle">
                 {rows.length} log(s) — inclui instâncias já encerradas
             </span>
-        </div>
+        </Toolbar>
 
         <div className="iep-split">
             <div className="iep-split__master" style={{ flexBasis: "38%" }}>
@@ -136,39 +146,31 @@ const LogsView = ({ instanceList, selectedInstanceId, onSelectInstance, serverMa
                 {
                     selected
                     ? <>
-                        <div className="iep-entity">
-                            <div className="iep-entity__body">
-                                <div className="iep-entity__title">
-                                    <span className="iep-entity__name" title={selected.packagePath}>
-                                        {PackageName(selected.packagePath)}
-                                    </span>
-                                    {selected.kind && <KindTag kind={selected.kind}/>}
-                                    {
-                                        !selected.isRunning &&
-                                        <span className="iep-state iep-state--stopped">
-                                            <span className="iep-dot iep-dot--stopped"/>encerrada
-                                        </span>
-                                    }
-                                </div>
-                                <div className="iep-entity__meta">
-                                    {selected.instanceId}
-                                    {"  ·  "}{FormatBytes(selected.sizeBytes)}
-                                    {"  ·  "}última escrita em {FormatDateTime(selected.modifiedAt)}
-                                </div>
-                            </div>
-                            {
+                        <EntityHeader
+                            icon="file alternate outline"
+                            title={PackageName(selected.packagePath)}
+                            subtitle={selected.packagePath}
+                            badges={<>
+                                {selected.kind && <KindTag kind={selected.kind}/>}
+                                <StatusChip
+                                    tone={selected.isRunning ? "success" : "neutral"}
+                                    label={selected.isRunning ? "em execução" : "encerrada"}/>
+                            </>}
+                            technicalRef={{ label: "instância", value: selected.instanceId, maxChars: 30 }}
+                            meta={[
+                                { label: "tamanho", value: FormatBytes(selected.sizeBytes) },
+                                { label: "última escrita", value: FormatDateTime(selected.modifiedAt) }
+                            ]}
+                            actions={
                                 selected.isRunning &&
-                                <div className="iep-entity__actions">
-                                    <button
-                                        type="button"
-                                        className="iep-btn"
-                                        title="abrir a instância no monitor"
-                                        onClick={() => onSelectInstance(selected.instanceId, true)}>
-                                        <Icon name="external" style={{ margin: 0 }}/> ver instância
-                                    </button>
-                                </div>
-                            }
-                        </div>
+                                <Button
+                                    size="sm"
+                                    icon="external"
+                                    title="abrir a instância no monitor"
+                                    onClick={() => onSelectInstance(selected.instanceId, true)}>
+                                    ver instância
+                                </Button>
+                            }/>
                         <div className="iep-view__body iep-view__body--flush" style={{ padding: "var(--mp-space-2)" }}>
                             <LogViewer
                                 key={selected.instanceId}
@@ -179,7 +181,7 @@ const LogsView = ({ instanceList, selectedInstanceId, onSelectInstance, serverMa
                     : <EmptyState
                         icon="file alternate outline"
                         title="selecione um log"
-                        hint="o log de uma instância guarda a saída do processo e o motivo do término — inclusive depois que ela morre."/>
+                        message="o log de uma instância guarda a saída do processo e o motivo do término — inclusive depois que ela morre."/>
                 }
             </div>
         </div>
