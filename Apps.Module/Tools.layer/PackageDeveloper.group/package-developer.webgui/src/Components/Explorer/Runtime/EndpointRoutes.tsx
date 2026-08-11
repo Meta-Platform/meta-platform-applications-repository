@@ -1,11 +1,11 @@
 import * as React from "react"
 import { useEffect, useState } from "react"
 import { connect } from "react-redux"
-import { Loader } from "semantic-ui-react"
+import { Banner, Spinner } from "@i-components"
 
 import GetRequestByServer from "../../../Utils/GetRequestByServer"
 import CopyableCodeValue from "../ui/CopyableCodeValue"
-import { Alert, Badge, CollapsibleSection } from "../ui/Primitives"
+import { Badge, CollapsibleSection } from "../ui/Primitives"
 
 // Rotas de um endpoint do tipo controller. O método HTTP e o caminho de cada
 // rota vivem no api-template (src/APIs/*.api.json), não no endpoint-group.json —
@@ -57,8 +57,8 @@ const EndpointRoutes = ({ HTTPServerManager, workspace, pkg, apiTemplate, baseUr
         return () => { cancelled = true }
     }, [workspace, pkg.name, pkg.ext, apiTemplate])
 
-    if(loading) return <Loader active inline size="small" />
-    if(error) return <Alert tone="warning">{error}</Alert>
+    if(loading) return <Spinner size="sm"/>
+    if(error) return <Banner tone="warning">{error}</Banner>
 
     const endpoints = (api && Array.isArray(api.endpoints)) ? api.endpoints : []
     if(!endpoints.length) return null

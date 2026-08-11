@@ -1,20 +1,12 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { connect } from "react-redux"
-import { Button, Modal, List, Input, Icon, Label } from "semantic-ui-react"
-import styled from "styled-components"
+import { Badge, Button, Dialog, Icon, IconButton, TextInput } from "@i-components"
 
 import GetRequestByServer from "../Utils/GetRequestByServer"
 
-const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 
-const DirList = styled(List)`
-    height: 45vh;
-    overflow: auto;
-    border: 1px solid #d4d4d5;
-    border-radius: 4px;
-    padding: 6px!important;
-`
+const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 
 type ModalProps = {
     open         : boolean
@@ -48,49 +40,51 @@ const DirectoryExplorer = ({open, initialPath, onClose, onSelect, HTTPServerMana
         if(open) browse(initialPath || "")
     }, [open])
 
-    return <Modal open={open} closeIcon size="small" onClose={() => onClose()}>
-                <Modal.Header><Icon name="folder open" /> Abrir repositório</Modal.Header>
-                <Modal.Content>
-                    <Input
-                        fluid
-                        value={currentPath}
-                        onChange={(e) => setCurrentPath(e.target.value)}
-                        action={{ icon: "arrow right", title: "Ir", onClick: () => browse(currentPath) }}
-                        label={{ icon: "folder open" }} />
-                    { error && <p style={{color:"#db2828", marginTop:6}}>{error}</p> }
-                    <DirList selection animated>
-                        <List.Item onClick={() => browse(parent)}>
-                            <List.Icon name="level up alternate" />
-                            <List.Content><List.Header>..</List.Header></List.Content>
-                        </List.Item>
-                        {
-                            directories.map(({name, path, isRepository}:any, key:number) =>
-                                <List.Item key={key}
-                                    onClick={() => browse(path)}
-                                    style={isRepository ? {background:"#f0f7ff", borderRadius:4} : undefined}>
-                                    <List.Icon
-                                        name={isRepository ? "database" : "folder"}
-                                        color={isRepository ? "blue" : "yellow"} />
-                                    <List.Content>
-                                        <List.Header>
-                                            {name}
-                                            { isRepository &&
-                                                <Label color="blue" size="mini" horizontal style={{marginLeft:8}}>repositório</Label> }
-                                        </List.Header>
-                                    </List.Content>
-                                </List.Item>)
-                        }
-                    </DirList>
-                </Modal.Content>
-                <Modal.Actions>
+    return <Dialog
+                open={open}
+                size="md"
+                icon="folder open"
+                title="Abrir repositório"
+                onClose={() => onClose()}
+                actions={<>
                     <Button onClick={() => onClose()}>Cancelar</Button>
                     <Button
-                        color="teal"
+                        variant="primary"
                         icon="folder open"
-                        content="Abrir este diretório"
-                        onClick={() => { onSelect(currentPath); onClose() }} />
-                </Modal.Actions>
-            </Modal>
+                        onClick={() => { onSelect(currentPath); onClose() }}>Abrir este diretório</Button>
+                </>}>
+                <div className="pdx-path-bar">
+                    <span className="pdx-path-bar__prefix"><Icon name="folder open"/></span>
+                    <TextInput
+                        className="pdx-path-bar__input"
+                        value={currentPath}
+                        onChange={(e:any) => setCurrentPath(e.target.value)}/>
+                    <IconButton
+                        icon="arrow right"
+                        label="Ir"
+                        onClick={() => browse(currentPath)}/>
+                </div>
+                { error && <p className="pdx-dir-error">{error}</p> }
+                <div className="pdx-dir-list">
+                    <button type="button" className="pdx-dir-row" onClick={() => browse(parent)}>
+                        <Icon name="level up alternate" />
+                        <span className="pdx-dir-row__name">..</span>
+                    </button>
+                    {
+                        directories.map(({name, path, isRepository}:any, key:number) =>
+                            <button type="button" key={key}
+                                onClick={() => browse(path)}
+                                className={`pdx-dir-row ${isRepository ? "is-repo" : ""}`.trim()}>
+                                <Icon
+                                    name={isRepository ? "database" : "folder"}
+                                    color={isRepository ? "blue" : "yellow"} />
+                                <span className="pdx-dir-row__name">{name}</span>
+                                { isRepository &&
+                                    <Badge className="pdx-badge-repo">repositório</Badge> }
+                            </button>)
+                    }
+                </div>
+            </Dialog>
 }
 
 const mapStateToProps = ({HTTPServerManager}:any) => ({ HTTPServerManager })

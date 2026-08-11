@@ -6,12 +6,14 @@ import ReactFlow, {
 } from "reactflow"
 import "reactflow/dist/style.css"
 
+import { EmptyState } from "@i-components"
+
 import { GraphScope, RuntimeGraph, buildRuntimeGraph, collectNodeKinds } from "../../../Domain/runtimeGraph"
 import { PackageModel } from "../../../Domain/packageModel"
 import { EDGE_THEME, NODE_THEME } from "./diagramTheme"
 import BootFlowNode from "./BootFlowNode"
 import layoutGraph from "./layoutGraph"
-import { EmptyState, IconButton, Segmented } from "../ui/Primitives"
+import { IconButton, Segmented } from "../ui/Primitives"
 
 // Diagrama da topologia de uma capacidade do runtime — do boot inteiro a uma
 // seção só (endpoints, serviços, comandos…). Interativo: zoom, pan, ajustar à
@@ -249,7 +251,7 @@ const RuntimeDiagramView = ({ model, scope = "boot", selectedId, onSelectItem, o
 
     if(!graph.nodes.length)
         return <EmptyState icon="sitemap" title="Sem topologia para desenhar"
-            hint={emptyHint || "Esta capacidade não declara nada que possa ser ligado num diagrama."} />
+            message={emptyHint || "Esta capacidade não declara nada que possa ser ligado num diagrama."} />
 
     const canvas = <ReactFlowProvider>
         <Canvas key={`${scope}:${fullscreen}`} graph={graph} selectedId={selectedId}

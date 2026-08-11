@@ -1,13 +1,12 @@
 import * as React             from "react"
 import {useEffect}            from "react"
-import {List, Loader}         from "semantic-ui-react"
 import { connect }            from "react-redux"
 import { bindActionCreators } from "redux"
-import styled                 from "styled-components"
 
-import { QueryParamsActionsCreator } from "@i-components"
+import { Icon, Spinner, QueryParamsActionsCreator } from "@i-components"
 import PackageManagerActionsCreator from "../Actions/PackageManager.actionsCreator"
 import useExplorerItemState  from "../Hooks/useExplorerItemState"
+
 
 type ExplorerItemProps =
 {
@@ -29,28 +28,12 @@ type ExplorerItemProps =
     SetUIRoutes       : Function
 }
 
-//TODO Unificar
-const ListItemStyled_ = styled(List.Item)`
-    padding: 5px 10px 5px 10px!important;
-    background-color: ${props => props.selected && "#e0e0e0"};
-    &:hover{
-        background-color: #e0e0e0;
-    }
-`
-const ListItemStyled__ = styled(List.Item)`
-    padding: 5px 10px 5px 10px!important;
-    background-color: ${props => props.selected && "#cecece"};
-    &:hover{
-        background-color: #cecece;
-    }
-`
-
 const ExplorerItem = ({
     title,
     iconItem,
     iconSubItem,
     workspace,
-    packageName, 
+    packageName,
     ext,
     serverName,
     apiName,
@@ -65,8 +48,8 @@ const ExplorerItem = ({
 }:ExplorerItemProps) => {
 
     const { data, isExpanded, setExpansion} = useExplorerItemState({
-        workspace, 
-        packageName, 
+        workspace,
+        packageName,
         ext,
         serverName,
         apiName,
@@ -87,7 +70,7 @@ const ExplorerItem = ({
         const {endpointName} = QueryParams
         return !!(endpointName && endpointName === `${apiName}.${summary}`)
     }
-    
+
     useEffect(() => {
         if(data){
             if(apiName === "WebguiExplorer"){
@@ -121,38 +104,37 @@ const ExplorerItem = ({
         AddQueryParam("endpointName", `${apiName}.${summary}`)
     }
 
-    return <ListItemStyled_ 
-                selected={isSelected}
+    return <div
+                className={`pdx-tree-item pdx-explorer-item ${isSelected() ? "is-selected" : ""}`.trim()}
                 onClick={handleChangeCollection}>
-                <List.Icon name={iconItem} />
-                <List.Content>
-                    <List.Header><a onClick={()=> setExpansion(!isExpanded)}>{title} {data && data.length > 0 && `(${data.length})`}</a>{!data && !isExpanded && <Loader size="mini" active inline/>}</List.Header>
+                <Icon name={iconItem} className="pdx-tree-item__icon"/>
+                <div className="pdx-tree-item__content">
+                    <div className="pdx-tree-item__header"><a onClick={()=> setExpansion(!isExpanded)}>{title} {data && data.length > 0 && `(${data.length})`}</a>{!data && !isExpanded && <Spinner size="sm"/>}</div>
                     {
                         data
                         && isExpanded
-                        && <List.List>
+                        && <div className="pdx-tree-sublist">
                             {
                                 data
                                 .map((item:any, key:any) =>
-                                    <ListItemStyled__ 
-                                        key={key} 
-                                        selected={
-                                            isSelected 
-                                            && !!(
-                                                QueryParams.item 
-                                                && QueryParams.item === `${summary}.${formatter ? formatter(item) : item}`)}
+                                    <div
+                                        key={key}
+                                        className={`pdx-tree-item pdx-explorer-subitem ${
+                                            !!(
+                                                QueryParams.item
+                                                && QueryParams.item === `${summary}.${formatter ? formatter(item) : item}`) ? "is-selected" : ""}`.trim()}
                                         onClick={() => AddQueryParam("item", `${summary}.${formatter ? formatter(item) : item}`)}>
-                                        <List.Icon name={iconSubItem} />
-                                        <List.Content>
-                                            <List.Header><a>{formatter ? formatter(item) : item}</a></List.Header>
-                                        </List.Content>
-                                    </ListItemStyled__>)   
+                                        <Icon name={iconSubItem} className="pdx-tree-item__icon"/>
+                                        <div className="pdx-tree-item__content">
+                                            <div className="pdx-tree-item__header"><a>{formatter ? formatter(item) : item}</a></div>
+                                        </div>
+                                    </div>)
                             }
-                            </List.List>
+                            </div>
                     }
-                    {!data && isExpanded && <Loader size="mini" active inline/>}
-                </List.Content>
-            </ListItemStyled_>
+                    {!data && isExpanded && <Spinner size="sm"/>}
+                </div>
+            </div>
 }
 
 const mapDispatchToProps = (dispatch:any) =>

@@ -1,10 +1,10 @@
 import * as React from "react"
 import { useMemo, useState } from "react"
-import { Icon } from "semantic-ui-react"
+import { EmptyState, Icon } from "@i-components"
 
 import { RuntimeItem, RuntimeSection } from "../../../Domain/packageModel"
 import StructureTree from "./StructureTree"
-import { EmptyState, IconButton, Segmented } from "../ui/Primitives"
+import { IconButton, Segmented } from "../ui/Primitives"
 
 // A seção na visão ESTRUTURA: barra de trabalho (filtrar, ordenar, abrir/fechar
 // tudo) + a árvore de detalhes. Uma seção com dezenas de rotas precisa de filtro
@@ -76,8 +76,8 @@ const SectionView = ({ section, selectedId, onSelect, onOpenRef, workspace, pkg 
         {
             items.length === 0
             ? <EmptyState icon="search" title="Nada corresponde ao filtro"
-                hint={`Nenhum item de ${section.title.toLowerCase()} casa com “${query.trim()}”.`}
-                action={<IconButton icon="times" label="Limpar filtro" text="Limpar filtro" onClick={() => setQuery("")} />} />
+                message={`Nenhum item de ${section.title.toLowerCase()} casa com “${query.trim()}”.`}
+                actions={<IconButton icon="times" label="Limpar filtro" text="Limpar filtro" onClick={() => setQuery("")} />} />
             : <StructureTree key={`${section.id}:${openAll}`} items={items} selectedId={selectedId}
                 onSelect={onSelect} onOpenRef={onOpenRef} workspace={workspace} pkg={pkg}
                 forceOpen={openAll > 0 ? true : openAll < 0 ? false : undefined} />

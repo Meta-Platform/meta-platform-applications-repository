@@ -1,6 +1,6 @@
 import * as React             from "react"
 import {useEffect}            from "react"
-import { Dimmer, Loader}      from "semantic-ui-react"
+import { LoadingOverlay }     from "@i-components"
 //@ts-ignore
 import { Routes, BrowserRouter, HashRouter, Route }  from "react-router-dom"
 import { connect }            from "react-redux"
@@ -79,10 +79,8 @@ const AppContainer = ({
 				}
 				</Routes>
 			</HashRouter>
-		: <Dimmer active>
-				<Loader>loading web services running...</Loader>
-			</Dimmer>
-	
+		: <LoadingOverlay message="carregando serviços web em execução…"/>
+
 }
 
 const mapDispatchToProps = (dispatch:any) =>

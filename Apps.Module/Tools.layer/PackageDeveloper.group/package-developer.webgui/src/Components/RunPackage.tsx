@@ -1,11 +1,12 @@
 import * as React from "react"
 import { connect } from "react-redux"
-import { Button, Label } from "semantic-ui-react"
+import { Button, ButtonGroup } from "@i-components"
 
 import usePackageTasks from "../Hooks/usePackageTasks"
 import PackageConsole from "./PackageConsole"
 
-const STATUS_COLOR:any = { RUNNING: "green", STOPPED: "grey", ERROR: "red", STOPPING: "yellow" }
+// Tom do selo de estado — mesmas cores do kit (.mp-status-badge--*).
+const STATUS_TONE:any = { RUNNING: "success", STOPPED: "done", ERROR: "danger", STOPPING: "warning" }
 
 const RunPackage = ({ HTTPServerManager, packageSelected, workspace, terminalHeight }:any) => {
 
@@ -15,18 +16,20 @@ const RunPackage = ({ HTTPServerManager, packageSelected, workspace, terminalHei
     const isRunning = status === "RUNNING"
 
     return <>
-        <Button.Group size="mini">
-            <Button color="orange" icon="boxes" content="Install deps"
-                loading={busy === "install"} disabled={!!busy} onClick={() => install()} />
-            <Button color="blue" icon="play" content="Run"
-                loading={busy === "start"} disabled={!!busy || isRunning} onClick={() => start()} />
-            <Button color="teal" icon="bug" content="Debug"
-                loading={busy === "debug"} disabled={!!busy || isRunning} onClick={() => debug()} />
-            <Button color="red" icon="stop" content="Stop"
-                loading={busy === "stop"} disabled={!!busy || !isRunning} onClick={() => stop()} />
-        </Button.Group>
+        <ButtonGroup>
+            <Button size="sm" variant="default" icon="boxes"
+                loading={busy === "install"} disabled={!!busy} onClick={() => install()}>Install deps</Button>
+            <Button size="sm" variant="primary" icon="play"
+                loading={busy === "start"} disabled={!!busy || isRunning} onClick={() => start()}>Run</Button>
+            <Button size="sm" variant="default" icon="bug"
+                loading={busy === "debug"} disabled={!!busy || isRunning} onClick={() => debug()}>Debug</Button>
+            <Button size="sm" variant="danger" icon="stop"
+                loading={busy === "stop"} disabled={!!busy || !isRunning} onClick={() => stop()}>Stop</Button>
+        </ButtonGroup>
         {" "}
-        <Label color={STATUS_COLOR[status] || "grey"}>{status}</Label>
+        <span className={`mp-status-badge mp-status-badge--${STATUS_TONE[status] || "done"} mp-status-badge--sm`}>
+            <span className="mp-status-badge__text">{status}</span>
+        </span>
 
         <div style={{marginTop:10}}>
             <PackageConsole workspace={workspace} packageSelected={packageSelected} terminalHeight={terminalHeight} />

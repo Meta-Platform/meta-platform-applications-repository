@@ -6,6 +6,10 @@ module.exports = {
     roots: ["<rootDir>/test"],
     moduleNameMapper: {
         "\\.(css|scss|sass)$": "identity-obj-proxy",
+        // O alias @i-components existe só no tsconfig e no webpack do runtime;
+        // o resolvedor do jest precisa do mesmo caminho para a fonte do kit.
+        "^@i-components$": "<rootDir>/../../../../../ecosystem-core-repository/UserInterface.Module/Libraries.layer/i-components.uilib/src",
+        "^@i-components/(.*)$": "<rootDir>/../../../../../ecosystem-core-repository/UserInterface.Module/Libraries.layer/i-components.uilib/src/$1",
         // reactflow publica CSS e ESM; o diagrama é testado pelo adapter (bootGraph).
         "^reactflow$": "<rootDir>/test/__mocks__/reactflow.tsx",
         "^axios$": "<rootDir>/test/__mocks__/axios.ts",

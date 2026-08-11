@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState } from "react"
-import { Button, Modal, Form, Input, Message, Icon } from "semantic-ui-react"
+import { Dialog, Button, FormField, TextInput, Banner } from "@i-components"
 
 import DirectoryExplorer from "./DirectoryExplorer.modal"
 
@@ -22,42 +22,43 @@ const CreateRepositoryModal = ({ open, onClose, onCreate }:any) => {
             .catch((e:any) => setError(String((e && e.message) || "Não foi possível criar o repositório (já existe?).")))
     }
 
-    return <Modal open={open} closeIcon size="tiny" onClose={() => onClose()}>
-        <Modal.Header><Icon name="plus square outline" /> Criar repositório</Modal.Header>
-        <Modal.Content>
-            <Form>
-                <Form.Field>
-                    <label>nome do repositório</label>
-                    <input placeholder="MeuRepo" value={name} onChange={(e) => setName(e.target.value)} />
-                </Form.Field>
-                <Form.Field>
-                    <label>criar dentro de</label>
-                    <Input
-                        placeholder="diretório-pai"
-                        value={parentPath}
-                        onChange={(e) => setParent(e.target.value)}
-                        action={{ icon: "folder open", content: "Procurar", onClick: () => setBrowser(true) }} />
-                </Form.Field>
-                {
-                    name && parentPath &&
-                    <p style={{opacity:0.6, fontSize:"0.85em", wordBreak:"break-all"}}>
-                        será criado em: {parentPath.replace(/\/$/, "")}/{name}
-                    </p>
-                }
-                { error && <Message negative size="tiny">{error}</Message> }
-            </Form>
-        </Modal.Content>
-        <Modal.Actions>
-            <Button onClick={() => onClose()}>Cancelar</Button>
-            <Button color="teal" icon="plus" content="Criar" onClick={handleCreate} />
-        </Modal.Actions>
+    return <>
+        <Dialog
+            open={open}
+            size="md"
+            icon="plus square outline"
+            title="Criar repositório"
+            onClose={() => onClose()}
+            actions={<>
+                <Button onClick={() => onClose()}>Cancelar</Button>
+                <Button variant="primary" icon="plus" onClick={handleCreate}>Criar</Button>
+            </>}>
+            <FormField label="nome do repositório" htmlFor="pdx-newrepo-name">
+                <TextInput id="pdx-newrepo-name" placeholder="MeuRepo" value={name}
+                    onChange={(e:any) => setName(e.target.value)} />
+            </FormField>
+            <FormField label="criar dentro de" htmlFor="pdx-newrepo-parent">
+                <div className="pdx-input-row">
+                    <TextInput id="pdx-newrepo-parent" placeholder="diretório-pai" value={parentPath}
+                        onChange={(e:any) => setParent(e.target.value)} />
+                    <Button icon="folder open" onClick={() => setBrowser(true)}>Procurar</Button>
+                </div>
+            </FormField>
+            {
+                name && parentPath &&
+                <p className="pdx-dialog-hint">
+                    será criado em: {parentPath.replace(/\/$/, "")}/{name}
+                </p>
+            }
+            { error && <Banner tone="danger">{error}</Banner> }
+        </Dialog>
 
         <DirectoryExplorer
             open={browserOpen}
             initialPath={parentPath}
             onClose={() => setBrowser(false)}
             onSelect={(p:string) => setParent(p)} />
-    </Modal>
+    </>
 }
 
 export default CreateRepositoryModal

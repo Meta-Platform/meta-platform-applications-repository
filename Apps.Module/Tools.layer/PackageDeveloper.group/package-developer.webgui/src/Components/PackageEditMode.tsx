@@ -1,8 +1,8 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { connect } from "react-redux"
-import { Menu, Icon, Button, Segment, Label, Popup, Header, Confirm, Dropdown } from "semantic-ui-react"
-import styled from "styled-components"
+import { Icon, Button, Badge, Tooltip, Popover, ConfirmDialog, EmptyState } from "@i-components"
+
 
 import GetRequestByServer from "../Utils/GetRequestByServer"
 import CodeEditor from "./CodeEditor"
@@ -43,52 +43,8 @@ const tabCrumbs = (t:any):string[] => {
     return [pkg, ...String(t.filePath || "").split("/").filter(Boolean)]
 }
 
-const Shell = styled.div`
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - var(--pd-header-h));
-    border-top: 2px solid var(--mp-accent, #14D6C8);
-`
-const Wrap = styled.div`
-    display: flex;
-    flex: 1;
-    min-height: 0;
-    background: var(--mp-edit-tint, rgba(120,95,190,.06));
-`
-const Rail = styled.div`
-    width: 54px;
-    background: #2a2d34;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 8px 0;
-    gap: 6px;
-`
-const NavCol = styled.div`
-    width: 250px;
-    border-right: var(--mp-border);
-    background: var(--mp-paper);
-    overflow: auto;
-    padding: 8px;
-`
-const EditorArea = styled.div`
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    min-width: 0;
-`
-// Botão de pacote na Rail: mostra o "×" de fechar ao passar o mouse.
-const RailBtn = styled.div`
-    position: relative;
-    & > .close {
-        position: absolute; top: -5px; right: -3px;
-        width: 15px; height: 15px; border-radius: 50%;
-        background: #c0392b; color: #fff; font-size: 10px; line-height: 15px; text-align: center;
-        cursor: pointer; display: none;
-    }
-    &:hover > .close { display: block; }
-`
+// A moldura (Shell/Wrap/Rail/NavCol/EditorArea/RailBtn) e as abas de arquivo
+// vivem em ../Styles/components.css, sob o prefixo .pdx-.
 
 const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, onRemovePackage }:any) => {
 
@@ -116,6 +72,7 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
     const focusPanel = (tab:string) => { setRunMounted(true); setRunOpen(true); setPanelFocus((f:any) => ({ tab, n: f.n + 1 })) }
     const [inspectorOpen, setInspectorOpen] = useState(true)                  // painel inspector (direita)
     const [goto, setGoto] = useState<any>({ key:"", line:0, n:0 })            // rolar até linha (Search/Outline)
+    const [targetOpen, setTargetOpen] = useState(false)                       // menu do alvo de execução
 
     const openCtx = (e:any, items:any[]) => {
         e.preventDefault(); e.stopPropagation()
@@ -440,38 +397,46 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
 
     // Sessão sem pacotes (ex.: editar um Grupo vazio): nada para editar.
     if(!activePkg){
-        return <Shell><Wrap>
-            <Rail className="edit-rail">
-                <Popup content="Voltar à navegação" position="right center" trigger={
-                    <Button basic icon="arrow left" size="small" onClick={onClose} />} />
-            </Rail>
-            <div style={{flex:1, display:"flex", alignItems:"center", justifyContent:"center"}}>
-                <Header icon><Icon name="inbox" color="grey" />Este grupo não tem pacotes para editar.</Header>
+        return <div className="pdx-edit-shell"><div className="pdx-edit-wrap">
+            <div className="pdx-rail">
+                <Tooltip content="Voltar à navegação" position="right">
+                    <Button variant="subtle" size="sm" icon="arrow left" onClick={onClose} />
+                </Tooltip>
             </div>
-        </Wrap></Shell>
+            <div className="pdx-empty-center">
+                <EmptyState icon="inbox" title="Este grupo não tem pacotes para editar." />
+            </div>
+        </div></div>
     }
 
-    return <Shell><Wrap>
-        <Rail className="edit-rail">
-            <Popup content="Voltar à navegação" position="right center" trigger={
-                <Button basic icon="arrow left" size="small" onClick={onClose} />} />
-            <div style={{width:32, height:1, background:"var(--mp-border-default)", margin:"2px 0"}} />
-            <Popup content="Metadados" position="right center" size="small" trigger={
-                <Button basic={navMode !== "tipo"} primary={navMode === "tipo"} icon="sitemap" size="small" onClick={() => setNavMode("tipo")} />} />
-            <Popup content="Arquivos" position="right center" size="small" trigger={
-                <Button basic={navMode !== "arquivos"} primary={navMode === "arquivos"} icon="folder" size="small" onClick={() => setNavMode("arquivos")} />} />
-            <Popup content="Search" position="right center" size="small" trigger={
-                <Button basic={navMode !== "search"} primary={navMode === "search"} icon="search" size="small" onClick={() => setNavMode("search")} />} />
-            <Popup content="Outline" position="right center" size="small" trigger={
-                <Button basic={navMode !== "outline"} primary={navMode === "outline"} icon="list layout" size="small" onClick={() => setNavMode("outline")} />} />
-            <Popup content={`Problems${problems.length ? ` (${problems.length})` : ""}`} position="right center" size="small" trigger={
-                <div style={{position:"relative"}}>
-                    <Button basic icon="warning circle" size="small" onClick={() => focusPanel("problems")} />
-                    { problems.length > 0 && <span className="ide-badge" style={{position:"absolute", top:-1, right:-1, pointerEvents:"none"}}>{problems.length}</span> }
-                </div>} />
-            <Popup content="Inspector" position="right center" size="small" trigger={
-                <Button basic={!inspectorOpen} primary={inspectorOpen} icon="info" size="small" onClick={() => setInspectorOpen((o) => !o)} />} />
-            <div style={{width:32, height:1, background:"var(--mp-border-default)", margin:"4px 0"}} />
+    return <div className="pdx-edit-shell"><div className="pdx-edit-wrap">
+        <div className="pdx-rail">
+            <Tooltip content="Voltar à navegação" position="right">
+                <Button variant="subtle" size="sm" icon="arrow left" onClick={onClose} />
+            </Tooltip>
+            <div className="pdx-rail-sep" />
+            <Tooltip content="Metadados" position="right">
+                <Button variant={navMode === "tipo" ? "primary" : "subtle"} icon="sitemap" size="sm" onClick={() => setNavMode("tipo")} />
+            </Tooltip>
+            <Tooltip content="Arquivos" position="right">
+                <Button variant={navMode === "arquivos" ? "primary" : "subtle"} icon="folder" size="sm" onClick={() => setNavMode("arquivos")} />
+            </Tooltip>
+            <Tooltip content="Search" position="right">
+                <Button variant={navMode === "search" ? "primary" : "subtle"} icon="search" size="sm" onClick={() => setNavMode("search")} />
+            </Tooltip>
+            <Tooltip content="Outline" position="right">
+                <Button variant={navMode === "outline" ? "primary" : "subtle"} icon="list layout" size="sm" onClick={() => setNavMode("outline")} />
+            </Tooltip>
+            <Tooltip content={`Problems${problems.length ? ` (${problems.length})` : ""}`} position="right">
+                <span className="pdx-rail-slot">
+                    <Button variant="subtle" icon="warning circle" size="sm" onClick={() => focusPanel("problems")} />
+                    { problems.length > 0 && <span className="ide-badge pdx-rail-count">{problems.length}</span> }
+                </span>
+            </Tooltip>
+            <Tooltip content="Inspector" position="right">
+                <Button variant={inspectorOpen ? "primary" : "subtle"} icon="info" size="sm" onClick={() => setInspectorOpen((o) => !o)} />
+            </Tooltip>
+            <div className="pdx-rail-sep is-wide" />
             {
                 // Agrupa os pacotes por (repo+módulo+layer) — mesma cor por origem.
                 (() => {
@@ -483,38 +448,33 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
                         g.items.push({ pkg, ctx })
                     })
                     return groups.map((g:any, gi:number) =>
-                        <div key={g.key} style={{width:"100%", display:"flex", flexDirection:"column", alignItems:"center", gap:6}}>
-                            { gi > 0 && <div style={{width:34, height:2, background:g.color, opacity:0.6, borderRadius:2, margin:"3px 0"}} /> }
+                        <div key={g.key} className="pdx-rail-group">
+                            { gi > 0 && <div className="pdx-rail-group-bar" style={{background:g.color}} /> }
                             {
                                 g.items.map(({ pkg, ctx }:any, i:number) => {
                                     const isActive = pkg === activePkg
-                                    return <Popup key={i} position="right center" size="small" trigger={
-                                        <RailBtn>
-                                            <button onClick={() => setActivePkg(pkg)} style={{
-                                                width:38, height:34, borderRadius:7, cursor:"pointer",
+                                    return <Tooltip key={i} position="right"
+                                        content={`${pkg.name}.${pkg.ext} — ${ctx.breadcrumb}`}>
+                                        <span className="pdx-rail-btn">
+                                            <button className="pdx-rail-pkg" onClick={() => setActivePkg(pkg)} style={{
                                                 border:`2px solid ${ctx.color}`,
                                                 background: isActive ? ctx.color : "transparent",
-                                                color: isActive ? "#fff" : ctx.color,
-                                                display:"flex", alignItems:"center", justifyContent:"center",
-                                                fontWeight:800, fontSize:"0.66em", textTransform:"uppercase"
+                                                color: isActive ? "var(--mp-paper)" : ctx.color
                                             }}>{String(pkg.ext).slice(0, 3)}</button>
-                                            <span className="close" title="Fechar pacote"
+                                            <span className="pdx-rail-btn__close" title="Fechar pacote"
                                                 onClick={(e:any) => { e.stopPropagation(); onRemovePackage && onRemovePackage(pkg) }}>×</span>
-                                        </RailBtn>
-                                    } content={
-                                        <div><strong>{pkg.name}.{pkg.ext}</strong>
-                                            <div style={{opacity:0.75, fontSize:"0.85em", marginTop:2}}>{ctx.breadcrumb}</div></div>
-                                    } />
+                                        </span>
+                                    </Tooltip>
                                 })
                             }
                         </div>)
                 })()
             }
-        </Rail>
+        </div>
 
-        <NavCol style={{width: navCollapsed ? 0 : navWidth, padding: navCollapsed ? 0 : 8, overflow: navCollapsed ? "hidden" : "auto", flexShrink:0}}>
-            <div className="ide-section-title" style={{display:"flex", alignItems:"center", gap:6, margin:"0 0 8px 2px"}}>
-                <Icon name={navMode === "arquivos" ? "folder" : navMode === "outline" ? "list layout" : navMode === "search" ? "search" : "sitemap"} style={{margin:0}} />
+        <div className="pdx-navcol" style={{width: navCollapsed ? 0 : navWidth, padding: navCollapsed ? 0 : 8, overflow: navCollapsed ? "hidden" : "auto"}}>
+            <div className="ide-section-title pdx-navcol-title">
+                <Icon name={navMode === "arquivos" ? "folder" : navMode === "outline" ? "list layout" : navMode === "search" ? "search" : "sitemap"} />
                 {navMode === "arquivos" ? "Explorer" : navMode === "outline" ? "Outline" : navMode === "search" ? "Search" : "Metadados"}
             </div>
             {
@@ -542,44 +502,41 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
                         ? `${activeTab.file}#${(activeTab.path || []).join(".")}` : undefined}
                     selectedPath={activeTab && activeTab.kind !== "component" && activeTab.pkg === activePkg ? activeTab.filePath : undefined} />
             }
-        </NavCol>
+        </div>
 
         {/* Divisor arrastável entre a navegação e o editor */}
         { !navCollapsed &&
-            <div onMouseDown={startNavDrag} title="Redimensionar"
-                style={{ flex:"0 0 6px", cursor:"col-resize", background:"var(--mp-line-faint)", opacity:0.6 }} /> }
+            <div className="pdx-nav-resizer" onMouseDown={startNavDrag} title="Redimensionar" /> }
 
-        <EditorArea>
+        <div className="pdx-editor-area">
             {/* Command Center + Run Target (§7 do guia) */}
-            <div style={{display:"flex", alignItems:"center", gap:12, padding:"6px 12px", flexShrink:0,
-                borderBottom:"1px solid var(--mp-line-faint)", background:"var(--color-panel-2, var(--mp-paper-2))"}}>
-                <span style={{fontSize:10, textTransform:"uppercase", letterSpacing:.5, opacity:.5, fontWeight:700}}>Alvo</span>
-                <Dropdown pointing="top left" icon={null}
+            <div className="pdx-cmdbar">
+                <span className="pdx-cmdbar-label">Alvo</span>
+                <Popover open={targetOpen} align="left" onClose={() => setTargetOpen(false)}
                     trigger={
-                        <span style={{display:"inline-flex", alignItems:"center", gap:7, padding:"4px 10px", cursor:"pointer",
-                            border:"1.5px solid var(--mp-border-default, var(--mp-line-soft))", borderRadius:5, background:"var(--color-surface, #fff8e8)"}}>
-                            <span style={{width:8, height:8, borderRadius:2, background:pkgContext(activePkg).color}} />
-                            <strong style={{fontSize:12.5}}>{activePkg.name}<span style={{opacity:.55}}>.{activePkg.ext}</span></strong>
-                            <Icon name="dropdown" style={{margin:0}} />
+                        <span className="pdx-target-trigger" onClick={() => setTargetOpen((o) => !o)}>
+                            <span className="pdx-dot" style={{background:pkgContext(activePkg).color}} />
+                            <strong className="pdx-target-name">{activePkg.name}<span className="pdx-target-ext">.{activePkg.ext}</span></strong>
+                            <Icon name="dropdown" />
                         </span>}>
-                    <Dropdown.Menu>
-                        <Dropdown.Header content="Run target" />
+                    <div className="pdx-target-menu">
+                        <div className="pdx-target-head">Run target</div>
                         {
                             pkgs.map((pk:any, i:number) => { const c = pkgContext(pk)
-                                return <Dropdown.Item key={i} active={pk === activePkg} onClick={() => setActivePkg(pk)}>
-                                    <span style={{width:8, height:8, borderRadius:2, background:c.color, display:"inline-block", marginRight:8}} />
-                                    {pk.name}.{pk.ext}<span style={{opacity:.5, marginLeft:8, fontSize:"0.85em"}}>{c.layer}</span>
-                                </Dropdown.Item> })
+                                return <button key={i} type="button"
+                                    className={`pdx-target-item ${pk === activePkg ? "is-active" : ""}`.trim()}
+                                    onClick={() => { setActivePkg(pk); setTargetOpen(false) }}>
+                                    <span className="pdx-dot" style={{background:c.color}} />
+                                    {pk.name}.{pk.ext}<span className="pdx-target-item-layer">{c.layer}</span>
+                                </button> })
                         }
-                    </Dropdown.Menu>
-                </Dropdown>
+                    </div>
+                </Popover>
 
-                <div onClick={() => setPalette("files")} title="Ctrl+P"
-                    style={{flex:1, maxWidth:560, margin:"0 auto", display:"flex", alignItems:"center", gap:8, cursor:"text",
-                        padding:"5px 12px", border:"1.5px solid var(--mp-border-default, var(--mp-line-soft))", borderRadius:6, background:"var(--color-surface, #fff8e8)"}}>
-                    <Icon name="search" style={{margin:0, opacity:.5}} />
-                    <span style={{flex:1, fontSize:12.5, opacity:.55}}>Buscar arquivos, pacotes ou comandos…</span>
-                    <span style={{fontSize:10.5, opacity:.5, border:"1px solid var(--mp-line-faint)", borderRadius:3, padding:"1px 5px"}}>Ctrl+P</span>
+                <div className="pdx-omnibar" onClick={() => setPalette("files")} title="Ctrl+P">
+                    <Icon name="search" style={{opacity:.5}} />
+                    <span className="pdx-omnibar-text">Buscar arquivos, pacotes ou comandos…</span>
+                    <span className="pdx-omnibar-kbd">Ctrl+P</span>
                 </div>
             </div>
 
@@ -587,73 +544,70 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
             <RunControls key={`ctl:${activePkg.path}`} workspace={activePkg.workspace} packageSelected={activePkg}
                 onRun={() => { setRunMounted(true); setRunOpen(true) }} />
 
-            <div style={{flex:1, minHeight:0, display:"flex", flexDirection:"column", overflow:"hidden"}}>
+            <div className="pdx-editor-body">
             {
                 tabs.length === 0
-                ? <div style={{flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12,
-                    color:"var(--color-text-muted, #63614f)", fontFamily:"var(--font-ui)"}}>
-                    <Icon name="file code outline" size="huge" style={{margin:0, opacity:0.35}} />
-                    <div style={{fontSize:16, fontWeight:700}}>Nenhum arquivo aberto</div>
-                    <div style={{fontSize:13, opacity:0.75}}>Selecione um arquivo ou item de metadado na barra à esquerda</div>
+                ? <div className="pdx-empty-editor">
+                    <Icon name="file code outline" size="huge" style={{opacity:0.35}} />
+                    <div className="pdx-empty-editor-title">Nenhum arquivo aberto</div>
+                    <div className="pdx-empty-editor-hint">Selecione um arquivo ou item de metadado na barra à esquerda</div>
                   </div>
                 : <>
-                    <Menu tabular size="small" className="edit-tabs" style={{overflowX:"auto", margin:0, minHeight:0, flexShrink:0}}>
+                    <div className="pdx-edit-tabs">
                         {
                             tabs.map((t:any, i:number) => {
                                 const isDirty = t.content !== t.savedContent
                                 const tcolor = pkgContext(t.pkg).color
-                                return <Menu.Item key={t.key} active={i === active} onClick={() => setActive(i)}
+                                return <div key={t.key} className={`pdx-edit-tab ${i === active ? "is-active" : ""}`.trim()}
+                                    onClick={() => setActive(i)}
                                     onMouseDown={(e:any) => { if(e.button === 1 && !t.pinned){ e.preventDefault(); closeTab(i) } }}
                                     onContextMenu={(e:any) => openCtx(e, tabContextItems(i))}
-                                    style={{ borderTop: `2px solid ${tcolor}` }}>
+                                    style={{ borderTop: i === active ? "3px solid var(--mp-accent-blue)" : `2px solid ${tcolor}` }}>
                                     <Icon name={t.pinned ? "thumbtack" : tabIconName(t)} size="small" style={{margin:"0 5px 0 0", opacity:0.7}} />
-                                    <span className="edit-tab-scope" style={{color:tcolor}}>{t.pkg.name}.{t.pkg.ext}/</span>
-                                    <span className="edit-tab-file">{t.filename}</span>
-                                    { isDirty && <span className="edit-tab-dirty" title="alterações não salvas">●</span> }
+                                    <span className="pdx-edit-tab-scope" style={{color:tcolor}}>{t.pkg.name}.{t.pkg.ext}/</span>
+                                    <span className="pdx-edit-tab-file">{t.filename}</span>
+                                    { isDirty && <span className="pdx-edit-tab-dirty" title="alterações não salvas">●</span> }
                                     {
                                         t.pinned
-                                        ? <Icon name="thumbtack" size="small" className="edit-tab-close" title="Desafixar"
+                                        ? <Icon name="thumbtack" size="small" className="pdx-edit-tab-close" title="Desafixar" style={{marginLeft:8}}
                                             onClick={(e:any) => { e.stopPropagation(); togglePin(i) }} />
-                                        : <Icon name="close" size="small" className="edit-tab-close" title="Fechar"
+                                        : <Icon name="close" size="small" className="pdx-edit-tab-close" title="Fechar" style={{marginLeft:8}}
                                             onClick={(e:any) => { e.stopPropagation(); closeTab(i) }} />
                                     }
-                                </Menu.Item>
+                                </div>
                             })
                         }
-                        <Menu.Item onClick={() => setPalette("files")} title="Todas as abas (Ctrl+P)"
-                            style={{marginLeft:"auto", position:"sticky", right:0, background:"var(--mp-paper)", flexShrink:0}}>
-                            <Icon name="ellipsis horizontal" style={{margin:0}} />
-                        </Menu.Item>
-                    </Menu>
+                        <div className="pdx-edit-tab-more" onClick={() => setPalette("files")} title="Todas as abas (Ctrl+P)">
+                            <Icon name="ellipsis horizontal" />
+                        </div>
+                    </div>
                     {
-                        activeTab && <div style={{display:"flex", alignItems:"center", gap:5, padding:"4px 10px", fontSize:"11px",
-                            flexShrink:0, borderBottom:"1px solid var(--mp-line-faint)", color:"var(--color-text-muted, #63614f)",
-                            overflowX:"auto", whiteSpace:"nowrap", fontFamily:"var(--font-ui)"}}>
+                        activeTab && <div className="pdx-edit-crumbs">
                             {
                                 tabCrumbs(activeTab).map((c:string, ci:number, arr:string[]) =>
                                     <React.Fragment key={ci}>
-                                        { ci > 0 && <Icon name="angle right" style={{margin:0, opacity:0.4}} /> }
-                                        <span style={{opacity: ci === arr.length - 1 ? 1 : 0.7, fontWeight: ci === arr.length - 1 ? 700 : 400}}>{c}</span>
+                                        { ci > 0 && <Icon name="angle right" style={{opacity:0.4}} /> }
+                                        <span className={`pdx-edit-crumb ${ci === arr.length - 1 ? "is-last" : ""}`.trim()}>{c}</span>
                                     </React.Fragment>)
                             }
                         </div>
                     }
                     {
-                        activeTab && <div style={{padding:8, flex:1, minHeight:0, display:"flex", flexDirection:"column"}}>
-                            <div style={{marginBottom:6}}>
-                                <Button size="mini" positive icon="save" content="Save"
-                                    loading={saving} disabled={!dirty || saving} onClick={saveActive} />
-                                <Label basic size="small" style={{marginLeft:6}}>
+                        activeTab && <div className="pdx-editor-pane">
+                            <div className="pdx-editor-toolbar">
+                                <Button size="sm" variant="primary" icon="save"
+                                    loading={saving} disabled={!dirty || saving} onClick={saveActive}>Save</Button>
+                                <Badge>
                                     {activeTab.kind === "component" ? `${activeTab.file} · ${activeTab.detail.title}` : activeTab.filePath}{dirty ? " (modificado)" : ""}
-                                </Label>
+                                </Badge>
                             </div>
                             {
                                 activeTab.kind === "component"
                                 ? (() => {
                                     let full:any = {}
                                     try { full = JSON.parse(activeTab.content) } catch(e) {}
-                                    return <div style={{flex:1, minHeight:0, overflow:"auto"}}>
-                                        <div style={{maxWidth:820}}>
+                                    return <div className="pdx-form-scroll">
+                                        <div className="pdx-form-width">
                                             <FocusedMetadataForm detail={activeTab.detail} value={getAtPath(full, activeTab.path)}
                                                 onChange={(v:any) => updateActive(JSON.stringify(setAtPath(full, activeTab.path, v), null, 4))} />
                                         </div>
@@ -673,7 +627,7 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
             {/* Painel inferior (Problems / Console / Output / Tasks) — recolhível. */}
             <BottomPanel key={activePkg.path} pkg={activePkg} problems={problems} focus={panelFocus}
                 open={runOpen} mounted={runMounted} onToggle={toggleRun} />
-        </EditorArea>
+        </div>
 
         {
             inspectorOpen &&
@@ -696,21 +650,22 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
             onClose={() => setFilePrompt(undefined)}
             onSubmit={handleFilePromptSubmit} />
 
-        <Confirm
+        <ConfirmDialog
             open={!!fileDelete}
-            header="Excluir"
-            content={fileDelete ? `Excluir "${basename(fileDelete.filePath)}"? Esta ação não pode ser desfeita.` : ""}
-            confirmButton={{ content: "Excluir", negative: true }}
-            cancelButton="Cancelar"
+            title="Excluir"
+            message={fileDelete ? `Excluir "${basename(fileDelete.filePath)}"? Esta ação não pode ser desfeita.` : ""}
+            confirmLabel="Excluir"
+            cancelLabel="Cancelar"
+            danger
             onCancel={() => setFileDelete(undefined)}
             onConfirm={() => { const p = fileDelete.filePath; setFileDelete(undefined); deleteFile(p) }} />
 
         <CommandPalette open={!!palette} onClose={() => setPalette("")}
             placeholder={palette === "commands" ? "Executar um comando…" : "Ir para arquivo ou pacote…"}
             items={paletteItems} />
-    </Wrap>
+    </div>
     <WorkbenchStatusBar pkg={activePkg} activeTab={activeTab} tabsCount={tabs.length} dirty={dirty} />
-    </Shell>
+    </div>
 }
 
 const mapStateToProps = ({ HTTPServerManager }:any) => ({ HTTPServerManager })

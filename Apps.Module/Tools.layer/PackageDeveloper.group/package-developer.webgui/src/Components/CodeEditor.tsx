@@ -35,7 +35,7 @@ const FONT:any = {
     margin: 0,
     padding: `${PAD_Y}px 0`,
     paddingLeft: 14,
-    fontFamily: 'var(--mp-font-code, "JetBrains Mono", "Menlo", "Monaco", "Consolas", monospace)',
+    fontFamily: 'var(--mp-font-mono)',
     fontSize: "13px",
     lineHeight: `${LINE_H}px`,
     tabSize: 4,
@@ -165,20 +165,20 @@ const CodeEditor = ({ value, onChange, scrollTo }:CodeEditorProps) => {
     for(let i = 1; i <= lineCount; i++)
         gutterInner.push(<div key={i} style={{
             height: LINE_H, textAlign: "right", paddingRight: 8,
-            color: i === activeLine ? "var(--color-editor-text, #d9e2f1)" : "var(--color-editor-muted, #72809a)",
+            color: i === activeLine ? "var(--color-editor-text)" : "var(--color-editor-muted)",
             fontWeight: i === activeLine ? 700 : 400
         }}>{i}</div>)
 
     return <div style={{
         position:"relative", flex:"1 1 auto", minHeight:0, display:"flex", overflow:"hidden",
-        border:"2px solid var(--color-border-strong, #25231f)", borderRadius:"var(--mp-radius-md, 6px)",
-        background:"var(--color-editor-bg, #0D1117)", boxShadow:"var(--shadow-window, none)"
+        border:"2px solid var(--color-border-strong)", borderRadius:"var(--mp-radius-md)",
+        background:"var(--color-editor-bg)", boxShadow:"var(--shadow-window)"
     }}>
         {/* Gutter / line numbers */}
         <div ref={gutterRef} className="wb-scroll" style={{
             ...FONT, paddingLeft: 6, width: 48, flexShrink: 0, overflow: "hidden",
-            background: "var(--color-editor-gutter, #0a0f1e)",
-            borderRight: "1px solid var(--color-editor-line, #172035)", userSelect: "none"
+            background: "var(--color-editor-gutter)",
+            borderRight: "1px solid var(--color-editor-line)", userSelect: "none"
         }}>
             <div>{gutterInner}</div>
         </div>
@@ -187,12 +187,12 @@ const CodeEditor = ({ value, onChange, scrollTo }:CodeEditorProps) => {
         <div style={{position:"relative", flex:1, minWidth:0, overflow:"hidden"}}>
             <div ref={bandRef} aria-hidden="true" style={{
                 position:"absolute", left:0, right:0, top:0, height:LINE_H,
-                background:"var(--color-editor-line, rgba(23,32,53,.55))", pointerEvents:"none",
+                background:"var(--color-editor-line)", pointerEvents:"none",
                 transform:`translateY(${PAD_Y}px)`
             }} />
             <pre ref={preRef} aria-hidden="true" className="wb-scroll" style={{
                 ...FONT, position:"absolute", inset:0, overflow:"auto",
-                color:"var(--color-editor-text, #c9d1d9)", pointerEvents:"none"
+                color:"var(--color-editor-text)", pointerEvents:"none"
             }} dangerouslySetInnerHTML={{ __html: highlight(code) + "\n" }} />
             <textarea
                 ref={taRef}
@@ -207,14 +207,14 @@ const CodeEditor = ({ value, onChange, scrollTo }:CodeEditorProps) => {
                 style={{
                     ...FONT, position:"absolute", inset:0, width:"100%", height:"100%", overflow:"auto",
                     background:"transparent", color:"transparent", WebkitTextFillColor:"transparent",
-                    caretColor:"var(--color-accent, #14D6C8)", border:"none", outline:"none", resize:"none"
+                    caretColor:"var(--color-accent)", border:"none", outline:"none", resize:"none"
                 }} />
         </div>
 
         {/* Minimap: overview do arquivo (canvas) + indicador de viewport, click-to-scroll */}
         <div onClick={onMinimapClick} title="Minimap"
             style={{position:"relative", width:62, flexShrink:0, cursor:"pointer",
-                borderLeft:"1px solid var(--color-editor-line, #172035)", background:"var(--color-editor-gutter, #0a0f1e)"}}>
+                borderLeft:"1px solid var(--color-editor-line)", background:"var(--color-editor-gutter)"}}>
             <canvas ref={canvasRef} style={{width:"100%", height:"100%", display:"block"}} />
             <div ref={vpRef} style={{position:"absolute", left:0, right:0, top:0,
                 background:"rgba(120,150,200,.16)", borderTop:"1px solid rgba(150,180,220,.35)",

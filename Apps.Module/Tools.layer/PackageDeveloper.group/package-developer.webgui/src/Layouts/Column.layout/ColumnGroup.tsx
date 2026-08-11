@@ -1,24 +1,23 @@
 import React from "react"
-import {Grid, Segment} from "semantic-ui-react"
-import styled from "styled-components"
 
-const SegmentStyle = styled(Segment)`
-    background-color: #fff !important;
-    border-color: #ffffff00 !important;
-`
 
 type ColumnGroupProps = {
     columns:any
     children:any
 }
 
-const ColumnGroup = ({columns, children}:ColumnGroupProps) => 
-    <SegmentStyle attached="bottom">
-            <Grid columns={columns} divided>
-                <Grid.Row>
-                   {children}
-                </Grid.Row>
-            </Grid>
-        </SegmentStyle>
+// `columns` mantém o contrato do antigo <Grid columns={...}>: um número fixo de
+// colunas ou "equal" (colunas de mesma largura, quantidade dada pelos filhos).
+const TemplateOf = (columns:any) =>
+    typeof columns === "number"
+        ? { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }
+        : { gridAutoFlow: "column" as const, gridAutoColumns: "minmax(0, 1fr)" }
+
+const ColumnGroup = ({columns, children}:ColumnGroupProps) =>
+    <div className="pdx-column-group">
+        <div className="pdx-column-group__row" style={TemplateOf(columns)}>
+            {children}
+        </div>
+    </div>
 
 export default ColumnGroup

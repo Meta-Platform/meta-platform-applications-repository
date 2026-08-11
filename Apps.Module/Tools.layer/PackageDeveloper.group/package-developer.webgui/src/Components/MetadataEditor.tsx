@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState } from "react"
-import { Button, Message } from "semantic-ui-react"
+import { Button, ButtonGroup, Banner } from "@i-components"
 
 import CodeEditor from "./CodeEditor"
 import { BootForm, ServicesForm, EndpointGroupForm, CommandGroupForm } from "./MetadataForms"
@@ -36,15 +36,15 @@ const MetadataEditor = ({ filePath, content, onChange }:any) => {
 
     return <div style={{flex:1, minHeight:0, display:"flex", flexDirection:"column"}}>
         <div style={{marginBottom:6, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap"}}>
-            <Button.Group size="mini">
-                <Button active={showForm} disabled={!canForm} icon="list" content="Formulário" onClick={() => setMode("form")} />
-                <Button active={!showForm} icon="code" content="JSON" onClick={() => setMode("raw")} />
-            </Button.Group>
+            <ButtonGroup>
+                <Button size="sm" variant={showForm ? "primary" : "default"} disabled={!canForm} icon="list" onClick={() => setMode("form")}>Formulário</Button>
+                <Button size="sm" variant={!showForm ? "primary" : "default"} icon="code" onClick={() => setMode("raw")}>JSON</Button>
+            </ButtonGroup>
             {
                 parseError &&
-                <Message negative size="mini" style={{margin:0, padding:"4px 8px"}}>
+                <Banner tone="danger" className="pdx-banner-compact">
                     JSON inválido — edite no modo JSON. ({parseError})
-                </Message>
+                </Banner>
             }
         </div>
         {

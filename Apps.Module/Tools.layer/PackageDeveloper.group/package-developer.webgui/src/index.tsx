@@ -6,6 +6,8 @@ import { combineReducers, createStore } from "redux"
 import "@i-components/styles/index.css"
 import "./Styles/workbench.css"
 import "./Styles/explorer.css"
+import "./Styles/ide.css"
+import "./Styles/components.css"
 
 import { applySavedTheme } from "@i-components/theme"
 

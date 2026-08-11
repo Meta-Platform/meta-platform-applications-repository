@@ -1,9 +1,9 @@
 import * as React from "react"
-import { Icon } from "semantic-ui-react"
+import { EmptyState, Icon } from "@i-components"
 
 import { GitModel, GitRepository, GitScope, GitState, STATE_LABEL, STATE_ORDER } from "../../Domain/gitModel"
 import CopyableCodeValue from "./ui/CopyableCodeValue"
-import { Badge, CollapsibleSection, EmptyState } from "./ui/Primitives"
+import { Badge, CollapsibleSection } from "./ui/Primitives"
 
 // O que está por commitar, do workspace ao arquivo: repositório → pacote →
 // arquivo, com o estado de cada um (modificado, no índice, não rastreado, em
@@ -92,12 +92,12 @@ const GitStatusView = ({ model, repositories, onOpenPackage }:
 
     if(!list.length)
         return <EmptyState icon="git" title="Nenhum repositório para inspecionar"
-            hint="Abra um repositório para ver o que está por commitar." />
+            message="Abra um repositório para ver o que está por commitar." />
 
     const total = list.reduce((n, r) => n + r.total, 0)
     if(total === 0)
         return <EmptyState icon="check circle outline" title="Tudo commitado"
-            hint={list.length > 1
+            message={list.length > 1
                 ? "Nenhum dos repositórios abertos tem alterações pendentes."
                 : "Este repositório não tem alterações pendentes."} />
 
@@ -114,7 +114,7 @@ const GitStatusView = ({ model, repositories, onOpenPackage }:
 export const PackageGitView = ({ scope }:{ scope?:GitScope }) => {
     if(!scope || !scope.files.length)
         return <EmptyState icon="check circle outline" title="Sem alterações pendentes"
-            hint="Nenhum arquivo deste pacote está por commitar." />
+            message="Nenhum arquivo deste pacote está por commitar." />
     return <div>
         <div className="pdx-inline" style={{marginBottom:10}}>
             <GitCounters counts={scope.counts} />

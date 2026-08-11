@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 // Barra de abas do Inspector: só as abas FIXAS do pacote (visão geral, README,
 // runtime, dependências, metadados, npm, git). Recurso selecionado na árvore não

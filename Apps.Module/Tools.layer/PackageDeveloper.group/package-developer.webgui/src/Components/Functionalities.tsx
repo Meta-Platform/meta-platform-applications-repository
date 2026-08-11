@@ -1,55 +1,37 @@
 import React from "react"
-import {
-    Button, 
-    Segment
-} from "semantic-ui-react"
-
-import styled from "styled-components"
-
-const ButtonMTStyled = styled(Button)`
-    margin-top:5px!important;
-`
+import { Button } from "@i-components"
 
 const Functionalities = ({
     hasNodeModulesDir
-}:any) => 
+}:any) =>
     <>
         {/*<h4>Functionalities</h4>*/}
         {
-            !hasNodeModulesDir 
+            !hasNodeModulesDir
             && <Button
-                color         = "orange"
-                content       = "install dependencies" 
-                icon          = "boxes" 
-                size          = "mini"
-                labelPosition = "left" />
+                variant = "primary"
+                icon    = "boxes"
+                size    = "sm">install dependencies</Button>
         }
-        <Button 
-            disabled      = {!hasNodeModulesDir}
-            color         = "blue"
-            content       = "Run" 
-            icon          = "play" 
-            size          = "mini"
-            labelPosition = "left" />
-        <Button 
-            disabled      = {!hasNodeModulesDir}
-            color         = "teal"
-            content       = "Run" 
-            icon          = "bug" 
-            size          = "mini"
-            labelPosition = "left" />
-        <Button 
-            color         = "violet"
-            content       = "open in vscode" 
-            icon          = "code" 
-            size          = "mini"
-            labelPosition = "left" />
-        <ButtonMTStyled 
-            color         = "purple"
-            content       = "to explorer" 
-            icon          = "folder open" 
-            size          = "mini"
-            labelPosition = "left" />
+        <Button
+            disabled = {!hasNodeModulesDir}
+            variant  = "default"
+            icon     = "play"
+            size     = "sm">Run</Button>
+        <Button
+            disabled = {!hasNodeModulesDir}
+            variant  = "default"
+            icon     = "bug"
+            size     = "sm">Run</Button>
+        <Button
+            variant = "default"
+            icon    = "code"
+            size    = "sm">open in vscode</Button>
+        <Button
+            variant = "default"
+            icon    = "folder open"
+            size    = "sm"
+            style   = {{marginTop:5}}>to explorer</Button>
     </>
 
 

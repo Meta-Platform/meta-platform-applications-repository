@@ -1,24 +1,13 @@
 import * as React             from "react"
 import {useEffect}            from "react"
-import {List, Loader}         from "semantic-ui-react"
 import { connect }            from "react-redux"
 import { bindActionCreators } from "redux"
-import styled                 from "styled-components"
 
-import { QueryParamsActionsCreator } from "@i-components"
+import { Icon, Spinner, QueryParamsActionsCreator } from "@i-components"
 import PackageManagerActionsCreator from "../Actions/PackageManager.actionsCreator"
 
 import useExplorerItemState  from "../Hooks/useExplorerItemState"
 
-//TODO Unificar
-const ListItemStyled = styled(List.Item)`
-    padding: 5px 10px 5px 10px!important;
-    background-color: ${props => props.selected && "#f3f3f3"};
-    &:hover{
-        background-color: #f3f3f3;
-    }
-    
-`
 
 type ModuleItemProps =
 {
@@ -34,15 +23,15 @@ type ModuleItemProps =
     QueryParams        : any
     AddQueryParam      : Function
     RemoveQueryParam   : Function
-    SetUIDetails       : Function      
+    SetUIDetails       : Function
     SetWebDetails      : Function
     SetLibDetails      : Function
 }
 
 const ModuleItem = ({
     title,
-    workspace, 
-    packageName, 
+    workspace,
+    packageName,
     ext,
     serverName,
     apiName,
@@ -58,8 +47,8 @@ const ModuleItem = ({
 }:ModuleItemProps) => {
 
     const { data, isExpanded, setExpansion} = useExplorerItemState({
-        workspace, 
-        packageName, 
+        workspace,
+        packageName,
         ext,
         serverName,
         apiName,
@@ -111,18 +100,18 @@ const ModuleItem = ({
         AddQueryParam("module", `${apiName}.GetDetails`)
     }
 
-    return <ListItemStyled 
-                selected={isSelected}
+    return <div
+                className={`pdx-tree-item pdx-module-item ${isSelected ? "is-selected" : ""}`.trim()}
                 onClick={handleChangeModule}>
-                {title && <List.Icon name="box" />}
-                <List.Content>
-                    {title && <List.Header><a onClick={()=> setExpansion(!isExpanded)}>{title}</a></List.Header>}
+                {title && <Icon name="box" className="pdx-tree-item__icon"/>}
+                <div className="pdx-tree-item__content">
+                    {title && <div className="pdx-tree-item__header"><a onClick={()=> setExpansion(!isExpanded)}>{title}</a></div>}
                     {
                         (isExpanded || !title) && data && data.verifications && render(data.verifications)
                     }
-                    {!data && <Loader size="mini" active inline/>}
-                </List.Content>
-            </ListItemStyled>
+                    {!data && <Spinner size="sm"/>}
+                </div>
+            </div>
 }
 
 const mapDispatchToProps = (dispatch:any) =>

@@ -1,76 +1,84 @@
 import * as React from "react"
 import { useState } from "react"
-import {
-	Menu,
-	Header,
-	Image,
-	Dropdown,
-	Icon
-} from "semantic-ui-react"
-import styled from "styled-components"
+import { Icon, IconButton, Popover } from "@i-components"
 
 import listIcons    from "../Mocks/AppsMenu.mock"
 import { THEMES, ApplyTheme, GetSavedTheme, ThemeName } from "@i-components/theme"
 
-const AppsMenuItem = styled(Menu.Item)`
-	padding: 8px!important;
-`
 
 const MainMenu = ({ onHome, centerTitle }:any) => {
 
     const [ theme, setTheme ] = useState<ThemeName>(GetSavedTheme())
+    const [ themeOpen, setThemeOpen ] = useState<boolean>(false)
     const selectTheme = (t:ThemeName) => { setTheme(t); ApplyTheme(t) }
 
-    return <Menu attached="top" className="eco-main-menu" style={{position:"relative"}}>
-                <AppsMenuItem active onClick={() => onHome && onHome()}
-                    style={{cursor:"pointer"}} title="Ir para a home">
+    return <div className="pdx-appbar">
+                <button type="button"
+                    className="pdx-appbar__item is-active"
+                    onClick={() => onHome && onHome()}
+                    title="Ir para a home">
                     <Icon name="cube" color="teal" />
-                    <Header className="eco-main-menu-title" style={{margin:0}}>Package Developer</Header>
-                </AppsMenuItem>
+                    <span className="pdx-appbar__title">Package Developer</span>
+                </button>
                 {
                     centerTitle &&
-                    <div style={{position:"absolute", left:"50%", top:"50%", transform:"translate(-50%,-50%)", pointerEvents:"none", whiteSpace:"nowrap"}}>
-                        <span style={{
-                            fontWeight:700, padding:"5px 16px", borderRadius:8, fontSize:"0.95em",
-                            background:"var(--mp-accent-soft, rgba(20,214,200,0.16))",
-                            border:"1px solid var(--mp-accent, #14D6C8)",
-                            color:"var(--mp-text-primary, inherit)"
-                        }}>
-                            <Icon name="box" style={{marginRight:6}} />{centerTitle}
+                    <div className="pdx-appbar__center">
+                        <span className="pdx-appbar__center-badge">
+                            <Icon name="box" />{centerTitle}
                         </span>
                     </div>
                 }
-                <AppsMenuItem onClick={() => onHome && onHome()} title="Home (tela inicial)">
-                    <Icon name="home" style={{margin:0}} />
-                </AppsMenuItem>
+                <button type="button"
+                    className="pdx-appbar__item"
+                    onClick={() => onHome && onHome()}
+                    title="Home (tela inicial)">
+                    <Icon name="home" />
+                </button>
                 {
                     listIcons
                     .filter(({enable}:any) => enable)
                     .map(({icon, title, url}, key) =>
-                        <AppsMenuItem key={key}
+                        <button key={key}
+                            type="button"
+                            className="pdx-appbar__item"
                             title={title}
                             onClick={()=>{
                                 //@ts-ignore
                                 window.location = url
                             }}>
-                            <Image spaced="right" src={icon} size="mini"/>
-                        </AppsMenuItem>)
+                            <img className="pdx-appbar__img" src={icon} alt={title}/>
+                        </button>)
                 }
-                <Menu.Menu position="right">
-                    <Dropdown item icon="paint brush" simple title="Theme">
-                        <Dropdown.Menu>
-                            <Dropdown.Header icon="paint brush" content="Theme"/>
-                            {
-                                THEMES.map((t) =>
-                                    <Dropdown.Item key={t.key} onClick={() => selectTheme(t.key)} active={theme === t.key}>
-                                        <Icon name={t.icon as any}/> {t.label}
-                                        { theme === t.key && <Icon name="check" style={{ float: "right", margin: 0 }}/> }
-                                    </Dropdown.Item>)
-                            }
-                        </Dropdown.Menu>
-                    </Dropdown>
-                </Menu.Menu>
-            </Menu>
+                <span className="pdx-appbar__spacer"/>
+                <Popover
+                    className="pdx-appbar__popover"
+                    open={themeOpen}
+                    align="right"
+                    onClose={() => setThemeOpen(false)}
+                    trigger={
+                        <IconButton
+                            icon="paint brush"
+                            label="Theme"
+                            onClick={() => setThemeOpen(!themeOpen)}/>
+                    }>
+                    <div className="pdx-theme-menu">
+                        <div className="pdx-theme-menu__head">
+                            <Icon name="paint brush"/> Theme
+                        </div>
+                        {
+                            THEMES.map((t) =>
+                                <button key={t.key}
+                                    type="button"
+                                    className={`pdx-theme-menu__item ${theme === t.key ? "is-active" : ""}`.trim()}
+                                    onClick={() => { selectTheme(t.key); setThemeOpen(false) }}>
+                                    <Icon name={t.icon as any}/>
+                                    <span className="pdx-theme-menu__label">{t.label}</span>
+                                    { theme === t.key && <Icon name="check"/> }
+                                </button>)
+                        }
+                    </div>
+                </Popover>
+            </div>
 }
 
 

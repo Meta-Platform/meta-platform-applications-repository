@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useCallback, useEffect, useMemo, useRef } from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import { SearchResult, highlightSegments } from "../../Domain/packageIndex"
 import { RuntimeItem } from "../../Domain/packageModel"

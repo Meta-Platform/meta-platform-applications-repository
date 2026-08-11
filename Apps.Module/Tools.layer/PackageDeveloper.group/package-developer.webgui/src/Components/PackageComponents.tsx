@@ -1,37 +1,41 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { connect } from "react-redux"
-import { Segment, List, Icon, Label, Header, Loader, Button } from "semantic-ui-react"
+import { Badge, Button, ListRow, Panel, Spinner } from "@i-components"
 
 import GetRequestByServer from "../Utils/GetRequestByServer"
 
+
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 
+// Cor do ícone por família de componente (ver batch-c.css).
+const ICO = (color?:string) => color ? `pdx-ico-${color}` : ""
+
 const Row = ({ icon, color, title, subtitle }:any) =>
-    <List.Item>
-        <List.Icon name={icon} color={color} />
-        <List.Content>
-            <List.Header>{title}</List.Header>
-            { subtitle && <List.Description style={{wordBreak:"break-all"}}>{subtitle}</List.Description> }
-        </List.Content>
-    </List.Item>
+    <ListRow
+        className={ICO(color)}
+        icon={icon}
+        title={title}
+        meta={subtitle ? <span title={subtitle}>{subtitle}</span> : undefined} />
 
 const Group = ({ title, items }:any) =>
     (Array.isArray(items) && items.length > 0)
-        ? <>
-            <Header as="h5" style={{marginBottom:4}}>{title}</Header>
-            <List divided relaxed>{items}</List>
-          </>
+        ? <div className="pdx-group">
+            <h5 className="pdx-group__title">{title}</h5>
+            <div>{items}</div>
+          </div>
         : null
 
 // ----- Boot (metadata/boot.json) -----
 const BootView = ({ boot }:any) => {
     if(!boot || boot.__error) return null
-    return <Segment color="orange">
-        <Header as="h4"><Icon name="play" />Boot</Header>
+    return <Panel title="Boot" icon="play" className={ICO("orange")}>
         {
             Array.isArray(boot.params) && boot.params.length > 0 &&
-            <p><strong>Params: </strong>{boot.params.map((p:string) => <Label key={p} size="tiny">{p}</Label>)}</p>
+            <div className="pdx-params">
+                <span className="pdx-params__label">Params:</span>
+                { boot.params.map((p:string) => <Badge key={p}>{p}</Badge>) }
+            </div>
         }
         <Group title="Executables" items={(boot.executables||[]).map((e:any, i:number) =>
             <Row key={i} icon="terminal" color="grey" title={e.executableName} subtitle={e.dependency} />)} />
@@ -41,54 +45,44 @@ const BootView = ({ boot }:any) => {
             <Row key={i} icon="globe" color="blue" title={e.dependency} />)} />
         <Group title="Windows" items={(boot.windows||[]).map((w:any, i:number) =>
             <Row key={i} icon="window maximize outline" color="purple" title={w.title} subtitle={w.url} />)} />
-    </Segment>
+    </Panel>
 }
 
 // ----- Services (metadata/services.json) -----
 const ServicesView = ({ services }:any) => {
     if(!Array.isArray(services) || services.length === 0) return null
-    return <Segment color="green">
-        <Header as="h4"><Icon name="cogs" />Services</Header>
-        <List divided relaxed>
-            { services.map((s:any, i:number) =>
-                <Row key={i} icon="cog" color="green" title={s.namespace}
-                    subtitle={`${s.path || ""}${Array.isArray(s["bound-params"]) ? "  ·  bound: " + s["bound-params"].join(", ") : ""}`} />) }
-        </List>
-    </Segment>
+    return <Panel title="Services" icon="cogs" className={ICO("green")}>
+        { services.map((s:any, i:number) =>
+            <Row key={i} icon="cog" color="green" title={s.namespace}
+                subtitle={`${s.path || ""}${Array.isArray(s["bound-params"]) ? "  ·  bound: " + s["bound-params"].join(", ") : ""}`} />) }
+    </Panel>
 }
 
 // ----- Endpoint Group (metadata/endpoint-group.json) -----
 const EndpointsView = ({ eg }:any) => {
     const endpoints = eg && eg.endpoints
     if(!Array.isArray(endpoints) || endpoints.length === 0) return null
-    return <Segment color="blue">
-        <Header as="h4"><Icon name="globe" />Endpoint Group</Header>
-        <List divided relaxed>
-            { endpoints.map((e:any, i:number) =>
-                <Row key={i} icon="linkify" color="blue" title={e.url || e.dependency} subtitle={e.type || e.dependency} />) }
-        </List>
-    </Segment>
+    return <Panel title="Endpoint Group" icon="globe" className={ICO("blue")}>
+        { endpoints.map((e:any, i:number) =>
+            <Row key={i} icon="linkify" color="blue" title={e.url || e.dependency} subtitle={e.type || e.dependency} />) }
+    </Panel>
 }
 
 // ----- Command Group (metadata/command-group.json), recursivo -----
-const CommandNode = ({ cmd }:any) =>
-    <List.Item>
-        <List.Icon name="terminal" color="teal" />
-        <List.Content>
-            <List.Header>{cmd.command || cmd.namespace}</List.Header>
-            { cmd.description && <List.Description>{cmd.description}</List.Description> }
-            { Array.isArray(cmd.children) && cmd.children.length > 0 &&
-                <List.List>{cmd.children.map((c:any, i:number) => <CommandNode key={i} cmd={c} />)}</List.List> }
-        </List.Content>
-    </List.Item>
+const CommandNode = ({ cmd }:any) => <>
+    <Row icon="terminal" color="teal" title={cmd.command || cmd.namespace} subtitle={cmd.description} />
+    {
+        Array.isArray(cmd.children) && cmd.children.length > 0 &&
+        <div className="pdx-nest">{ cmd.children.map((c:any, i:number) => <CommandNode key={i} cmd={c} />) }</div>
+    }
+</>
 
 const CommandsView = ({ cg }:any) => {
     const commands = cg && cg.commands
     if(!Array.isArray(commands) || commands.length === 0) return null
-    return <Segment color="teal">
-        <Header as="h4"><Icon name="terminal" />Command Group</Header>
-        <List divided relaxed>{ commands.map((c:any, i:number) => <CommandNode key={i} cmd={c} />) }</List>
-    </Segment>
+    return <Panel title="Command Group" icon="terminal" className={ICO("teal")}>
+        { commands.map((c:any, i:number) => <CommandNode key={i} cmd={c} />) }
+    </Panel>
 }
 
 const PackageComponents = ({ HTTPServerManager, packageSelected, workspace }:any) => {
@@ -107,7 +101,7 @@ const PackageComponents = ({ HTTPServerManager, packageSelected, workspace }:any
 
     useEffect(() => { fetchMetadata() }, [workspace, packageSelected && packageSelected.name, packageSelected && packageSelected.ext])
 
-    if(loading) return <Loader active inline="centered" />
+    if(loading) return <div className="pdx-loading"><Spinner /></div>
 
     const m = metadata || {}
     const boot     = m["metadata/boot.json"]
@@ -116,12 +110,12 @@ const PackageComponents = ({ HTTPServerManager, packageSelected, workspace }:any
     const cg       = m["metadata/command-group.json"]
     const nothing  = !boot && !services && !eg && !cg
 
-    return <div style={{maxHeight:"60vh", overflow:"auto"}}>
-        <Button size="mini" basic icon="refresh" content="Recarregar" onClick={fetchMetadata} />
+    return <div className="pdx-components">
+        <Button size="sm" icon="refresh" onClick={fetchMetadata}>Recarregar</Button>
         {
             nothing
-            ? <p style={{opacity:0.6, marginTop:10}}>Este pacote não possui boot / services / endpoint-group / command-group.</p>
-            : <div style={{marginTop:10}}>
+            ? <p className="pdx-components__empty">Este pacote não possui boot / services / endpoint-group / command-group.</p>
+            : <div className="pdx-components__panels">
                 <BootView boot={boot} />
                 <ServicesView services={services} />
                 <EndpointsView eg={eg} />

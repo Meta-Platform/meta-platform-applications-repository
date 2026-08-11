@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useEffect, useRef } from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 // Inspector sobreposto (larguras média e estreita): painel vindo da direita, com
 // superfície própria, sombra e scrim. Fecha no botão e no Esc; o foco entra no

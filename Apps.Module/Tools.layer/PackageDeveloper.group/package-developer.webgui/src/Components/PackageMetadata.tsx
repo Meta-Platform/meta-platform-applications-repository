@@ -1,9 +1,10 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { connect } from "react-redux"
-import { List, Icon, Loader, Button } from "semantic-ui-react"
+import { Button, Spinner, TreeRow } from "@i-components"
 
 import GetRequestByServer from "../Utils/GetRequestByServer"
+
 
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 
@@ -17,13 +18,14 @@ const JsonNode = ({ label, value, depth }:NodeProps) => {
     const [open, setOpen] = useState(depth < 1)
 
     if(!isBranch(value)){
-        return <List.Item>
-            <List.Icon name="code" color="grey" />
-            <List.Content>
-                <span style={{color:"#888"}}>{label}:</span>{" "}
-                <strong style={{color:"#2185d0"}}>{JSON.stringify(value)}</strong>
-            </List.Content>
-        </List.Item>
+        return <TreeRow
+            depth={depth}
+            icon="code"
+            className="pdx-ico-grey"
+            label={<span>
+                <span className="pdx-json__key">{label}:</span>{" "}
+                <strong className="pdx-json__value">{JSON.stringify(value)}</strong>
+            </span>} />
     }
 
     const isArray = Array.isArray(value)
@@ -31,20 +33,23 @@ const JsonNode = ({ label, value, depth }:NodeProps) => {
         ? value.map((v:any, i:number) => [i, v])
         : Object.entries(value)
 
-    return <List.Item>
-        <List.Icon name={open ? "caret down" : "caret right"} link onClick={() => setOpen(!open)} />
-        <List.Content>
-            <List.Header style={{cursor:"pointer"}} onClick={() => setOpen(!open)}>
-                <Icon name={isArray ? "list ol" : "folder"} color={isArray ? "teal" : "yellow"} />
-                {label} <span style={{opacity:0.5}}>{isArray ? `[${entries.length}]` : `{${entries.length}}`}</span>
-            </List.Header>
-            {
-                open && <List.List>
-                    { entries.map(([k, v]:any) => <JsonNode key={String(k)} label={String(k)} value={v} depth={depth + 1} />) }
-                </List.List>
-            }
-        </List.Content>
-    </List.Item>
+    return <>
+        <TreeRow
+            depth={depth}
+            icon={isArray ? "list ol" : "folder"}
+            className={isArray ? "pdx-ico-teal" : "pdx-ico-yellow"}
+            hasChildren
+            expanded={open}
+            onToggle={() => setOpen(!open)}
+            onSelect={() => setOpen(!open)}
+            label={<span>
+                {label} <span className="pdx-json__size">{isArray ? `[${entries.length}]` : `{${entries.length}}`}</span>
+            </span>} />
+        {
+            open && entries.map(([k, v]:any) =>
+                <JsonNode key={String(k)} label={String(k)} value={v} depth={depth + 1} />)
+        }
+    </>
 }
 
 const PackageMetadata = ({ HTTPServerManager, packageSelected, workspace }:any) => {
@@ -66,15 +71,15 @@ const PackageMetadata = ({ HTTPServerManager, packageSelected, workspace }:any) 
     const names = metadata ? Object.keys(metadata) : []
 
     return <>
-        <Button size="mini" basic icon="refresh" content="Recarregar" onClick={fetchMetadata} />
+        <Button size="sm" icon="refresh" onClick={fetchMetadata}>Recarregar</Button>
         {
             loading
-            ? <Loader active inline="centered" />
+            ? <div className="pdx-loading"><Spinner /></div>
             : names.length === 0
-                ? <p style={{opacity:0.6, marginTop:10}}>Nenhum metadado encontrado.</p>
-                : <List style={{maxHeight:"58vh", overflow:"auto", marginTop:10}}>
+                ? <p className="pdx-json__empty">Nenhum metadado encontrado.</p>
+                : <div className="pdx-json">
                     { names.map((name:string) => <JsonNode key={name} label={name} value={metadata[name]} depth={0} />) }
-                  </List>
+                  </div>
         }
     </>
 }

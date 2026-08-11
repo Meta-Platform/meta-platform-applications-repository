@@ -44,23 +44,23 @@ const DependencyGraph = ({ metadata, pkg }:any) => {
                         const y = top + i * rowH + 15
                         return <path key={"e" + i}
                             d={`M ${leftX + nodeW} ${leftY} C ${leftX + nodeW + 30} ${leftY}, ${rightX - 30} ${y}, ${rightX} ${y}`}
-                            style={{ fill:"none", stroke:"var(--mp-line-faint, #9aa4b2)", strokeWidth:1.5 }} />
+                            style={{ fill:"none", stroke:"var(--mp-line-faint)", strokeWidth:1.5 }} />
                     })
                 }
                 <g>
                     <rect x={leftX} y={leftY - 16} width={nodeW} height={32} rx={7}
-                        style={{ fill:"var(--mp-accent, #14D6C8)" }} />
+                        style={{ fill:"var(--mp-accent-cyan-tint)", stroke:"var(--mp-accent-cyan)" }} />
                     <text x={leftX + nodeW / 2} y={leftY + 4} textAnchor="middle" fontSize={11} fontWeight={700}
-                        style={{ fill:"var(--mp-accent-ink, #06231f)" }}>{truncate(selfLabel, 22)}</text>
+                        style={{ fill:"var(--mp-ink)" }}>{truncate(selfLabel, 22)}</text>
                 </g>
                 {
                     refs.map((r, i) => {
                         const y = top + i * rowH + 15
                         return <g key={"n" + i}>
                             <rect x={rightX} y={y - 15} width={depW} height={30} rx={6}
-                                style={{ fill:"var(--mp-panel-raised, #eef1f5)", stroke:"var(--mp-line-faint, #9aa4b2)" }} />
+                                style={{ fill:"var(--mp-surface-2)", stroke:"var(--mp-line-faint)" }} />
                             <text x={rightX + 10} y={y + 4} fontSize={10.5}
-                                style={{ fill:"var(--mp-text-primary, #1b2430)" }}>{truncate(r, 24)}</text>
+                                style={{ fill:"var(--mp-ink)" }}>{truncate(r, 24)}</text>
                         </g>
                     })
                 }

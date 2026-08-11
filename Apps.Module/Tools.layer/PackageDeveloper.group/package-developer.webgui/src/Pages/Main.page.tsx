@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { connect } from "react-redux"
-import { Confirm } from "semantic-ui-react"
+import { ConfirmDialog } from "@i-components"
 
 import PageDefault from "../Components/PageDefault"
 import ContextMenu from "../Components/ContextMenu"
@@ -201,23 +201,24 @@ const MainPage = ({ HTTPServerManager }:any) => {
         onClose={() => setRenameReq(undefined)}
         onRename={handleRenameNode} />
 
-      <Confirm
+      <ConfirmDialog
         open={!!editReq}
-        header="Abrir no editor"
-        content={editReq ? `Abrir "${editReq.label}" no editor${editPackages.length ? " (adiciona aos já abertos)" : ""}?` : ""}
-        confirmButton={{ content: editPackages.length ? "Adicionar" : "Editar", primary: true }}
-        cancelButton="Cancelar"
+        title="Abrir no editor"
+        message={editReq ? `Abrir "${editReq.label}" no editor${editPackages.length ? " (adiciona aos já abertos)" : ""}?` : ""}
+        confirmLabel={editPackages.length ? "Adicionar" : "Editar"}
+        cancelLabel="Cancelar"
         onCancel={() => setEditReq(undefined)}
         onConfirm={() => { addPackages(editReq.packages); setEditReq(undefined) }} />
 
-      <Confirm
+      <ConfirmDialog
         open={!!deleteReq}
-        header="Excluir"
-        content={deleteReq
+        title="Excluir"
+        message={deleteReq
             ? `Excluir "${nodeLabel(deleteReq.kind, deleteReq.node)}" e todo o seu conteúdo? Esta ação não pode ser desfeita.`
             : ""}
-        confirmButton={{ content: "Excluir", negative: true }}
-        cancelButton="Cancelar"
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        danger
         onCancel={() => setDeleteReq(undefined)}
         onConfirm={handleDeleteNode} />
 

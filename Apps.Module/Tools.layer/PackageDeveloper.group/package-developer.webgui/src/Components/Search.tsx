@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState, useRef } from "react"
-import { Icon, Loader } from "semantic-ui-react"
+import { Icon, Spinner } from "@i-components"
 
 import { pkgContext } from "../Utils/pkgContext"
 
@@ -8,7 +8,7 @@ import { pkgContext } from "../Utils/pkgContext"
 const Highlight = ({ text, q }:any) => {
     const i = text.toLowerCase().indexOf(q.toLowerCase())
     if(i < 0 || !q) return <>{text}</>
-    return <>{text.slice(0, i)}<mark style={{background:"var(--color-warning, #d78a20)", color:"#1a1200", borderRadius:2}}>{text.slice(i, i + q.length)}</mark>{text.slice(i + q.length)}</>
+    return <>{text.slice(0, i)}<mark style={{background:"var(--color-warning)", color:"#1a1200", borderRadius:2}}>{text.slice(i, i + q.length)}</mark>{text.slice(i + q.length)}</>
 }
 
 // Busca real no workspace: chama o endpoint SearchFiles em cada pacote aberto e
@@ -45,13 +45,13 @@ const Search = ({ pkgs, searchFiles, onOpen }:any) => {
 
     return <div>
         <div style={{display:"flex", alignItems:"center", gap:6, padding:"4px 6px", marginBottom:8,
-            border:"1.5px solid var(--mp-border-default, var(--mp-line-soft))", borderRadius:4, background:"var(--color-surface)"}}>
+            border:"1.5px solid var(--mp-line-soft)", borderRadius:4, background:"var(--color-surface)"}}>
             <Icon name="search" style={{margin:0, opacity:0.5}} />
             <input value={q} autoFocus placeholder="Buscar no workspace…"
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={(e) => { if(e.key === "Enter") run() }}
                 style={{flex:1, border:"none", outline:"none", background:"transparent", fontSize:13, color:"var(--color-text)"}} />
-            { loading ? <Loader active inline size="tiny" /> : <Icon name="arrow right" link title="Buscar (Enter)" style={{margin:0, opacity:0.6}} onClick={run} /> }
+            { loading ? <Spinner size="sm"/> : <Icon name="arrow right" link title="Buscar (Enter)" style={{margin:0, opacity:0.6}} onClick={run} /> }
         </div>
 
         {

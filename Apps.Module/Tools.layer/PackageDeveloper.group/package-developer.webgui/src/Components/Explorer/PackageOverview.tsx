@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import { PackageModel, SectionId } from "../../Domain/packageModel"
 import { GitScope } from "../../Domain/gitModel"

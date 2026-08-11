@@ -1,38 +1,8 @@
 import * as React from "react"
-import styled from "styled-components"
+
 
 // Corpo do markdown com tipografia estilo GitHub/VSCode (tema-consciente).
-const Body = styled.div`
-    font-size: 14px;
-    line-height: 1.6;
-    word-wrap: break-word;
-
-    & > *:first-child { margin-top: 0; }
-    & h1, & h2, & h3, & h4, & h5, & h6 { margin: 22px 0 12px; font-weight: 600; line-height: 1.25; }
-    & h1 { font-size: 1.7em; padding-bottom: .3em; border-bottom: 1px solid var(--mp-line-faint, rgba(127,127,127,.25)); }
-    & h2 { font-size: 1.4em; padding-bottom: .3em; border-bottom: 1px solid var(--mp-line-faint, rgba(127,127,127,.25)); }
-    & h3 { font-size: 1.2em; }
-    & h4 { font-size: 1.05em; }
-    & p { margin: 0 0 12px; }
-    & ul, & ol { margin: 0 0 12px; padding-left: 1.7em; }
-    & li { margin: .28em 0; }
-    & li > ul, & li > ol { margin: .28em 0; }
-    & a { color: var(--mp-accent, #1a7f78); text-decoration: none; }
-    & a:hover { text-decoration: underline; }
-    & strong { font-weight: 600; }
-    & em { font-style: italic; }
-    & code { background: rgba(127,127,127,.16); padding: .18em .4em; border-radius: 6px; font-family: var(--mp-font-code, monospace); font-size: .88em; }
-    & pre { background: rgba(127,127,127,.10); border: 1px solid var(--mp-line-faint, rgba(127,127,127,.22)); border-radius: 8px; padding: 12px 14px; overflow: auto; margin: 0 0 14px; }
-    & pre code { background: none; padding: 0; font-size: .86em; line-height: 1.5; }
-    & blockquote { margin: 0 0 14px; padding: .3em 1em; border-left: 4px solid var(--mp-accent, rgba(127,127,127,.5)); opacity: .82; }
-    & blockquote > *:last-child { margin-bottom: 0; }
-    & table { border-collapse: collapse; margin: 0 0 14px; display: block; overflow: auto; max-width: 100%; }
-    & th, & td { border: 1px solid var(--mp-line-faint, rgba(127,127,127,.3)); padding: 6px 13px; text-align: left; }
-    & th { background: rgba(127,127,127,.10); font-weight: 600; }
-    & tr:nth-child(2n) td { background: rgba(127,127,127,.04); }
-    & hr { border: 0; border-top: 1px solid var(--mp-line-faint, rgba(127,127,127,.3)); margin: 20px 0; }
-    & img { max-width: 100%; }
-`
+// A folha vive em Styles/components.css, classe `.pdx-markdown`.
 
 // Inline: `código`, **negrito**, *itálico*, [texto](url).
 const renderInline = (text:string, keyBase:string) => {
@@ -129,7 +99,7 @@ const Markdown = ({ text }:any) => {
         else if(i < lines.length && lines[i].trim() !== ""){ blocks.push(<p key={key++}>{renderInline(lines[i], "pp" + key)}</p>); i++ }
     }
 
-    return <Body>{blocks}</Body>
+    return <div className="pdx-markdown">{blocks}</div>
 }
 
 export default Markdown

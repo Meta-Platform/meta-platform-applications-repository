@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { connect } from "react-redux"
-import { Icon, Loader } from "semantic-ui-react"
+import { Icon, Spinner } from "@i-components"
 
 import usePackageTasks from "../Hooks/usePackageTasks"
 import PackageConsole from "./PackageConsole"
@@ -17,11 +17,11 @@ const Tab = ({ active, icon, label, badge, tone, onClick }:any) =>
     <div onClick={onClick} style={{
         display:"inline-flex", alignItems:"center", gap:6, padding:"0 12px", height:"100%", cursor:"pointer",
         fontFamily:"var(--font-ui)", fontSize:12, fontWeight: active ? 700 : 500,
-        color: active ? "var(--mp-ink)" : "var(--color-text-muted, #63614f)",
-        borderBottom: active ? "2px solid var(--color-accent, #13b8b2)" : "2px solid transparent"
+        color: active ? "var(--mp-ink)" : "var(--color-text-muted)",
+        borderBottom: active ? "2px solid var(--color-accent)" : "2px solid transparent"
     }}>
         <Icon name={icon} style={{margin:0}} />{label}
-        { badge > 0 && <span className="ide-badge" style={tone === "warn" ? {background:"var(--color-warning, #d78a20)"} : undefined}>{badge}</span> }
+        { badge > 0 && <span className="ide-badge" style={tone === "warn" ? {background:"var(--color-warning)"} : undefined}>{badge}</span> }
     </div>
 
 // Painel inferior estilo IDE: Problems / Console / Output / Tasks (com badges).
@@ -70,7 +70,7 @@ const BottomPanel = ({ HTTPServerManager, pkg, problems, open, mounted, onToggle
                         : <div>{ problems.map((p:any, i:number) =>
                             <div key={i} style={{display:"flex", alignItems:"center", gap:8, padding:"5px 4px", fontSize:13, borderBottom:"1px solid var(--mp-line-faint)"}}>
                                 <Icon name={p.severity === "warning" ? "warning circle" : "times circle"}
-                                    style={{color: p.severity === "warning" ? "var(--color-warning, #d78a20)" : "var(--color-danger, #d94a3f)", margin:0}} />
+                                    style={{color: p.severity === "warning" ? "var(--color-warning)" : "var(--color-danger)", margin:0}} />
                                 <strong>{p.file}</strong>
                                 { p.path && <span style={{opacity:0.55, fontFamily:"var(--font-mono)", fontSize:"0.88em"}}>{p.path}</span> }
                                 <span style={{opacity:0.8}}>{p.message}</span>
@@ -92,9 +92,9 @@ const BottomPanel = ({ HTTPServerManager, pkg, problems, open, mounted, onToggle
                                 <div key={t.key} onClick={() => !busy && t.run()} style={{
                                     display:"flex", alignItems:"center", gap:8, padding:"7px 10px", cursor: busy ? "default" : "pointer",
                                     border:"1px solid var(--mp-line-faint)", borderRadius:6, opacity: busy && busy !== t.key ? 0.5 : 1,
-                                    background:"var(--color-surface, #fff8e8)"
+                                    background:"var(--color-surface)"
                                 }}>
-                                    { busy === t.key ? <Loader active inline size="tiny" /> : <Icon name={t.icon as any} style={{margin:0}} /> }
+                                    { busy === t.key ? <Spinner size="sm"/> : <Icon name={t.icon as any} style={{margin:0}} /> }
                                     <span style={{fontSize:13, fontWeight:600}}>{t.label}</span>
                                 </div>)
                         }

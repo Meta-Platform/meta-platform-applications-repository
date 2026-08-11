@@ -653,17 +653,8 @@
 
 /* --------------------------------------------------------- estados/avisos */
 
-.pdx-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 28px 16px;
-    text-align: center;
-    color: var(--mp-muted);
-}
-.pdx-empty__title { font-size: 13px; font-weight: 700; color: var(--mp-ink-2); }
-.pdx-empty__hint  { font-size: 12px; max-width: 320px; }
+/* O estado vazio vem do kit (`EmptyState`, .mp-empty-state). O bloco .pdx-empty*
+ * que existia aqui era duplicata e saiu junto com o componente local. */
 
 .pdx-alert {
     display: flex;
@@ -737,7 +728,7 @@
     font-family: var(--mp-font-mono);
     font-size: 12px;
     font-weight: 700;
-    color: var(--pdx-ink, var(--mp-ink));
+    color: var(--pdx-ink);
     line-height: 1.25;
     overflow-wrap: anywhere;
 }

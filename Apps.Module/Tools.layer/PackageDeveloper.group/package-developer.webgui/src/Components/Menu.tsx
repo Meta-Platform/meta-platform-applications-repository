@@ -1,38 +1,31 @@
 import * as React from "react"
-import { 
-	Menu,
-	Header,
-	Image
-} from "semantic-ui-react"
-import styled from "styled-components"
 
 import listIcons    from "../Mocks/AppsMenu.mock"
 
-const AppsMenuItem = styled(Menu.Item)`
-	padding: 8px!important;
-`
 
 const MainMenu = () => {
 
-    return <Menu attached="top">
-                <AppsMenuItem active>
-                    <Header>Package Developer</Header>
-                </AppsMenuItem>
+    return <div className="pdx-appbar">
+                <div className="pdx-appbar__item is-active is-static">
+                    <span className="pdx-appbar__title">Package Developer</span>
+                </div>
                 {
                     listIcons
                     .filter(({enable}:any) => enable)
-                    .map(({icon, title, url}, key) => 
-                        <AppsMenuItem key={key}
+                    .map(({icon, title, url}, key) =>
+                        <button key={key}
+                            type="button"
+                            className="pdx-appbar__item"
                             title={title}
                             onClick={()=>{
                                 //@ts-ignore
                                 window.location = url
                             }}>
-                            <Image spaced="right" src={icon} size="mini"/>
-                        </AppsMenuItem>)
+                            <img className="pdx-appbar__img" src={icon} alt={title}/>
+                        </button>)
                 }
-            </Menu>
+            </div>
 }
-    
+
 
 export default MainMenu

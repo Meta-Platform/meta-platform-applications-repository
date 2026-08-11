@@ -1,12 +1,12 @@
 import * as React from "react"
 import { useRef, useState } from "react"
-import { Icon, Loader } from "semantic-ui-react"
+import { EmptyState, Icon, Spinner } from "@i-components"
 
 import { Facets, Filters, SearchResult, hasActiveFilters } from "../../Domain/packageIndex"
 import { Selection } from "../../Domain/selection"
 import PackageSearchFilters, { ActiveFilters } from "./PackageSearchFilters"
 import PackageResultsTree from "./PackageResultsTree"
-import { EmptyState, IconButton, Segmented } from "./ui/Primitives"
+import { IconButton, Segmented } from "./ui/Primitives"
 
 // Painel 3: busca, filtros e resultados. A busca é o instrumento principal de
 // descoberta — vale para nome, namespace, tipo, serviço, executável, comando,
@@ -103,17 +103,17 @@ const PackageExplorerPanel = ({
         <div className="pdx-panel__body pdx-panel__body--flush">
             {
                 error
-                ? <EmptyState icon="exclamation triangle" title="Falha ao carregar os pacotes" hint={error}
-                    action={onRetry ? <IconButton icon="redo" label="Tentar novamente" text="Tentar novamente" onClick={onRetry} /> : undefined} />
+                ? <EmptyState icon="exclamation triangle" title="Falha ao carregar os pacotes" message={error}
+                    actions={onRetry ? <IconButton icon="redo" label="Tentar novamente" text="Tentar novamente" onClick={onRetry} /> : undefined} />
                 : loading && !total
-                ? <Loader active inline="centered" style={{marginTop:24}} />
+                ? <div className="pdx-loading"><Spinner/></div>
                 : results.length === 0
                 ? <EmptyState icon="search"
                     title={hasActiveFilters(filters) ? "Nenhum pacote corresponde" : "Nenhum pacote neste escopo"}
-                    hint={filters.query.trim()
+                    message={filters.query.trim()
                         ? `Nada casa com “${filters.query.trim()}” nos filtros atuais.`
                         : "Ajuste os filtros ou escolha outro módulo/layer."}
-                    action={hasActiveFilters(filters)
+                    actions={hasActiveFilters(filters)
                         ? <IconButton icon="eraser" label="Limpar filtros" text="Limpar filtros"
                             onClick={() => onFilters({ query: "", types: [], modules: [], layers: [], capabilities: [] })} />
                         : undefined} />

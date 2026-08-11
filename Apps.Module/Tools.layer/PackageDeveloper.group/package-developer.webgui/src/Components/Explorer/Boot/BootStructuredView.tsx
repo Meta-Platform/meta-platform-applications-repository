@@ -1,7 +1,8 @@
 import * as React from "react"
+import { EmptyState } from "@i-components"
 
 import { PackageModel, SectionId } from "../../../Domain/packageModel"
-import { CollapsibleSection, EmptyState, Metrics } from "../ui/Primitives"
+import { CollapsibleSection, Metrics } from "../ui/Primitives"
 import { IssueList } from "../ui/ValidationBadge"
 import SectionView from "../Runtime/SectionView"
 
@@ -32,7 +33,7 @@ const BootStructuredView = ({ model, selectedId, onSelectItem, onOpenRef, worksp
     const sections = model.sections.filter((s) => BOOT_SECTIONS.indexOf(s.id) > -1)
     if(!model.boot)
         return <EmptyState icon="rocket" title="Este pacote não declara boot"
-            hint="Nada a mostrar: metadata/boot.json não existe." />
+            message="Nada a mostrar: metadata/boot.json não existe." />
 
     const bootIssues = model.issues.filter((i) => i.file === "metadata/boot.json")
     const providers:string[] = []

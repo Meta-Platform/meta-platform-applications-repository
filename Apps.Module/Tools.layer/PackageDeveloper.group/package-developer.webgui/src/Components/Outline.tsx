@@ -1,5 +1,5 @@
 import * as React from "react"
-import { List, Icon } from "semantic-ui-react"
+import { Icon, TreeRow } from "@i-components"
 
 // Símbolos de um arquivo de código (regex leve, sem parser).
 const codeSymbols = (src:string) => {
@@ -20,24 +20,26 @@ const codeSymbols = (src:string) => {
 const JsonKeys = ({ obj, depth }:any) => {
     if(obj == null || typeof obj !== "object") return null
     const entries = Array.isArray(obj) ? obj.map((v:any, i:number) => [String(i), v]) : Object.keys(obj).map((k) => [k, obj[k]])
-    return <List.List style={depth === 0 ? {margin:0} : undefined}>
+    return <>
         {
             entries.map(([k, v]:any, i:number) => {
                 const isObj = v && typeof v === "object"
                 const icon = Array.isArray(v) ? "list" : isObj ? "folder outline" : "minus"
-                return <List.Item key={i}>
-                    <List.Icon name={icon as any} color={isObj ? "yellow" : "grey"} />
-                    <List.Content>
-                        <List.Header style={{fontWeight: isObj ? 600 : 400, fontSize:"0.92em"}}>
-                            {k}{ Array.isArray(v) && <span style={{opacity:.5}}> [{v.length}]</span> }
-                            { !isObj && <span style={{opacity:.5, marginLeft:6, fontWeight:400}}>{String(v).slice(0, 24)}</span> }
-                        </List.Header>
-                        { isObj && depth < 1 && <JsonKeys obj={v} depth={depth + 1} /> }
-                    </List.Content>
-                </List.Item>
+                return <React.Fragment key={i}>
+                    <TreeRow
+                        depth={depth}
+                        icon={icon}
+                        label={
+                            <span style={{fontWeight: isObj ? 600 : 400, fontSize:"0.92em"}}>
+                                {k}{ Array.isArray(v) && <span style={{opacity:.5}}> [{v.length}]</span> }
+                                { !isObj && <span style={{opacity:.5, marginLeft:6, fontWeight:400}}>{String(v).slice(0, 24)}</span> }
+                            </span>
+                        } />
+                    { isObj && depth < 1 && <JsonKeys obj={v} depth={depth + 1} /> }
+                </React.Fragment>
             })
         }
-    </List.List>
+    </>
 }
 
 // Painel Outline: símbolos do arquivo de código OU chaves do JSON ativo.
@@ -50,22 +52,21 @@ const Outline = ({ tab, onGoto }:any) => {
     if(isJson){
         let obj:any
         try { obj = JSON.parse(content) } catch(e) { return <div style={{opacity:.6, fontSize:13, padding:"6px 4px"}}><Icon name="warning circle" color="red" />JSON inválido</div> }
-        return <List size="small" style={{margin:0}}><JsonKeys obj={obj} depth={0} /></List>
+        return <div><JsonKeys obj={obj} depth={0} /></div>
     }
 
     const syms = codeSymbols(content)
     if(syms.length === 0) return <div style={{opacity:.55, fontSize:13, padding:"6px 4px"}}>Sem símbolos detectados.</div>
-    return <List size="small" style={{margin:0}}>
+    return <div>
         { syms.map((s, i) =>
-            <List.Item key={i} style={{cursor:"pointer"}} onClick={() => onGoto && onGoto(s.line)} title={`linha ${s.line}`}>
-                <List.Icon name={s.icon} color={s.color} />
-                <List.Content>
-                    <List.Header style={{fontSize:"0.92em", fontWeight:500}}>
-                        {s.name}<span style={{opacity:.4, marginLeft:6, fontSize:"0.85em"}}>:{s.line}</span>
-                    </List.Header>
-                </List.Content>
-            </List.Item>) }
-    </List>
+            <div key={i} title={`linha ${s.line}`}>
+                <TreeRow
+                    icon={s.icon}
+                    label={<span style={{fontSize:"0.92em", fontWeight:500}}>{s.name}</span>}
+                    meta={`:${s.line}`}
+                    onSelect={() => onGoto && onGoto(s.line)} />
+            </div>) }
+    </div>
 }
 
 export default Outline

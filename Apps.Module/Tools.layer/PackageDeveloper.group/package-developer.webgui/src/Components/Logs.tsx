@@ -4,11 +4,9 @@ import {useState, useEffect}  from "react"
 import { bindActionCreators } from "redux"
 import { connect }            from "react-redux"
 
-import {Grid, Table} from "semantic-ui-react"
-
 const LogTable = (log:Array<LogType>) => {
 
-    return 
+    return
 }
 
 type LogsProps = {
@@ -19,14 +17,18 @@ const Logs = ({
     PackageManager
 }:LogsProps) =>{
 
-    return  <Table>
-                <Table.Header>
-                    <Table.Row>
-                        <Table.HeaderCell>Timestamp</Table.HeaderCell>
-                        <Table.HeaderCell>Data</Table.HeaderCell>
-                    </Table.Row>
-                </Table.Header>
-            </Table>
+    // Tabela irregular (só cabeçalho, sem linhas): mantém a marcação em
+    // `.mp-table` do kit em vez de DataTable, que esconderia o cabeçalho.
+    return  <div className="mp-table-wrap">
+                <table className="mp-table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Data</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
 }
 
 const mapDispatchToProps = (dispatch:any) => bindActionCreators({}, dispatch)

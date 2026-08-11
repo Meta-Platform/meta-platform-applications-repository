@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Icon, Loader } from "semantic-ui-react"
+import { EmptyState, Icon, Spinner } from "@i-components"
 
 import { RepositoryModel } from "../../Domain/repositoryModel"
 import { GitModel } from "../../Domain/gitModel"
@@ -7,7 +7,7 @@ import GitStatusView from "./GitStatusView"
 import InspectorTabs from "./InspectorTabs"
 import Markdown from "../Markdown"
 import CopyableCodeValue from "./ui/CopyableCodeValue"
-import { Badge, CollapsibleSection, EmptyState, IconButton, Metrics } from "./ui/Primitives"
+import { Badge, CollapsibleSection, IconButton, Metrics } from "./ui/Primitives"
 import { IssueList } from "./ui/ValidationBadge"
 
 // Metadados do repositório: identidade (repository.json), estrutura, executáveis
@@ -30,12 +30,12 @@ const RepositoryMetadataView = ({ model, loading, error, onRetry, onOpenPackage,
     if(error)
         return <div className="pdx-inspector__body">
             <EmptyState icon="exclamation triangle" title="Não foi possível ler os metadados do repositório"
-                hint={error}
-                action={onRetry ? <IconButton icon="redo" label="Tentar novamente" text="Tentar novamente" onClick={onRetry} /> : undefined} />
+                message={error}
+                actions={onRetry ? <IconButton icon="redo" label="Tentar novamente" text="Tentar novamente" onClick={onRetry} /> : undefined} />
         </div>
 
     if(!model)
-        return <div className="pdx-inspector__body"><Loader active inline="centered" /></div>
+        return <div className="pdx-inspector__body"><div className="pdx-loading"><Spinner/></div></div>
 
     return <div className="pdx-inspector">
         <div className="pdx-inspector__head">
@@ -52,7 +52,7 @@ const RepositoryMetadataView = ({ model, loading, error, onRetry, onOpenPackage,
                             : <Badge icon="circle outline" title="não registrado no ecossistema desta máquina">não instalado</Badge>
                         }
                         { !!model.dirtyCount && <Badge tone="warning" icon="pencil">{model.dirtyCount} sem commitar</Badge> }
-                        { loading && <Loader active inline size="mini" /> }
+                        { loading && <Spinner size="sm"/> }
                     </div>
                     <div className="pdx-ident__badges" style={{marginTop:6}}>
                         { model.namespace && <CopyableCodeValue value={model.namespace} type="text" /> }
@@ -84,7 +84,7 @@ const RepositoryMetadataView = ({ model, loading, error, onRetry, onOpenPackage,
             ? <div className="pdx-inspector__body">
                 { gitModel
                     ? <GitStatusView model={gitModel} repositories={[model.name]} onOpenPackage={onOpenPackage} />
-                    : <Loader active inline="centered" /> }
+                    : <div className="pdx-loading"><Spinner/></div> }
               </div>
             :
         <div className="pdx-inspector__body">

@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useEffect, useMemo, useState } from "react"
-import { Icon, Loader } from "semantic-ui-react"
+import { EmptyState, Icon, Spinner } from "@i-components"
 
 import { PackageModel, SectionId, findItem, findSection } from "../../Domain/packageModel"
 import { GitScope } from "../../Domain/gitModel"
@@ -14,7 +14,7 @@ import DependenciesView from "./DependenciesView"
 import { PackageGitView, GitCounters } from "./GitStatusView"
 import CopyableCodeValue from "./ui/CopyableCodeValue"
 import { IssueBadges } from "./ui/ValidationBadge"
-import { Badge, EmptyState, IconButton } from "./ui/Primitives"
+import { Badge, IconButton } from "./ui/Primitives"
 
 // Inspector do pacote: cabeçalho persistente (identidade + ações), trilha do
 // recurso selecionado e abas FIXAS do pacote. Selecionar um item da árvore NÃO
@@ -98,8 +98,8 @@ const PackageInspector = ({
     if(error)
         return <div className="pdx-inspector">
             <div className="pdx-inspector__body">
-                <EmptyState icon="exclamation triangle" title="Não foi possível carregar o pacote" hint={error}
-                    action={onRetry ? <IconButton icon="redo" label="Tentar novamente" text="Tentar novamente" onClick={onRetry} /> : undefined} />
+                <EmptyState icon="exclamation triangle" title="Não foi possível carregar o pacote" message={error}
+                    actions={onRetry ? <IconButton icon="redo" label="Tentar novamente" text="Tentar novamente" onClick={onRetry} /> : undefined} />
             </div>
         </div>
 
@@ -107,9 +107,9 @@ const PackageInspector = ({
         return <div className="pdx-inspector">
             <div className="pdx-inspector__body">
                 { loading
-                    ? <Loader active inline="centered" />
+                    ? <div className="pdx-loading"><Spinner/></div>
                     : <EmptyState icon="hand point left outline" title="Nenhum recurso selecionado"
-                        hint="Escolha um pacote na lista para inspecionar seus metadados, runtime e dependências." /> }
+                        message="Escolha um pacote na lista para inspecionar seus metadados, runtime e dependências." /> }
             </div>
         </div>
 
@@ -130,7 +130,7 @@ const PackageInspector = ({
                     <Badge tone="type">{identity.ext}</Badge>
                     { identity.version && <Badge tone="version">v{identity.version}</Badge> }
                     { gitScope && gitScope.files.length > 0 && <GitCounters counts={gitScope.counts} /> }
-                    { loading && <Loader active inline size="mini" /> }
+                    { loading && <Spinner size="sm"/> }
                     <IssueBadges issues={model.issues} />
                 </div>
                 <div className="pdx-ident__actions">
@@ -188,7 +188,7 @@ const PackageInspector = ({
                 ? <PackageOverview model={model} onOpenSection={onSelectSection} onOpenRef={onOpenRef}
                     onOpenTab={setTab} gitScope={gitScope} />
                 : activeTab === "readme"
-                ? (readmeLoading ? <Loader active inline="centered" /> : <Markdown text={readme} />)
+                ? (readmeLoading ? <div className="pdx-loading"><Spinner/></div> : <Markdown text={readme} />)
                 : activeTab === "runtime"
                 ? <RuntimeView model={model} tab={runtimeTab} onTab={setRuntimeTab}
                     bootView={bootView} onBootView={onBootView}

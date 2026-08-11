@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState, useEffect, useRef } from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 export type PaletteItem = {
     id: string
@@ -51,9 +51,9 @@ const CommandPalette = ({ open, placeholder, items, onClose }:any) => {
         display:"flex", justifyContent:"center", alignItems:"flex-start", paddingTop:"12vh"
     }}>
         <div onMouseDown={(e) => e.stopPropagation()} style={{
-            width:"min(620px, 92vw)", background:"var(--color-surface, #fff8e8)",
-            border:"2px solid var(--color-border-strong, #25231f)", borderRadius:8,
-            boxShadow:"var(--shadow-window, 3px 3px 0 rgba(35,32,24,.82))", overflow:"hidden",
+            width:"min(620px, 92vw)", background:"var(--color-surface)",
+            border:"2px solid var(--color-border-strong)", borderRadius:8,
+            boxShadow:"var(--shadow-window)", overflow:"hidden",
             fontFamily:"var(--font-ui)"
         }}>
             <div style={{display:"flex", alignItems:"center", gap:8, padding:"10px 12px", borderBottom:"1px solid var(--mp-line-faint)"}}>
@@ -71,8 +71,8 @@ const CommandPalette = ({ open, placeholder, items, onClose }:any) => {
                         <div key={it.id} onMouseEnter={() => setSel(i)} onClick={() => run(it)}
                             style={{
                                 display:"flex", alignItems:"center", gap:10, padding:"7px 14px", cursor:"pointer",
-                                background: i === clamped ? "var(--color-accent-soft, rgba(20,214,200,.16))" : "transparent",
-                                boxShadow: i === clamped ? "inset 3px 0 0 var(--color-accent, #14D6C8)" : "none"
+                                background: i === clamped ? "var(--color-accent-soft)" : "transparent",
+                                boxShadow: i === clamped ? "inset 3px 0 0 var(--color-accent)" : "none"
                             }}>
                             <Icon name={(it.icon as any) || "circle outline"} style={{margin:0, color: it.color || "var(--color-text-muted)"}} />
                             <span style={{flex:1, fontSize:13, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>{it.label}</span>

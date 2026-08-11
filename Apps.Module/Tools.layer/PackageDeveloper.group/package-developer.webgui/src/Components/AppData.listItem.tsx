@@ -1,12 +1,7 @@
 import * as React from "react"
-import {List} from "semantic-ui-react"
+import { ListRow } from "@i-components"
 
 const AppDataListItem = () =>
-    <List.Item>
-        <List.Icon name="folder" />
-        <List.Content>
-            <List.Header>AppData</List.Header>
-        </List.Content>
-    </List.Item>
+    <ListRow icon="folder" title="AppData" />
 
 export default AppDataListItem

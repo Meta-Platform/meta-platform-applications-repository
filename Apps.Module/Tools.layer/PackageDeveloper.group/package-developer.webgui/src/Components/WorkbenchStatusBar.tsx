@@ -1,6 +1,6 @@
 import * as React from "react"
 import { connect } from "react-redux"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import usePackageTasks from "../Hooks/usePackageTasks"
 import { pkgContext } from "../Utils/pkgContext"
@@ -28,9 +28,9 @@ const WorkbenchStatusBar = ({ HTTPServerManager, pkg, activeTab, tabsCount, dirt
     const isCode = activeTab && activeTab.kind !== "component" && !/\.(json|md)$/i.test(activeTab.filePath || "")
 
     return <div style={{
-        display:"flex", alignItems:"center", height:"var(--mp-shell-statusbar-h, 24px)", flexShrink:0,
-        fontFamily:"var(--font-ui)", fontSize:"11px", color:"var(--color-text-inverse, #f4ead4)",
-        background:"var(--mp-line-strong, #171713)", borderTop:"1px solid var(--color-border-strong, #25231f)"
+        display:"flex", alignItems:"center", height:"24px", flexShrink:0,
+        fontFamily:"var(--font-ui)", fontSize:"11px", color:"var(--color-text-inverse)",
+        background:"var(--mp-line-strong)", borderTop:"1px solid var(--color-border-strong)"
     }}>
         <span style={{display:"inline-flex", alignItems:"center", gap:5, padding:"0 8px", height:"100%",
             background:ctx.color, color:"#0b0f16", fontWeight:700}}>

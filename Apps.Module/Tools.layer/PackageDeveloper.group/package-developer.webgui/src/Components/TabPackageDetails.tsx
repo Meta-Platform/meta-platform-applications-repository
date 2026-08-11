@@ -2,14 +2,7 @@ import * as React             from "react"
 import {useState, useEffect}  from "react"
 import { bindActionCreators } from "redux"
 import { connect }            from "react-redux"
-import {
-    Tab,
-    Segment, 
-    Icon,
-    Header,
-    Loader,
-    Divider
-} from "semantic-ui-react"
+import { Tabs, Surface } from "@i-components"
 
 
 import Functionalities from "./Functionalities"
@@ -50,12 +43,10 @@ const TabPackageDetails = ({
         && package_details.packageJson
         ? [{
 			menuItem: "Functionalities",
-			render: () => 
-				<Tab.Pane>
-					<Functionalities
-                        workspace         = {workspace}
-                        hasNodeModulesDir = {hasNodeModulesDir}/>
-				</Tab.Pane>
+			render: () =>
+				<Functionalities
+                    workspace         = {workspace}
+                    hasNodeModulesDir = {hasNodeModulesDir}/>
         }]
         :[],
         ...(package_details
@@ -64,10 +55,7 @@ const TabPackageDetails = ({
             || lib_details)
         ?[{
 			menuItem: "NPM Scripts",
-			render: () => 
-				<Tab.Pane>
-					<NPMScripts/>
-				</Tab.Pane>
+			render: () => <NPMScripts/>
 		}]
         :[],
         ...(package_details
@@ -76,10 +64,7 @@ const TabPackageDetails = ({
             || lib_details)
         ?[{
 			menuItem: "Logs",
-			render: () => 
-				<Tab.Pane>
-					<Logs/>
-				</Tab.Pane>
+			render: () => <Logs/>
 		}]
         :[]
     ]
@@ -90,22 +75,28 @@ const TabPackageDetails = ({
 		}
 	}, [panes])
 
-    const getIndexTab = (panes:Array<any>, tabName:string) =>
-    panes.indexOf(panes.find(({menuItem}) => menuItem === tabName))
-    
-    
-    const handleChangeTab = (event:any, data:any) =>{
-		setTabNameSelected(
-			//@ts-ignore
-			panes[data.activeIndex].menuItem
-		)
-	}
+    const getPane = (panes:Array<any>, tabName:string) =>
+    panes.find(({menuItem}) => menuItem === tabName)
 
-    return  <Tab 
-                activeIndex = {getIndexTab(panes, tabNameSelected)} 
-                menu        = {{ secondary: true, pointing: true }} 
-                panes       = {panes} 
-                onTabChange = {handleChangeTab}/>
+    const handleChangeTab = (menuItem:string) => setTabNameSelected(menuItem)
+
+    // `Tabs` do kit é só a barra: o painel ativo é renderizado aqui.
+    const activePane = getPane(panes, tabNameSelected)
+
+    return  <div style={{display:"flex", flexDirection:"column", minHeight:0}}>
+                <div style={{flex:"0 0 auto"}}>
+                    <Tabs
+                        tabs      = {panes.map(({menuItem}) => ({ key: menuItem, label: menuItem }))}
+                        activeKey = {tabNameSelected}
+                        onChange  = {handleChangeTab}/>
+                </div>
+                {
+                    activePane &&
+                    <Surface style={{flex:1, minHeight:0, padding:"var(--mp-space-4)", overflow:"auto"}}>
+                        {activePane.render()}
+                    </Surface>
+                }
+            </div>
 }
 
 

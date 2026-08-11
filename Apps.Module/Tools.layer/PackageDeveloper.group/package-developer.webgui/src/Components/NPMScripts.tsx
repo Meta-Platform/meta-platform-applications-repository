@@ -1,12 +1,8 @@
 import React                          from "react"
 import { bindActionCreators }         from "redux"
 import { connect }                    from "react-redux"
-import {Button, Segment, Grid, Table, Icon} from "semantic-ui-react"
-import styled from "styled-components"
+import { Button, DataTable, Panel }   from "@i-components"
 
-const RowP10pxStyled = styled(Grid.Row)`
-    padding : 10px!important;
-`
 
 type NPMScriptsModuleProps = {
     name    : string
@@ -16,29 +12,28 @@ type NPMScriptsModuleProps = {
 const NPMScriptsModule = ({
     name,
     scripts
-}:NPMScriptsModuleProps) => 
-    <Table celled striped size="small" compact>
-        <Table.Header>
-            <Table.Row>
-                <Table.HeaderCell colSpan="3">{name}</Table.HeaderCell>
-            </Table.Row>
-        </Table.Header>
-        <Table.Body>
-            {
-                Object.keys(scripts)
-                .map((name:string, key:number) => 
-                    <Table.Row key={key}>
-                        <Table.Cell>{name}</Table.Cell>
-                        <Table.Cell>{scripts[name]}</Table.Cell>
-                        <Table.Cell collapsing>
-                            <Button 
-                                content = "Run"
-                                size    = "mini" />
-                        </Table.Cell>
-                    </Table.Row>)
+}:NPMScriptsModuleProps) =>
+    <Panel title={name}>
+        <DataTable
+            dense   = {true}
+            rowKey  = {(row:any) => row.script}
+            columns = {[
+                { key: "script",  header: "Script" },
+                { key: "command", header: "Comando", mono: true },
+                {
+                    key    : "run",
+                    header : "",
+                    width  : 1,
+                    align  : "right" as const,
+                    render : () => <Button size="sm">Run</Button>
                 }
-        </Table.Body>
-    </Table>
+            ]}
+            rows = {
+                Object.keys(scripts)
+                .map((script:string) => ({ script, command: scripts[script] }))
+            }/>
+    </Panel>
+
 const NPMScripts = ({
     PackageManager
 }:any) => {
@@ -63,12 +58,12 @@ const NPMScripts = ({
         )
         ? <>
                 {/*<h4>NPM Scripts</h4>*/}
-                <Grid columns="equal">
-                    { hasAppScripts && <RowP10pxStyled><NPMScriptsModule name="App" scripts={package_details.packageJson.scripts}/></RowP10pxStyled>}
-                    { hasUIScripts  && <RowP10pxStyled><NPMScriptsModule name="UI"  scripts={ui_details.packageJson.scripts}/></RowP10pxStyled>}
-                    { hasWebScripts && <RowP10pxStyled><NPMScriptsModule name="Web" scripts={web_details.packageJson.scripts}/></RowP10pxStyled>}
-                    { hasLibScripts && <RowP10pxStyled><NPMScriptsModule name="Lib" scripts={lib_details.packageJson.scripts}/></RowP10pxStyled>}
-                </Grid>      
+                <div className="pdx-npm-grid">
+                    { hasAppScripts && <div className="pdx-npm-row"><NPMScriptsModule name="App" scripts={package_details.packageJson.scripts}/></div>}
+                    { hasUIScripts  && <div className="pdx-npm-row"><NPMScriptsModule name="UI"  scripts={ui_details.packageJson.scripts}/></div>}
+                    { hasWebScripts && <div className="pdx-npm-row"><NPMScriptsModule name="Web" scripts={web_details.packageJson.scripts}/></div>}
+                    { hasLibScripts && <div className="pdx-npm-row"><NPMScriptsModule name="Lib" scripts={lib_details.packageJson.scripts}/></div>}
+                </div>
             </>
         : <></>
 }

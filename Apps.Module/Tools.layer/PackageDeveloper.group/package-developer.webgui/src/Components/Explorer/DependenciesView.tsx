@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useMemo } from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import { PackageModel } from "../../Domain/packageModel"
 import CopyableCodeValue from "./ui/CopyableCodeValue"

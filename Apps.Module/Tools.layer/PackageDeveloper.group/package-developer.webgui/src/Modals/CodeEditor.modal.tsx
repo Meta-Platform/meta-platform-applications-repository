@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 
-import { Button, Modal } from "semantic-ui-react"
+import { Button, ButtonGroup, Dialog } from "@i-components"
 
 import CodeEditor from "../Components/CodeEditor"
 
@@ -70,22 +70,24 @@ const CodeEditorModal = ({open, filename, content, onClose, onSave}:ModalProps) 
         }
     }
 
-    return <Modal open={open} closeIcon size="large" onClose={() => onClose()}>
-                <Modal.Header>Code Editor — {filename}{dirty ? " *" : ""}</Modal.Header>
-                <Modal.Content>
-                    <CodeEditor
-                        value={value}
-                        language={getLanguage(filename)}
-                        onChange={setValue} />
-                </Modal.Content>
-                <Modal.Actions>
-                    <Button.Group>
-                        <Button negative onClick={() => onClose()}>Cancel</Button>
+    return <Dialog
+                open={open}
+                size="xl"
+                icon="code"
+                title={`Code Editor — ${filename}${dirty ? " *" : ""}`}
+                onClose={() => onClose()}
+                actions={
+                    <ButtonGroup>
+                        <Button onClick={() => onClose()}>Cancel</Button>
                         <Button onClick={() => setValue(content)} disabled={!dirty}>Reset</Button>
-                        <Button positive loading={saving} disabled={!dirty || saving} onClick={handleSave}>Save</Button>
-                    </Button.Group>
-                </Modal.Actions>
-            </Modal>
+                        <Button variant="primary" loading={saving} disabled={!dirty || saving} onClick={handleSave}>Save</Button>
+                    </ButtonGroup>
+                }>
+                <CodeEditor
+                    value={value}
+                    language={getLanguage(filename)}
+                    onChange={setValue} />
+            </Dialog>
 }
 
 export default CodeEditorModal

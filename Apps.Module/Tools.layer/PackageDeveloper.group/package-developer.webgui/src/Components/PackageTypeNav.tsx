@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
-import { List, Icon } from "semantic-ui-react"
+import { Icon, TreeRow } from "@i-components"
 
 import SourceTree from "./SourceTree"
 import PackageComponentsTree from "./PackageComponentsTree"
@@ -14,6 +14,14 @@ const METADATA_TYPES:any = {
     "command-group.json"          : { label: "Comandos",            icon: "terminal" },
     "startup-params.json"         : { label: "Parâmetros",          icon: "sliders horizontal" },
     "startup-params-schema.json"  : { label: "Schema de parâmetros", icon: "clipboard list" }
+}
+
+const SECTION_LABEL:React.CSSProperties = {
+    textTransform : "uppercase",
+    fontSize      : "0.75em",
+    opacity       : 0.7,
+    letterSpacing : 0.5,
+    fontWeight    : 700
 }
 
 // Navegação do pacote POR TIPO de componente (não por árvore de arquivos):
@@ -31,29 +39,29 @@ const PackageTypeNav = ({ listDir, onOpenFile, onOpenComponent, onFileContext, s
         }).catch(() => { setSrcDirs([]); setSrcFiles([]) })
     }, [])
 
-    return <List>
-        <List.Item>
-            <List.Header style={{textTransform:"uppercase", fontSize:"0.75em", opacity:0.7, letterSpacing:0.5}}>Metadados</List.Header>
-            <List.List>
+    return <div>
+        <div>
+            <div style={SECTION_LABEL}>Metadados</div>
+            <div>
                 {/* Réplica da árvore de componentes da coluna Pacotes; clicar abre o arquivo. */}
                 {
                     pkg
                     ? <PackageComponentsTree workspace={workspace} pkg={pkg} selectedKey={selectedComponentKey}
                         onSelect={(d:any) => onOpenComponent ? onOpenComponent(d) : (d.file && onOpenFile(d.file))} />
-                    : <List.Item><span style={{opacity:0.45}}>sem metadados</span></List.Item>
+                    : <div><span style={{opacity:0.45}}>sem metadados</span></div>
                 }
-            </List.List>
-        </List.Item>
+            </div>
+        </div>
 
         {
             (srcDirs.length > 0 || srcFiles.length > 0) &&
-            <List.Item style={{marginTop:8}}>
-            <List.Header style={{textTransform:"uppercase", fontSize:"0.75em", opacity:0.7, letterSpacing:0.5, cursor:"pointer"}}
+            <div style={{marginTop:8}}>
+            <div style={{...SECTION_LABEL, cursor:"pointer"}}
                 onClick={() => setCodeOpen((o) => !o)}>
-                <Icon name={codeOpen ? "caret down" : "caret right"} />Código
-            </List.Header>
+                <Icon name={codeOpen ? "caret down" : "caret right"} style={{marginRight:6}} />Código
+            </div>
             { codeOpen &&
-            <List.List>
+            <div>
                 {
                     // cada diretório de topo em src/ é uma "categoria de tipo"
                     srcDirs.map((d:any, i:number) =>
@@ -64,19 +72,21 @@ const PackageTypeNav = ({ listDir, onOpenFile, onOpenComponent, onFileContext, s
                 {
                     srcFiles.map((f:any, i:number) => {
                         const path = `/src/${f.filename}`
-                        return <List.Item key={"f"+i} active={selectedPath === path}
-                            style={{cursor:"pointer"}} onClick={() => onOpenFile(path)}
+                        return <div key={"f"+i}
                             onContextMenu={(e:any) => onFileContext && onFileContext(e, path)}>
-                            <List.Icon name="file code outline" color="grey" />
-                            <List.Content>{f.filename}</List.Content>
-                        </List.Item>
+                            <TreeRow
+                                icon="file code outline"
+                                label={f.filename}
+                                selected={selectedPath === path}
+                                onSelect={() => onOpenFile(path)} />
+                        </div>
                     })
                 }
-            </List.List>
+            </div>
             }
-            </List.Item>
+            </div>
         }
-    </List>
+    </div>
 }
 
 export default PackageTypeNav

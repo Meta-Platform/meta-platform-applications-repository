@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
-import { List, Icon, Loader } from "semantic-ui-react"
+import { Spinner, TreeRow } from "@i-components"
 
 type TreeNodeProps = {
     name     : string
@@ -11,10 +11,11 @@ type TreeNodeProps = {
     onDirContext ?: (e:any, path:string) => void
     selectedPath ?: string
     defaultOpen ?: boolean
+    depth ?: number
 }
 
 // Nó de diretório: carrega os filhos sob demanda (lazy) ao expandir.
-const DirNode = ({ name, path, listDir, onOpenFile, onFileContext, onDirContext, selectedPath, defaultOpen }:TreeNodeProps) => {
+const DirNode = ({ name, path, listDir, onOpenFile, onFileContext, onDirContext, selectedPath, defaultOpen, depth = 0 }:TreeNodeProps) => {
 
     const [open, setOpen]       = useState(!!defaultOpen)
     const [loaded, setLoaded]   = useState(false)
@@ -35,46 +36,46 @@ const DirNode = ({ name, path, listDir, onOpenFile, onFileContext, onDirContext,
     const sorted = [...items].sort((a, b) =>
         (a.isFile === b.isFile) ? a.filename.localeCompare(b.filename) : (a.isFile ? 1 : -1))
 
-    return <List.Item>
-        <List.Icon
-            name={open ? "folder open" : "folder"}
-            color="yellow"
-            style={{cursor:"pointer"}}
-            onClick={toggle} />
-        <List.Content>
-            <List.Header style={{cursor:"pointer"}} onClick={toggle}
-                onContextMenu={(e:any) => onDirContext && onDirContext(e, path)}>
-                <Icon name={open ? "caret down" : "caret right"} />{name || "/"}
-            </List.Header>
-            {
-                open && <List.List>
-                    { loading && <List.Item><Loader active inline size="tiny" /></List.Item> }
-                    {
-                        loaded && sorted.map((item:any, key:number) => {
-                            const childPath = `${path}/${item.filename}`
-                            return item.isFile
-                                ? <List.Item key={key}
-                                        active={selectedPath === childPath}
-                                        style={{cursor:"pointer"}}
-                                        onClick={() => onOpenFile(childPath)}
-                                        onContextMenu={(e:any) => onFileContext && onFileContext(e, childPath)}>
-                                        <List.Icon name="file outline" color="grey" />
-                                        <List.Content>{item.filename}</List.Content>
-                                    </List.Item>
-                                : <DirNode key={key}
-                                        name={item.filename}
-                                        path={childPath}
-                                        listDir={listDir}
-                                        onOpenFile={onOpenFile}
-                                        onFileContext={onFileContext}
-                                        onDirContext={onDirContext}
-                                        selectedPath={selectedPath} />
-                        })
-                    }
-                </List.List>
-            }
-        </List.Content>
-    </List.Item>
+    return <>
+        <div onContextMenu={(e:any) => onDirContext && onDirContext(e, path)}>
+            <TreeRow
+                depth={depth}
+                icon={open ? "folder open" : "folder"}
+                label={name || "/"}
+                hasChildren
+                expanded={open}
+                onToggle={toggle}
+                onSelect={toggle} />
+        </div>
+        {
+            open && <>
+                { loading && <div style={{paddingLeft: 8 + (depth + 1) * 14}}><Spinner size="sm" /></div> }
+                {
+                    loaded && sorted.map((item:any, key:number) => {
+                        const childPath = `${path}/${item.filename}`
+                        return item.isFile
+                            ? <div key={key} onContextMenu={(e:any) => onFileContext && onFileContext(e, childPath)}>
+                                    <TreeRow
+                                        depth={depth + 1}
+                                        icon="file outline"
+                                        label={item.filename}
+                                        selected={selectedPath === childPath}
+                                        onSelect={() => onOpenFile(childPath)} />
+                                </div>
+                            : <DirNode key={key}
+                                    name={item.filename}
+                                    path={childPath}
+                                    depth={depth + 1}
+                                    listDir={listDir}
+                                    onOpenFile={onOpenFile}
+                                    onFileContext={onFileContext}
+                                    onDirContext={onDirContext}
+                                    selectedPath={selectedPath} />
+                    })
+                }
+            </>
+        }
+    </>
 }
 
 type SourceTreeProps = {
@@ -88,7 +89,7 @@ type SourceTreeProps = {
 }
 
 const SourceTree = ({ listDir, onOpenFile, onFileContext, onDirContext, selectedPath, rootPath = "", rootName = "/" }:SourceTreeProps) =>
-    <List>
+    <div role="tree">
         <DirNode
             name={rootName}
             path={rootPath}
@@ -98,6 +99,6 @@ const SourceTree = ({ listDir, onOpenFile, onFileContext, onDirContext, selected
             onFileContext={onFileContext}
             onDirContext={onDirContext}
             selectedPath={selectedPath} />
-    </List>
+    </div>
 
 export default SourceTree

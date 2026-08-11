@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import { pkgContext } from "../Utils/pkgContext"
 
@@ -29,7 +29,7 @@ const Inspector = ({ pkg, activeTab, dirty, problems, onAction }:any) => {
 
     return <div style={{
         width:300, flexShrink:0, overflow:"auto", padding:"12px 14px",
-        borderLeft:"var(--mp-border)", background:"var(--color-panel-2, var(--mp-paper-2))",
+        borderLeft:"var(--mp-border)", background:"var(--color-panel-2)",
         fontFamily:"var(--font-ui)"
     }} className="wb-scroll">
         <div style={{display:"flex", alignItems:"center", gap:8, marginBottom:14}}>
@@ -64,7 +64,7 @@ const Inspector = ({ pkg, activeTab, dirty, problems, onAction }:any) => {
                 { problems.length === 0
                     ? <span style={{opacity:.75}}><Icon name="check circle" color="green" />Sem problemas</span>
                     : <span style={{cursor:"pointer"}} onClick={() => onAction && onAction("problems")}>
-                        <Icon name="times circle" style={{color:"var(--color-danger, #d94a3f)"}} />
+                        <Icon name="times circle" style={{color:"var(--color-danger)"}} />
                         {problems.length} problema{problems.length > 1 ? "s" : ""}
                       </span> }
             </div>

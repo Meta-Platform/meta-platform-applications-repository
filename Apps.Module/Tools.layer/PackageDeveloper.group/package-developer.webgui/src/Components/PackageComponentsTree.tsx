@@ -1,56 +1,66 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { connect } from "react-redux"
-import { List, Icon, Loader } from "semantic-ui-react"
+import { Spinner, TreeRow } from "@i-components"
 
 import GetRequestByServer from "../Utils/GetRequestByServer"
 import { F_BOOT_SERVICE, F_SERVICE, F_BOOT_ENDPOINT, F_EG_ENDPOINT, F_EXECUTABLE, F_WINDOW } from "./metadataSchema"
 
+
 const SERVER_APP_NAME = process.env.SERVER_APP_NAME
 
-const HL:any = { background:"var(--mp-accent-soft, rgba(20,214,200,0.16))", boxShadow:"inset 2px 0 0 var(--mp-accent, #14D6C8)", borderRadius:4 }
+// Cor do ícone por família de componente (o kit pinta ícone de árvore em
+// --mp-muted; a classe recupera o código de cores — ver batch-c.css).
+const ICO = (color?:string) => color ? `pdx-ico-${color}` : ""
+
+// Repassa a profundidade aos filhos declarados como JSX (a árvore é montada
+// por composição; o recuo de cada nível vem da prop `depth` do TreeRow).
+const withDepth = (children:any, depth:number) =>
+    React.Children.toArray(children).map((child:any) =>
+        React.isValidElement(child) ? React.cloneElement(child as any, { depth }) : child)
 
 // Nó colapsável. Caret expande/colapsa; clicar no rótulo seleciona (mostra
 // detalhes no painel), se `detail` for fornecido.
-const TreeNode = ({ icon, color, label, count, detail, onSelect, defaultOpen, selected, children }:any) => {
+const TreeNode = ({ icon, color, label, count, detail, onSelect, defaultOpen, selected, depth = 0, children }:any) => {
     const [open, setOpen] = useState(!!defaultOpen)
     const has = React.Children.count(children) > 0
-    return <List.Item>
-        <List.Icon name={has ? (open ? "caret down" : "caret right") : "circle outline"}
-            color={has ? undefined : "grey"} link={has}
-            style={{cursor: has ? "pointer" : "default"}} onClick={() => has && setOpen(!open)} />
-        <List.Content style={{minWidth:0, overflow:"hidden"}}>
-            <List.Header title={typeof label === "string" ? label : undefined}
-                style={{cursor:"pointer", fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", padding:"1px 4px", ...(selected ? HL : {})}}
-                onClick={() => detail && onSelect && onSelect(detail)}>
-                <Icon name={icon} color={color} />{label}
-                { count != null && <span style={{opacity:0.5, marginLeft:6, fontWeight:400}}>({count})</span> }
-            </List.Header>
-            { open && has && <List.List style={{paddingLeft:6}}>{children}</List.List> }
-        </List.Content>
-    </List.Item>
+    return <>
+        <TreeRow
+            depth={depth}
+            icon={icon}
+            className={ICO(color)}
+            hasChildren={has}
+            expanded={open}
+            selected={selected}
+            onToggle={() => setOpen(!open)}
+            onSelect={() => detail && onSelect && onSelect(detail)}
+            label={<span title={typeof label === "string" ? label : undefined}>
+                {label}
+                { count != null && <span className="pdx-ctree__count">({count})</span> }
+            </span>} />
+        { open && has && withDepth(children, depth + 1) }
+    </>
 }
 
-const nowrap:any = { whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", display:"block", maxWidth:"100%" }
-
-const Leaf = ({ icon, color, title, subtitle, detail, onSelect, selected }:any) =>
-    <List.Item style={{cursor:"pointer"}} onClick={() => detail && onSelect && onSelect(detail)}>
-        <List.Icon name={icon} color={color} />
-        <List.Content style={{minWidth:0, overflow:"hidden", padding:"1px 4px", ...(selected ? HL : {})}}>
-            <List.Header title={title} style={{fontWeight:400, ...nowrap}}>{title}</List.Header>
-            { subtitle && <List.Description title={subtitle} style={{fontSize:"0.82em", opacity:0.75, ...nowrap}}>{subtitle}</List.Description> }
-        </List.Content>
-    </List.Item>
+const Leaf = ({ icon, color, title, subtitle, detail, onSelect, selected, depth = 0 }:any) =>
+    <TreeRow
+        depth={depth}
+        icon={icon}
+        className={ICO(color)}
+        selected={selected}
+        meta={subtitle ? <span title={subtitle}>{subtitle}</span> : undefined}
+        onSelect={() => detail && onSelect && onSelect(detail)}
+        label={<span title={title}>{title}</span>} />
 
 // Comando (recursivo).
-const CommandLeaf = ({ cmd, onSelect }:any) => {
+const CommandLeaf = ({ cmd, onSelect, depth = 0 }:any) => {
     const kids = Array.isArray(cmd.children) ? cmd.children : []
     const detail = { title: cmd.command || cmd.namespace, icon: "terminal", data: cmd, kind: "commands", path: ["commands"] }
     if(kids.length)
-        return <TreeNode icon="terminal" color="teal" label={cmd.command || cmd.namespace} detail={detail} onSelect={onSelect}>
+        return <TreeNode icon="terminal" color="teal" label={cmd.command || cmd.namespace} detail={detail} onSelect={onSelect} depth={depth}>
             { kids.map((c:any, i:number) => <CommandLeaf key={i} cmd={c} onSelect={onSelect} />) }
         </TreeNode>
-    return <Leaf icon="terminal" color="teal" title={cmd.command || cmd.namespace} subtitle={cmd.description} detail={detail} onSelect={onSelect} />
+    return <Leaf icon="terminal" color="teal" title={cmd.command || cmd.namespace} subtitle={cmd.description} detail={detail} onSelect={onSelect} depth={depth} />
 }
 
 // Árvore de componentes de um pacote (Boot / Services / Endpoints / Commands),
@@ -70,7 +80,7 @@ const PackageComponentsTree = ({ HTTPServerManager, workspace, pkg, onSelect, se
             .finally(() => setLoading(false))
     }, [workspace, pkg.name, pkg.ext, pkg.path])
 
-    if(loading) return <List.Item><Loader active inline size="tiny" /></List.Item>
+    if(loading) return <div className="pdx-ctree__note"><Spinner size="sm" /></div>
 
     const m = metadata || {}
     const boot = m["metadata/boot.json"]
@@ -84,7 +94,7 @@ const PackageComponentsTree = ({ HTTPServerManager, workspace, pkg, onSelect, se
     const hasCommands = cg && Array.isArray(cg.commands) && cg.commands.length > 0
 
     if(!hasBoot && !hasServices && !hasEndpoints && !hasCommands)
-        return <List.Item><span style={{opacity:0.45, fontSize:"0.85em"}}>sem boot / services / endpoints</span></List.Item>
+        return <div className="pdx-ctree__note">sem boot / services / endpoints</div>
 
     // Anexa o arquivo-fonte ao detalhe (usado no modo edição para abrir o arquivo).
     const sel = (file:string) => (d:any) => onSelect && onSelect({ ...d, file })
@@ -95,7 +105,7 @@ const PackageComponentsTree = ({ HTTPServerManager, workspace, pkg, onSelect, se
     // Destaca o nó cuja (file#path) casa a aba ativa do editor.
     const SEL = (file:string, path:any[]) => !!selectedKey && selectedKey === `${file}#${(path || []).join(".")}`
 
-    return <>
+    return <div className="pdx-ctree">
         {
             hasBoot &&
             <TreeNode icon="play" color="orange" label="Boot" defaultOpen selected={SEL("/metadata/boot.json", [])}
@@ -165,7 +175,7 @@ const PackageComponentsTree = ({ HTTPServerManager, workspace, pkg, onSelect, se
                 { cg.commands.map((c:any, i:number) => <CommandLeaf key={i} cmd={c} onSelect={cgSel} />) }
             </TreeNode>
         }
-    </>
+    </div>
 }
 
 const mapStateToProps = ({ HTTPServerManager }:any) => ({ HTTPServerManager })

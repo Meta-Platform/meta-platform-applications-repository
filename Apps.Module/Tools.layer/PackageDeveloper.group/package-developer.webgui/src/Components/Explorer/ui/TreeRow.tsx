@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 // Linha de árvore com a REGRA de interação do explorador:
 //   · o chevron (twisty) SÓ expande/recolhe;

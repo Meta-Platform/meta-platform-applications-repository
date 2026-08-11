@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
-import { Button, Modal, Form, Message, Icon } from "semantic-ui-react"
+import { Dialog, Button, FormField, TextInput, Banner } from "@i-components"
 
 // Modal genérico de entrada de texto único (novo arquivo, renomear arquivo, etc.).
 const TextPromptModal = ({ open, title, icon = "pencil", label = "nome", initial = "", action = "OK", onClose, onSubmit }:any) => {
@@ -19,24 +19,23 @@ const TextPromptModal = ({ open, title, icon = "pencil", label = "nome", initial
             .catch((e:any) => setError(String((e && e.message) || e || "Operação falhou.")))
     }
 
-    return <Modal open={open} size="mini" closeIcon onClose={() => onClose()}>
-        <Modal.Header><Icon name={icon as any} /> {title}</Modal.Header>
-        <Modal.Content>
-            <Form>
-                <Form.Field>
-                    <label>{label}</label>
-                    <input value={value} autoFocus
-                        onChange={(e) => setValue(e.target.value)}
-                        onKeyDown={(e:any) => { if(e.key === "Enter") submit() }} />
-                </Form.Field>
-                { error && <Message negative size="tiny">{error}</Message> }
-            </Form>
-        </Modal.Content>
-        <Modal.Actions>
+    return <Dialog
+        open={open}
+        size="sm"
+        icon={icon}
+        title={title}
+        onClose={() => onClose()}
+        actions={<>
             <Button onClick={() => onClose()}>Cancelar</Button>
-            <Button color="teal" content={action} onClick={submit} />
-        </Modal.Actions>
-    </Modal>
+            <Button variant="primary" onClick={submit}>{action}</Button>
+        </>}>
+        <FormField label={label} htmlFor="pdx-prompt-value">
+            <TextInput id="pdx-prompt-value" value={value} autoFocus
+                onChange={(e:any) => setValue(e.target.value)}
+                onKeyDown={(e:any) => { if(e.key === "Enter") submit() }} />
+        </FormField>
+        { error && <Banner tone="danger">{error}</Banner> }
+    </Dialog>
 }
 
 export default TextPromptModal

@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState } from "react"
-import { Header, Button, Input, Icon, Menu } from "semantic-ui-react"
+import { Button, IconButton, TextInput, Icon, Tabs } from "@i-components"
 
 import { StringListEditor, RecordListEditor } from "./MetadataFormControls"
 import { setKey, patchRecord, addRecord, removeRecord } from "./metadataFormLogic"
@@ -8,7 +8,7 @@ import { F_BOOT_SERVICE, F_BOOT_ENDPOINT, F_EXECUTABLE, F_WINDOW, F_SERVICE, F_E
 
 const Section = ({ title, children }:any) =>
     <div style={{marginBottom:18}}>
-        <Header as="h5" style={{marginBottom:8, textTransform:"uppercase", letterSpacing:0.4, fontSize:"0.8em", opacity:0.75, borderBottom:"1px solid var(--mp-line-faint)", paddingBottom:4}}>{title}</Header>
+        <h5 className="pdx-form-section-title">{title}</h5>
         {children}
     </div>
 
@@ -20,9 +20,12 @@ const Tabbed = ({ sections }:any) => {
     if(avail.length === 0) return null
     if(avail.length === 1) return <div>{avail[0].render()}</div>
     return <div>
-        <Menu pointing secondary size="small" style={{marginBottom:12, flexWrap:"wrap"}}>
-            { avail.map((s:any) => <Menu.Item key={s.key} active={active === s.key} onClick={() => setTab(s.key)}>{s.label}</Menu.Item>) }
-        </Menu>
+        <div style={{flex:"0 0 auto", marginBottom:12}}>
+            <Tabs
+                tabs      = {avail.map((s:any) => ({ key: s.key, label: s.label }))}
+                activeKey = {active}
+                onChange  = {(key:string) => setTab(key)} />
+        </div>
         { (avail.find((s:any) => s.key === active) || avail[0]).render() }
     </div>
 }
@@ -95,13 +98,13 @@ export const CommandTree = ({ list, onChange }:any) => {
                 return <div key={i} style={{border:"1px solid var(--mp-line-faint)", borderRadius:6, padding:8, marginBottom:8}}>
                     <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6}}>
                         <strong style={{opacity:0.7, fontSize:"0.85em"}}>{it.command || it.namespace || "comando"}</strong>
-                        <Button size="mini" basic icon="trash" color="red" onClick={() => onChange(removeRecord(items, i))} />
+                        <IconButton size="sm" variant="danger" icon="trash" label="Remover comando" onClick={() => onChange(removeRecord(items, i))} />
                     </div>
                     {
                         CMD_FIELDS.map((k) =>
                             <div key={k} style={{marginBottom:4}}>
                                 <label style={{fontSize:"0.78em", opacity:0.7, display:"block", marginBottom:2}}>{k}</label>
-                                <Input size="mini" fluid value={it[k] != null ? it[k] : ""}
+                                <TextInput className="pdx-input-dense" value={it[k] != null ? it[k] : ""}
                                     onChange={(e:any) => onChange(patchRecord(items, i, k, e.target.value))} />
                             </div>)
                     }
@@ -129,14 +132,14 @@ export const CommandTree = ({ list, onChange }:any) => {
                     {
                         extra.length > 0 &&
                         <div style={{fontSize:"0.72em", opacity:0.5, marginTop:4}}>
-                            <Icon name="lock" /> preservados: {extra.join(", ")}
+                            <Icon name="lock" spaced /> preservados: {extra.join(", ")}
                         </div>
                     }
                 </div>
             })
         }
-        <Button size="mini" basic icon="plus" content="Adicionar comando"
-            onClick={() => onChange(addRecord(items, { command: "", namespace: "" }))} />
+        <Button size="sm" variant="default" icon="plus"
+            onClick={() => onChange(addRecord(items, { command: "", namespace: "" }))}>Adicionar comando</Button>
     </div>
 }
 

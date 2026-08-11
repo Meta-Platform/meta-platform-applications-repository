@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import { Selection, selectionKey } from "../../Domain/selection"
 import { pkgContext } from "../../Utils/pkgContext"

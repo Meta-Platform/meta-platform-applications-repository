@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 const enc = encodeURIComponent
 

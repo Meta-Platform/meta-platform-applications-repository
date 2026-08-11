@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useEffect, useRef, useState } from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 // Menu de contexto (botão direito) posicionado em x,y. Fecha ao clicar fora,
 // rolar ou pressionar Esc. Itens com `danger` ficam em vermelho; itens com

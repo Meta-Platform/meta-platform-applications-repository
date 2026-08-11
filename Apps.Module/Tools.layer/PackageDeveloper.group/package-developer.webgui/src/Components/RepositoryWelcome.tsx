@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState } from "react"
-import { Icon, Message } from "semantic-ui-react"
+import { Icon, Banner, IconButton } from "@i-components"
 
 import DirectoryExplorer from "../Modals/DirectoryExplorer.modal"
 import CreateRepositoryModal from "../Modals/CreateRepository.modal"
@@ -42,7 +42,7 @@ const RepositoryWelcome = ({ recents, recentPkgs, onOpen, onOpenPackage, onCreat
 
             <div style={{display:"flex", alignItems:"center", gap:18, marginBottom:22}}>
                 <div style={{width:64, height:64, borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center",
-                    background:"var(--color-accent, #13b8b2)", border:"2px solid var(--color-border-strong)", boxShadow:"var(--shadow-window)"}}>
+                    background:"var(--color-accent)", border:"2px solid var(--color-border-strong)", boxShadow:"var(--shadow-window)"}}>
                     <Icon name="cube" size="big" style={{margin:0, color:"#04201e"}} />
                 </div>
                 <div>
@@ -57,7 +57,15 @@ const RepositoryWelcome = ({ recents, recentPkgs, onOpen, onOpenPackage, onCreat
                     style={{flex:1, border:"none", outline:"none", background:"transparent", fontSize:14, color:"var(--color-text)"}} />
             </div>
 
-            { error && <Message negative onDismiss={() => setError("")} style={{marginBottom:20}}><Icon name="warning circle" />{error}</Message> }
+            {
+                error &&
+                <div style={{marginBottom:20}}>
+                    <Banner tone="danger" icon="warning circle"
+                        actions={<IconButton icon="times" label="Fechar aviso" onClick={() => setError("")} />}>
+                        {error}
+                    </Banner>
+                </div>
+            }
 
             <div style={{display:"grid", gridTemplateColumns:"minmax(200px, 1fr) minmax(280px, 1.6fr) minmax(220px, 1fr)", gap:28, alignItems:"start"}}>
 

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import { PackageModel, RuntimeItem } from "../../../Domain/packageModel"
 import TechnicalPropertyList from "../ui/TechnicalPropertyList"

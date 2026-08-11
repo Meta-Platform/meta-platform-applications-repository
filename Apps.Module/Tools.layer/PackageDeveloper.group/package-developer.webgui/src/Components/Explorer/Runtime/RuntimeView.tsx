@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useMemo } from "react"
-import { Icon } from "semantic-ui-react"
+import { EmptyState, Icon } from "@i-components"
 
 import { PackageModel, SectionId, findItem } from "../../../Domain/packageModel"
 import { supportsDiagram } from "../../../Domain/runtimeGraph"
@@ -9,7 +9,7 @@ import RuntimeDiagramView from "../Boot/RuntimeDiagramView"
 import SectionView from "./SectionView"
 import ItemDetail from "./ItemDetail"
 import TechnicalPropertyList from "../ui/TechnicalPropertyList"
-import { EmptyState, Segmented } from "../ui/Primitives"
+import { Segmented } from "../ui/Primitives"
 
 // Aba Runtime: navegação segmentada entre Boot e as demais capacidades. Cada uma
 // com duas leituras:
@@ -65,7 +65,7 @@ const RuntimeView = ({
 
     if(!tabs.length)
         return <EmptyState icon="rocket" title="Sem runtime declarado"
-            hint="Este pacote não tem boot, serviços, endpoints, executáveis nem comandos." />
+            message="Este pacote não tem boot, serviços, endpoints, executáveis nem comandos." />
 
     const active = tabs.some((t) => t.id === tab) ? tab : tabs[0].id
     const section = model.sections.filter((s) => s.id === active)[0]

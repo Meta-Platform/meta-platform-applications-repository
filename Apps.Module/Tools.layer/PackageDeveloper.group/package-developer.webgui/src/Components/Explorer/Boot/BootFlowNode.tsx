@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Handle, Position } from "reactflow"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 import { NODE_SHAPE, NODE_THEME } from "./diagramTheme"
 

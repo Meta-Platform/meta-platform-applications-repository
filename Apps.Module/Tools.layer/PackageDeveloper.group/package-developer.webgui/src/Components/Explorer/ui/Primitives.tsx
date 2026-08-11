@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Icon } from "semantic-ui-react"
+import { Icon } from "@i-components"
 
 // Primitivos visuais do explorador. Todos usam as classes .pdx-* (explorer.css),
 // que por sua vez leem os tokens --mp-* do design system — nada de cor solta.
@@ -24,20 +24,9 @@ export const Metrics = ({ items }:{ items:{ value:any, label:string, title?:stri
     </div>
 }
 
-// Estado vazio ÚTIL: só existe onde ajuda (busca sem resultado, erro de carga).
-export const EmptyState = ({ icon, title, hint, action }:any) =>
-    <div className="pdx-empty">
-        { icon && <Icon name={icon} size="large" style={{margin:0, opacity:.5}} /> }
-        { title && <div className="pdx-empty__title">{title}</div> }
-        { hint && <div className="pdx-empty__hint">{hint}</div> }
-        { action }
-    </div>
-
-export const Alert = ({ tone = "warning", icon, children }:any) =>
-    <div className={`pdx-alert pdx-alert--${tone}`} role={tone === "error" ? "alert" : undefined}>
-        <Icon name={icon || (tone === "error" ? "times circle" : "warning sign")} style={{margin:0}} />
-        <div style={{minWidth:0}}>{children}</div>
-    </div>
+// Estado vazio e mensagem em bloco vêm do kit (`EmptyState`, `Banner`) — não há
+// duplicata local. `.pdx-alert` continua existindo só para a lista de problemas
+// de validação (ValidationBadge), que é um bloco denso, não uma mensagem.
 
 // Seção recolhível com contagem — não renderiza nada se não houver conteúdo.
 export const CollapsibleSection = ({ id, title, count, icon, defaultOpen = true, children, right }:any) => {

@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
-import { Button, Modal, Form, Message, Icon } from "semantic-ui-react"
+import { Dialog, Button, FormField, TextInput, Banner } from "@i-components"
 
 const KIND_LABEL:any = { module: "Module", layer: "Layer", group: "Group", package: "Pacote" }
 
@@ -23,30 +23,29 @@ const RenameNodeModal = ({ open, kind, currentName, suffix, onClose, onRename }:
             .catch((e:any) => setError(String((e && e.message) || e || "Não foi possível renomear.")))
     }
 
-    return <Modal open={open} size="mini" closeIcon onClose={() => onClose()}>
-        <Modal.Header><Icon name="i cursor" /> Renomear {KIND_LABEL[kind] || "nó"}</Modal.Header>
-        <Modal.Content>
-            <Form>
-                <Form.Field>
-                    <label>novo nome</label>
-                    <input value={name} autoFocus
-                        onChange={(e) => setName(e.target.value)}
-                        onKeyDown={(e:any) => { if(e.key === "Enter") submit() }} />
-                </Form.Field>
-                {
-                    name.trim() &&
-                    <p style={{opacity:0.55, fontSize:"0.85em"}}>
-                        ficará: <strong>{name.trim()}{suffix}</strong>
-                    </p>
-                }
-                { error && <Message negative size="tiny">{error}</Message> }
-            </Form>
-        </Modal.Content>
-        <Modal.Actions>
+    return <Dialog
+        open={open}
+        size="sm"
+        icon="i cursor"
+        title={`Renomear ${KIND_LABEL[kind] || "nó"}`}
+        onClose={() => onClose()}
+        actions={<>
             <Button onClick={() => onClose()}>Cancelar</Button>
-            <Button color="teal" icon="check" content="Renomear" onClick={submit} />
-        </Modal.Actions>
-    </Modal>
+            <Button variant="primary" icon="check" onClick={submit}>Renomear</Button>
+        </>}>
+        <FormField label="novo nome" htmlFor="pdx-rename-name">
+            <TextInput id="pdx-rename-name" value={name} autoFocus
+                onChange={(e:any) => setName(e.target.value)}
+                onKeyDown={(e:any) => { if(e.key === "Enter") submit() }} />
+        </FormField>
+        {
+            name.trim() &&
+            <p className="pdx-dialog-hint">
+                ficará: <strong>{name.trim()}{suffix}</strong>
+            </p>
+        }
+        { error && <Banner tone="danger">{error}</Banner> }
+    </Dialog>
 }
 
 export default RenameNodeModal

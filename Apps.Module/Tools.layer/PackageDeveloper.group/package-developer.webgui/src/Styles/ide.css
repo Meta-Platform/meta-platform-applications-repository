@@ -1,0 +1,80 @@
+/* ==========================================================================
+   Package Developer — estilos exclusivos do IDE.
+
+   Este arquivo substituiu o antigo `Styles/Global.style.ts` (createGlobalStyle
+   do styled-components), que além dos estilos mantinha uma PONTE de tokens:
+   redefinia 27 nomes --mp-* locais (--mp-bg-*, --mp-text-*, --mp-code-*,
+   --mp-shadow-sm/md/lg, --mp-accent…) apontando para os tokens reais do kit.
+
+   A ponte foi removida: token --mp-* só nasce no kit
+   (i-components.uilib/src/styles/tokens.css + themes.css). Os call sites que
+   usavam os nomes-ponte passaram a usar o token real. O único custom property
+   definido aqui é --pd-*, que é layout do aplicativo, não cor de tema.
+
+   Regra: nada de `var(--mp-x, reserva)` — a reserva mascara token errado.
+   ========================================================================== */
+
+:root {
+    /* Altura do topo (a barra .pdx-appbar) — usada para preencher a viewport
+     * nos modos navegação/edição. Deriva do token do kit em vez de repetir o
+     * número: a barra é `min-height: var(--mp-shell-topbar-h)` mais a borda
+     * inferior de `--mp-border-strong` (2px). O valor fixo de 50px que existia
+     * aqui já estava 8px menor que a barra real. */
+    --pd-header-h: calc(var(--mp-shell-topbar-h) + 2px);
+}
+
+/* ---------- scrollbars ---------- */
+* { scrollbar-width: thin; scrollbar-color: var(--mp-line-soft) var(--mp-paper-2); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--mp-paper-2); }
+::-webkit-scrollbar-thumb { background: var(--mp-line-soft); border-radius: 999px; border: 2px solid var(--mp-paper-2); }
+::-webkit-scrollbar-thumb:hover { background: var(--mp-muted); }
+
+/* ====================================================================== */
+/* MODOS do IDE (navegação / edição)                                      */
+/* ====================================================================== */
+[data-ide-mode="nav"], [data-ide-mode="edit"] { height: calc(100vh - var(--pd-header-h)); overflow: hidden; }
+
+/* O CodeEditor usa overlay: <pre> colorido ATRÁS de um <textarea> transparente.
+   O textarea PRECISA ser transparente (bg + texto) senão cobre o pre e o editor
+   fica "preto vazio". O fundo escuro e a borda vêm do container do CodeEditor. */
+.code-editor, textarea.code-editor {
+    background: transparent !important; color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+    caret-color: var(--mp-accent-blue) !important;
+    border: none !important;
+}
+.code-editor:focus, textarea.code-editor:focus { outline: none !important; box-shadow: none !important; }
+
+/* menu de contexto (botão direito) — mesmo padrão do my-desktop */
+.myd-ctx-scrim { position: fixed; inset: 0; z-index: var(--mp-z-palette); background: transparent; }
+.myd-ctx-menu {
+    position: fixed; z-index: calc(var(--mp-z-palette) + 1);
+    min-width: 210px; padding: 5px;
+    background: var(--mp-surface);
+    border: var(--mp-border-strong);
+    border-radius: var(--mp-radius-md);
+    box-shadow: var(--mp-shadow-2);
+}
+.myd-ctx-item {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    padding: 8px 10px; border: none; background: transparent;
+    border-radius: var(--mp-radius-sm);
+    color: var(--mp-ink); font-size: var(--mp-text-sm); font-weight: 600;
+    text-align: left; cursor: pointer;
+}
+.myd-ctx-item .icon { color: var(--mp-muted); margin: 0; }
+.myd-ctx-item:hover { background: var(--mp-accent-blue-tint); }
+.myd-ctx-item:hover .icon { color: var(--mp-ink); }
+.myd-ctx-item--danger { color: var(--mp-danger); }
+.myd-ctx-item--danger .icon { color: var(--mp-danger); }
+.myd-ctx-item--danger:hover { background: var(--mp-danger-tint); }
+.myd-ctx-item:disabled { opacity: .5; cursor: default; }
+.myd-ctx-divider { border-top: 1px solid var(--mp-line-faint); margin: 4px 2px; }
+.myd-ctx-item--open { background: var(--mp-surface-2); }
+.myd-ctx-item--child { padding-left: 30px; }
+.myd-ctx-chevron.icon { margin-left: auto !important; margin-right: 0 !important; color: var(--mp-muted) !important; }
+.myd-ctx-icon-gap { display: inline-block; width: 1.18em; flex: 0 0 auto; }
+
+/* dock Executar / Console (rodapé da área de edição) */
+.edit-run-dock { border-top: var(--mp-border); background: var(--mp-surface); }

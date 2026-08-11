@@ -1,33 +1,15 @@
 import * as React from "react"
 import { useState, useEffect, useRef } from "react"
-import { Input, Label, Icon } from "semantic-ui-react"
-import styled from "styled-components"
+import { Icon, TextInput } from "@i-components"
 
 import IPCWebSocket from "../Utils/IPCWebSocket"
 
+
 const stripAnsi = (s:string) => s.replace(/\x1b\[[0-9;]*m/g, "")
 
-const Terminal = styled.div<{h:string}>`
-    height: ${({h}) => h};
-    overflow: auto;
-    background: #101418;
-    color: #d4d4d4;
-    font-family: "Menlo", "Monaco", "Consolas", monospace;
-    font-size: 12px;
-    line-height: 1.45;
-    padding: 10px;
-    border-radius: 4px 4px 0 0;
-    white-space: pre-wrap;
-    word-break: break-word;
-`
-
-const Line = styled.div<{stream:string}>`
-    color: ${({stream}) =>
-        stream === "stderr" ? "#f48771"
-        : stream === "system" ? "#569cd6"
-        : stream === "stdin" ? "#4ec9b0"
-        : "#d4d4d4"};
-`
+// Apresentação de terminal: `.pdx-terminal` (Styles/components.css),
+// cores nos tokens --mp-terminal-*. A altura continua vindo por prop.
+const STREAM_CLASS:any = { stderr: "stderr", system: "system", stdin: "stdin" }
 
 type Entry = { stream:string, line:string, ts?:number }
 
@@ -91,37 +73,34 @@ const PackageConsole = ({ workspace, packageSelected, terminalHeight = "46vh" }:
         }
     }
 
-    const statusColor:any = { connecting: "yellow", open: "green", closed: "grey" }
-
     return <>
         <div style={{marginBottom:6}}>
-            <Label size="small" color={statusColor[status]}>
+            <span className={`pdx-console-status pdx-console-status--${status}`}>
                 <Icon name="terminal" />{status === "open" ? "conectado" : status === "connecting" ? "conectando…" : "desconectado"}
-            </Label>
+            </span>
             { status === "closed" &&
-                <a style={{marginLeft:8, cursor:"pointer"}} onClick={connect}><Icon name="refresh" />reconectar</a> }
+                <a className="pdx-console-reconnect" onClick={connect}><Icon name="refresh" />reconectar</a> }
         </div>
-        <Terminal h={terminalHeight} ref={panelRef}>
+        <div className="pdx-terminal" style={{height: terminalHeight}} ref={panelRef}>
             {
                 lines.length === 0
-                ? <span style={{opacity:0.4}}>sem saída — inicie o pacote (Run/Debug)</span>
+                ? <span className="pdx-terminal__empty">sem saída — inicie o pacote (Run/Debug)</span>
                 : lines.map((entry, key) =>
-                    <Line key={key} stream={entry.stream}>
+                    <div key={key} className={`pdx-terminal__line${STREAM_CLASS[entry.stream] ? ` pdx-terminal__line--${STREAM_CLASS[entry.stream]}` : ""}`}>
                         {entry.stream === "stdin" ? "» " : ""}{stripAnsi(entry.line)}
-                    </Line>)
+                    </div>)
             }
-        </Terminal>
-        <Input
-            fluid
-            size="small"
-            placeholder="digite e Enter para enviar ao stdin do processo…"
-            value={command}
-            disabled={status !== "open"}
-            onChange={(e) => setCommand(e.target.value)}
-            onKeyDown={(e:any) => { if(e.key === "Enter") sendCommand() }}
-            icon={{ name: "angle right" }}
-            iconPosition="left"
-            style={{fontFamily:"monospace"}} />
+        </div>
+        <div className="pdx-console-input">
+            <Icon name="angle right" className="pdx-console-input__icon" />
+            <TextInput
+                className="pdx-console-input__el"
+                placeholder="digite e Enter para enviar ao stdin do processo…"
+                value={command}
+                disabled={status !== "open"}
+                onChange={(e:any) => setCommand(e.target.value)}
+                onKeyDown={(e:any) => { if(e.key === "Enter") sendCommand() }} />
+        </div>
     </>
 }
 

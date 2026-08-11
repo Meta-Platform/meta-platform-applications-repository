@@ -1,10 +1,10 @@
 import * as React from "react"
 import {useState} from "react"
 
-import { Button, Modal, Form, Dropdown } from "semantic-ui-react"
+import { Button, Dialog, FormField, SelectInput, TextInput } from "@i-components"
 
 const EXT_OPTIONS = [
-    { key: "lib", text: "lib", value: "lib" }
+    { value: "lib", label: "lib" }
 ]
 
 type ModalProps = {
@@ -30,43 +30,37 @@ const PackageModal = ({open, onClose, onCreatePackage}:ModalProps) =>{
         onClose()
     }
 
-    return <Modal
+    return <Dialog
                 open={open}
-                closeIcon
-                size="tiny"
-                onClose={() => onClose()}>
-                <Modal.Header>Create Package</Modal.Header>
-                <Modal.Content>
-                    <Form>
-                        <Form.Field>
-                            <label>name</label>
-                            <input
-                                placeholder="name"
-                                value={packageName}
-                                onChange={(e) => setPackageName(e.target.value)} />
-                        </Form.Field>
-                        <Form.Field>
-                            <label>type</label>
-                            <Dropdown
-                                selection
-                                options={EXT_OPTIONS}
-                                value={ext}
-                                onChange={(_, {value}:any) => setExt(value)} />
-                        </Form.Field>
-                    </Form>
-                </Modal.Content>
-                <Modal.Actions>
+                size="sm"
+                title="Create Package"
+                onClose={() => onClose()}
+                actions={<>
                     <Button onClick={() => reset()}>
                         Reset
                     </Button>
                     <Button
-                        content="Create"
-                        labelPosition="right"
+                        variant="primary"
                         icon="plus"
-                        onClick={() => handleAdd()}
-                        positive/>
-                </Modal.Actions>
-            </Modal>
+                        onClick={() => handleAdd()}>
+                        Create
+                    </Button>
+                </>}>
+                <FormField label="name" htmlFor="pdx-package-name">
+                    <TextInput
+                        id="pdx-package-name"
+                        placeholder="name"
+                        value={packageName}
+                        onChange={(e:any) => setPackageName(e.target.value)} />
+                </FormField>
+                <FormField label="type" htmlFor="pdx-package-ext">
+                    <SelectInput
+                        id="pdx-package-ext"
+                        options={EXT_OPTIONS}
+                        value={ext}
+                        onChange={(e:any) => setExt(e.target.value)} />
+                </FormField>
+            </Dialog>
 }
 
 export default PackageModal

@@ -52,9 +52,11 @@
     --font-mono:    "JetBrains Mono", "IBM Plex Mono", "Fira Code", "Menlo", Consolas, monospace;
     --font-display: "IBM Plex Sans", "Inter", system-ui, sans-serif;
 
-    /* ---- Ganho rápido de contraste: muted usado por componentes --mp-* ---- */
-    --mp-muted: #63614f;
-    --mp-text-secondary: #63614f;
+    /* NENHUM token --mp-* é definido aqui. Eles pertencem ao kit
+     * (i-components.uilib/src/styles/tokens.css + themes.css) e só lá variam
+     * com o tema. Redefinir --mp-muted neste arquivo prendia o cinza do tema
+     * claro em TODOS os temas. Onde for preciso mais contraste que --mp-muted,
+     * use --mp-ink-3 (que é temável). */
 }
 
 /* ============ Classes base reutilizáveis (usadas a partir da Fase 2) ============ */
@@ -74,13 +76,9 @@
     background: var(--color-panel);
     border: 2px solid var(--color-border-strong);
     box-shadow: var(--mp-shadow-2);
-    border-radius: var(--mp-radius-md, 8px);
+    border-radius: var(--mp-radius-md);
 }
 
-.ide-panel {
-    background: var(--color-panel);
-    border-right: 1px solid var(--color-border);
-}
 
 .ide-section-title {
     font-family: var(--font-ui);
@@ -107,12 +105,6 @@
 .ide-button.primary { background: var(--color-accent); color: #061413; }
 .ide-button:disabled { opacity: .5; cursor: default; box-shadow: none; transform: none; }
 
-.ide-input {
-    height: 30px; padding: 0 8px;
-    border: 1px solid var(--color-border); border-radius: 4px;
-    background: var(--color-surface); color: var(--color-text); font-size: 12px;
-}
-.ide-input:focus { outline: 2px solid var(--color-focus); outline-offset: 1px; border-color: var(--color-border-strong); }
 
 /* Pílula de status de execução — cor semântica forte (§7/§15/§18 do guia). */
 .ide-status-pill {
@@ -133,51 +125,17 @@
 .wb-scroll::-webkit-scrollbar { width: 12px; height: 12px; }
 .wb-scroll::-webkit-scrollbar-track { background: transparent; }
 .wb-scroll::-webkit-scrollbar-thumb {
-    background: var(--color-editor-line, #172035); border-radius: 6px;
+    background: var(--color-editor-line); border-radius: 6px;
     border: 3px solid transparent; background-clip: content-box;
 }
-.wb-scroll::-webkit-scrollbar-thumb:hover { background: var(--color-editor-muted, #72809a); background-clip: content-box; }
+.wb-scroll::-webkit-scrollbar-thumb:hover { background: var(--color-editor-muted); background-clip: content-box; }
 .wb-scroll::-webkit-scrollbar-corner { background: transparent; }
 
-/* ============ Shell no estilo eco (my-desktop / eco-panel) ============ */
-/* Topbar como barra de sistema: fundo paper-2, borda inferior forte, sombra seca. */
-.eco-main-menu.ui.menu {
-    background: var(--mp-paper-2, var(--color-panel-2)) !important;
-    border: none !important;
-    border-bottom: var(--mp-border-strong, 2px solid var(--color-border-strong)) !important;
-    border-radius: 0 !important;
-    box-shadow: var(--mp-shadow-1, 2px 2px 0 var(--color-border-strong)) !important;
-    min-height: var(--mp-shell-topbar-h, 48px);
-}
-.eco-main-menu-title {
-    font-family: var(--mp-font-display, var(--font-display)) !important;
-    font-weight: 800 !important;
-    letter-spacing: -0.01em !important;
-}
-
-/* Modais como janelas de sistema clássicas (borda forte + sombra seca). */
-.ui.modal {
-    background: var(--mp-surface, var(--color-surface)) !important;
-    border: var(--mp-border-strong, 2px solid var(--color-border-strong)) !important;
-    border-radius: var(--mp-radius-lg, 12px) !important;
-    box-shadow: var(--mp-shadow-2, 4px 4px 0 var(--color-border-strong)) !important;
-}
-.ui.modal > .header {
-    background: var(--mp-paper-2, var(--color-panel-2)) !important;
-    border-bottom: var(--mp-border, 1px solid var(--color-border)) !important;
-    font-family: var(--mp-font-display, var(--font-display)) !important;
-    font-weight: 800 !important;
-}
-
-/* Navegador (eco): item selecionado com faixa lateral (accent) + fundo tint. */
-.eco-nav-active {
-    color: var(--mp-accent-blue, #2D74C4) !important;
-    background: var(--mp-accent-blue-tint, #E2ECF8) !important;
-    box-shadow: inset 3px 0 0 var(--mp-accent-blue, #2D74C4);
-    border-radius: 0 var(--mp-radius-sm, 4px) var(--mp-radius-sm, 4px) 0;
-    padding: 3px 6px !important;
-}
-.eco-nav-active > .icon, .eco-nav-active .icon:first-child { color: var(--mp-accent-blue, #2D74C4) !important; }
+/* A topbar do aplicativo é montada por .pdx-appbar (Styles/components.css).
+ * Os blocos `.eco-main-menu.ui.menu`, `.eco-main-menu-title`, `.ui.modal` e
+ * `.eco-nav-active` saíram daqui: os que carregavam `.ui.*` só casavam com
+ * marcação do Semantic (que não existe mais) e os outros ficaram sem call site.
+ */
 
 /* Badge de contagem (problemas, mudanças). */
 .ide-badge {
