@@ -6,7 +6,9 @@
 //                     (o alvo é ZERO: só o kit encapsula o Semantic);
 // `cssLines`        = linhas de CSS próprio (o alvo é só o que for exclusivo).
 //
-// Medição de 29/07/2026, antes da onda 1. Atualize junto com cada migração.
+// Medição de 11/08/2026, ao fim do projeto APPUI. Atualize junto com cada
+// migração. `semanticFiles` está ZERADO em todos: o Semantic saiu da
+// plataforma inteira, inclusive de dentro do kit.
 
 export type MigrationWave = 1 | 2 | 3
 
@@ -14,6 +16,9 @@ export type AppRecord = {
     id: string
     title: string
     area: string
+    // Repositório dono do pacote. O placar deixou de ser só do Application
+    // Repository quando os dois WebGui do core adotaram o kit (F8).
+    repo: "apps" | "core"
     description: string
     guiPackage: string
     desktopExecutable?: string
@@ -28,26 +33,28 @@ export type AppRecord = {
 export const apps: AppRecord[] = [
     {
         id: "my-workspace",
+        repo: "apps",
         title: "My Workspace",
         area: "Admin / MyDesktop",
         description: "Navegação pelos recursos do workspace, hospedada pelo my-desktop.",
         guiPackage: "@/my-workspace.webgui",
         libraries: [ "@i-components" ],
-        localComponents: 1,
+        localComponents: 0,
         semanticFiles: 0,
-        cssLines: 52,
+        cssLines: 63,
         wave: 1,
         migrated: true
     },
     {
         id: "api-designer",
+        repo: "apps",
         title: "API Designer",
         area: "Tools",
         description: "Autoria visual de contratos de API (api.json).",
         guiPackage: "@/api-designer.webgui",
         desktopExecutable: "api-designer-desktop",
         libraries: [ "@i-components" ],
-        localComponents: 8,
+        localComponents: 1,
         semanticFiles: 0,
         cssLines: 22,
         wave: 1,
@@ -57,6 +64,7 @@ export const apps: AppRecord[] = [
         // Nasceu depois do plano das ondas, já sobre o kit: entrou no placar em
         // 10/08/2026, quando o último import de semantic-ui-react saiu.
         id: "container-manager",
+        repo: "apps",
         title: "Container Manager",
         area: "Admin / ContainerManager",
         description: "Docker e Podman por conexão: aplicações, containers, imagens, redes e volumes.",
@@ -71,6 +79,7 @@ export const apps: AppRecord[] = [
     },
     {
         id: "launcher",
+        repo: "apps",
         title: "Launcher",
         area: "Instance Manager",
         description: "Catálogo e execução parametrizada de pacotes.",
@@ -79,12 +88,13 @@ export const apps: AppRecord[] = [
         libraries: [ "@i-components", "@instance-components" ],
         localComponents: 2,
         semanticFiles: 0,
-        cssLines: 168,
+        cssLines: 167,
         wave: 1,
         migrated: true
     },
     {
         id: "datasource-manager",
+        repo: "apps",
         title: "Datasource Manager",
         area: "Admin / DataSource",
         description: "Gerenciador de bases Sequelize com foco em SQLite (workbench).",
@@ -99,6 +109,7 @@ export const apps: AppRecord[] = [
     },
     {
         id: "home-screen",
+        repo: "apps",
         title: "My Desktop",
         area: "Admin / MyDesktop",
         description: "Área de trabalho: ícones, dock, popover de aplicativos e lançamento.",
@@ -109,14 +120,15 @@ export const apps: AppRecord[] = [
         // componentes que sobram são os que SÓ uma área de trabalho tem:
         // janela retrô, ícone/dock de pacote, popover de aplicativos, menu de
         // contexto com submenu e os dois gerenciadores.
-        localComponents: 10,
+        localComponents: 9,
         semanticFiles: 0,
-        cssLines: 951,
+        cssLines: 940,
         wave: 2,
         migrated: true
     },
     {
         id: "instance-executor",
+        repo: "apps",
         title: "Instance Executor Control Panel",
         area: "Instance Manager",
         description: "Monitor de instâncias, métricas e logs do daemon de execução.",
@@ -129,7 +141,7 @@ export const apps: AppRecord[] = [
         // dois últimos viram componentes do kit na fase 6.
         localComponents: 4,
         semanticFiles: 0,
-        cssLines: 1001,
+        cssLines: 912,
         wave: 2,
         migrated: true
     },
@@ -142,15 +154,16 @@ export const apps: AppRecord[] = [
         // definidos localmente — o CSS que ficou é só o que é exclusivo do MPM
         // (board com swimlanes, Gantt, wiki de documentação, editor markdown).
         id: "meta-project-manager",
+        repo: "apps",
         title: "Meta Project Manager",
         area: "Productivity",
         description: "Projetos, boards, planejamento, documentação e coordenação de agentes.",
         guiPackage: "@/meta-project-manager.webgui",
         desktopExecutable: "meta-project-manager-desktop",
         libraries: [ "@i-components" ],
-        localComponents: 53,
+        localComponents: 52,
         semanticFiles: 0,
-        cssLines: 2571,
+        cssLines: 2435,
         wave: 3,
         migrated: true
     },
@@ -163,20 +176,22 @@ export const apps: AppRecord[] = [
         // (Styles/Global.style.ts e Styles/workbench.css), as últimas da
         // plataforma fora do kit.
         id: "package-developer",
+        repo: "apps",
         title: "Package Developer",
         area: "Tools",
         description: "Workbench de desenvolvimento, explorador e inspeção de pacotes.",
         guiPackage: "@/package-developer.webgui",
         desktopExecutable: "developer-desktop",
         libraries: [ "@i-components" ],
-        localComponents: 53,
+        localComponents: 52,
         semanticFiles: 0,
-        cssLines: 2732,
+        cssLines: 2592,
         wave: 3,
         migrated: true
     },
     {
         id: "ui-catalog",
+        repo: "apps",
         title: "UI Catalog",
         area: "Tools",
         description: "Este aplicativo: catálogo navegável e UI kit do Application Repository.",
@@ -185,12 +200,13 @@ export const apps: AppRecord[] = [
         libraries: [ "@i-components", "@instance-components" ],
         localComponents: 0,
         semanticFiles: 0,
-        cssLines: 120,
+        cssLines: 111,
         wave: 1,
         migrated: true
     },
     {
         id: "meta-cloud",
+        repo: "apps",
         title: "Meta Cloud",
         area: "Tools",
         description: "Protótipo de acesso à nuvem (sem componentes próprios ainda).",
@@ -201,6 +217,35 @@ export const apps: AppRecord[] = [
         cssLines: 0,
         wave: 3,
         migrated: false
+    },
+    {
+        id: "ecosystem-control-panel",
+        repo: "core",
+        title: "Ecosystem Control Panel",
+        area: "EcosystemAdmin",
+        description: "Painel de administração do ecossistema. Foi a ORIGEM da estética retro-brutalist e mantinha um fork completo da matriz (5 CSS + pasta ui/) até a F8.",
+        guiPackage: "@/ecosystem-control-panel.webgui",
+        desktopExecutable: "ecosystem-control-panel-desktop",
+        libraries: [ "@i-components" ],
+        localComponents: 12,
+        semanticFiles: 0,
+        cssLines: 2054,
+        wave: 2,
+        migrated: true
+    },
+    {
+        id: "server-manager",
+        repo: "core",
+        title: "Server Manager",
+        area: "EcosystemAdmin",
+        description: "Painel do gerenciador de servidores HTTP do ecossistema.",
+        guiPackage: "@/server-manager.webgui",
+        libraries: [ "@i-components" ],
+        localComponents: 1,
+        semanticFiles: 0,
+        cssLines: 100,
+        wave: 2,
+        migrated: true
     }
 ]
 
