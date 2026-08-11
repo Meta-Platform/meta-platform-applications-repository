@@ -25,7 +25,9 @@ jest.mock("axios", () => ({
     }
 }))
 
-import GetRequestByServer from "../src/Utils/GetRequestByServer"
+// O transporte vem do kit; o que mora no aplicativo é a amarração das opções
+// (Utils/GetAPI), e é ela que este teste exercita.
+import { GetRequestByServer } from "../src/Utils/GetAPI"
 
 const info = {
     list_web_servers_running: [{

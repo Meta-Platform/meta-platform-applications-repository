@@ -21,7 +21,7 @@ import {
     QueryParamsActionsCreator
 } from "@i-components"
 
-import GetAPI from "../../Utils/GetAPI"
+import { GetAPI } from "@i-components/net"
 import { useWebSocket } from "@instance-components"
 
 import PackageTree, { PackageInformation, PackageKey, IsBootable, IsRunning } from "./PackageTree"

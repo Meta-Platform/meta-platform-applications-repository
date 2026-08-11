@@ -1,15 +1,20 @@
 import * as React from "react"
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react"
-import { Terminal } from "@xterm/xterm"
-import { FitAddon } from "@xterm/addon-fit"
-import "@xterm/xterm/css/xterm.css"
 
 import { Button, StatusChip, TextInput } from "@i-components"
+import { Terminal } from "@i-components/components/advanced/runtime"
+import type { TerminalHandle, TerminalSize } from "@i-components/components/advanced/runtime"
 
-import GetAPI from "../Utils/GetAPI"
+import { GetAPI } from "@i-components/net"
 
 // Terminal de execução de um pacote CLI, ligado ao terminal real (node-pty) do
 // daemon. Fluxo: RunPackage (HTTP) → terminalId → TerminalStream (WS) ↔ xterm.
+//
+// O EMULADOR é o `Terminal` do kit, que nasceu deste componente: xterm, ajuste
+// de tamanho, limpeza de recursos e — o que aqui não existia — a paleta vinda
+// dos tokens --mp-terminal-*, que segue o tema. O que ficou é o domínio: o
+// protocolo do daemon (RunPackage/TerminalStream/Kill) e os controles de
+// execução.
 //
 // O caminho do pacote pode vir fixo (packagePath, quando lançado do Launcher) ou
 // ser digitado pelo usuário (editablePath, no terminal avulso).
@@ -32,11 +37,9 @@ const ExecutionTerminal = forwardRef<ExecutionTerminalHandle, any>(({
     onStatusChange
 }:any, ref) => {
 
-    const termElementRef = useRef<HTMLDivElement>(null)
-    const termRef        = useRef<any>(null)
+    const termRef        = useRef<TerminalHandle>(null)
     const wsRef          = useRef<any>(null)
     const terminalIdRef  = useRef<string | null>(null)
-    const resizeRef      = useRef<any>(null)
 
     const [ typedPath, setTypedPath ]             = useState<string>("")
     const [ commandLineArgs, setCommandLineArgs ] = useState<string>("")
@@ -56,51 +59,52 @@ const ExecutionTerminal = forwardRef<ExecutionTerminalHandle, any>(({
         if(onStatusChange) onStatusChange(next)
     }
 
-    const _cleanup = () => {
-        if(resizeRef.current){ window.removeEventListener("resize", resizeRef.current); resizeRef.current = null }
+    // Só o SOCKET é descartado: o emulador fica montado (é ele que guarda o
+    // histórico da tela) e é reiniciado com `Reset` a cada execução nova.
+    const _closeStream = () => {
         try { wsRef.current && wsRef.current.close() } catch(e){}
         wsRef.current = null
-        try { termRef.current && termRef.current.dispose() } catch(e){}
-        termRef.current = null
         terminalIdRef.current = null
     }
 
-    useEffect(() => () => _cleanup(), [])
+    useEffect(() => () => _closeStream(), [])
 
-    // Ao trocar o pacote alvo, encerra o terminal anterior — senão o xterm
-    // antigo continua montado exibindo a saída de outro pacote.
+    // Ao trocar o pacote alvo, encerra o stream anterior e limpa a tela — senão
+    // fica exibindo a saída de outro pacote.
     useEffect(() => {
-        _cleanup()
+        _closeStream()
+        termRef.current && termRef.current.Reset()
         _changeStatus("idle")
     }, [fixedPackagePath])
 
     // `argsOverride` vem do form de comandos; sem ele vale o input de args livres.
     const handleRun = async (argsOverride?:string) => {
         if(!packagePath) return
-        _cleanup()
+        _closeStream()
+
+        const term = termRef.current
+        if(!term) return
 
         const args = argsOverride !== undefined ? argsOverride : commandLineArgs
 
-        const term = new Terminal({ convertEol: true, fontFamily: "monospace", fontSize: 13, cursorBlink: true })
-        const fit  = new FitAddon()
-        term.loadAddon(fit)
-        term.open(termElementRef.current as HTMLDivElement)
-        try { fit.fit() } catch(e){}
-        termRef.current = term
+        term.Reset()
+        term.Fit()
 
         _changeStatus("running")
 
+        const { cols, rows } = term.Size()
+
         let terminalId:string | undefined
         try {
-            const { data } = await getCliAPI().RunPackage({ packagePath, commandLineArgs: args, cols: term.cols, rows: term.rows })
+            const { data } = await getCliAPI().RunPackage({ packagePath, commandLineArgs: args, cols, rows })
             terminalId = data && data.terminalId
         } catch(e:any) {
-            term.writeln(`\x1b[31m[erro ao iniciar]\x1b[0m ${e?.message || e}`)
+            term.WriteLine(`\x1b[31m[erro ao iniciar]\x1b[0m ${e?.message || e}`)
             _changeStatus("error")
             return
         }
         if(!terminalId){
-            term.writeln("\x1b[31m[erro] terminalId ausente na resposta\x1b[0m")
+            term.WriteLine("\x1b[31m[erro] terminalId ausente na resposta\x1b[0m")
             _changeStatus("error")
             return
         }
@@ -113,31 +117,27 @@ const ExecutionTerminal = forwardRef<ExecutionTerminalHandle, any>(({
             let msg:any
             try { msg = JSON.parse(event.data) } catch(e){ return }
             if(msg.type === "data")
-                term.write(msg.data)
+                term.Write(msg.data)
             else if(msg.type === "exit"){
-                term.writeln(`\r\n\x1b[33m[processo encerrado — código ${msg.exitCode}]\x1b[0m`)
+                term.WriteLine(`\r\n\x1b[33m[processo encerrado — código ${msg.exitCode}]\x1b[0m`)
                 _changeStatus("exited")
             }
             else if(msg.type === "error")
-                term.writeln(`\r\n\x1b[31m[erro] ${msg.message}\x1b[0m`)
+                term.WriteLine(`\r\n\x1b[31m[erro] ${msg.message}\x1b[0m`)
         }
         // O `exit` do PTY já move para "exited"; aqui cobrimos a queda do socket.
         ws.onclose = () => { if(statusRef.current === "running") _changeStatus("exited") }
+    }
 
-        // Entrada do usuário -> daemon.
-        term.onData((d:string) => {
-            try { ws.send(JSON.stringify({ type: "input", data: d })) } catch(e){}
-        })
+    // Entrada do usuário -> daemon.
+    const _onData = (data:string) => {
+        try { wsRef.current && wsRef.current.send(JSON.stringify({ type: "input", data })) } catch(e){}
+    }
 
-        // Redimensionamento -> mantém o layout do CLI correto.
-        const doResize = () => {
-            try {
-                fit.fit()
-                ws.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }))
-            } catch(e){}
-        }
-        resizeRef.current = doResize
-        window.addEventListener("resize", doResize)
+    // O emulador do kit observa o PRÓPRIO elemento, então este aviso chega
+    // também quando é o painel ao lado que muda de tamanho — e não só a janela.
+    const _onResize = ({ cols, rows }:TerminalSize) => {
+        try { wsRef.current && wsRef.current.send(JSON.stringify({ type: "resize", cols, rows })) } catch(e){}
     }
 
     // autoRun dispara uma única vez por pacote alvo.
@@ -199,7 +199,13 @@ const ExecutionTerminal = forwardRef<ExecutionTerminalHandle, any>(({
                 <StatusChip label={status} tone={STATUS_TONE[status]} icon={STATUS_ICON[status]}/>
             </div>
         }
-        <div ref={termElementRef} className="lnc-terminal-screen" style={{ height }}/>
+        <Terminal
+            ref={termRef}
+            className="lnc-terminal-screen"
+            height={height}
+            label="terminal de execução do pacote"
+            onData={_onData}
+            onResize={_onResize}/>
     </div>
 })
 

@@ -10,7 +10,7 @@ import {
     Toolbar
 } from "@i-components"
 
-import GetAPI from "../../Utils/GetAPI"
+import { GetAPI } from "@i-components/net"
 
 import {
     DataGrid,

@@ -4,29 +4,9 @@ import {useEffect}            from "react"
 import { Routes, BrowserRouter, HashRouter, Route }  from "react-router-dom"
 import { connect }            from "react-redux"
 import { bindActionCreators } from "redux"
-import axios                  from "axios"
 
 import { HTTPServerManagerActionsCreator, LoadingOverlay } from "@i-components"
-
-const fetchHTTPServersRunning = async () => {
-    // Electron GUI-host: não há servidor HTTP — o transporte é IPC (window.metaGui).
-    // Busca o manifesto (api.json por serviço) e monta um serverManagerInformation
-    // sintético no MESMO shape do HTTP (list_web_servers_running[].listServices[]
-    // com serviceName/apiTemplate), para o GetRequestByServer resolver cada
-    // endpoint e distinguir WS de HTTP.
-    if(typeof window !== "undefined" && (window as any).metaGui){
-        const manifest = await (window as any).metaGui.getManifest()
-        const listServices = Object.keys(manifest || {}).map((apiName:string) => ({
-            serviceName: `${apiName}Controller`,
-            path: "",
-            apiTemplate: manifest[apiName]
-        }))
-        return [{ name: process.env.SERVER_APP_NAME, port: 0, listServices }]
-    }
-    // @ts-ignore
-    const {data} = await axios.get(process.env.HTTP_SERVER_MANAGER_ENDPOINT)
-    return data
-}
+import { FetchWebServersRunning } from "@i-components/net"
 
 type AppContainerProps  = {
 	routesConfig: any
@@ -66,7 +46,10 @@ const AppContainer = ({
 }:AppContainerProps) => {
 
 	useEffect(()=>{
-        fetchHTTPServersRunning()
+        // "manifest": dentro do GUI-host do Electron a lista é sintetizada a
+        // partir do manifesto (api.json por serviço), que é o que o
+        // GetRequestByServer usa para distinguir WS de HTTP.
+        FetchWebServersRunning({ ipcServices: "manifest" })
         .then(webServersRunning => SetHTTPServersRunning(webServersRunning))
     }, [])
 	

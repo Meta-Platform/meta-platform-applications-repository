@@ -1,14 +1,14 @@
 import * as React from "react"
 import { useState, useEffect, useRef } from "react"
-import { Button, Icon, Spinner } from "@i-components"
+import { BuildThemeMenuItems, Button, ContextMenu, Icon, MenuItem, Spinner } from "@i-components"
 
-import GetAPI                 from "../Utils/GetAPI"
+import { GetAPI }             from "@i-components/net"
 import GetBuildProgressSocket from "../Utils/GetBuildProgressSocket"
 import GetNotificationSocket from "../Utils/GetNotificationSocket"
 import NotificationToast, { DesktopNotification } from "../Components/NotificationToast"
 import GetApplicationIconURL  from "../Utils/GetApplicationIconURL"
 import FormatAppName          from "../Utils/FormatAppName"
-import { GetSavedTheme, ApplyTheme, ThemeName, THEMES } from "@i-components/theme"
+import { GetSavedTheme, ThemeName } from "@i-components/theme"
 import {
     IconPosition, IconPositions, DefaultPosition, RowsPerColumn, CELL_W, CELL_H
 } from "../Utils/IconLayout"
@@ -24,7 +24,6 @@ import Dock               from "../Components/Dock"
 import AppLauncherPopover from "../Components/AppLauncherPopover"
 import WelcomeWindow      from "../Components/WelcomeWindow"
 import Window             from "../Components/Window"
-import ContextMenu, { ContextMenuItem } from "../Components/ContextMenu"
 import ApplicationManager from "../Components/ApplicationManager"
 import RepositoryManager  from "../Components/RepositoryManager"
 
@@ -80,7 +79,7 @@ const FormatInstanceTime = (startedAt?:string) => {
 
 type Toast = { tone: "exec" | "success" | "danger", title: string, message: string, spinner?: boolean, iconUrl?: string }
 type ConfirmState = { title: string, message: string, confirmLabel: string, danger?: boolean, onConfirm: () => void }
-type ContextMenuState = { x: number, y: number, items: ContextMenuItem[] }
+type ContextMenuState = { x: number, y: number, items: MenuItem[] }
 type Rect = { x: number, y: number, x2: number, y2: number }
 
 type DragSource = "desktop" | "dock" | "launcher"
@@ -175,10 +174,10 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     // mudança em applicationList).
     const layoutLoadStartedRef = useRef<boolean>(false)
 
-    const _GetDesktopApplicationsAPI = () => GetAPI({ apiName: "DesktopApplications", serverManagerInformation })
-    const _GetExecutionAPI           = () => GetAPI({ apiName: "Execution", serverManagerInformation })
-    const _GetApplicationsAPI        = () => GetAPI({ apiName: "Applications", serverManagerInformation })
-    const _GetDesktopLayoutAPI       = () => GetAPI({ apiName: "DesktopLayout", serverManagerInformation })
+    const _GetDesktopApplicationsAPI = () => GetAPI({ apiName: "DesktopApplications", serverManagerInformation }, { ipcMode: "proxy" })
+    const _GetExecutionAPI           = () => GetAPI({ apiName: "Execution", serverManagerInformation }, { ipcMode: "proxy" })
+    const _GetApplicationsAPI        = () => GetAPI({ apiName: "Applications", serverManagerInformation }, { ipcMode: "proxy" })
+    const _GetDesktopLayoutAPI       = () => GetAPI({ apiName: "DesktopLayout", serverManagerInformation }, { ipcMode: "proxy" })
 
     const fetchApplicationList = async () => {
         setIsLoading(true)
@@ -752,7 +751,6 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
         setIsWelcomeOpen(false)
         try { window.localStorage.setItem(WELCOME_STORAGE_KEY, "1") } catch(_) {}
     }
-    const handleChangeTheme = (nextTheme:ThemeName) => { setTheme(nextTheme); ApplyTheme(nextTheme) }
 
     // ---- organizar ícones (realinhar na grade) -----------------------------
     // Redistribui todos os ícones na grade-padrão (fluxo em colunas). "byName"
@@ -862,7 +860,7 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
 
     // Item "Encerrar" do menu de contexto. Com uma instância, encerra direto; com
     // várias, abre um submenu para o usuário escolher QUAL janela fechar.
-    const _BuildCloseMenuItems = (av:any):ContextMenuItem[] => {
+    const _BuildCloseMenuItems = (av:any):MenuItem[] => {
         const instances = InstancesOf(av)
         if(instances.length === 0) return []
         if(instances.length === 1)
@@ -942,10 +940,10 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
     // ---- menus de contexto -------------------------------------------------
     // Itens do menu de sistema (compartilhados entre o botão direito da área de
     // trabalho e o menu da marca "MyDesktop" na barra do topo).
-    const buildSystemMenuItems = (includeAbout:boolean):ContextMenuItem[] => [
+    const buildSystemMenuItems = (includeAbout:boolean):MenuItem[] => [
         ...(includeAbout ? [
-            { label: "Sobre este computador", icon: "info circle", onClick: () => setIsAboutOpen(true) } as ContextMenuItem,
-            { divider: true, label: "" } as ContextMenuItem
+            { label: "Sobre este computador", icon: "info circle", onClick: () => setIsAboutOpen(true) } as MenuItem,
+            { divider: true, label: "" } as MenuItem
         ] : []),
         { label: "Adicionar aplicativo…", icon: "plus", onClick: () => setIsManagerOpen(true) },
         { label: "Repositórios e fontes…", icon: "cubes", onClick: () => setIsRepoManagerOpen(true) },
@@ -960,7 +958,7 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
         { divider: true, label: "" },
         {
             label: "Tema", icon: "paint brush",
-            children: THEMES.map((t) => ({ label: t.label, icon: t.icon, checked: theme === t.key, onClick: () => handleChangeTheme(t.key) }))
+            children: BuildThemeMenuItems({ value: theme, onChange: setTheme })
         }
     ]
 
@@ -982,7 +980,7 @@ const DesktopContainer = ({ serverManagerInformation }:any) => {
         const many = targetKeys.length > 1
 
         const onDock = dockKeys.includes(av.key)
-        const items:ContextMenuItem[] = many
+        const items:MenuItem[] = many
             ? [
                 { label: `Abrir (${targetKeys.length})`, icon: "external", onClick: handleOpenSelection },
                 { divider: true, label: "" },

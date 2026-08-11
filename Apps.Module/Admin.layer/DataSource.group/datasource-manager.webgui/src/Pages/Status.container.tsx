@@ -7,7 +7,7 @@ import {
     PageMasthead, Panel, StatusChip, Surface
 } from "@i-components"
 
-import GetRequestByServer from "../Utils/GetRequestByServer"
+import Api from "../Utils/Api"
 
 // Tom do status da fonte. Os status daqui (PENDING/WAITING/READY/ERROR) são do
 // serviço de dados e não estão no vocabulário do StatusBadge da plataforma —
@@ -70,7 +70,7 @@ const StatusContainer = ({HTTPServerManager}:any) => {
 	}, [])
 
     const updateStatus = () => {
-		GetRequestByServer(HTTPServerManager)(process.env.SERVER_APP_NAME, "DataSources")
+		Api(HTTPServerManager)("DataSources")
 		.Status()
 		.then(({data}:any) => setStatus(data))
 	}

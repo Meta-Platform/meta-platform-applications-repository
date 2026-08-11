@@ -5,22 +5,13 @@ import { LoadingOverlay }     from "@i-components"
 import { Routes, BrowserRouter, HashRouter, Route }  from "react-router-dom"
 import { connect }            from "react-redux"
 import { bindActionCreators } from "redux"
-import axios                  from "axios"
 
 import { HTTPServerManagerActionsCreator } from "@i-components"
+import { FetchWebServersRunning } from "@i-components/net"
 
-const fetchHTTPServersRunning = async () => {
-    // Electron GUI-host: não há servidor HTTP — o transporte é IPC (window.metaGui).
-    // Sintetiza a LISTA de servidores (mesmo shape que o axios entrega: a própria
-    // array, que o reducer guarda em list_web_servers_running) só para passar o
-    // gate de render; o conteúdo não é consultado no caminho IPC.
-    if(typeof window !== "undefined" && (window as any).metaGui){
-        return [{ name: process.env.SERVER_APP_NAME, port: 0, listServices: [] }]
-    }
-    // @ts-ignore
-    const {data} = await axios.get(process.env.HTTP_SERVER_MANAGER_ENDPOINT)
-    return data
-}
+// `ipcServices: "empty"` (o padrão): no modo janela a lista existe só para
+// passar o portão de render — o conteúdo não é consultado no caminho IPC.
+const fetchHTTPServersRunning = () => FetchWebServersRunning()
 
 type AppContainerProps  = {
 	routesConfig: any

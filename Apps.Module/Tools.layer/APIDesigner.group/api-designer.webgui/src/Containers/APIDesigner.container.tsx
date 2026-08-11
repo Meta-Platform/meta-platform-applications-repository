@@ -5,7 +5,7 @@ import { useEffect, useState} from "react"
 import { connect }            from "react-redux"
 import { bindActionCreators } from "redux"
 
-import GetAPI from "../Utils/GetAPI"
+import { GetAPI } from "@i-components/net"
 
 import APIColumn      from "../Columns/API.column"
 import EndpointColumn from "../Columns/Endpoint.column"
@@ -47,7 +47,10 @@ const APIDesignerContainer = ({
 	const [methodForUpdate, setMethodForUpdate]         = useState<string>()
 	const [parametersForUpdate, setParametersForUpdate] = useState()
 
-	useEffect(() => setRequest(GetAPI({ apiName: "APIDesigner", serverManagerInformation: HTTPServerManager })), [])
+	// ipcMode "proxy": dentro do GUI-host do Electron o transporte não olha o
+	// manifesto — cada método vira um invoke pelo nome (era o que o Utils/GetAPI
+	// local fazia antes de a camada de transporte ir para o kit).
+	useEffect(() => setRequest(GetAPI({ apiName: "APIDesigner", serverManagerInformation: HTTPServerManager }, { ipcMode: "proxy" })), [])
 	useEffect(() => updateListWebservices()                                           , [APIDesignerRequest])
 	useEffect(() => selectAPIAfterListAPI()                                           , [listAPI])
 	useEffect(() => selectFirstEndpointIfNoExitsSelectedCaseExitsUpdated()            , [listEndpoint])

@@ -1,12 +1,12 @@
 import * as React from "react"
 import { useEffect, useMemo, useState } from "react"
 import { EmptyState, Icon, Spinner } from "@i-components"
+import { MarkdownView } from "@i-components/components/advanced/authoring"
 
 import { PackageModel, SectionId, findItem, findSection } from "../../Domain/packageModel"
 import { GitScope } from "../../Domain/gitModel"
 import { Selection, breadcrumbOf } from "../../Domain/selection"
 import PackageIcon from "../PackageIcon"
-import Markdown from "../Markdown"
 import InspectorTabs, { TabDef } from "./InspectorTabs"
 import PackageOverview from "./PackageOverview"
 import RuntimeView, { RuntimeTab } from "./Runtime/RuntimeView"
@@ -188,7 +188,7 @@ const PackageInspector = ({
                 ? <PackageOverview model={model} onOpenSection={onSelectSection} onOpenRef={onOpenRef}
                     onOpenTab={setTab} gitScope={gitScope} />
                 : activeTab === "readme"
-                ? (readmeLoading ? <div className="pdx-loading"><Spinner/></div> : <Markdown text={readme} />)
+                ? (readmeLoading ? <div className="pdx-loading"><Spinner/></div> : <MarkdownView text={readme} />)
                 : activeTab === "runtime"
                 ? <RuntimeView model={model} tab={runtimeTab} onTab={setRuntimeTab}
                     bootView={bootView} onBootView={onBootView}

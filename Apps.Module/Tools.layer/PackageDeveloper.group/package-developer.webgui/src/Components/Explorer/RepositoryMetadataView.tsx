@@ -1,11 +1,11 @@
 import * as React from "react"
 import { EmptyState, Icon, Spinner } from "@i-components"
+import { MarkdownView } from "@i-components/components/advanced/authoring"
 
 import { RepositoryModel } from "../../Domain/repositoryModel"
 import { GitModel } from "../../Domain/gitModel"
 import GitStatusView from "./GitStatusView"
 import InspectorTabs from "./InspectorTabs"
-import Markdown from "../Markdown"
 import CopyableCodeValue from "./ui/CopyableCodeValue"
 import { Badge, CollapsibleSection, IconButton, Metrics } from "./ui/Primitives"
 import { IssueList } from "./ui/ValidationBadge"
@@ -79,7 +79,7 @@ const RepositoryMetadataView = ({ model, loading, error, onRetry, onOpenPackage,
 
         {
             tab === "readme"
-            ? <div className="pdx-inspector__body"><Markdown text={model.readme} /></div>
+            ? <div className="pdx-inspector__body"><MarkdownView text={model.readme} /></div>
             : tab === "git"
             ? <div className="pdx-inspector__body">
                 { gitModel

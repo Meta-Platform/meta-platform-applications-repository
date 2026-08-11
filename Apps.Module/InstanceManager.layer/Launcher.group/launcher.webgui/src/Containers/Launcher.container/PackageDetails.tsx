@@ -11,7 +11,7 @@ import {
 } from "@i-components"
 
 import CompareObjects from "../../Utils/CompareObjects"
-import GetAPI from "../../Utils/GetAPI"
+import { GetAPI } from "@i-components/net"
 import { ResolveExecutableName } from "@instance-components"
 
 import StartupParamsForm from "../../Components/StartupParamsForm"

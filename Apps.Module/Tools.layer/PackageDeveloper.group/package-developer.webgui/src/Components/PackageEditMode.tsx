@@ -1,16 +1,15 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { connect } from "react-redux"
-import { Icon, Button, Badge, Tooltip, Popover, ConfirmDialog, EmptyState } from "@i-components"
+import { Icon, Button, Badge, Tooltip, Popover, ConfirmDialog, EmptyState, ContextMenu } from "@i-components"
+import { CodeEditor, GuessLanguage } from "@i-components/components/advanced/authoring"
 
 
 import GetRequestByServer from "../Utils/GetRequestByServer"
-import CodeEditor from "./CodeEditor"
 import SourceTree from "./SourceTree"
 import PackageTypeNav from "./PackageTypeNav"
 import RunControls from "./RunControls"
 import BottomPanel from "./BottomPanel"
-import ContextMenu from "./ContextMenu"
 import TextPromptModal from "../Modals/TextPrompt.modal"
 import MetadataEditor, { isStructuredMetadata } from "./MetadataEditor"
 import FocusedMetadataForm from "./FocusedMetadataForm"
@@ -615,7 +614,9 @@ const PackageEditMode = ({ HTTPServerManager, packages, onClose, onActivePkg, on
                                   })()
                                 : isStructuredMetadata(activeTab.filePath)
                                 ? <MetadataEditor filePath={activeTab.filePath} content={activeTab.content} onChange={updateActive} />
-                                : <CodeEditor value={activeTab.content} language="plaintext" onChange={updateActive}
+                                : <CodeEditor className="pdx-code-fill" height="auto"
+                                    value={activeTab.content} language={GuessLanguage(activeTab.filePath)}
+                                    onChange={updateActive}
                                     scrollTo={goto.key === activeTab.key ? goto : undefined} />
                             }
                         </div>

@@ -22,8 +22,9 @@ volumes. Construída sobre o kit comum `@i-components` — nenhum componente de
 
 ## Como conversa com o backend
 
-Transporte duplo, decidido em tempo de execução por `Utils/Api.ts` e
-`Utils/GetRequestByServer.ts`:
+Transporte duplo, decidido em tempo de execução por `Utils/Api.ts`, que é uma
+casca fina sobre o `GetRequestByServer` de `@i-components/net` (com
+`wsQueryParams: true`, porque os streams daqui levam argumentos em `in:"query"`):
 
 | | Navegador | Janela (GUI-host) |
 |---|---|---|

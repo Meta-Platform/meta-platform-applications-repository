@@ -1,8 +1,7 @@
 import * as React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Icon, TextInput } from "@i-components"
-
-import IPCWebSocket from "../Utils/IPCWebSocket"
+import { IPCWebSocket } from "@i-components/net"
 
 
 const stripAnsi = (s:string) => s.replace(/\x1b\[[0-9;]*m/g, "")

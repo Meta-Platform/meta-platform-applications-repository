@@ -4,28 +4,15 @@ import {useEffect}            from "react"
 import { Routes, BrowserRouter, HashRouter, Route }  from "react-router-dom"
 import { connect }            from "react-redux"
 import { bindActionCreators } from "redux"
-import axios                  from "axios"
 
 import { HTTPServerManagerActionsCreator, LoadingOverlay } from "@i-components"
+import { FetchWebServersRunning } from "@i-components/net"
 import { EventsProvider } from "../Hooks/useEvents"
 import { ToastProvider } from "../Hooks/useToasts"
 import { ApprovalQueueProvider } from "../Hooks/useApprovalQueue"
 import AgentActivityToasts from "../Components/AgentActivityToasts"
 import { FeedbackProvider } from "../Hooks/useFeedback"
 import { ReadOnlyProvider } from "../Hooks/useReadOnly"
-
-const fetchHTTPServersRunning = async () => {
-    // Electron GUI-host: não há servidor HTTP — o transporte é IPC (window.metaGui).
-    // Sintetiza a LISTA de servidores (mesmo shape que o axios entrega: a própria
-    // array, que o reducer guarda em list_web_servers_running) só para passar o
-    // gate de render; o conteúdo não é consultado no caminho IPC.
-    if(typeof window !== "undefined" && (window as any).metaGui){
-        return [{ name: process.env.SERVER_APP_NAME, port: 0, listServices: [] }]
-    }
-    // @ts-ignore
-    const {data} = await axios.get(process.env.HTTP_SERVER_MANAGER_ENDPOINT)
-    return data
-}
 
 type AppContainerProps  = {
 	routesConfig: any
@@ -64,8 +51,11 @@ const AppContainer = ({
 	SetHTTPServersRunning
 }:AppContainerProps) => {
 
+	// `ipcServices: "empty"` (padrão): no GUI-host do Electron a lista é
+	// sintetizada só para passar o portão de render — quem fala por IPC em modo
+	// proxy não consulta o manifesto.
 	useEffect(()=>{
-        fetchHTTPServersRunning()
+        FetchWebServersRunning()
         .then(webServersRunning => SetHTTPServersRunning(webServersRunning))
     }, [])
 	

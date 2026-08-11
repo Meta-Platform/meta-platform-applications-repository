@@ -4,30 +4,16 @@ import {useEffect}            from "react"
 import { Routes, BrowserRouter, HashRouter, Route }  from "react-router-dom"
 import { connect }            from "react-redux"
 import { bindActionCreators } from "redux"
-import axios                  from "axios"
 
 import { HTTPServerManagerActionsCreator, LoadingOverlay } from "@i-components"
+import { FetchWebServersRunning } from "@i-components/net"
 
-const fetchHTTPServersRunning = async () => {
-    // Electron GUI-host: não há servidor HTTP — o transporte é IPC (window.metaGui).
-    // Busca o manifesto (o api.json de cada controller) e monta um
-    // `listServices` sintético com a MESMA forma do que o servidor HTTP publica.
-    // É isso que permite ao GetRequestByServer resolver cada endpoint e, em
-    // especial, distinguir WS de HTTP — sem o manifesto, o modo janela ficaria
-    // sem log ao vivo, sem terminal e sem métricas.
-    if(typeof window !== "undefined" && (window as any).metaGui){
-        const manifest = await (window as any).metaGui.getManifest()
-        const listServices = Object.keys(manifest || {}).map((apiName:string) => ({
-            serviceName: `${apiName}Controller`,
-            path: "",
-            apiTemplate: manifest[apiName]
-        }))
-        return [{ name: process.env.SERVER_APP_NAME, port: 0, listServices }]
-    }
-    // @ts-ignore
-    const {data} = await axios.get(process.env.HTTP_SERVER_MANAGER_ENDPOINT)
-    return data
-}
+// `ipcServices: "manifest"` porque no modo janela (Electron GUI-host) não há
+// servidor HTTP: a lista de webservices é sintetizada a partir do manifesto (o
+// api.json de cada controller). É o manifesto que permite ao GetRequestByServer
+// distinguir WS de HTTP — sem ele o aplicativo ficaria sem log ao vivo, sem
+// terminal e sem métricas.
+const fetchHTTPServersRunning = () => FetchWebServersRunning({ ipcServices: "manifest" })
 
 type AppContainerProps  = {
 	routesConfig: any

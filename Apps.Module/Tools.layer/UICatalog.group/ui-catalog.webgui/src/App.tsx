@@ -1,12 +1,8 @@
 import * as React from "react"
 import { useMemo, useState } from "react"
 import type { ComponentStory, StoryCollection } from "@i-components"
-import {
-    Banner, Button, CheckboxInput, CodeBlock, DataTable, EmptyState, Icon, IconButton,
-    KeyValueList, Menu, ObjectCard, PageMasthead, Panel, Popover, SearchInput, SelectInput,
-    StatusChip, StatusStrip, Tabs, TextInput, Tile, TileRow, Tooltip,
-    commonStories, ApplyTheme, GetSavedTheme, THEMES
-} from "@i-components"
+import { Banner, Button, CheckboxInput, CodeBlock, DataTable, EmptyState, Icon, IconButton, KeyValueList, Menu, ObjectCard, PageMasthead, Panel, Popover, SearchInput, SelectInput, StatusChip, StatusStrip, Tabs, TextInput, Tile, TileRow, Tooltip, ApplyTheme, GetSavedTheme, THEMES } from "@i-components"
+import { commonStories } from "@i-components/catalog/stories"
 import { instanceManagerStories } from "@instance-components"
 import { apps, WaveLabel } from "./apps"
 

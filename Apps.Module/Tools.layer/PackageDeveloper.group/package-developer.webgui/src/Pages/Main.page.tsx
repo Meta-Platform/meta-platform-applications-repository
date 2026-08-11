@@ -1,10 +1,10 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { connect } from "react-redux"
-import { ConfirmDialog } from "@i-components"
+import { ConfirmDialog, ContextMenu } from "@i-components"
 
 import PageDefault from "../Components/PageDefault"
-import ContextMenu from "../Components/ContextMenu"
+
 
 import useRepositoryState   from "../Hooks/useRepositoryState"
 import RepositoryWelcome    from "../Components/RepositoryWelcome"

@@ -29,7 +29,8 @@
                 "serverName": "{{serverName}}"
             },
             "bound-params": {
-                "serverService": "@@/server-service"
+                "serverService": "@@/server-service",
+                "iComponents": "@/i-components.uilib"
             }
         }
     ]

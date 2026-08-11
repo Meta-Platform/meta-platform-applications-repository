@@ -221,49 +221,6 @@
     color: var(--mp-ink);
 }
 
-/* ============================ Seletor de tema ============================ */
-/* Conteúdo do Popover que substituiu o `<Dropdown simple>` do Semantic. */
-.pdx-theme-menu {
-    display: flex;
-    flex-direction: column;
-    min-width: 180px;
-}
-
-.pdx-theme-menu__head {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
-    font-size: var(--mp-text-xs);
-    font-weight: 700;
-    letter-spacing: 0.4px;
-    text-transform: uppercase;
-    color: var(--mp-muted-2);
-    border-bottom: 1px solid var(--mp-line-faint);
-}
-
-.pdx-theme-menu__item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 6px 10px;
-    background: transparent;
-    color: var(--mp-ink);
-    border: 0;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-}
-
-.pdx-theme-menu__item:hover { background: var(--mp-surface-2); }
-.pdx-theme-menu__item.is-active {
-    background: var(--mp-accent-cyan-tint);
-    font-weight: 700;
-}
-
-.pdx-theme-menu__label { flex: 1 1 auto; }
-
 /* ============================ Grupo de colunas ============================ */
 /* Antigo `styled(Segment)` (fundo branco, borda transparente) + `<Grid divided>`. */
 .pdx-column-group {
@@ -1033,68 +990,4 @@
 .pdx-toolbtn:disabled { opacity: .4; cursor: default; }
 .pdx-toolbtn > i.icon { margin: 0; font-size: 15px; }
 
-/* ================================== corpo de markdown (Markdown) */
-
-.pdx-markdown {
-    font-size: 14px;
-    line-height: 1.6;
-    word-wrap: break-word;
-}
-.pdx-markdown > *:first-child { margin-top: 0; }
-.pdx-markdown h1,
-.pdx-markdown h2,
-.pdx-markdown h3,
-.pdx-markdown h4,
-.pdx-markdown h5,
-.pdx-markdown h6 { margin: 22px 0 12px; font-weight: 600; line-height: 1.25; }
-.pdx-markdown h1 { font-size: 1.7em; padding-bottom: .3em; border-bottom: 1px solid var(--mp-line-faint); }
-.pdx-markdown h2 { font-size: 1.4em; padding-bottom: .3em; border-bottom: 1px solid var(--mp-line-faint); }
-.pdx-markdown h3 { font-size: 1.2em; }
-.pdx-markdown h4 { font-size: 1.05em; }
-.pdx-markdown p  { margin: 0 0 12px; }
-.pdx-markdown ul,
-.pdx-markdown ol { margin: 0 0 12px; padding-left: 1.7em; }
-.pdx-markdown li { margin: .28em 0; }
-.pdx-markdown li > ul,
-.pdx-markdown li > ol { margin: .28em 0; }
-.pdx-markdown a { color: var(--mp-accent-cyan); text-decoration: none; }
-.pdx-markdown a:hover { text-decoration: underline; }
-.pdx-markdown strong { font-weight: 600; }
-.pdx-markdown em { font-style: italic; }
-.pdx-markdown code {
-    background: rgba(127, 127, 127, .16);
-    padding: .18em .4em;
-    border-radius: 6px;
-    font-family: var(--mp-font-mono);
-    font-size: .88em;
-}
-.pdx-markdown pre {
-    background: rgba(127, 127, 127, .10);
-    border: 1px solid var(--mp-line-faint);
-    border-radius: 8px;
-    padding: 12px 14px;
-    overflow: auto;
-    margin: 0 0 14px;
-}
-.pdx-markdown pre code { background: none; padding: 0; font-size: .86em; line-height: 1.5; }
-.pdx-markdown blockquote {
-    margin: 0 0 14px;
-    padding: .3em 1em;
-    border-left: 4px solid var(--mp-accent-cyan);
-    opacity: .82;
-}
-.pdx-markdown blockquote > *:last-child { margin-bottom: 0; }
-.pdx-markdown table {
-    border-collapse: collapse;
-    margin: 0 0 14px;
-    display: block;
-    overflow: auto;
-    max-width: 100%;
-}
-.pdx-markdown th,
-.pdx-markdown td { border: 1px solid var(--mp-line-faint); padding: 6px 13px; text-align: left; }
-.pdx-markdown th { background: rgba(127, 127, 127, .10); font-weight: 600; }
-.pdx-markdown tr:nth-child(2n) td { background: rgba(127, 127, 127, .04); }
-.pdx-markdown hr { border: 0; border-top: 1px solid var(--mp-line-faint); margin: 20px 0; }
-.pdx-markdown img { max-width: 100%; }
 

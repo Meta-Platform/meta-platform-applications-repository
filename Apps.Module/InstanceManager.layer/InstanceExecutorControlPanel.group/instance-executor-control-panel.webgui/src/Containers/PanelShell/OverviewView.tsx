@@ -1,22 +1,12 @@
 import * as React from "react"
 import { useMemo } from "react"
 
-import {
-    DataColumn,
-    DataTable,
-    Icon,
-    Panel,
-    StatusBadge,
-    SystemBanner,
-    Tile,
-    TileRow,
-    Toolbar
-} from "@i-components"
+import { DataColumn, DataTable, Icon, Panel, StatusBadge, SystemBanner, Tile, TileRow, Toolbar } from "@i-components"
+import { TimeSeriesChart } from "@i-components/components/advanced/runtime"
 
 import {
     KindIcon,
     Meter,
-    TimeSeriesChart,
     FormatBytes,
     FormatDuration,
     FormatPercent,

@@ -1,23 +1,18 @@
 import * as React from "react"
-import { useMemo } from "react"
-import { marked } from "marked"
-import DOMPurify from "dompurify"
+import { useCallback } from "react"
+import { MarkdownView, RenderMarkdown } from "@i-components/components/advanced/authoring"
 
 import useItemNavigator from "../Hooks/useItemNavigator"
 import linkifyItemKeys, { ITEM_REF_ATTR } from "../Utils/linkifyItemKeys"
 
-// Render real de Markdown (frente D). marked converte o texto e o DOMPurify
-// sanitiza o HTML resultante (defesa contra XSS em conteúdo de itens/comentários
-// escritos por humanos ou agentes). Usado em descrições, comentários, objetivo
-// de sessão e preview de anexos markdown.
-marked.setOptions({ gfm: true, breaks: true })
+// A conversão e a SANITIZAÇÃO do markdown são do kit (`MarkdownView` — este
+// arquivo foi a origem dele). O que fica aqui é o que é do MPM: transformar as
+// chaves de item (MPMB-12) em referências navegáveis e abrir o item no clique.
 
-export const renderMarkdown = (text?: string): string => {
-    if (!text) return ""
-    const raw = marked.parse(text) as string
-    // DOMPurify precisa manter o atributo que marca uma referência de item.
-    return DOMPurify.sanitize(raw, { ADD_ATTR: [ITEM_REF_ATTR] })
-}
+// Markdown -> HTML sanitizado, preservando o atributo que marca uma referência
+// de item. Exportado porque telas que exportam/medem o HTML partem daqui.
+export const renderMarkdown = (text?: string): string =>
+    RenderMarkdown(text, { allowAttributes: [ITEM_REF_ATTR] })
 
 interface MarkdownProps {
     children?: string
@@ -27,10 +22,9 @@ interface MarkdownProps {
 const Markdown = ({ children, className }: MarkdownProps) => {
     const nav = useItemNavigator()
 
-    const html = useMemo(() => {
-        const rendered = renderMarkdown(children)
-        return nav ? linkifyItemKeys(rendered, nav.isKnownKey) : rendered
-    }, [children, nav])
+    const transformHtml = useCallback(
+        (html: string) => nav ? linkifyItemKeys(html, nav.isKnownKey) : html,
+        [nav])
 
     // Delegação: um único handler cobre todas as referências do texto.
     const onClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -43,13 +37,14 @@ const Markdown = ({ children, className }: MarkdownProps) => {
         if (ref) nav.openItem(ref)
     }
 
-    if (!children || !children.trim())
-        return <span className="mpm-muted" style={{ fontSize: "12px" }}>—</span>
-
-    return <div
+    return <MarkdownView
         className={`mpm-md ${className || ""}`}
+        allowAttributes={[ITEM_REF_ATTR]}
+        transformHtml={transformHtml}
         onClick={onClick}
-        dangerouslySetInnerHTML={{ __html: html }} />
+        empty={<span className="mpm-muted" style={{ fontSize: "12px" }}>—</span>}>
+        {children}
+    </MarkdownView>
 }
 
 export default Markdown

@@ -1,8 +1,7 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import {
-    Button, EmptyState, Icon, IconButton, Menu, Popover, StatusChip, Topbar,
-    THEMES, ThemeName, GetSavedTheme, ApplyTheme
+    Button, EmptyState, Icon, StatusChip, ThemePicker, Topbar
 } from "@i-components"
 
 const NOTES_KEY = "myworkspace-notes"
@@ -24,8 +23,6 @@ const WEEKDAYS = [ "domingo", "segunda", "terça", "quarta", "quinta", "sexta", 
 const WorkspaceContainer = (_props:any) => {
 
     const [ notes, setNotes ] = useState<Note[]>(loadNotes())
-    const [ theme, setTheme ] = useState<ThemeName>(GetSavedTheme())
-    const [ themeOpen, setThemeOpen ] = useState(false)
     const [ now, setNow ]     = useState<Date>(new Date())
 
     useEffect(() => { const id = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(id) }, [])
@@ -43,8 +40,6 @@ const WorkspaceContainer = (_props:any) => {
         return { ...n, color: NOTE_COLORS[(i + 1) % NOTE_COLORS.length] }
     }))
 
-    const handleChangeTheme = (t:ThemeName) => { setTheme(t); ApplyTheme(t); setThemeOpen(false) }
-
     const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`
 
     return <div className="mws-app">
@@ -55,20 +50,7 @@ const WorkspaceContainer = (_props:any) => {
                     icon="sticky note outline"
                     label={notes.length === 1 ? "nota" : "notas"}
                     count={notes.length}/>
-                <Popover
-                    open={themeOpen}
-                    align="right"
-                    onClose={() => setThemeOpen(false)}
-                    trigger={<IconButton icon="paint brush" label="trocar tema" onClick={() => setThemeOpen(!themeOpen)}/>}>
-                    <Menu
-                        onClose={() => setThemeOpen(false)}
-                        items={THEMES.map(({ key, label, icon }) => ({
-                            key,
-                            icon,
-                            label: `${label}${key === theme ? " ✓" : ""}`,
-                            onSelect: () => handleChangeTheme(key)
-                        }))}/>
-                </Popover>
+                <ThemePicker variant="popover"/>
                 <span className="mws-clock">
                     <strong>{time}</strong>
                     <small>{WEEKDAYS[now.getDay()]}</small>

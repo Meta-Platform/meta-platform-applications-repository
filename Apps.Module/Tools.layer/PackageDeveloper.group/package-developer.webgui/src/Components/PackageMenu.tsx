@@ -1,16 +1,10 @@
 import * as React from "react"
-import { useState } from "react"
-import { Icon, IconButton, Popover } from "@i-components"
+import { Icon, ThemePicker } from "@i-components"
 
 import listIcons    from "../Mocks/AppsMenu.mock"
-import { THEMES, ApplyTheme, GetSavedTheme, ThemeName } from "@i-components/theme"
 
 
 const MainMenu = ({ onHome, centerTitle }:any) => {
-
-    const [ theme, setTheme ] = useState<ThemeName>(GetSavedTheme())
-    const [ themeOpen, setThemeOpen ] = useState<boolean>(false)
-    const selectTheme = (t:ThemeName) => { setTheme(t); ApplyTheme(t) }
 
     return <div className="pdx-appbar">
                 <button type="button"
@@ -50,34 +44,7 @@ const MainMenu = ({ onHome, centerTitle }:any) => {
                         </button>)
                 }
                 <span className="pdx-appbar__spacer"/>
-                <Popover
-                    className="pdx-appbar__popover"
-                    open={themeOpen}
-                    align="right"
-                    onClose={() => setThemeOpen(false)}
-                    trigger={
-                        <IconButton
-                            icon="paint brush"
-                            label="Theme"
-                            onClick={() => setThemeOpen(!themeOpen)}/>
-                    }>
-                    <div className="pdx-theme-menu">
-                        <div className="pdx-theme-menu__head">
-                            <Icon name="paint brush"/> Theme
-                        </div>
-                        {
-                            THEMES.map((t) =>
-                                <button key={t.key}
-                                    type="button"
-                                    className={`pdx-theme-menu__item ${theme === t.key ? "is-active" : ""}`.trim()}
-                                    onClick={() => { selectTheme(t.key); setThemeOpen(false) }}>
-                                    <Icon name={t.icon as any}/>
-                                    <span className="pdx-theme-menu__label">{t.label}</span>
-                                    { theme === t.key && <Icon name="check"/> }
-                                </button>)
-                        }
-                    </div>
-                </Popover>
+                <ThemePicker className="pdx-appbar__popover" variant="popover" heading="Theme" label="Theme"/>
             </div>
 }
 

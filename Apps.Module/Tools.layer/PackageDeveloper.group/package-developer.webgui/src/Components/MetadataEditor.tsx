@@ -1,8 +1,8 @@
 import * as React from "react"
 import { useState } from "react"
 import { Button, ButtonGroup, Banner } from "@i-components"
+import { CodeEditor } from "@i-components/components/advanced/authoring"
 
-import CodeEditor from "./CodeEditor"
 import { BootForm, ServicesForm, EndpointGroupForm, CommandGroupForm } from "./MetadataForms"
 
 const basename = (p:string) => p.split("/").filter(Boolean).pop() || p
@@ -55,7 +55,7 @@ const MetadataEditor = ({ filePath, content, onChange }:any) => {
                     <Form value={parsed} onChange={emit} />
                 </div>
               </div>
-            : <CodeEditor value={content} language="json" onChange={onChange} />
+            : <CodeEditor className="pdx-code-fill" height="auto" value={content} language="json" onChange={onChange} />
         }
     </div>
 }

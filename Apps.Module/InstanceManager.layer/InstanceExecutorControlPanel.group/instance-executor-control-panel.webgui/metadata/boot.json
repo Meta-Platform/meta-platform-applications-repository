@@ -31,7 +31,9 @@
                 "isWatch": "isWatch"
             },
             "bound-params": {
-                "serverService": "@@/server-service"
+                "serverService": "@@/server-service",
+                "iComponents": "@/i-components.uilib",
+                "instanceComponents": "@/instance-manager.uilib"
             }
         }
     ]

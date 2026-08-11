@@ -449,63 +449,27 @@
     --iep-series-6: #8A74C8;
 }
 
-.iep-chart { position: relative; width: 100%; min-width: 0; }
-.iep-chart svg { display: block; width: 100%; overflow: hidden; }
-
-.iep-chart__grid   { stroke: var(--mp-line-faint); stroke-width: 1; }
-.iep-chart__axis   { stroke: var(--mp-line-soft); stroke-width: 1; }
-.iep-chart__label  { fill: var(--iep-muted); font-size: 10px; font-family: var(--mp-font-mono); }
-.iep-chart__line   { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.iep-chart__area   { stroke: none; opacity: .14; }
-.iep-chart__cursor { stroke: var(--iep-muted); stroke-width: 1; stroke-dasharray: 3 3; }
-
-.iep-chart__marker { stroke: var(--mp-surface); stroke-width: 2; }
-
-.iep-chart__tip {
-    position: absolute;
-    z-index: 5;
-    pointer-events: none;
-    background: var(--mp-ink);
-    color: var(--mp-paper);
-    border-radius: var(--mp-radius-sm);
-    padding: 5px 8px;
-    font-size: var(--mp-text-xs);
-    font-family: var(--mp-font-mono);
-    white-space: nowrap;
-    box-shadow: var(--mp-shadow-1);
-}
-
-.iep-chart__tip-row { display: flex; align-items: center; gap: 6px; }
-.iep-chart__tip-swatch { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; }
-
-.iep-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--mp-space-1) var(--mp-space-3);
-    padding-top: var(--mp-space-2);
-}
-
-.iep-legend__item {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: var(--mp-text-xs);
-    color: var(--iep-muted);
-    min-width: 0;
-}
+/* O gráfico é o `TimeSeriesChart` do kit (.mp-chart), que nasceu deste painel:
+   escala, eixos, faixa de alerta e dica de valor vêm de lá. Aqui fica só a
+   PALETA DE SÉRIE acima, que é o que o kit não tem — cada série continua
+   chegando com a sua cor. */
 
 .iep-legend__swatch { width: 9px; height: 9px; border-radius: 2px; flex: 0 0 auto; }
-.iep-legend__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
 
 .iep-sparkline { display: block; }
 
 /* ============================================================ */
 /* 6. Visualizador de log                                       */
+/* ------------------------------------------------------------ */
+/* O visor é o `LogViewer` do kit (.mp-log), promovido a partir  */
+/* deste painel. O que resta aqui é o ENCAIXE: a superfície do   */
+/* log de runtime é escura (é saída de processo), e a barra do   */
+/* kit — que no papel claro é uma Toolbar comum — precisa dos    */
+/* controles em contraste de terminal. Por isso os ajustes       */
+/* abaixo são descendentes de .iep-log, nunca de .mp-* na raiz.  */
 /* ============================================================ */
 
 .iep-log {
-    display: flex;
-    flex-direction: column;
     min-height: 0;
     flex: 1 1 auto;
     background: var(--mp-terminal-bg);
@@ -513,11 +477,10 @@
     border-top-width: 3px;
     border-top-color: var(--mp-titlebar-runtime);
     border-radius: var(--mp-radius-sm);
-    overflow: hidden;
 }
 
 /* A barra é uma `Toolbar` do kit sobre fundo de terminal: só o contraste muda. */
-.iep-log__bar {
+.iep-log .mp-log__bar {
     padding: 4px var(--mp-space-2);
     background: var(--mp-terminal-bg-2);
     border-width: 0 0 1px 0;
@@ -529,7 +492,7 @@
 
 /* Barra estreita: o botão do kit em `sm` (28px, 10px de respiro) somado à busca
    empurrava o contador de linhas para fora da direita. */
-.iep-log__bar .mp-button {
+.iep-log .mp-log__bar .mp-button {
     height: 24px;
     padding: 0 8px;
     background: transparent;
@@ -538,77 +501,25 @@
     box-shadow: none;
 }
 
-.iep-log__bar .iep-searchfield { flex: 0 1 150px; }
+.iep-log .mp-log__bar .mp-search { flex: 0 1 150px; }
 
-.iep-log__bar .mp-button:hover:not(:disabled) { background: rgba(255, 255, 255, .08); box-shadow: none; }
-.iep-log__bar .mp-button--primary { background: var(--mp-terminal-blue); border-color: var(--mp-terminal-blue); }
+.iep-log .mp-log__bar .mp-button:hover:not(:disabled) { background: rgba(255, 255, 255, .08); box-shadow: none; }
+.iep-log .mp-log__bar .mp-button--primary { background: var(--mp-terminal-blue); border-color: var(--mp-terminal-blue); }
 
-.iep-log__bar .mp-search__el {
+.iep-log .mp-log__bar .mp-search__el {
     background: transparent;
     border-color: var(--mp-terminal-muted);
     color: var(--mp-terminal-fg);
 }
 
-.iep-log__bar .mp-search__icon,
-.iep-log__bar .mp-search__clear { color: var(--mp-terminal-muted); }
+.iep-log .mp-log__bar .mp-search__icon,
+.iep-log .mp-log__bar .mp-search__clear { color: var(--mp-terminal-muted); }
 
-.iep-log__meta {
-    font-family: var(--mp-font-mono);
-    font-size: var(--mp-text-xs);
+.iep-log .mp-log__meta {
     color: var(--mp-terminal-muted);
-    white-space: nowrap;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.iep-log__body {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: auto;
-    padding: var(--mp-space-2);
-    font-family: var(--mp-font-mono);
-    font-size: var(--mp-text-xs);
-    line-height: 1.55;
-    color: var(--mp-terminal-fg);
-}
-
-/* Uma linha do log é UMA linha na tela: com quebra automática, cada registro
-   virava 2–3 linhas visuais e o log ficava ilegível. O excedente sai por
-   rolagem horizontal; o botão "quebrar" religa o wrap quando o texto é o que
-   importa. */
-.iep-log__line {
-    display: flex;
-    gap: var(--mp-space-2);
-    white-space: pre;
-    min-width: min-content;
-}
-
-.iep-log--wrap .iep-log__line {
-    white-space: pre-wrap;
-    word-break: break-word;
-}
-
-.iep-log__gutter {
-    flex: 0 0 auto;
-    min-width: 44px;
-    text-align: right;
-    color: var(--mp-terminal-muted);
-    opacity: .6;
-    user-select: none;
-}
-
-.iep-log__text { flex: 1 1 auto; min-width: 0; }
-
-.iep-log__line--error  .iep-log__text { color: var(--mp-terminal-red); }
-.iep-log__line--warn   .iep-log__text { color: var(--mp-terminal-orange); }
-.iep-log__line--daemon .iep-log__text { color: var(--mp-terminal-blue); }
-.iep-log__line--match  { background: rgba(255, 255, 255, .1); }
-
-.iep-log__empty {
-    padding: var(--mp-space-6);
-    text-align: center;
-    color: var(--mp-terminal-muted);
 }
 
 /* ============================================================ */

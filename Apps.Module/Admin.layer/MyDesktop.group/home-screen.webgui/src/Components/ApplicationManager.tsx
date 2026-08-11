@@ -2,7 +2,7 @@ import * as React from "react"
 import { useState, useEffect, useMemo } from "react"
 import { Badge, Button, Icon, ObjectCard, SearchInput, Spinner, StatusChip, StatusStrip } from "@i-components"
 
-import GetAPI            from "../Utils/GetAPI"
+import { GetAPI }       from "@i-components/net"
 import GetManagedIconURL from "../Utils/GetManagedIconURL"
 import FormatAppName     from "../Utils/FormatAppName"
 import Window            from "./Window"
@@ -56,7 +56,7 @@ const ApplicationManager = ({ serverManagerInformation, onClose, onChanged }:App
     const [ typeFilter, setTypeFilter ] = useState("ALL")
     const [ collapsed, setCollapsed ] = useState<Set<string>>(new Set())
 
-    const _GetApplicationsAPI = () => GetAPI({ apiName: "Applications", serverManagerInformation })
+    const _GetApplicationsAPI = () => GetAPI({ apiName: "Applications", serverManagerInformation }, { ipcMode: "proxy" })
 
     const fetchApps = async () => {
         setLoading(true)

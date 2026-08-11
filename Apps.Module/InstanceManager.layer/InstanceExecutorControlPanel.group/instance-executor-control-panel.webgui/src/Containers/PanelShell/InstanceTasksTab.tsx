@@ -12,7 +12,7 @@ import {
 } from "@i-components"
 
 import { useWebSocket } from "@instance-components"
-import GetAPI from "../../Utils/GetAPI"
+import { GetAPI } from "@i-components/net"
 
 import { DataGrid, GridColumn } from "../../Components/system"
 

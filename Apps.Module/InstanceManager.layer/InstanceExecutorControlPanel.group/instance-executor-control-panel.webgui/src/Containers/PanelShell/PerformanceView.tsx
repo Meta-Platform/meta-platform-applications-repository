@@ -2,10 +2,10 @@ import * as React from "react"
 import { useMemo, useState } from "react"
 
 import { Button, Panel, Toolbar } from "@i-components"
+import { TimeSeriesChart } from "@i-components/components/advanced/runtime"
+import type { TimeSeries } from "@i-components/components/advanced/runtime"
 
 import {
-    TimeSeriesChart,
-    ChartSeries,
     FormatBytes,
     FormatPercent,
     PackageName
@@ -55,7 +55,7 @@ const PerformanceView = ({ instanceList, historyByInstance, systemSample, system
 
     const visible = ordered.filter((instance: any) => !hidden.has(instance.instanceId)).slice(0, MAX_SERIES)
 
-    const _Series = (field: string): ChartSeries[] =>
+    const _Series = (field: string): TimeSeries[] =>
         visible.map((instance: any, index: number) => ({
             key: instance.instanceId,
             label: PackageName(instance.packagePath),

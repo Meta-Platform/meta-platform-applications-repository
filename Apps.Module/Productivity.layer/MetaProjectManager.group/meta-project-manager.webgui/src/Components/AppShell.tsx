@@ -1,14 +1,14 @@
 import * as React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Icon } from "@i-components"
+import { Icon, ThemePicker } from "@i-components"
+import { THEMES, ThemeName, ApplyTheme, GetSavedTheme } from "@i-components/theme"
 
 import useAppState from "../Hooks/useAppState"
 import { useReadOnly } from "../Hooks/useReadOnly"
 import NavRail from "./NavRail"
 import ProjectColumn from "./ProjectColumn"
 import CommandBar from "./CommandBar"
-import ThemeMenu from "./ThemeMenu"
 import GlobalApprovalModal from "./GlobalApprovalModal"
 import GlobalSessionGateModal from "./GlobalSessionGateModal"
 import ToastStack from "./ToastStack"
@@ -20,6 +20,11 @@ import { HandleZoomShortcut, GetSavedZoom } from "../Utils/zoom"
 // servidor via AppState — sobrevive ao restart do app. O rail é sempre visível.
 interface SidebarState { width: number; collapsed: boolean }
 const SIDEBAR_DEFAULT: SidebarState = { width: 240, collapsed: false }
+// Chave da preferência de tema no app_state do servidor (mesma tabela que guarda
+// último projeto, filtros e larguras). O tema também vai para o localStorage
+// (aplicado no boot em index.tsx, sem flash); o servidor é a fonte DURÁVEL da
+// "última escolha" — sobrevive a localStorage limpo, troca de máquina e Electron.
+const THEME_STATE_KEY = "mp-theme"
 const SIDEBAR_MIN = 180
 const SIDEBAR_MAX = 420
 const RAIL_W = 64
@@ -51,6 +56,13 @@ const AppShell = ({ active, activeProjectId, activeProjectName, breadcrumb, titl
     const { snoozedCount, resumeAll } = useApprovalQueue()
     const [cmdOpen, setCmdOpen] = useState(false)
     const [sidebar, saveSidebar] = useAppState<SidebarState>("mpm.sidebar", SIDEBAR_DEFAULT)
+    const [theme, saveTheme] = useAppState<ThemeName>(THEME_STATE_KEY, GetSavedTheme())
+
+    // Se o servidor tiver uma escolha diferente da do localStorage (ex.: outra
+    // máquina, ou localStorage limpo), a do servidor é a que vale.
+    useEffect(() => {
+        if (theme && THEMES.some((x) => x.key === theme) && theme !== GetSavedTheme()) ApplyTheme(theme)
+    }, [theme])
     const [dragWidth, setDragWidth] = useState<number | null>(null)
     const draggingRef = useRef(false)
 
@@ -180,7 +192,8 @@ const AppShell = ({ active, activeProjectId, activeProjectName, breadcrumb, titl
                     <span className="mpm-muted" style={{ flex: 1 }}>Buscar / comandos</span>
                     <span className="mpm-kbd">Ctrl K</span>
                 </div>
-                <ThemeMenu />
+                <ThemePicker value={theme} onChange={saveTheme}
+                    label="Trocar o tema (claro/escuro)" heading="Tema" />
             </div>
 
             {/* Linha 2: título da tela em destaque + ações. */}

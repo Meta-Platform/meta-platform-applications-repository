@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import GetAPI from "../Utils/GetAPI"
+import { GetAPI } from "@i-components/net"
 
 import {
     DefaultWorkspace,

@@ -1114,132 +1114,6 @@ html, body, #gui { height: 100%; margin: 0; }
 }
 
 /* ============================================================ */
-/* Editor de descrição (@uiw/react-md-editor) — tema --mp-*      */
-/* ------------------------------------------------------------ */
-/* A lib traz um tema próprio; aqui reapontamos suas superfícies */
-/* e acentos para os tokens do design system.                    */
-/* ============================================================ */
-.mpm-md-editor .w-md-editor {
-    background: var(--mp-surface) !important;
-    color: var(--mp-ink) !important;
-    border: var(--mp-border);
-    border-radius: var(--mp-radius-sm);
-    box-shadow: var(--mp-shadow-1);
-    --color-border-default: var(--mp-line);
-}
-/* toolbar */
-.mpm-md-editor .w-md-editor-toolbar {
-    background: var(--mp-surface-2) !important;
-    border-bottom: var(--mp-border-thin) !important;
-    border-radius: var(--mp-radius-sm) var(--mp-radius-sm) 0 0;
-}
-.mpm-md-editor .w-md-editor-toolbar li > button {
-    color: var(--mp-ink-2) !important;
-}
-.mpm-md-editor .w-md-editor-toolbar li > button:hover,
-.mpm-md-editor .w-md-editor-toolbar li.active > button {
-    background: var(--mp-accent-blue-tint) !important;
-    color: var(--mp-accent-blue) !important;
-}
-.mpm-md-editor .w-md-editor-toolbar-divider {
-    background-color: var(--mp-line-soft) !important;
-}
-/* área de edição (markdown cru) */
-.mpm-md-editor .w-md-editor-content,
-.mpm-md-editor .w-md-editor-area,
-.mpm-md-editor .w-md-editor-input {
-    background: var(--mp-surface) !important;
-}
-/* O editor sobrepõe um <textarea> transparente sobre um <pre> de highlight. As
-   DUAS camadas precisam ter MÉTRICAS DE TEXTO IDÊNTICAS (fonte, tamanho,
-   line-height, letter-spacing, peso, padding) — senão o texto aparece dobrado /
-   deslocado. Igualamos tudo explicitamente e neutralizamos o estilo global de
-   `code` (que aplicava border+background dentro da camada de highlight). */
-.mpm-md-editor .w-md-editor-text,
-.mpm-md-editor .w-md-editor-text-pre,
-.mpm-md-editor .w-md-editor-text-input,
-.mpm-md-editor .w-md-editor-text-pre > code,
-.mpm-md-editor .w-md-editor-text-pre > code span {
-    font-family: var(--mp-font-mono) !important;
-    font-size: var(--mp-text-sm) !important;
-    line-height: 1.5 !important;
-    letter-spacing: 0 !important;
-    word-spacing: 0 !important;
-    font-weight: 400 !important;
-    font-variant-ligatures: none !important;
-    tab-size: 4 !important;
-    white-space: pre-wrap !important;
-    word-break: break-word !important;
-}
-.mpm-md-editor .w-md-editor-text,
-.mpm-md-editor .w-md-editor-text-pre,
-.mpm-md-editor .w-md-editor-text-input {
-    color: var(--mp-ink) !important;
-    -webkit-text-fill-color: var(--mp-ink) !important;
-    caret-color: var(--mp-accent-blue);
-    background: transparent !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: 0 !important;
-}
-/* Anula o `code { background; border; radius }` global DENTRO da camada de
-   highlight — era ele que empurrava o <pre> 1px e dobrava o texto. */
-.mpm-md-editor .w-md-editor-text-pre > code,
-.mpm-md-editor .w-md-editor-text-pre > code span {
-    background: transparent !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    box-shadow: none !important;
-}
-.mpm-md-editor .w-md-editor-text-input::placeholder { color: var(--mp-muted-2) !important; }
-/* preview (markdown renderizado) */
-.mpm-md-editor .w-md-editor-preview {
-    background: var(--mp-paper-2) !important;
-    box-shadow: inset 1px 0 0 0 var(--mp-line-soft) !important;
-}
-/* O preview do editor usa a MESMA métrica do markdown renderizado (.mpm-md),
-   senão escrever e ler a mesma descrição dão resultados visuais diferentes. */
-.mpm-md-editor .wmde-markdown {
-    background: transparent !important;
-    color: var(--mp-ink-2) !important;
-    font-family: var(--mp-font-ui) !important;
-    font-size: var(--mp-text-md) !important;
-    line-height: 1.6 !important;
-}
-.mpm-md-editor .wmde-markdown h1,
-.mpm-md-editor .wmde-markdown h2,
-.mpm-md-editor .wmde-markdown h3,
-.mpm-md-editor .wmde-markdown h4 {
-    font-family: var(--mp-font-display) !important;
-    color: var(--mp-ink) !important;
-    border-bottom-color: var(--mp-line-faint) !important;
-}
-.mpm-md-editor .wmde-markdown code {
-    background: var(--mp-surface-2) !important;
-    color: var(--mp-ink) !important;
-    border: none !important;
-}
-.mpm-md-editor .wmde-markdown th { background: var(--mp-surface-2) !important; }
-.mpm-md-editor .wmde-markdown th,
-.mpm-md-editor .wmde-markdown td { border-color: var(--mp-line-faint) !important; }
-.mpm-md-editor .wmde-markdown hr { background: var(--mp-line-faint) !important; }
-.mpm-md-editor .wmde-markdown pre,
-.mpm-md-editor .wmde-markdown pre code {
-    background: var(--mp-terminal-bg) !important;
-    color: var(--mp-terminal-fg) !important;
-}
-.mpm-md-editor .wmde-markdown a { color: var(--mp-accent-blue) !important; }
-.mpm-md-editor .wmde-markdown blockquote {
-    color: var(--mp-muted) !important;
-    border-left-color: var(--mp-accent-blue) !important;
-}
-/* barra de redimensionamento */
-.mpm-md-editor .w-md-editor-bar { color: var(--mp-muted); }
-.mpm-md-editor .w-md-editor-bar svg { fill: var(--mp-muted); }
-
-/* ============================================================ */
 /* Guia de IA (agentes)                                         */
 /* ============================================================ */
 
@@ -1499,9 +1373,6 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-kanban { scroll-snap-type: x proximity; }
 .mpm-kcol { scroll-snap-align: start; }
 
-/* Editor markdown: usa a altura disponível do modal em vez de sobrar branco. */
-.mpm-md-editor .w-md-editor { min-height: 320px; }
-
 /* Estado vazio compacto dentro de abas do modal (antes: 500px em branco). */
 .mpm-tabpanel-empty {
     display: flex; flex-direction: column; align-items: center; gap: var(--mp-space-2);
@@ -1683,9 +1554,6 @@ html, body, #gui { height: 100%; margin: 0; }
     border-radius: 0;
 }
 
-/* Editor inline: altura própria, já que não ocupa mais o modal inteiro. */
-.mpm-desc--inline .mpm-md-editor { height: 460px; }
-
 /* Subtarefa: linha clicável que abre o item filho no próprio inspector. */
 .mpm-subtask {
     display: flex; align-items: center; gap: var(--mp-space-2);
@@ -1698,10 +1566,6 @@ html, body, #gui { height: 100%; margin: 0; }
 .mpm-subtask:last-child { border-bottom: none; }
 .mpm-subtask:hover { background: var(--mp-surface-2); }
 .mpm-subtask__title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Editor inline: altura própria (não ocupa mais o modal inteiro). */
-.mpm-desc--editing .mpm-md-editor { display: flex; }
-.mpm-desc--editing .mpm-md-editor .w-md-editor { flex: 1; height: 100% !important; }
-
 /* O corpo do inspector estica dentro do modal e rola sozinho. Seus filhos NUNCA
    encolhem: são blocos empilhados (campos, descrição, subtarefas, contexto), e
    um flex-shrink herdado faria um vazar sobre o outro. */

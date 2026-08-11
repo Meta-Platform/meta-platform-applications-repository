@@ -669,17 +669,6 @@ html, body, #gui { height: 100%; margin: 0; }
 }
 
 /* ============================================================ */
-/* Menu de contexto — só o que o Menu do kit não tem            */
-/* ------------------------------------------------------------ */
-/* A caixa e os itens são `.mp-menu*` do kit; aqui ficam apenas  */
-/* o submenu expansível em linha e o alinhamento dos rótulos     */
-/* sem ícone (a área de trabalho tem menus com hierarquia).      */
-/* ============================================================ */
-.myd-ctx-item--open  { background: var(--mp-surface-2); }
-.myd-ctx-item--child { padding-left: 30px; }
-.myd-ctx-icon-gap    { display: inline-block; width: 1.18em; flex: 0 0 auto; }
-
-/* ============================================================ */
 /* Popover "Todos os aplicativos" (grade de ícones)             */
 /* ------------------------------------------------------------ */
 /* A caixa é o `Popover` do kit; o âncora fixo em x,y e a grade  */

@@ -4,9 +4,6 @@
   "author": "Kaio Cezar <kadisk.shark@gmail.com>",
   "license": "BSD-3-Clause",
   "dependencies": {
-    "@xterm/addon-fit": "^0.10.0",
-    "@xterm/xterm": "^5.5.0",
-    "axios": "^1.7.7",
     "css-loader": "^7.1.2",
     "file-loader": "^6.2.0",
     "query-string": "^9.1.1",

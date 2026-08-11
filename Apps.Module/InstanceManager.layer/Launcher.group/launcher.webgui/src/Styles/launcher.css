@@ -157,12 +157,11 @@
 .lnc-terminal-path { min-width: 420px; }
 .lnc-terminal-args { min-width: 220px; }
 
-/* Moldura do xterm: o interior é pintado pelo próprio terminal. */
+/* Encaixe do `Terminal` do kit (.mp-terminal) neste bloco: a moldura escura e o
+   respiro são de lá; daqui vêm o crescimento dentro da coluna e a guia de cor
+   de EXECUÇÃO no topo, que é o que distingue esta superfície das outras. */
 .lnc-terminal-screen {
     flex: 1 1 auto;
     min-height: 0;
-    padding: 6px;
-    background: var(--mp-terminal-bg);
-    border: var(--mp-border-strong);
     border-top: 3px solid var(--mp-titlebar-exec);
 }

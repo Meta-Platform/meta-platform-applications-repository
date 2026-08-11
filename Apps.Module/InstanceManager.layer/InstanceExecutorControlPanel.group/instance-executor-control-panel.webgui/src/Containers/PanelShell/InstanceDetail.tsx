@@ -1,21 +1,14 @@
 import * as React from "react"
 import { useMemo } from "react"
 
-import {
-    Button,
-    CopyableMonoText,
-    EntityHeader,
-    Icon,
-    KeyValueList,
-    Panel
-} from "@i-components"
+import { Button, CopyableMonoText, EntityHeader, Icon, KeyValueList, Panel } from "@i-components"
+import { TimeSeriesChart } from "@i-components/components/advanced/runtime"
 
 import {
     KindTag,
     VersionTag,
     OriginTag,
     Meter,
-    TimeSeriesChart,
     FormatBytes,
     FormatDateTime,
     FormatDuration,
@@ -190,7 +183,8 @@ export const SummaryTab = ({ instance, sample, history, systemSample, onStopInst
                     label: "cpu",
                     color: "var(--iep-cpu)",
                     points: history.map((item: any) => ({ x: item.at, y: item.cpuPercent }))
-                }]}/>
+                }]}
+                showLegend={false}/>
         </Panel>
     </div>
 }
@@ -235,14 +229,16 @@ export const PerformanceTab = ({ instance, sample, history }: any) => {
                     height={140}
                     yMax={100}
                     formatValue={(value: number) => `${value.toFixed(0)}%`}
-                    series={cpuSeries}/>
+                    series={cpuSeries}
+                    showLegend={false}/>
             </Panel>
 
             <Panel title="memória residente" icon="database">
                 <TimeSeriesChart
                     height={140}
                     formatValue={(value: number) => FormatBytes(value)}
-                    series={memorySeries}/>
+                    series={memorySeries}
+                    showLegend={false}/>
             </Panel>
 
             <Panel title="threads e processos" icon="sitemap">

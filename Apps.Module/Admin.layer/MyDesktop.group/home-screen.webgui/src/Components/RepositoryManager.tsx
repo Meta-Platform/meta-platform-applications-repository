@@ -4,7 +4,7 @@ import {
     Button, FormField, Icon, ListRow, ObjectCard, SelectInput, Spinner, StatusChip, TextInput
 } from "@i-components"
 
-import GetAPI from "../Utils/GetAPI"
+import { GetAPI } from "@i-components/net"
 import Window from "./Window"
 
 // Metadados por tipo de fonte: ícone distinto (evita repetir o mesmo glifo
@@ -77,8 +77,8 @@ const RepositoryManager = ({ serverManagerInformation, onClose, onChanged }:Repo
     const [ form, setForm ]                   = useState<RegisterForm>(EMPTY_FORM)
     const [ view, setView ]                   = useState<View>("update")
 
-    const _API     = () => GetAPI({ apiName: "Sources", serverManagerInformation })
-    const _AppsAPI = () => GetAPI({ apiName: "Applications", serverManagerInformation })
+    const _API     = () => GetAPI({ apiName: "Sources", serverManagerInformation }, { ipcMode: "proxy" })
+    const _AppsAPI = () => GetAPI({ apiName: "Applications", serverManagerInformation }, { ipcMode: "proxy" })
 
     const fetchAll = async () => {
         setLoading(true); setError(undefined)
