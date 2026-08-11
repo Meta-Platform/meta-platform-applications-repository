@@ -23,9 +23,13 @@ const PROJECT_NAV: { key: string; label: string; icon: any; path: (id: string) =
     { key: "inbox",    label: "Ideias",      icon: "inbox",   path: (id) => `/projects/${id}/inbox`,   hint: "Ideias cruas anotadas rápido, para triar depois (inbox, no jargão técnico)." },
     { key: "roadmap",  label: "Planejamento", icon: "road",   path: (id) => `/projects/${id}/roadmap`, hint: "O plano no tempo: entregas (por data) e horizontes (agora/próximo/depois)." },
     // Sequência substituiu o Cronograma no menu: trabalho de vários agentes em
-    // paralelo se descreve por ordem e dependência, não por data (MPME-21). O
-    // Gantt continua acessível pela rota /gantt para quem quiser a leitura
-    // temporal do que JÁ aconteceu.
+    // paralelo se descreve por ordem e dependência, não por data (MPME-21).
+    //
+    // Este comentário dizia que "o Gantt continua acessível pela rota /gantt".
+    // Não continuava: a rota nunca foi registrada, e a página ficou 452 linhas
+    // fora de qualquer mapeamento até ser removida no APPUI-193. A leitura
+    // temporal do que já aconteceu está na seção Execução, montada sobre o
+    // audit log.
     { key: "sequence", label: "Sequência",   icon: "sitemap", path: (id) => `/projects/${id}/sequence`, hint: "O que dá para pegar agora, o que espera o quê e o que cada item destrava — sem calendário." },
     { key: "docs",     label: "Documentação", icon: "book",   path: (id) => `/projects/${id}/docs`,    hint: "Wiki do projeto: páginas de documentação organizadas em árvore." },
     { key: "risks",    label: "Riscos",      icon: "warning sign", path: (id) => `/projects/${id}/risks`, hint: "Registro de riscos: matriz probabilidade×impacto, mitigação e contingência." },
