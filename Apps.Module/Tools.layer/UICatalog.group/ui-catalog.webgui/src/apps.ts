@@ -134,6 +134,13 @@ export const apps: AppRecord[] = [
         migrated: true
     },
     {
+        // Migrado em 11/08/2026 (APPUI-178..186): os 60 arquivos que importavam
+        // semantic-ui-react passaram a importar de "@i-components" — restam 0.
+        // Medido em 11/08/2026, depois da poda do CSS morto (APPUI-186): 16
+        // classes sem nenhum uso em src/ saíram de Styles/mpm.css, que caiu de
+        // 2624 para 2571 linhas. Nenhuma regra `.mp-*` e nenhum token `--mp-*`
+        // definidos localmente — o CSS que ficou é só o que é exclusivo do MPM
+        // (board com swimlanes, Gantt, wiki de documentação, editor markdown).
         id: "meta-project-manager",
         title: "Meta Project Manager",
         area: "Productivity",
@@ -141,11 +148,11 @@ export const apps: AppRecord[] = [
         guiPackage: "@/meta-project-manager.webgui",
         desktopExecutable: "meta-project-manager-desktop",
         libraries: [ "@i-components" ],
-        localComponents: 52,
-        semanticFiles: 60,
-        cssLines: 2508,
+        localComponents: 53,
+        semanticFiles: 0,
+        cssLines: 2571,
         wave: 3,
-        migrated: false
+        migrated: true
     },
     {
         // Migrado em 11/08/2026 (APPUI-170..177): 64 arquivos deixaram de
