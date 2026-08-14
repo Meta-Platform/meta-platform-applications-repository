@@ -1,0 +1,1 @@
+{ "commands": [{ "namespace": "Serve", "path": "Commands/Serve.command", "command": "serve", "description": "Servidor MCP do My Blueprint para Codex, Claude Code e OpenCode/GLM", "isNotStopAllTasks": true }] }

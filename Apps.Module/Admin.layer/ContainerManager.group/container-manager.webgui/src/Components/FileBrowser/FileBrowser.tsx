@@ -81,9 +81,23 @@ const FileBrowser = ({ operacoes, caminhoInicial = "", raiz = "", titulo }: Prop
     const [nomeDaPasta, setNomeDaPasta] = useState("")
     const arquivoRef = useRef<HTMLInputElement | null>(null)
 
+    /*
+        As operações vêm por REFERÊNCIA, e não por dependência.
+
+        As páginas montam o objeto `operacoes` no próprio JSX — é o que o torna
+        legível lá. Só que isso dá um objeto NOVO a cada render, e depender
+        dele aqui fechava um ciclo: listar → estado muda → render → objeto novo
+        → listar de novo, sem parar. Contra um container parado, cada volta
+        puxava o tar do caminho inteiro, e o processo morria por memória.
+
+        O caminho é a única coisa que deve refazer a listagem.
+    */
+    const operacoesRef = useRef(operacoes)
+    operacoesRef.current = operacoes
+
     const listagem = useResource(
-        async () => await operacoes.Listar(caminho),
-        [operacoes, caminho]
+        async () => await operacoesRef.current.Listar(caminho),
+        [caminho]
     )
 
     const migalhas = useMemo(() => {

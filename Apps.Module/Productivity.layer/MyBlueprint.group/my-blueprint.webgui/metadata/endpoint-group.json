@@ -1,0 +1,9 @@
+{
+  "params": ["serverManagerUrl", "serverName", "?isWatch"],
+  "bound-params": ["serverService", "iComponents"],
+  "endpoints": [{
+    "url": "/", "type": "web-graphic-user-interface",
+    "params": { "entrypoint": "index.tsx", "htmlTemplate": "index.html", "serverEndpointStatus": "{{serverManagerUrl}}", "serverName": "{{serverName}}", "isWatch": "isWatch" },
+    "bound-params": { "serverService": "serverService", "componentLibraries": { "@i-components": "iComponents" } }
+  }]
+}

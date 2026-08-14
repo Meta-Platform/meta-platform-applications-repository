@@ -106,5 +106,17 @@
         "executable":"meta-project-manager-mcp",
         "packageNamespace":"Apps.Module/Productivity.layer/MetaProjectManager.group/meta-project-manager-mcp.cli",
         "supervisorSocketFileName":"meta-project-manager-mcp.sock"
+    },
+    {
+        "appType":"DESKTOP",
+        "executable":"my-blueprint-desktop",
+        "packageNamespace":"Apps.Module/Productivity.layer/MyBlueprint.group/my-blueprint.desktopapp",
+        "supervisorSocketFileName":"my-blueprint-desktop.sock"
+    },
+    {
+        "appType":"CLI",
+        "executable":"my-blueprint-mcp",
+        "packageNamespace":"Apps.Module/Productivity.layer/MyBlueprint.group/my-blueprint-mcp.cli",
+        "supervisorSocketFileName":"my-blueprint-mcp.sock"
     }
 ]

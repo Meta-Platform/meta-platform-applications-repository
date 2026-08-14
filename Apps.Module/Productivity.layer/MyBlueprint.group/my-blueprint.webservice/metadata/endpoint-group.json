@@ -1,0 +1,5 @@
+{
+  "params": ["MB_DB_FILE_PATH"],
+  "bound-params": ["serverService", "blueprintStoreLib"],
+  "endpoints": [{ "url": "/", "type": "controller", "params": { "api-template": "APIs/Blueprint.api.json", "controller": "Controllers/Blueprint.controller", "controller-params": { "dbFilePath": "{{MB_DB_FILE_PATH}}" } }, "bound-params": { "serverService": "serverService", "controller-params": { "blueprintStoreLib": "blueprintStoreLib" } } }]
+}

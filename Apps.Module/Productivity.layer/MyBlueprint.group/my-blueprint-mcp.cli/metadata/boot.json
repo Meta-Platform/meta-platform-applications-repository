@@ -1,0 +1,1 @@
+{ "executables": [{ "dependency": "@//command-group", "executableName": "my-blueprint-mcp" }] }

@@ -1,0 +1,5 @@
+{
+  "params": ["port", "serverName", "MB_DB_FILE_PATH"],
+  "services": [{ "namespace": "@@/server-service", "dependency": "@/server-manager.service/services/HTTPServerService", "params": { "name": "{{serverName}}", "port": "{{port}}" } }],
+  "endpoints": [{ "dependency": "@/server-manager.webservice/endpoint-group", "bound-params": { "serverServiceForController": "@@/server-service", "serverService": "@@/server-service" } }, { "dependency": "@//endpoint-group", "params": { "MB_DB_FILE_PATH": "{{MB_DB_FILE_PATH}}" }, "bound-params": { "blueprintStoreLib": "@/blueprint-store.lib" } }]
+}

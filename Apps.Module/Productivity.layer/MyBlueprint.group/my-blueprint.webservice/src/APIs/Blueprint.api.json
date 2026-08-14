@@ -1,0 +1,14 @@
+{
+  "name": "Blueprint",
+  "endpoints": [
+    { "summary": "Health", "method": "GET", "path": "/blueprint/health" },
+    { "summary": "ListItems", "method": "GET", "path": "/blueprint/items" },
+    { "summary": "GetItem", "method": "GET", "path": "/blueprint/items/:id" },
+    { "summary": "CreateItem", "method": "POST", "path": "/blueprint/items" },
+    { "summary": "UpdateItem", "method": "PATCH", "path": "/blueprint/items/:id" },
+    { "summary": "ArchiveItem", "method": "POST", "path": "/blueprint/items/:id/archive" },
+    { "summary": "GetSettings", "method": "GET", "path": "/blueprint/settings" },
+    { "summary": "SaveSettings", "method": "POST", "path": "/blueprint/settings" },
+    { "summary": "Chat", "method": "POST", "path": "/blueprint/chat" }
+  ]
+}

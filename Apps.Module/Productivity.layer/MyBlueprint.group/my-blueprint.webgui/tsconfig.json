@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "noImplicitAny": false,
+    "module": "commonjs",
+    "target": "es5",
+    "jsx": "react",
+    "lib": ["esnext", "dom"],
+    "skipLibCheck": true,
+    "types": ["react", "node"],
+    "baseUrl": ".",
+    "paths": {
+      "*": ["node_modules/*"],
+      "@i-components": ["../../../../../ecosystem-core-repository/UserInterface.Module/Libraries.layer/i-components.uilib/src"],
+      "@i-components/*": ["../../../../../ecosystem-core-repository/UserInterface.Module/Libraries.layer/i-components.uilib/src/*"]
+    }
+  }
+}
