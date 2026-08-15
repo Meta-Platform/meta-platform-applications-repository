@@ -7,6 +7,22 @@ const { join, dirname } = require("path")
 const { pathToFileURL } = require("url")
 const { ResolveGpuLaunch, ListVulkanDevices, WritePreference } = require("./GpuPreference")
 
+// Resolução de `.ts` deste processo, pelo mesmo motivo do logger abaixo: o
+// Electron é processo SEPARADO e nada do que o executor instalou vale aqui. Vem
+// primeiro porque a própria logger.lib pode ser TypeScript.
+// Ver: meta-platform-open-standard/specifications/source-language-standard.md
+const InstallElectronTypeScriptResolution = () => {
+    try {
+        const installTypeScriptResolutionPath = process.env.META_INSTALL_TYPESCRIPT_RESOLUTION_PATH
+        if(!installTypeScriptResolutionPath) return
+        require(installTypeScriptResolutionPath)()
+    } catch (error) {
+        /* Repositório anterior à lib: segue sem resolver `.ts` — que é o correto,
+         * porque nesse repositório não há `.ts` para resolver. */
+    }
+}
+InstallElectronTypeScriptResolution()
+
 // `globalThis.Log` deste processo. O Electron é um processo SEPARADO: sem esta
 // instalação, todo log de app desktop existiria apenas como texto no stdout que
 // o daemon captura — fora do padrão e sem estrutura. O caminho da lib e o

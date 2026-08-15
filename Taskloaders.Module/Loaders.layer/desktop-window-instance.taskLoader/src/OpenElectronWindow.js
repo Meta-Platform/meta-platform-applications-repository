@@ -47,6 +47,9 @@ const CreateOpenElectronWindow = (runtimeDeps) => {
                 // processo separado, e sem isto todo log de app desktop ficaria
                 // fora do padrão. Grava no logs/ do ambiente da execução.
                 ...paths && paths.installGlobalLogger ? { META_INSTALL_GLOBAL_LOGGER_PATH: paths.installGlobalLogger } : {},
+                // Idem para a resolução de TypeScript: sem ela, nenhum package
+                // `.ts` carrega dentro do Electron.
+                ...paths && paths.installTypeScriptResolution ? { META_INSTALL_TYPESCRIPT_RESOLUTION_PATH: paths.installTypeScriptResolution } : {},
                 ...logsDirPath ? { META_LOGS_DIR: String(logsDirPath) } : {},
                 ...title  !== undefined ? { DESKTOP_WINDOW_TITLE:  String(title) }  : {},
                 ...width  !== undefined ? { DESKTOP_WINDOW_WIDTH:  String(width) }  : {},
