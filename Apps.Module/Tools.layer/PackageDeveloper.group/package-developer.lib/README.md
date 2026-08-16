@@ -22,12 +22,12 @@ contrato de arquivos do seu tipo.
 
 | Módulo | Responsabilidade |
 |---|---|
-| `Manager.Functions/` | `GetRepositoryHierarchy.function.js` varre um repositório por caminho absoluto e devolve `módulos → camadas → grupos → pacotes`, com o namespace de cada um. |
+| `Manager.Functions/` | `GetRepositoryHierarchy.function.ts` varre um repositório por caminho absoluto e devolve `módulos → camadas → grupos → pacotes`, com o namespace de cada um. |
 | `Managers/PackageHandler` | Manager exposto como serviço: workspaces, pacotes e seus metadados. |
 | `Package.Functions/` | Operações sobre um pacote individual. |
 | `Services/PackageHandler.service/` | Metadados, detalhes, ícone e verificações de um pacote. |
-| `Services/{Library,Webgui,Webservice,Webapp}.service/` | Contrato de arquivos esperados por tipo de pacote (`Configs/requirements.config.js`). |
-| `Services/{APIs,Boot,Controllers,Git,Managers,Routes,Services}.service.js` | Leitura das partes de um pacote: APIs, boot, controllers, status git, managers, rotas e serviços. |
+| `Services/{Library,Webgui,Webservice,Webapp}.service/` | Contrato de arquivos esperados por tipo de pacote (`Configs/requirements.config.ts`). |
+| `Services/{APIs,Boot,Controllers,Git,Managers,Routes,Services}.service.ts` | Leitura das partes de um pacote: APIs, boot, controllers, status git, managers, rotas e serviços. |
 
 ## Serviços expostos (`metadata/services.json`)
 
