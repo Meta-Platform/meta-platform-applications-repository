@@ -1,12 +1,12 @@
-const fs = require("fs")
-const os = require("os")
-const { join, basename } = require("path")
+const fs = require("fs") as typeof import("fs")
+const os = require("os") as typeof import("os")
+const { join, basename } = require("path") as typeof import("path")
 
 // Classe X11 (WM_CLASS) usada pelo gerenciador de janelas para agrupar botões na
 // barra de tarefas. Cada .desktopapp precisa de uma classe ESTÁVEL e ÚNICA, senão
 // o KDE agrupa todos os apps sob o mesmo botão. Preferimos o nome do app; para
 // janelas url/file caímos no nome do diretório do pacote (rootPath) ou no título.
-const _ResolveWmClass = (raw) => {
+const _ResolveWmClass = (raw: any) => {
     const value = String(raw || "").trim()
     if(!value) return undefined
     // Mantém apenas caracteres seguros para um identificador de classe.
@@ -23,19 +23,19 @@ const _ResolveWmClass = (raw) => {
 const WINDOW_RESTART_EXIT_CODE = 87
 
 // Ícone da janela: convenção de icon.svg na raiz do package (rootPath).
-const ResolveIconPath = (rootPath) => {
+const ResolveIconPath = (rootPath?: string) => {
     if(!rootPath) return undefined
     const candidate = join(rootPath, "icon.svg")
     return fs.existsSync(candidate) ? candidate : undefined
 }
 
 // Extrai os caminhos de um handle nodejs-package (resolvido de um bound-param).
-const _HandlePaths = (handle) => ({
+const _HandlePaths = (handle: any) => ({
     src:         handle.getSourcePath(),
     nodeModules: handle.getNodeModulesPath()
 })
 
-const _ComponentLibraryDescriptor = (alias, handle) => {
+const _ComponentLibraryDescriptor = (alias: string, handle: any) => {
     const manifest = handle.getManifest()
     return {
         alias: alias || manifest.alias,
@@ -61,20 +61,20 @@ const _ComponentLibraryDescriptor = (alias, handle) => {
 //   - params: bag escalar comum passada a todas as factories.
 // Isso NÃO é específico do my-desktop — funciona para qualquer .desktopapp que
 // declare um "gui-host".
-const _BuildGuiConfig = (loaderParams) => {
+const _BuildGuiConfig = (loaderParams: any) => {
     const guiHost = loaderParams.guiHost
     const params  = loaderParams.guiParams || {}
     const webguiHandle = loaderParams[guiHost.webgui]
-    const componentLibraries = Object.keys(guiHost.componentLibraries || {}).map((alias) =>
+    const componentLibraries = Object.keys(guiHost.componentLibraries || {}).map((alias: string) =>
         _ComponentLibraryDescriptor(alias, loaderParams[guiHost.componentLibraries[alias]])
     )
 
-    const serviceGraph = (guiHost.serviceGraph || []).map((entry) => ({
+    const serviceGraph = (guiHost.serviceGraph || []).map((entry: any) => ({
         ref:            entry.ref,
         factory:        entry.factory,
         package:        _HandlePaths(loaderParams[entry.package]),
         boundServices:  entry.boundServices || {},
-        boundLibs:      Object.keys(entry.boundLibs || {}).reduce((acc, paramName) => {
+        boundLibs:      Object.keys(entry.boundLibs || {}).reduce((acc: Record<string, any>, paramName: string) => {
             acc[paramName] = _HandlePaths(loaderParams[entry.boundLibs[paramName]])
             return acc
         }, {})
@@ -110,29 +110,29 @@ const _BuildGuiConfig = (loaderParams) => {
 
 // No modo GUI-host o ambiente não vem em loaderParams: quem o conhece é o
 // handle do webgui. É de lá que sai o destino do log do processo Electron.
-const _GetGuiHostEnvironmentPath = (loaderParams) => {
+const _GetGuiHostEnvironmentPath = (loaderParams: any) => {
     try {
         const webguiHandle = loaderParams[loaderParams.guiHost.webgui]
         return webguiHandle && webguiHandle.getEnvironmentPath()
-    } catch (error) {
+    } catch (error: any) {
         return null
     }
 }
 
-const _WriteGuiConfigFile = (config, serverName) => {
+const _WriteGuiConfigFile = (config: any, serverName: any) => {
     const safeName = String(serverName || "gui").replace(/[^a-zA-Z0-9._-]/g, "_")
     const configPath = join(os.tmpdir(), `meta-gui-config-${safeName}-${process.pid}.json`)
     fs.writeFileSync(configPath, JSON.stringify(config), "utf8")
     return configPath
 }
 
-const DesktopWindowInstanceTaskLoader = (runtimeDeps) => {
+const DesktopWindowInstanceTaskLoader = (runtimeDeps: any) => {
 
   const { TaskStatusTypes, CommandChannelEventTypes } = runtimeDeps
-  const OpenElectronWindow    = require("./OpenElectronWindow")(runtimeDeps)
-  const EnsureAppDesktopEntry = require("./EnsureAppDesktopEntry")
+  const OpenElectronWindow    = (require("./OpenElectronWindow") as (deps: any) => (options: any) => any)(runtimeDeps)
+  const EnsureAppDesktopEntry = require("./EnsureAppDesktopEntry") as (entry: { wmClass?: string, name?: string, iconPath?: string }) => string | undefined
 
-  return (loaderParams, executorChannel) => {
+  return (loaderParams: any, executorChannel: any) => {
 
     // Carimba a execução — ver logging-standard.md.
     const log = Log
@@ -149,7 +149,7 @@ const DesktopWindowInstanceTaskLoader = (runtimeDeps) => {
         return environmentPath ? join(environmentPath, "logs") : null
     }
 
-    let windowProcess
+    let windowProcess: any
     let wasStopped = false
     let isProcessExitScheduled = false
     // Reabertura pedida pela própria janela (ver RESTART_EXIT_CODE no
@@ -157,7 +157,7 @@ const DesktopWindowInstanceTaskLoader = (runtimeDeps) => {
     // porque a escolha é uma flag lida na largada. Reabrimos aqui em vez de
     // deixar o Electron se relançar sozinho — assim a INSTÂNCIA continua sendo
     // esta, e o app não some do monitor de execução.
-    let openWindow
+    let openWindow: () => void
 
     const {
         url,
@@ -181,7 +181,7 @@ const DesktopWindowInstanceTaskLoader = (runtimeDeps) => {
     }
 
     const _WatchWindowProcess = () => {
-        windowProcess.on("exit", (code, signal) => {
+        windowProcess.on("exit", (code: number | null, signal: string | null) => {
             windowProcess = undefined
             // Por que a janela terminou: sem isto, o monitor de instâncias
             // mostra "encerrada" sem motivo nenhum.
@@ -225,7 +225,7 @@ const DesktopWindowInstanceTaskLoader = (runtimeDeps) => {
             _WatchWindowProcess()
 
             executorChannel.emit(CommandChannelEventTypes.CHANGE_TASK_STATUS, TaskStatusTypes.ACTIVE)
-        }catch(e){
+        }catch(e: any){
             log.error("falha ao abrir a janela", e)
             executorChannel.emit(CommandChannelEventTypes.CHANGE_TASK_STATUS, TaskStatusTypes.FAILURE)
         }

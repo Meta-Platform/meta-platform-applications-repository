@@ -1,3 +1,11 @@
+/* Deliberadamente JavaScript, enquanto o Electron embutir um Node anterior ao
+ * 22.18 (Electron 31 → Node 20.18): lá não há apagamento de tipos nem
+ * `module.registerHooks`, então nada que este processo carregue pode ser `.ts` —
+ * a começar por este arquivo, que o binário do Electron recebe como ponto de
+ * entrada, um CAMINHO e não um specifier de módulo. Pelo mesmo motivo continuam
+ * em JavaScript o `preload.js` (carregado pelo renderer) e o `GpuPreference.js`
+ * (requerido daqui). Ver source-language-standard.md. */
+
 const { app, BrowserWindow, Menu, dialog, ipcMain, Notification, nativeImage, protocol, net } = require("electron")
 const http  = require("http")
 const https = require("https")

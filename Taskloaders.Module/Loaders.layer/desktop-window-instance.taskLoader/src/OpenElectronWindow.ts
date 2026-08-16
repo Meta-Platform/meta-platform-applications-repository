@@ -1,17 +1,22 @@
-const { spawn } = require("child_process")
-const { join } = require("path")
-const { ResolveGpuLaunch } = require("./GpuPreference")
+const { spawn } = require("child_process") as typeof import("child_process")
+const { join } = require("path") as typeof import("path")
+const { ResolveGpuLaunch } = require("./GpuPreference") as { ResolveGpuLaunch: (appKey?: string) => { env: Record<string, string> } }
 
+// A extensão é literal, e continua sendo: este caminho não é um specifier de
+// módulo — é o ARQUIVO que o binário do Electron recebe como ponto de entrada.
+// O `electron-main` é (e precisa continuar) JavaScript: o Electron 31 embute o
+// Node 20, que não apaga tipos nem tem `registerHooks` para resolver `.ts`.
+// Ver o cabeçalho do próprio electron-main.js.
 const ELECTRON_MAIN_SCRIPT = join(__dirname, "electron-main.js")
 
 // Fábrica: recebe runtimeDeps (SmartRequire p/ resolver o binário electron + `paths`
 // absolutos que o subprocesso electron-main usa p/ requerer deps por PATH, já que ele
 // roda num processo separado e não recebe módulos JS).
-const CreateOpenElectronWindow = (runtimeDeps) => {
+const CreateOpenElectronWindow = (runtimeDeps: any) => {
 
     const { SmartRequire, paths } = runtimeDeps
 
-    const OpenElectronWindow = ({ url, file, rootPath, title, width, height, iconPath, guiConfigPath, wmClass, logsDirPath }) => {
+    const OpenElectronWindow = ({ url, file, rootPath, title, width, height, iconPath, guiConfigPath, wmClass, logsDirPath }: any) => {
         const electronBinaryPath = SmartRequire("electron")
 
         // Três modos:

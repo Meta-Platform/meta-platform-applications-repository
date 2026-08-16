@@ -1,4 +1,4 @@
-const { dirname, join } = require("path")
+const { dirname, join } = require("path") as typeof import("path")
 
 // Ponte para o cache de build do ecosystem-core.
 //
@@ -13,13 +13,17 @@ const { dirname, join } = require("path")
 // este arquivo continua existindo e degrada sozinho: se o core instalado ainda
 // não tiver o BuildCache, o cache simplesmente não age e a janela recompila —
 // que é o comportamento antigo, e é seguro.
+//
+// Hoje NINGUÉM o requer (o electron-main passou a usar o cache de dentro do
+// builder). Se voltar a ser requerido pelo `electron-main`, terá de voltar a ser
+// JavaScript: aquele processo é o Electron, que ainda não carrega `.ts`.
 
 const _ResolveFromCore = () => {
     const builderPath = process.env.META_WEB_INTERFACE_BUILDER_PATH
     if(!builderPath) return undefined
     try {
         return require(join(dirname(builderPath), "BuildCache"))
-    } catch(e) {
+    } catch(e: any) {
         return undefined
     }
 }

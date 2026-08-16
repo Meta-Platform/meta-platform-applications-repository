@@ -1,3 +1,8 @@
+/* Deliberadamente JavaScript: este módulo é requerido pelas DUAS metades (ver
+ * abaixo), e uma delas é o processo do Electron, cujo Node embutido ainda não
+ * apaga tipos. Convertido para `.ts`, o `electron-main` deixaria de encontrá-lo
+ * e a janela não abriria. Ver o cabeçalho do electron-main.js. */
+
 const fs = require("fs")
 const os = require("os")
 const { join } = require("path")

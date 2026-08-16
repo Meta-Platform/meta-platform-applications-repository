@@ -1,5 +1,5 @@
-const Sequelize = require("sequelize")
-const crypto    = require("crypto")
+const Sequelize = require("sequelize") as any
+const crypto    = require("crypto") as typeof import("crypto")
 
 // Envolve uma conexão Sequelize para uma fonte "relational-database".
 // Suporta os dialetos do Sequelize; o foco atual é SQLite (dialect "sqlite" +
@@ -10,7 +10,7 @@ const crypto    = require("crypto")
 // (GetConnection/GetQueryInterface/EnsureConnection). O RelacionalDatabaseHandler
 // depende disso — antes o objeto retornado não expunha a connection e o handler
 // quebrava.
-const ORMService = (params) => {
+const ORMService = (params: any) => {
 
     const {
         name,
@@ -18,7 +18,7 @@ const ORMService = (params) => {
         dialect
     } = params
 
-    let keystone, status, connection, message
+    let keystone: string, status: string, connection: any, message: string | undefined
 
     const _IsSqlite = () => dialect === "sqlite"
 
@@ -53,7 +53,7 @@ const ORMService = (params) => {
             connection = _BuildConnection()
             status = "WAITING"
             _Authenticate()
-        }catch(e){
+        }catch(e: any){
             status = "ERROR"
             message = e.message
         }
@@ -63,7 +63,7 @@ const ORMService = (params) => {
         try{
             await connection.authenticate()
             status = "READY"
-        }catch(e){
+        }catch(e: any){
             status = "ERROR"
             message = e.message
         }

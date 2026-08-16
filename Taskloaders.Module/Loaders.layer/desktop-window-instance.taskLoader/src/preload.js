@@ -1,3 +1,9 @@
+/* Deliberadamente JavaScript: este arquivo é carregado pelo Chromium como
+ * `webPreferences.preload` — um CAMINHO entregue ao processo do renderer, que
+ * não herda hook de resolução nenhum e roda no Node embutido do Electron
+ * (anterior ao 22.18, que é quando o Node passou a apagar tipos sozinho).
+ * Ver o cabeçalho do electron-main.js. */
+
 const { contextBridge, ipcRenderer } = require("electron")
 
 // Notificações nativas (já existia): usado pelo ecosystem-control-panel.webgui.

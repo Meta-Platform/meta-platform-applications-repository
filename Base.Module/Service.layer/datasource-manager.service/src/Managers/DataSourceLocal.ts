@@ -1,23 +1,25 @@
-const path          = require("path")
-const fs            = require("fs")
-const { promisify } = require("util")
+const path          = require("path") as typeof import("path")
+const fs            = require("fs") as typeof import("fs")
+const { promisify } = require("util") as typeof import("util")
 
 const readdir = promisify(fs.readdir)
 
-const DataStoreService = require("../Services/DataStore.service")
-const FSService        = require("../Services/FS.service")
-const ORMService       = require("../Services/ORM.service")
+// Cada service é uma fábrica que recebe os params da fonte e devolve o objeto de
+// acesso a ela (GetInfo/GetKeystone/…), cuja forma varia por tipo de fonte.
+const DataStoreService = require("../Services/DataStore.service") as (params: any) => any
+const FSService        = require("../Services/FS.service")        as (params: any) => any
+const ORMService       = require("../Services/ORM.service")       as (params: any) => any
 
 // Gerência de fontes de dados locais. No boot lê os arquivos de
 // appDataDir/DataSources (cada um é um módulo Node/JSON com um campo `type`
 // discriminador) e instancia o service correspondente. Além da leitura,
 // permite CRIAR novas fontes em runtime (persistindo o arquivo + registrando o
 // service em memória) — usado pela tela "Abrir base SQLite" da GUI.
-const DataSourceLocalManager = (params) => {
+const DataSourceLocalManager = (params: any) => {
 
     const { appDataDir, onReady } = params
 
-    let listServices = []
+    let listServices: any[] = []
 
     const _DataSourcesDir = () => path.resolve(appDataDir, "DataSources")
 
@@ -28,7 +30,7 @@ const DataSourceLocalManager = (params) => {
         return dir
     }
 
-    const _BuildService = (sourceParams) => {
+    const _BuildService = (sourceParams: any) => {
         switch(sourceParams.type){
             case "fs":
                 return FSService(sourceParams)
@@ -46,7 +48,7 @@ const DataSourceLocalManager = (params) => {
         _EnsureDir()
         ;(await _GetListFilenameDataSource())
         .map(_GetParamsDataSource)
-        .forEach(sourceParams => {
+        .forEach((sourceParams: any) => {
             const service = _BuildService(sourceParams)
             if(service) _AddSource(service)
         })
@@ -54,30 +56,30 @@ const DataSourceLocalManager = (params) => {
         onReady && onReady()
     }
 
-    const _GetParamsDataSource = filename => require(path.resolve(_DataSourcesDir(), filename))
+    const _GetParamsDataSource = (filename: any) => require(path.resolve(_DataSourcesDir(), filename))
 
-    const _GetListFilenameDataSource = () => new Promise(async (resolve, reject)=>{
+    const _GetListFilenameDataSource = () => new Promise<string[]>(async (resolve, reject)=>{
         try{
             const dir = _DataSourcesDir()
             const listAllItems = await readdir(dir)
-            resolve(listAllItems.filter((filename) => fs.lstatSync(path.resolve(dir, filename)).isFile()))
-        }catch(e){
+            resolve(listAllItems.filter((filename: any) => fs.lstatSync(path.resolve(dir, filename)).isFile()))
+        }catch(e: any){
             reject(e)
         }
     })
 
-    const _AddSource = (service) => {
+    const _AddSource = (service: any) => {
         listServices = [...listServices, service]
     }
 
-    const _Slug = (value) => String(value)
+    const _Slug = (value: any) => String(value)
         .trim()
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "") || "source"
 
     // Persiste um arquivo de fonte em appDataDir/DataSources e retorna o caminho.
-    const _PersistSourceFile = (sourceParams) => {
+    const _PersistSourceFile = (sourceParams: any) => {
         _EnsureDir()
         const filename = `${_Slug(sourceParams.name)}.json`
         const filePath = path.resolve(_DataSourcesDir(), filename)
@@ -88,44 +90,44 @@ const DataSourceLocalManager = (params) => {
     // Cria uma fonte relational-database (foco SQLite) em runtime: instancia o
     // service, AGUARDA a autenticação (para o status retornado ser READY/ERROR e
     // não WAITING), persiste o arquivo e registra em memória. Retorna o GetInfo.
-    const _CreateORMSource = async (sourceParams) => {
+    const _CreateORMSource = async (sourceParams: any) => {
         const full = { type: "relational-database", ...sourceParams }
         const service = ORMService(full)
         // Evita duplicar uma fonte já registrada (mesmo keystone).
         const existing = listServices.find((s) => s.GetKeystone && s.GetKeystone() === service.GetKeystone())
         if(existing){
-            try { await existing.EnsureConnection() } catch(_){ /* status ERROR reflete no GetInfo */ }
+            try { await existing.EnsureConnection() } catch(_: any){ /* status ERROR reflete no GetInfo */ }
             return existing.GetInfo()
         }
-        try { await service.EnsureConnection() } catch(_){ /* status ERROR reflete no GetInfo */ }
+        try { await service.EnsureConnection() } catch(_: any){ /* status ERROR reflete no GetInfo */ }
         _PersistSourceFile(full)
         _AddSource(service)
         return service.GetInfo()
     }
 
     // Remove uma fonte (memória + arquivo persistido).
-    const _RemoveSource = (keystone) => {
+    const _RemoveSource = (keystone: any) => {
         const service = listServices.find((s) => s.GetKeystone && s.GetKeystone() === keystone)
         if(!service) return { removed: false }
         listServices = listServices.filter((s) => s !== service)
         try{
             const filePath = path.resolve(_DataSourcesDir(), `${_Slug(service.GetName())}.json`)
             if(fs.existsSync(filePath)) fs.unlinkSync(filePath)
-        }catch(_){ /* arquivo pode não existir (fonte só em memória) */ }
+        }catch(_: any){ /* arquivo pode não existir (fonte só em memória) */ }
         return { removed: true }
     }
 
     const _GetSources = () => listServices
 
-    const _GetFSSourceByKeystone = (keystone) => listServices
+    const _GetFSSourceByKeystone = (keystone: any) => listServices
         .filter((source) => source.GetType() === "fs")
         .find((sourceFS) => sourceFS.GetKeystone() === keystone)
 
-    const _GetDataStoreSourceByKeystone = (keystone) => listServices
+    const _GetDataStoreSourceByKeystone = (keystone: any) => listServices
         .filter((source) => source.GetType() === "datastore")
         .find((source) => source.GetKeystone() === keystone)
 
-    const _GetORMSourceByKeystone = (keystone) => listServices
+    const _GetORMSourceByKeystone = (keystone: any) => listServices
         .filter((source) => source.GetType() === "relational-database")
         .find((source) => source.GetKeystone() === keystone)
 
