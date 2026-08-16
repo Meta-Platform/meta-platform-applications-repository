@@ -1,0 +1,12 @@
+// Base de verificação de tipos do repositório. Nada aqui gera arquivo: o código
+// que executa é o que está em `src`. Ver source-language-standard.md.
+//
+// As opções não são repetidas aqui — elas são as MESMAS do EssentialRepo, e
+// repetir 40 linhas de configuração por repositório é a duplicação que a
+// migração está justamente desfazendo. O caminho relativo assume os
+// repositórios lado a lado no workspace de desenvolvimento, que é o único
+// lugar onde a checagem roda: verificar tipo é tarefa de manutenção, e nada
+// em runtime depende deste arquivo.
+{
+    "extends": "../essential-repository/tsconfig.base.json"
+}
