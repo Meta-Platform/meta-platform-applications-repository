@@ -4,7 +4,8 @@
         "path": "Services/MetaProjectManagerGui.service",
         "bound-params": [
             "metaProjectManagerWebservice",
-            "projectStoreLib"
+            "projectStoreLib",
+            "instanceManagerClientLib"
         ],
         "params": [
             "dbFilePath",

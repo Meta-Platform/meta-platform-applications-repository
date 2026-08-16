@@ -40,6 +40,7 @@ const MetaProjectManagerGuiService = (params: any) => {
     const {
         metaProjectManagerWebservice,
         projectStoreLib,
+        instanceManagerClientLib,
         dbFilePath,
         attachmentsDirPath,
         maxAttachmentBytes,
@@ -49,7 +50,16 @@ const MetaProjectManagerGuiService = (params: any) => {
 
     // Mesmo saco de parâmetros que o endpoint-group da webservice injeta nos
     // controllers (o AppContext singleton garante UM store compartilhado).
-    const controllerParams = { projectStoreLib, dbFilePath, attachmentsDirPath, maxAttachmentBytes, ecosystemDataPath }
+    //
+    // `instanceManagerClientLib` NÃO é decoração: é o que o AppContext usa para
+    // montar o runner de verificação de entrega. O caminho HTTP já o injetava
+    // (endpoint-group.json), o caminho Electron não — e o resultado era um app
+    // desktop onde toda entrega nascia sem evidência, com o motivo escondido num
+    // aviso de log. Se um bound-param novo entrar aqui, ele precisa existir em
+    // TRÊS lugares: bound-params da janela no boot.json do .desktopapp,
+    // boundLibs da entrada do serviceGraph, e bound-params do services.json
+    // deste pacote. Declarar em menos que os três falha em silêncio.
+    const controllerParams = { projectStoreLib, instanceManagerClientLib, dbFilePath, attachmentsDirPath, maxAttachmentBytes, ecosystemDataPath }
 
     const registry: Record<string, any> = {}
     const manifest: Record<string, any> = {}

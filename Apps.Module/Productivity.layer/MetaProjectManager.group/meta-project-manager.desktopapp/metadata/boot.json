@@ -24,7 +24,8 @@
                 "iComponents": "@/i-components.uilib",
                 "metaProjectManagerGuiService": "@/meta-project-manager-gui.service",
                 "metaProjectManagerWebservice": "@/meta-project-manager.webservice",
-                "projectStoreLib": "@/project-store.lib"
+                "projectStoreLib": "@/project-store.lib",
+                "instanceManagerClientLib": "@/instance-manager-client.lib"
             },
             "gui-host": {
                 "webgui": "metaProjectManagerWebgui",
@@ -39,7 +40,8 @@
                         "factory": "Services/MetaProjectManagerGui.service",
                         "boundLibs": {
                             "metaProjectManagerWebservice": "metaProjectManagerWebservice",
-                            "projectStoreLib": "projectStoreLib"
+                            "projectStoreLib": "projectStoreLib",
+                            "instanceManagerClientLib": "instanceManagerClientLib"
                         }
                     }
                 ]
