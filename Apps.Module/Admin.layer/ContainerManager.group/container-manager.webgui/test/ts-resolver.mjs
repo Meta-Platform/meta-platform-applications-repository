@@ -14,6 +14,13 @@
     Este hook só entra em ação quando a resolução normal FALHA, e só para
     caminho relativo: tenta de novo acrescentando `.ts`. Não muda a semântica de
     nada que já resolve.
+
+    Só `.ts`, e não `.tsx`, de propósito: o apagamento de tipos do Node recusa
+    JSX (`ERR_UNKNOWN_FILE_EXTENSION` para `.tsx`), então acrescentar o
+    candidato só trocaria uma mensagem de erro por outra. Neste package os 22
+    componentes `.tsx` são intestáveis por este runner — o que dá para testar
+    por aqui é lógica pura em `.ts`. Cobrir componente exigiria ts-jest, como
+    fazem o `meta-project-manager.webgui` e o `package-developer.webgui`.
 */
 export async function resolve(specifier, context, nextResolve) {
     try {

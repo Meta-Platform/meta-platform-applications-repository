@@ -54,7 +54,7 @@ conexões, não este webservice.
 
 ## Duas decisões que valem por si
 
-**Runtime fora do ar vira frase, não número.** `CreateRuntimeAccess.js` envolve
+**Runtime fora do ar vira frase, não número.** `CreateRuntimeAccess.ts` envolve
 toda chamada ao adaptador e traduz falha de socket (`ECONNREFUSED`, `ENOENT`,
 `EHOSTUNREACH`…) em uma mensagem que diz o que aconteceu e o que fazer, com
 HTTP 503. Um runtime desligado é o estado NORMAL de um aplicativo de gestão —

@@ -26,14 +26,14 @@ Parâmetro: `appDataDir` — onde as fontes de dados locais são persistidas.
 
 | Módulo | Responsabilidade |
 |---|---|
-| `Managers/DataSourceLocal.js` | Manager das fontes de dados locais (o serviço publicado). |
-| `Managers/DataSourceRelationalDB.js` | Manager de bases relacionais. |
-| `Services/ORM.service.js` | Serviço Sequelize: dialeto, `storage` e a `connection`. |
-| `Services/DataStore.service.js` | Serviço de armazenamento de dados. |
-| `Services/FS.service.js` | Fonte de dados em sistema de arquivos. |
-| `Functions/GetConnection.js` | Obtém a conexão da instância Sequelize. |
-| `Functions/DefineAllModels.js` · `AssociateAllTables.js` | Define os modelos e associa as tabelas. |
-| `Functions/SyncAllModels.js` · `SyncDB.js` | Sincroniza modelos e banco. |
-| `Functions/SowJsonData.js` | Semeia dados a partir de JSON. |
+| `Managers/DataSourceLocal.ts` | Manager das fontes de dados locais (o serviço publicado). |
+| `Managers/DataSourceRelationalDB.ts` | Manager de bases relacionais. |
+| `Services/ORM.service.ts` | Serviço Sequelize: dialeto, `storage` e a `connection`. |
+| `Services/DataStore.service.ts` | Serviço de armazenamento de dados. |
+| `Services/FS.service.ts` | Fonte de dados em sistema de arquivos. |
+| `Functions/GetConnection.ts` | Obtém a conexão da instância Sequelize. |
+| `Functions/DefineAllModels.ts` · `AssociateAllTables.ts` | Define os modelos e associa as tabelas. |
+| `Functions/SyncAllModels.ts` · `SyncDB.ts` | Sincroniza modelos e banco. |
+| `Functions/SowJsonData.ts` | Semeia dados a partir de JSON. |
 
 > Veja o [README do repositório](../../../README.md).

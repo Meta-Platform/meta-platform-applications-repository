@@ -11,10 +11,10 @@ API REST (+ realtime) do **Meta Project Manager**. Adaptador HTTP fino sobre
 
 ## Arquitetura
 
-- `src/AppContext.js` — **uma** instância do store para todos os controllers +
+- `src/AppContext.ts` — **uma** instância do store para todos os controllers +
   emitter/buffer de eventos realtime (alimentado pelo `onEvent` do store).
-- `src/Controllers/*.controller.js` — factory `(params) => ({ controllerName, ...métodos })`,
-  no padrão do repo. Respostas em envelope `{ ok, data | code/message }` (via `Utils/respond.js`).
+- `src/Controllers/*.controller.ts` — factory `(params) => ({ controllerName, ...métodos })`,
+  no padrão do repo. Respostas em envelope `{ ok, data | code/message }` (via `Utils/respond.ts`).
 - `src/APIs/*.api.json` — descrição declarativa (summary/method/path/parameters).
 
 Contrato de argumentos (server-manager): endpoint com 0 params → método sem args; com

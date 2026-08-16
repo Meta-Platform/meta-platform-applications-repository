@@ -22,7 +22,7 @@ listagem — ele acrescenta contexto. Quando divergem, o runtime ganha, e
 `ReconcileConnection` marca a diferença em vez de corrigir sozinho.
 
 **Segredo nunca entra em claro.** Senha de banco, credencial de registry e
-material TLS passam pelo cofre local (`src/Crypto/LocalSecretBox.js`).
+material TLS passam pelo cofre local (`src/Crypto/LocalSecretBox.ts`).
 
 ## As tabelas
 
@@ -77,7 +77,7 @@ atropelar quem editou uma receita para o seu caso.
 
 ## Armadilha do Sequelize que já mordeu aqui
 
-Os atalhos de definição de coluna em `DefineModels.js` são **funções**, não
+Os atalhos de definição de coluna em `DefineModels.ts` são **funções**, não
 objetos. O Sequelize **muta** a definição que recebe (grava ali o `fieldName`
 resolvido): reusar a mesma referência faz todos os campos herdarem o nome do
 último processado, e o `sync()` cria índice sobre coluna inexistente —

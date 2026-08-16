@@ -19,23 +19,23 @@ retorna métodos async; `sequelize.sync()` cria/atualiza o schema (sem migration
 
 | Módulo | Responsabilidade |
 |---|---|
-| `InitializeProjectStore.js` | Entrada: conecta no SQLite, sincroniza os modelos e devolve o store completo. |
-| `DefineModels.js` · `Config.js` · `Errors.js` | Modelos Sequelize, configuração e erros de domínio. |
-| `Store/ProjectsStore.js` · `BoardsStore.js` · `WorkItemsStore.js` | Projetos, boards e itens de trabalho. |
-| `Store/PlanningStore.js` · `PlanningDocsStore.js` · `RisksStore.js` | Entregas, sprints, charter e riscos. |
-| `Store/DocsStore.js` · `DocAttachmentsStore.js` · `DocsExportStore.js` | Wiki de páginas, anexos por página e exportação HTML/ZIP. |
-| `Store/CommentsStore.js` · `AttachmentsStore.js` · `FeedbackStore.js` | Comentários, anexos de item e a fila de feedback para agentes. |
-| `Store/AgentsStore.js` · `AuditStore.js` · `ActivityStore.js` | Sessões de agente, auditoria e notas de atividade. |
-| `Store/PresenceStore.js` | Coordenação entre sessões: quem está aqui, entrada/saída, avisos entregues e ambiente compartilhado. |
-| `Store/ReportsStore.js` · `AnalyticsStore.js` | Relatórios e métricas. |
-| `Store/EcosystemStore.js` | Catálogo de pacotes reais do ecossistema e o vínculo item↔pacote. |
-| `Store/UsersStore.js` · `ImportExportStore.js` | Usuários e importação/exportação. |
-| `Utils/ecosystemPath.js` | `ParsePackagePath` e `PackageRef` — como um pacote é identificado. |
-| `Utils/helpers.js` · `zip.js` | Utilitários gerais e geração de ZIP sem dependência externa. |
+| `InitializeProjectStore.ts` | Entrada: conecta no SQLite, sincroniza os modelos e devolve o store completo. |
+| `DefineModels.ts` · `Config.ts` · `Errors.ts` | Modelos Sequelize, configuração e erros de domínio. |
+| `Store/ProjectsStore.ts` · `BoardsStore.ts` · `WorkItemsStore.ts` | Projetos, boards e itens de trabalho. |
+| `Store/PlanningStore.ts` · `PlanningDocsStore.ts` · `RisksStore.ts` | Entregas, sprints, charter e riscos. |
+| `Store/DocsStore.ts` · `DocAttachmentsStore.ts` · `DocsExportStore.ts` | Wiki de páginas, anexos por página e exportação HTML/ZIP. |
+| `Store/CommentsStore.ts` · `AttachmentsStore.ts` · `FeedbackStore.ts` | Comentários, anexos de item e a fila de feedback para agentes. |
+| `Store/AgentsStore.ts` · `AuditStore.ts` · `ActivityStore.ts` | Sessões de agente, auditoria e notas de atividade. |
+| `Store/PresenceStore.ts` | Coordenação entre sessões: quem está aqui, entrada/saída, avisos entregues e ambiente compartilhado. |
+| `Store/ReportsStore.ts` · `AnalyticsStore.ts` | Relatórios e métricas. |
+| `Store/EcosystemStore.ts` | Catálogo de pacotes reais do ecossistema e o vínculo item↔pacote. |
+| `Store/UsersStore.ts` · `ImportExportStore.ts` | Usuários e importação/exportação. |
+| `Utils/ecosystemPath.ts` | `ParsePackagePath` e `PackageRef` — como um pacote é identificado. |
+| `Utils/helpers.ts` · `zip.ts` | Utilitários gerais e geração de ZIP sem dependência externa. |
 
 ## Uso
 
-```js
+```ts
 const InitializeProjectStore = require("@/project-store.lib").require("InitializeProjectStore")
 
 const store = InitializeProjectStore({
@@ -57,7 +57,7 @@ const story   = await store.CreateItem({ project: project.keyPrefix, type: "stor
 - `actor` = `{ actorUserId, actorSessionId, source, session }` (`source` ∈ `gui|cli|api|agent|mcp|desktop`)
   alimenta a auditoria. Um actor com `.session` (identidade inline) é tratado como **agente** e cai no gate.
 - Erros são `DomainError` com `.code` estável (`VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT`,
-  `FORBIDDEN`, `AGENT_SESSION_CONFIRMATION_REQUIRED`) — ver `src/Errors.js`.
+  `FORBIDDEN`, `AGENT_SESSION_CONFIRMATION_REQUIRED`) — ver `src/Errors.ts`.
 - **Soft delete** (`deletedAt`) em entidades importantes; nada é apagado fisicamente por padrão.
 - **Auditoria**: toda mutação relevante grava um `audit_events` (helper `WriteAudit`) com diff
   `beforeJson`→`afterJson`, `actorType`, `source` e snapshot da identidade do agente (`provider`/`model`/`traceId`).
@@ -172,17 +172,17 @@ só assim filtra, soma e navega:
 
 ```
 src/
-  InitializeProjectStore.js   # factory: costura models + audit + emit + stores
-  DefineModels.js             # modelos Sequelize (spec §9.1) — inclui ActivityNote
-  Config.js                   # status/tipos/prioridades/permissões/aprovação/escopos
-  Errors.js                   # DomainError + mapa HTTP
-  Utils/helpers.js            # ids, slug, sanitização, sha256, serialização
+  InitializeProjectStore.ts   # factory: costura models + audit + emit + stores
+  DefineModels.ts             # modelos Sequelize (spec §9.1) — inclui ActivityNote
+  Config.ts                   # status/tipos/prioridades/permissões/aprovação/escopos
+  Errors.ts                   # DomainError + mapa HTTP
+  Utils/helpers.ts            # ids, slug, sanitização, sha256, serialização
   Store/
-    ProjectsStore.js  BoardsStore.js  WorkItemsStore.js  PlanningStore.js
-    AttachmentsStore.js  CommentsStore.js  UsersStore.js
-    AgentsStore.js  ActivityStore.js  PresenceStore.js  ReportsStore.js  AuditStore.js
-    ImportExportStore.js
-    DocsStore.js  RisksStore.js  PlanningDocsStore.js  EcosystemStore.js  FeedbackStore.js
+    ProjectsStore.ts  BoardsStore.ts  WorkItemsStore.ts  PlanningStore.ts
+    AttachmentsStore.ts  CommentsStore.ts  UsersStore.ts
+    AgentsStore.ts  ActivityStore.ts  PresenceStore.ts  ReportsStore.ts  AuditStore.ts
+    ImportExportStore.ts
+    DocsStore.ts  RisksStore.ts  PlanningDocsStore.ts  EcosystemStore.ts  FeedbackStore.ts
 test/store.test.js            # node --test (spec §14.1)
 ```
 
