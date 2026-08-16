@@ -215,8 +215,11 @@ const ApplicationsController = (params) => {
         for(const repositoryNamespace of Object.keys(repositoriesData)) {
             const installationPath = repositoriesData[repositoryNamespace] && repositoriesData[repositoryNamespace].installationPath
             if(!installationPath) continue
-            const candidate = path.join(installationPath, "Commons.Module", "Libraries.layer", "ecosystem-install-utilities.lib", "src", `${relativeModulePath}.js`)
-            try { await access(candidate); return require(candidate) } catch(e) {}
+            // Sem extensão: o dialeto do arquivo é assunto da resolução, e
+            // fixar ".js" fazia o fallback parar de achar a lib quando ela
+            // virou TypeScript.
+            const candidate = path.join(installationPath, "Commons.Module", "Libraries.layer", "ecosystem-install-utilities.lib", "src", relativeModulePath)
+            try { return require(candidate) } catch(e) {}
         }
         throw new Error(`ecosystem-install-utilities.lib (${relativeModulePath}) não encontrado em nenhum repositório instalado.`)
     }
