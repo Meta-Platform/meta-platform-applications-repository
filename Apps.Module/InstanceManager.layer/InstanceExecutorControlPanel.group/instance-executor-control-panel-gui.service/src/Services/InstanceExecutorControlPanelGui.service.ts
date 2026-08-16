@@ -1,0 +1,124 @@
+// Serviço especializado em SERVIR A GUI (instance-executor-control-panel.webgui)
+// da aplicação Electron SEM webservices HTTP (modo GUI-host — ver
+// desktop-window-instance.lib). COMPÕE os 3 controllers já existentes do
+// instance-executor-control-panel.webservice — zero duplicação de lógica; os
+// .api.json são o manifesto (dual-transport com a webservice HTTP).
+//
+// O painel do executor de instância tem endpoints WebSocket (TaskExecutorMonitor:
+// MonitoringState/TaskList; EcosystemManager: PackageList): além de Invoke
+// (request/response), expõe InvokeStream, que recebe do host um objeto ws-like
+// (wsShim, mesma API do `ws` do express-ws) e o entrega ao método WS do
+// controller — espelhando o contrato do servidor HTTP.
+
+const CONTROLLER_MODULES: Record<string, { controller: string, api: string }> = {
+    TaskExecutorMonitor: { controller: "Controllers/TaskExecutorMonitor.controller", api: "APIs/TaskExecutorMonitor.api.json" },
+    // Log e desempenho por instância. Precisa estar AQUI e no endpoint-group.json
+    // da webservice: registrar só um lado faz o painel funcionar num transporte e
+    // falhar em silêncio no outro.
+    InstanceObservability: { controller: "Controllers/InstanceObservability.controller", api: "APIs/InstanceObservability.api.json" },
+    // Espaços de trabalho (arranjo de painéis) — persistidos em disco pelo backend.
+    WorkspaceLayout: { controller: "Controllers/WorkspaceLayout.controller", api: "APIs/WorkspaceLayout.api.json" },
+    RepositoryManager:   { controller: "Controllers/RepositoryManager.controller",   api: "APIs/RepositoryManager.api.json" },
+    EcosystemManager:    { controller: "Controllers/EcosystemManager.controller",    api: "APIs/EcosystemManager.api.json" },
+    CommandLineRuntime:  { controller: "Controllers/CommandLineRuntime.controller",   api: "APIs/CommandLineRuntime.api.json" }
+}
+
+// Endpoints de ícone (typeResponse:file) → servidos pelo protocolo metaicon://.
+const ICON_MAP: Record<string, { serviceName: string, method: string }> = {
+    package: { serviceName: "RepositoryManager", method: "GetPackageIcon" }
+}
+
+const InstanceExecutorControlPanelGuiService = (params: any) => {
+
+    const {
+        repositoryManagerService,
+        commandLineRuntimeService,
+        instanceManagerRuntimeService,
+        instanceExecutorControlPanelWebservice,
+        // Bag escalar do gui-host (params da janela): é por aqui que o caminho
+        // do EcosystemData chega ao controller que grava os espaços de trabalho.
+        installDataDirPath,
+        ECO_DIRPATH_INSTALL_DATA,
+        onReady
+    } = params
+
+    // Mesmo saco de parâmetros que o endpoint-group da webservice injeta nos
+    // controllers (união de todos; chaves extras são ignoradas por cada um).
+    // Execução e monitoração são DELEGADAS ao daemon via instanceManagerRuntime —
+    // o painel não instancia mais task-executor nem ecosystem-manager in-process.
+    const controllerParams = {
+        repositoryManagerService,
+        commandLineRuntimeService,
+        instanceManagerRuntimeService,
+        installDataDirPath,
+        ECO_DIRPATH_INSTALL_DATA
+    }
+
+    const registry: Record<string, any> = {}
+    const manifest: Record<string, any> = {}
+    const parametersBySummary: Record<string, any> = {}
+    Object.keys(CONTROLLER_MODULES).forEach((apiName) => {
+        const { controller, api } = CONTROLLER_MODULES[apiName]
+        const ControllerFactory = instanceExecutorControlPanelWebservice.require(controller)
+        const apiTemplate        = instanceExecutorControlPanelWebservice.require(api)
+
+        registry[apiName] = ControllerFactory(controllerParams)
+        // O manifesto carrega o api.json inteiro (method/summary/parameters), para
+        // o renderer reconstruir a MESMA superfície de API — inclusive saber quais
+        // endpoints são WS (streaming) vs HTTP (invoke).
+        manifest[apiName] = apiTemplate
+        parametersBySummary[apiName] = (apiTemplate.endpoints || []).reduce((acc: Record<string, any>, { summary, parameters }: any) => {
+            acc[summary] = parameters || []
+            return acc
+        }, {})
+    })
+
+    const _Parameters = (serviceName: any, method: any) => (parametersBySummary[serviceName] || {})[method] || []
+
+    // Request/response. Espelha o contrato HTTP do server-manager:
+    //   0 params → method(); 1 → method(valor); 2+ → method(objeto).
+    const Invoke = async (serviceName: any, method: any, data: any) => {
+        const controller = registry[serviceName]
+        if(!controller || typeof controller[method] !== "function")
+            throw new Error(`Método desconhecido: ${serviceName}.${method}`)
+
+        const parameters = _Parameters(serviceName, method)
+        if(parameters.length === 0)  return controller[method]()
+        if(parameters.length === 1)  return controller[method]((data || {})[parameters[0].name])
+        return controller[method](data)
+    }
+
+    // Streaming (WebSocket). Espelha o contrato WS do server-manager:
+    //   0 params → method(ws); 1 → method(ws, valor); 2+ → method(ws, objeto).
+    // wsShim tem a mesma API do `ws` (send / on / close), fornecida pelo host.
+    const InvokeStream = (serviceName: any, method: any, data: any, wsShim: any) => {
+        const controller = registry[serviceName]
+        if(!controller || typeof controller[method] !== "function")
+            throw new Error(`Stream desconhecido: ${serviceName}.${method}`)
+
+        const parameters = _Parameters(serviceName, method)
+        if(parameters.length === 0)  return controller[method](wsShim)
+        if(parameters.length === 1)  return controller[method](wsShim, (data || {})[parameters[0].name])
+        return controller[method](wsShim, data)
+    }
+
+    const GetManifest = () => manifest
+
+    // Caminho de arquivo do ícone (usado pelo protocolo metaicon://). Reusa o
+    // contrato de Invoke para respeitar o formato de args de cada endpoint.
+    const GetIcon = ({ kind, args }: any) => {
+        const target = ICON_MAP[kind] || ICON_MAP.package
+        return Invoke(target.serviceName, target.method, args)
+    }
+
+    onReady && onReady()
+
+    return {
+        Invoke,
+        InvokeStream,
+        GetManifest,
+        GetIcon
+    }
+}
+
+module.exports = InstanceExecutorControlPanelGuiService

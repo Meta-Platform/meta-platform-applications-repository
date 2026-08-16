@@ -1,0 +1,150 @@
+// Serviço especializado em SERVIR A GUI (home-screen.webgui) das aplicações
+// Electron SEM webservices HTTP. No modo GUI-host, o processo principal do
+// Electron instancia este serviço e o expõe ao renderer por IPC
+// (window.metaGui). A lógica de negócio NÃO é duplicada: este serviço apenas
+// COMPÕE os controllers já existentes do execution-manager.webservice
+// (DesktopApplications / Execution / Applications), que continuam sendo a
+// fonte única de verdade — os mesmos controllers seguem servidos por HTTP no
+// caminho navegador (dual-transport).
+//
+// Os controllers e as APIs (.api.json) são requeridos através do handle do
+// pacote execution-manager.webservice (executionManagerWebservice.require),
+// exatamente como o endpoint-group faz. Os .api.json servem de MANIFESTO: as
+// chaves "summary" de cada endpoint viram os nomes de método expostos ao
+// renderer — idênticos ao que o GetRequestByServer do webgui produz no HTTP.
+
+const CONTROLLER_MODULES: Record<string, { controller: string, api: string }> = {
+    DesktopApplications: {
+        controller: "Controllers/DesktopApplications.controller",
+        api:        "APIs/DesktopApplications.api.json"
+    },
+    Execution: {
+        controller: "Controllers/Execution.controller",
+        api:        "APIs/Execution.api.json"
+    },
+    Applications: {
+        controller: "Controllers/Applications.controller",
+        api:        "APIs/Applications.api.json"
+    },
+    Sources: {
+        controller: "Controllers/Sources.controller",
+        api:        "APIs/Sources.api.json"
+    },
+    DesktopLayout: {
+        controller: "Controllers/DesktopLayout.controller",
+        api:        "APIs/DesktopLayout.api.json"
+    },
+    // Notificações da área de trabalho. Sem esta entrada, o canal existe por
+    // HTTP mas NÃO pelo caminho do Electron — que é justamente onde o desktop
+    // roda. O `notificationHubService` já vem no saco de parâmetros abaixo.
+    Notification: {
+        controller: "Controllers/Notification.controller",
+        api:        "APIs/Notification.api.json"
+    }
+}
+
+const DesktopGuiService = (params: any) => {
+
+    const {
+        ecosystemdataHandlerService,
+        notificationHubService,
+        repositoryManagerService,
+        jsonFileUtilitiesLib,
+        ecosystemInstallUtilitiesLib,
+        executionManagerWebservice,
+        ecosystemDefaultsFileRelativePath,
+        instanceManagerClientLib,
+        platformApplicationSocketPath,
+        onReady
+    } = params
+
+    // Mesmo saco de parâmetros que o endpoint-group da webservice injeta nos
+    // controllers (chaves extras são ignoradas por cada controller).
+    const controllerParams = {
+        ecosystemdataHandlerService,
+        notificationHubService,
+        repositoryManagerService,
+        jsonFileUtilitiesLib,
+        ecosystemInstallUtilitiesLib,
+        ecosystemDefaultsFileRelativePath,
+        instanceManagerClientLib,
+        platformApplicationSocketPath
+    }
+
+    // Instancia cada controller e monta o manifesto + o mapa de parâmetros
+    // (por summary) a partir dos .api.json.
+    const registry: Record<string, any> = {}
+    const manifest: Record<string, any> = {}
+    const parametersBySummary: Record<string, any> = {}
+    Object.keys(CONTROLLER_MODULES).forEach((apiName) => {
+        const { controller, api } = CONTROLLER_MODULES[apiName]
+        const ControllerFactory = executionManagerWebservice.require(controller)
+        const apiTemplate        = executionManagerWebservice.require(api)
+
+        registry[apiName] = ControllerFactory(controllerParams)
+        manifest[apiName] = (apiTemplate.endpoints || []).map(({ summary }: any) => summary)
+        parametersBySummary[apiName] = (apiTemplate.endpoints || []).reduce((acc: Record<string, any>, { summary, parameters }: any) => {
+            acc[summary] = parameters || []
+            return acc
+        }, {})
+    })
+
+    // Chamada vinda do renderer. Espelha EXATAMENTE o contrato de invocação do
+    // servidor HTTP (server-manager CreateAPIEndpointsService), para o IPC ser
+    // um drop-in transparente do webservice:
+    //   0 params  → method()
+    //   1 param   → method(valor)   (posicional — o valor do único parâmetro)
+    //   2+ params → method(objeto)  (o objeto com todos os parâmetros)
+    // O renderer sempre envia `data` como objeto com as chaves dos parâmetros.
+    const Invoke = async (serviceName: any, method: any, data: any) => {
+        const controller = registry[serviceName]
+        if(!controller || typeof controller[method] !== "function")
+            throw new Error(`Método desconhecido: ${serviceName}.${method}`)
+
+        const parameters = (parametersBySummary[serviceName] || {})[method] || []
+        if(parameters.length === 0)  return controller[method]()
+        if(parameters.length === 1)  return controller[method]((data || {})[parameters[0].name])
+        return controller[method](data)
+    }
+
+    // Streaming (WebSocket) sobre IPC. Espelha o contrato WS do server-manager:
+    //   0 params → method(ws); 1 → method(ws, valor); 2+ → method(ws, objeto).
+    // O `wsShim` (mesma API do `ws`) é fornecido pelo host Electron; sem este
+    // método o electron-main recusa a abertura de streams (metaGui:stream:open).
+    const InvokeStream = (serviceName: any, method: any, data: any, wsShim: any) => {
+        const controller = registry[serviceName]
+        if(!controller || typeof controller[method] !== "function")
+            throw new Error(`Stream desconhecido: ${serviceName}.${method}`)
+
+        const parameters = (parametersBySummary[serviceName] || {})[method] || []
+        if(parameters.length === 0)  return controller[method](wsShim)
+        if(parameters.length === 1)  return controller[method](wsShim, (data || {})[parameters[0].name])
+        return controller[method](wsShim, data)
+    }
+
+    // Lista de services + métodos, para o webgui montar a mesma superfície de
+    // API que teria via HTTP (chaves = summaries do .api.json).
+    const GetManifest = () => manifest
+
+    // Resolve o caminho de arquivo do ícone de uma aplicação. Usado pelo
+    // protocolo custom metaicon:// no processo principal do Electron (os <img>
+    // do webgui apontam para metaicon:// no lugar de http://).
+    //   kind "desktop"  → ícone por identidade de pacote (DesktopApplications)
+    //   kind "managed"  → ícone por executableName (Applications)
+    const GetIcon = ({ kind, args }: any) => {
+        if(kind === "managed")
+            return registry.Applications.GetApplicationIcon(args)
+        return registry.DesktopApplications.GetApplicationIcon(args)
+    }
+
+    onReady && onReady()
+
+    return {
+        Invoke,
+        InvokeStream,
+        GetManifest,
+        GetIcon
+    }
+}
+
+module.exports = DesktopGuiService

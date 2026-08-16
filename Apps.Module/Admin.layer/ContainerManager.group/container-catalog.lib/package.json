@@ -4,6 +4,9 @@
   "description": "Memória do Container Manager: receitas, serviços, credenciais seladas, procedência e trilha (SQLite/Sequelize)",
   "author": "Kaio Cezar <kadisk.shark@gmail.com>",
   "license": "BSD-3-Clause",
+  "scripts": {
+    "test": "node --require ../../../../../essential-repository/Commons.Module/Libraries.layer/module-resolution.lib/src/register.js --test"
+  },
   "dependencies": {
     "sequelize": "^6.37.5",
     "sqlite3": "^5.1.7",

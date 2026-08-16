@@ -1,0 +1,470 @@
+/*
+    Controller de CONTAINERS, sempre no contexto de uma conexão.
+
+    Cada operação recebe `connectionId` e é executada no adaptador daquela
+    conexão — é assim que Docker e Podman convivem sem o aplicativo ter dois
+    caminhos de código.
+*/
+
+const CreateRuntimeAccess = require("../Helpers/CreateRuntimeAccess") as (params: any) => {
+    WithAdapter: (connectionId: any, Operation: (adaptador: any) => any) => Promise<any>
+}
+const CreateRegistryAuthResolver = require("../Helpers/ResolveRegistryAuth") as
+    (contexto: any) => (args?: { registryId?: any, reference?: any }) => Promise<any>
+
+const ContainersController = (params: any) => {
+
+    const {
+        containerRuntimeConnectionService,
+        containerCatalogLib,
+        appDataDir,
+        dbFilePath,
+        secretKeyPath,
+        stacksDir
+    } = params
+
+    const { WithAdapter } = CreateRuntimeAccess({ containerRuntimeConnectionService })
+
+    const GetContext = require("../AppContext") as (parametros?: any) => any
+    const contexto = GetContext({
+        containerCatalogLib, appDataDir, dbFilePath, secretKeyPath, stacksDir
+    })
+
+    const ResolverCredencial = CreateRegistryAuthResolver(contexto)
+
+    const _ListContainers = (connectionId: any) =>
+        WithAdapter(connectionId, (adaptador: any) => adaptador.ListAllContainers())
+
+    const _InspectContainer = ({ connectionId, containerIdOrName }: any) =>
+        WithAdapter(connectionId, (adaptador: any) => adaptador.InspectContainer(containerIdOrName))
+
+    const _GetContainerLogHistory = ({ connectionId, containerIdOrName }: any) =>
+        WithAdapter(connectionId, (adaptador: any) => adaptador.GetContainerLogHistory(containerIdOrName))
+
+    const _StartContainer = ({ connectionId, containerIdOrName }: any) =>
+        WithAdapter(connectionId, (adaptador: any) => adaptador.StartContainer(containerIdOrName))
+
+    const _StopContainer = ({ connectionId, containerIdOrName }: any) =>
+        WithAdapter(connectionId, (adaptador: any) => adaptador.StopContainer(containerIdOrName))
+
+    const _RestartContainer = ({ connectionId, containerIdOrName }: any) =>
+        WithAdapter(connectionId, (adaptador: any) => adaptador.RestartContainer(containerIdOrName))
+
+    const _KillContainer = ({ connectionId, containerIdOrName }: any) =>
+        WithAdapter(connectionId, (adaptador: any) => adaptador.KillContainer(containerIdOrName))
+
+    const _RemoveContainer = ({ connectionId, containerIdOrName }: any) =>
+        WithAdapter(connectionId, (adaptador: any) => adaptador.RemoveContainer(containerIdOrName))
+
+    const _CreateContainer = ({ connectionId, options }: any) =>
+        WithAdapter(connectionId, (adaptador: any) => adaptador.CreateNewContainer(options))
+
+    /*
+        ---- streams (CTMG-21, 22, 23) ----
+
+        Os três seguem o mesmo desenho, e a razão dele é uma só: um stream do
+        runtime é um recurso VIVO no outro lado. Se o operador fecha a aba e
+        ninguém avisa o runtime, fica uma conexão pendurada por container
+        aberto — em uma tela de monitoração, isso se acumula rápido.
+
+        Por isso todo stream aqui:
+        1. avisa o cliente e fecha quando o runtime falha ou termina;
+        2. desliga a fonte quando o CLIENTE fecha (`ws.on("close")`);
+        3. envia sempre JSON — a mesma superfície no WebSocket do navegador e
+           no canal IPC do modo janela, que é o que faz a webgui ter um código
+           só para os dois.
+    */
+    const _EnviarNoSocket = (ws: any, payload: any) => {
+        try {
+            if (ws.readyState === undefined || ws.readyState === 1) ws.send(JSON.stringify(payload))
+        } catch(error: any) {
+            // Socket já fechado do outro lado: nada a fazer, e nada a registrar.
+        }
+    }
+
+    const _FecharSocket = (ws: any) => {
+        try { ws.close() } catch(error: any) { /* já fechado */ }
+    }
+
+    /*
+        Abre a fonte no runtime e amarra os dois lados. `AbrirFonte` recebe os
+        callbacks e devolve o handle com `Close` — o contrato do adaptador.
+    */
+    const _MontarStream = async (ws: any, connectionId: any, AbrirFonte: any) => {
+        let fonte: any = null
+        let fechado = false
+
+        const Encerrar = () => {
+            if (fechado) return
+            fechado = true
+            if (fonte && typeof fonte.Close === "function") {
+                try { fonte.Close() } catch(error: any) { /* já fechada */ }
+            }
+        }
+
+        ws.on("close", Encerrar)
+
+        try {
+            fonte = await WithAdapter(connectionId, (adaptador: any) => AbrirFonte(adaptador))
+        } catch(error: any) {
+            _EnviarNoSocket(ws, { type: "error", code: error.code, message: error.message })
+            _FecharSocket(ws)
+            return null
+        }
+
+        return { Encerrar }
+    }
+
+    const _LogStream = async (ws: any, { connectionId, containerIdOrName }: any) => {
+        await _MontarStream(ws, connectionId, (adaptador: any) =>
+            adaptador.StreamContainerLogs({
+                containerIdOrName,
+                tail: 200,
+                onData: ({ stream, data }: any) => _EnviarNoSocket(ws, { type: "log", stream, data }),
+                onError: (error: any) => {
+                    _EnviarNoSocket(ws, { type: "error", message: error.message })
+                    _FecharSocket(ws)
+                },
+                onEnd: () => {
+                    _EnviarNoSocket(ws, { type: "end" })
+                    _FecharSocket(ws)
+                }
+            }))
+    }
+
+    const _StatsStream = async (ws: any, { connectionId, containerIdOrName }: any) => {
+        await _MontarStream(ws, connectionId, (adaptador: any) =>
+            adaptador.StreamContainerStats({
+                containerIdOrName,
+                onData: (amostra: any) => _EnviarNoSocket(ws, { type: "stats", ...amostra }),
+                onError: (error: any) => {
+                    _EnviarNoSocket(ws, { type: "error", message: error.message })
+                    _FecharSocket(ws)
+                },
+                onEnd: () => {
+                    _EnviarNoSocket(ws, { type: "end" })
+                    _FecharSocket(ws)
+                }
+            }))
+    }
+
+    /*
+        MÉTRICAS DE VÁRIOS CONTAINERS NUM SOCKET SÓ.
+
+        A tela de aplicações mostra dezenas de cartões, cada um com memória e
+        CPU. Um socket por cartão parece natural e não funciona: o navegador
+        limita as conexões simultâneas por host (~6 em HTTP/1.1), e a partir do
+        sétimo cartão as métricas simplesmente não chegam — a fila nunca anda,
+        porque nenhum stream termina.
+
+        O sintoma foi exatamente esse: no modo janela (IPC, sem esse limite)
+        todos os cartões preenchiam; na web, só os primeiros.
+
+        Aqui o cliente manda a lista de containers que quer acompanhar
+        (`{type:"watch", containers:[...]}`) e recebe tudo por um canal só,
+        com `containerId` em cada amostra. Trocar a lista fecha o que saiu e
+        abre o que entrou — a tela pode filtrar sem reabrir conexão.
+    */
+    const _MultiStatsStream = async (ws: any, connectionId: any) => {
+        const fontes = new Map()
+        let fechado = false
+
+        const FecharTudo = () => {
+            fechado = true
+            fontes.forEach((fonte) => {
+                try { fonte.Close() } catch(error: any) { /* já fechada */ }
+            })
+            fontes.clear()
+        }
+
+        ws.on("close", FecharTudo)
+
+        const Acompanhar = async (containerId: any) => {
+            if (fechado || fontes.has(containerId)) return
+            try {
+                const fonte = await WithAdapter(connectionId, (adaptador: any) =>
+                    adaptador.StreamContainerStats({
+                        containerIdOrName: containerId,
+                        onData: (amostra: any) => _EnviarNoSocket(ws, { type: "stats", containerId, ...amostra }),
+                        onError: () => {
+                            // Um container que morre não pode derrubar as
+                            // métricas dos outros: fecha só a fonte dele.
+                            const morta = fontes.get(containerId)
+                            if (morta) { try { morta.Close() } catch(error: any) { /* já fechada */ } }
+                            fontes.delete(containerId)
+                            _EnviarNoSocket(ws, { type: "stats-ended", containerId })
+                        },
+                        onEnd: () => {
+                            fontes.delete(containerId)
+                            _EnviarNoSocket(ws, { type: "stats-ended", containerId })
+                        }
+                    }))
+                if (fechado) { try { fonte.Close() } catch(error: any) { /* corrida com o fechamento */ } ; return }
+                fontes.set(containerId, fonte)
+            } catch(error: any) {
+                _EnviarNoSocket(ws, { type: "stats-error", containerId, message: error.message })
+            }
+        }
+
+        const Esquecer = (containerId: any) => {
+            const fonte = fontes.get(containerId)
+            if (!fonte) return
+            try { fonte.Close() } catch(error: any) { /* já fechada */ }
+            fontes.delete(containerId)
+        }
+
+        ws.on("message", async (bruto: any) => {
+            const texto = typeof bruto === "string" ? bruto : bruto.toString()
+            let mensagem
+            try {
+                mensagem = JSON.parse(texto)
+            } catch(error: any) {
+                return
+            }
+
+            if (mensagem.type !== "watch") return
+
+            const desejados = Array.isArray(mensagem.containers) ? mensagem.containers : []
+
+            Array.from(fontes.keys())
+                .filter((containerId) => !desejados.includes(containerId))
+                .forEach(Esquecer)
+
+            for (const containerId of desejados) await Acompanhar(containerId)
+        })
+
+        _EnviarNoSocket(ws, { type: "ready" })
+    }
+
+    /*
+        O terminal é o único stream de mão dupla: o que o operador digita chega
+        por `ws.on("message")` e vai para a entrada do processo dentro do
+        container. Mensagem em JSON com `type`, para caber teclado e
+        redimensionamento no mesmo canal.
+    */
+    /*
+        O adaptador sempre aceitou `cmd`, `user`, `workingDir`, `cols` e `rows`
+        — o controller é que não repassava nenhum deles (CTMG-82). O resultado:
+        não havia como abrir um terminal como root nem escolher o shell, e o
+        tamanho ficava travado em 80x24 mesmo numa janela grande, quebrando a
+        exibição de tudo que desenha em tela cheia.
+    */
+    const _ExecSession = async (ws: any, {
+        connectionId, containerIdOrName, cmd, user, workingDir, cols, rows
+    }: any) => {
+        let sessao: any = null
+
+        // O comando chega como texto na query; o adaptador espera lista.
+        const comando = Array.isArray(cmd)
+            ? cmd
+            : (typeof cmd === "string" && cmd.trim() !== "" ? ["/bin/sh", "-c", cmd] : undefined)
+
+        const montagem = await _MontarStream(ws, connectionId, async (adaptador: any) => {
+            sessao = await adaptador.OpenExecSession({
+                containerIdOrName,
+                ...(comando ? { cmd: comando } : {}),
+                ...(user ? { user } : {}),
+                ...(workingDir ? { workingDir } : {}),
+                ...(cols ? { cols: Number(cols) } : {}),
+                ...(rows ? { rows: Number(rows) } : {}),
+                onData: (texto: any) => _EnviarNoSocket(ws, { type: "output", data: texto }),
+                onError: (error: any) => {
+                    _EnviarNoSocket(ws, { type: "error", message: error.message })
+                    _FecharSocket(ws)
+                },
+                onEnd: () => {
+                    _EnviarNoSocket(ws, { type: "end" })
+                    _FecharSocket(ws)
+                }
+            })
+            return sessao
+        })
+
+        if (!montagem) return
+
+        _EnviarNoSocket(ws, { type: "ready" })
+
+        ws.on("message", (bruto: any) => {
+            if (!sessao) return
+            const texto = typeof bruto === "string" ? bruto : bruto.toString()
+
+            let mensagem
+            try {
+                mensagem = JSON.parse(texto)
+            } catch(error: any) {
+                // Sem JSON: trata como digitação pura, que é o uso dominante.
+                sessao.Write(texto)
+                return
+            }
+
+            if (mensagem.type === "input") sessao.Write(mensagem.data || "")
+            else if (mensagem.type === "resize") sessao.Resize({ cols: mensagem.cols, rows: mensagem.rows })
+            else if (mensagem.type === "close") _FecharSocket(ws)
+        })
+    }
+
+    /*
+        ARQUIVOS DENTRO DO CONTAINER (CTMG-84).
+
+        Repasse direto ao adaptador, que é quem decide entre exec (container
+        rodando) e leitura do tar (container parado) — a tela recebe a mesma
+        forma nos dois casos e não precisa saber a diferença.
+    */
+    const _ListContainerEntries = async ({ connectionId, containerIdOrName, path }: any) =>
+        await WithAdapter(connectionId, (a: any) => a.ListContainerEntries({ containerIdOrName, path }))
+
+    const _CopyFromContainer = async ({ connectionId, containerIdOrName, path }: any) =>
+        await WithAdapter(connectionId, (a: any) => a.CopyFromContainer({ containerIdOrName, path }))
+
+    const _CopyToContainer = async ({ connectionId, containerIdOrName, path, fileName, contentBase64 }: any) =>
+        await WithAdapter(connectionId, (a: any) =>
+            a.CopyToContainer({ containerIdOrName, path, fileName, contentBase64 }))
+
+    const _DeleteContainerEntry = async ({ connectionId, containerIdOrName, path }: any) =>
+        await WithAdapter(connectionId, (a: any) => a.DeleteContainerEntry({ containerIdOrName, path }))
+
+    const _MakeContainerDirectory = async ({ connectionId, containerIdOrName, path }: any) =>
+        await WithAdapter(connectionId, (a: any) => a.MakeContainerDirectory({ containerIdOrName, path }))
+
+    /*
+        ATUALIZAR A IMAGEM DE UM CONTAINER, COM UM CLIQUE (CTMG-95).
+
+        O "Watchtower embutido", e a sequência importa:
+
+            1. baixar a imagem nova;
+            2. só então recriar.
+
+        Nunca o contrário. Se o pull falha — rede caiu, tag sumiu, credencial
+        venceu — o container atual não foi tocado e continua rodando. A ordem
+        inversa deixaria o usuário sem serviço por causa de um problema de
+        rede, que é o pior desfecho possível para um botão chamado "atualizar".
+
+        O `RecreateContainer` do adaptador preserva o spec inteiro, inclusive
+        os volumes: os DADOS sobrevivem à troca da imagem, que é a única razão
+        pela qual isto pode ser um clique só.
+    */
+    const _UpdateContainerImage = async ({
+        connectionId, containerIdOrName, pull = true, registryId
+    }: any) => {
+        const antes = await WithAdapter(connectionId, (a: any) => a.InspectContainer(containerIdOrName))
+        const referencia = antes?.Config?.Image
+
+        if (!referencia) {
+            const erro = new Error(
+                "O container não declara a imagem de origem; não há o que atualizar."
+            ) as Error & { code: string, httpStatus: number, statusCode: number }
+            erro.code = "IMAGE_REFERENCE_UNKNOWN"
+            erro.httpStatus = 400
+            erro.statusCode = 400
+            throw erro
+        }
+
+        const DigestDe = async (referenciaOuId: any) => {
+            try {
+                const imagem = await WithAdapter(connectionId, (a: any) => a.InspectImage(referenciaOuId))
+                return (imagem.RepoDigests || [])[0] || imagem.Id || null
+            } catch(erro: any) {
+                return null
+            }
+        }
+
+        const imageDigestBefore = await DigestDe(antes.Image)
+
+        if (pull) {
+            const auth = await ResolverCredencial({ registryId, reference: referencia })
+            // Um erro aqui SOBE, e é isso que protege o container atual.
+            await WithAdapter(connectionId, (a: any) => a.PullImage({ reference: referencia, auth }))
+        }
+
+        const imageDigestAfter = await DigestDe(referencia)
+
+        /*
+            Digest igual antes e depois: a imagem já era a mais nova. Recriar
+            assim mesmo derrubaria o serviço por alguns segundos sem trocar
+            nada — desligar um Postgres à toa não é um detalhe.
+        */
+        if (imageDigestBefore && imageDigestAfter && imageDigestBefore === imageDigestAfter) {
+            return {
+                oldContainerId: antes.Id,
+                newContainerInfo: null,
+                imageDigestBefore,
+                imageDigestAfter,
+                recreated: false,
+                reason: "ALREADY_UP_TO_DATE"
+            }
+        }
+
+        const resultado = await WithAdapter(connectionId, (a: any) =>
+            a.RecreateContainer({ containerIdOrName, specPatch: { image: referencia } }))
+
+        try {
+            const store = await contexto.GetStoreOrNull()
+            if (store) {
+                await store.RecordActivity({
+                    connectionId,
+                    action: "container.update-image",
+                    targetType: "container",
+                    targetId: resultado.newContainerInfo?.Id,
+                    targetName: String(antes.Name || "").replace(/^\//, ""),
+                    result: "ok",
+                    details: { reference: referencia, imageDigestBefore, imageDigestAfter }
+                })
+            }
+        } catch(erro: any) {
+            console.error("Falha ao registrar a atualização (a atualização em si deu certo):", erro)
+        }
+
+        return { ...resultado, imageDigestBefore, imageDigestAfter, recreated: true }
+    }
+
+    /*
+        RECRIAR COM MUDANÇAS (CTMG-59 usa isto; aqui ele nasce para o update).
+
+        `specPatch` é aplicado sobre o spec LIDO do container — não sobre um
+        formulário em branco. O que não está no patch permanece.
+    */
+    const _RecreateContainer = ({ connectionId, containerIdOrName, specPatch, keepName, removeOld }: any) =>
+        WithAdapter(connectionId, (a: any) =>
+            a.RecreateContainer({ containerIdOrName, specPatch, keepName, removeOld }))
+
+    const _GetContainerSpec = ({ connectionId, containerIdOrName }: any) =>
+        WithAdapter(connectionId, (a: any) => a.GetContainerSpec(containerIdOrName))
+
+    /* ----------------------------------------------- procedência (CTMG-96) */
+
+    const _GetContainerProvenance = async ({ connectionId, containerId }: any) => {
+        const store = await contexto.GetStoreOrNull()
+        if (!store) return null
+        return await store.GetContainerProvenance({ connectionId, containerId })
+    }
+
+    const controllerServiceObject = {
+        controllerName: "ContainersController",
+        UpdateContainerImage: _UpdateContainerImage,
+        RecreateContainer: _RecreateContainer,
+        GetContainerSpec: _GetContainerSpec,
+        GetContainerProvenance: _GetContainerProvenance,
+        ListContainerEntries: _ListContainerEntries,
+        CopyFromContainer: _CopyFromContainer,
+        CopyToContainer: _CopyToContainer,
+        DeleteContainerEntry: _DeleteContainerEntry,
+        MakeContainerDirectory: _MakeContainerDirectory,
+        ListContainers: _ListContainers,
+        InspectContainer: _InspectContainer,
+        GetContainerLogHistory: _GetContainerLogHistory,
+        StartContainer: _StartContainer,
+        StopContainer: _StopContainer,
+        RestartContainer: _RestartContainer,
+        KillContainer: _KillContainer,
+        RemoveContainer: _RemoveContainer,
+        CreateContainer: _CreateContainer,
+        LogStream: _LogStream,
+        StatsStream: _StatsStream,
+        MultiStatsStream: _MultiStatsStream,
+        ExecSession: _ExecSession
+    }
+
+    return controllerServiceObject
+}
+
+module.exports = ContainersController
