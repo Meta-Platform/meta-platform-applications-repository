@@ -1,10 +1,10 @@
-/* Deliberadamente JavaScript, enquanto o Electron embutir um Node anterior ao
- * 22.18 (Electron 31 → Node 20.18): lá não há apagamento de tipos nem
- * `module.registerHooks`, então nada que este processo carregue pode ser `.ts` —
- * a começar por este arquivo, que o binário do Electron recebe como ponto de
- * entrada, um CAMINHO e não um specifier de módulo. Pelo mesmo motivo continuam
+/* Deliberadamente JavaScript: este arquivo é o ponto de entrada que o binário do
+ * Electron recebe como um CAMINHO, e não como um specifier de módulo — quem o
+ * carrega não passa pela resolução instalada abaixo. Pelo mesmo motivo continuam
  * em JavaScript o `preload.js` (carregado pelo renderer) e o `GpuPreference.js`
- * (requerido daqui). Ver source-language-standard.md. */
+ * (requerido daqui). O resto do que este processo carrega PODE ser `.ts`: o
+ * Electron 43 embute o Node 24.18, que apaga tipos e tem `module.registerHooks`.
+ * Ver source-language-standard.md. */
 
 const { app, BrowserWindow, Menu, dialog, ipcMain, Notification, nativeImage, protocol, net } = require("electron")
 const http  = require("http")
@@ -34,9 +34,10 @@ const InstallElectronTypeScriptResolution = () => {
          *
          *   - repositório anterior à module-resolution.lib → não há `.ts` para
          *     resolver, e seguir é o correto;
-         *   - o Node deste Electron é antigo demais (o 31 embute o 20.18, sem
+         *   - o Node deste Electron é antigo demais (anterior ao 22.18, sem
          *     apagamento de tipos e sem `registerHooks`) → há `.ts` para
-         *     resolver e ele NÃO vai carregar.
+         *     resolver e ele NÃO vai carregar. Foi o que aconteceu enquanto o
+         *     taskLoader esteve no Electron 31 (Node 20.18).
          *
          * O segundo caso é o que importa hoje, e engoli-lo em silêncio foi o
          * que fez esta falha passar despercebida: cada service do gui-host
@@ -793,7 +794,13 @@ const CreateGuiHostWindow = async () => {
     try {
         guiServices = BootstrapGuiServices(config)
     } catch(e) {
+        /* Um MODULE_NOT_FOUND aqui aponta para o arquivo errado quando a
+         * resolução de `.ts` não subiu: o módulo existe, com outra extensão. */
         Log.error("electron-main", "Falha ao inicializar os services de GUI:", e)
+        if(!resolveTypeScriptDisponivel)
+            Log.error("electron-main",
+                "a resolução de TypeScript não está instalada neste processo"
+                + ` (Node ${process.versions.node}): um service em \`.ts\` aparece aqui como módulo inexistente.`)
     }
 
     ipcMain.handle("metaGui:invoke", async (_event, { serviceName, method, args } = {}) => {

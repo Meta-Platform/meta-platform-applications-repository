@@ -6,7 +6,7 @@
             "path": "Taskloaders.Module/Loaders.layer/desktop-window-instance.taskLoader",
             "entry": "src/DesktopWindowInstance.taskLoader",
             "npmDependencies": {
-                "electron": "^31.7.7"
+                "electron": "^43.4.0"
             },
             "injectsDeps": true
         }
