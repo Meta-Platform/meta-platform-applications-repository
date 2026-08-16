@@ -19,14 +19,34 @@ const { ResolveGpuLaunch, ListVulkanDevices, WritePreference } = require("./GpuP
 // Electron é processo SEPARADO e nada do que o executor instalou vale aqui. Vem
 // primeiro porque a própria logger.lib pode ser TypeScript.
 // Ver: meta-platform-open-standard/specifications/source-language-standard.md
+/* Verdadeiro só quando o `.ts` de fato carrega aqui dentro. É lido mais abaixo,
+ * na montagem dos services do gui-host, para que a falha tenha nome. */
+let resolveTypeScriptDisponivel = false
+
 const InstallElectronTypeScriptResolution = () => {
     try {
         const installTypeScriptResolutionPath = process.env.META_INSTALL_TYPESCRIPT_RESOLUTION_PATH
         if(!installTypeScriptResolutionPath) return
         require(installTypeScriptResolutionPath)()
+        resolveTypeScriptDisponivel = true
     } catch (error) {
-        /* Repositório anterior à lib: segue sem resolver `.ts` — que é o correto,
-         * porque nesse repositório não há `.ts` para resolver. */
+        /* Duas causas possíveis, e elas pedem respostas opostas:
+         *
+         *   - repositório anterior à module-resolution.lib → não há `.ts` para
+         *     resolver, e seguir é o correto;
+         *   - o Node deste Electron é antigo demais (o 31 embute o 20.18, sem
+         *     apagamento de tipos e sem `registerHooks`) → há `.ts` para
+         *     resolver e ele NÃO vai carregar.
+         *
+         * O segundo caso é o que importa hoje, e engoli-lo em silêncio foi o
+         * que fez esta falha passar despercebida: cada service do gui-host
+         * morria depois, um a um, com MODULE_NOT_FOUND — longe da causa.
+         * Registrar aqui não conserta nada, mas dá nome ao que aconteceu. */
+        console.error(
+            "[electron-main] a resolução de TypeScript NÃO foi instalada neste processo"
+            + ` (Node ${process.versions.node}, electron ${process.versions.electron}).`
+            + " Pacotes .ts não carregam aqui dentro."
+            + ` Motivo: ${(error && error.message) || error}`)
     }
 }
 InstallElectronTypeScriptResolution()

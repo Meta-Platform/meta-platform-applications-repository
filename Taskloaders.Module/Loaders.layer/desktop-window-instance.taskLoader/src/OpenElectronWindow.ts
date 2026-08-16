@@ -52,8 +52,15 @@ const CreateOpenElectronWindow = (runtimeDeps: any) => {
                 // processo separado, e sem isto todo log de app desktop ficaria
                 // fora do padrão. Grava no logs/ do ambiente da execução.
                 ...paths && paths.installGlobalLogger ? { META_INSTALL_GLOBAL_LOGGER_PATH: paths.installGlobalLogger } : {},
-                // Idem para a resolução de TypeScript: sem ela, nenhum package
-                // `.ts` carrega dentro do Electron.
+                // Idem para a resolução de TypeScript. ATENÇÃO: entregar o
+                // caminho não basta — a instalação exige Node >= 22.18, e o
+                // Electron 31 embute o 20.18. Lá dentro ela falha (o
+                // `electron-main` engole o erro) e NENHUM `.ts` carrega, nem o
+                // ponto de entrada nem os services do gui-host. Enquanto o
+                // Electron não subir para >= 36, tudo que o processo da janela
+                // requer tem de continuar em JavaScript. Ver a seção "O que
+                // roda dentro do Electron também é JavaScript" em
+                // source-language-standard.md.
                 ...paths && paths.installTypeScriptResolution ? { META_INSTALL_TYPESCRIPT_RESOLUTION_PATH: paths.installTypeScriptResolution } : {},
                 ...logsDirPath ? { META_LOGS_DIR: String(logsDirPath) } : {},
                 ...title  !== undefined ? { DESKTOP_WINDOW_TITLE:  String(title) }  : {},
