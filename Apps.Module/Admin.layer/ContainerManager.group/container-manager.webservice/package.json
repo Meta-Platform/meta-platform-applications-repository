@@ -4,6 +4,6 @@
   "author": "Kaio Cezar <kadisk.shark@gmail.com>",
   "license": "BSD-3-Clause",
   "scripts": {
-    "test": "node --require ../../../../../essential-repository/Commons.Module/Libraries.layer/module-resolution.lib/src/register.js --test test/*.test.js"
+    "test": "node --require ../../../../../essential-repository/Commons.Module/Libraries.layer/module-resolution.lib/src/register.js --test test/*.test.ts"
   }
 }

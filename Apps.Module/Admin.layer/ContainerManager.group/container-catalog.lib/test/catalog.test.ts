@@ -11,11 +11,11 @@
     - receita curada que atropela a edição do usuário
     - reconciliação que "corrige" sozinha o que devia perguntar
 */
-const test = require("node:test")
-const assert = require("node:assert/strict")
-const fs = require("node:fs")
-const os = require("node:os")
-const path = require("node:path")
+const test = require("node:test") as typeof import("node:test")
+const assert = require("node:assert/strict") as typeof import("node:assert/strict")
+const fs = require("node:fs") as typeof import("node:fs")
+const os = require("node:os") as typeof import("node:os")
+const path = require("node:path") as typeof import("node:path")
 
 const InitializeContainerCatalog = require("../src/InitializeContainerCatalog")
 const CreateSecretBox = require("../src/Crypto/LocalSecretBox")
@@ -69,7 +69,7 @@ test("dado ADULTERADO falha ao abrir, em vez de devolver lixo", () => {
 
     assert.throws(
         () => cofre.Open([partes[0], partes[1], partes[2], cifraAdulterada.toString("base64")].join(":")),
-        (erro) => erro.code === "SECRET_OPEN_FAILED"
+        (erro: any) => erro.code === "SECRET_OPEN_FAILED"
     )
 })
 
@@ -77,7 +77,7 @@ test("chave de OUTRA instalação não abre o segredo", () => {
     const cofreA = CreateSecretBox({ keyFilePath: path.join(DiretorioTemporario(), ".chave") })
     const cofreB = CreateSecretBox({ keyFilePath: path.join(DiretorioTemporario(), ".chave") })
 
-    assert.throws(() => cofreB.Open(cofreA.Seal("x")), (erro) => erro.code === "SECRET_OPEN_FAILED")
+    assert.throws(() => cofreB.Open(cofreA.Seal("x")), (erro: any) => erro.code === "SECRET_OPEN_FAILED")
 })
 
 test("a chave nasce com permissão 0600", () => {
@@ -183,7 +183,7 @@ test("sem cofre, guardar senha é RECUSADO — nunca gravado em claro", async ()
 
     await assert.rejects(
         () => store.CreateRegistry({ name: "e", serverAddress: "r.com", password: "x" }),
-        (erro) => erro.code === "SECRET_BOX_UNAVAILABLE"
+        (erro: any) => erro.code === "SECRET_BOX_UNAVAILABLE"
     )
 })
 
@@ -202,12 +202,12 @@ test("a credencial secreta sai MASCARADA por padrão", async () => {
     })
 
     const ficha = await store.GetCredentials({ serviceId: s.id })
-    const senha = ficha.find((f) => f.field === "password")
+    const senha = ficha.find((f: any) => f.field === "password")
 
     assert.equal(senha.value, "••••••••")
     assert.equal(senha.generated, true)
     // O que não é segredo aparece normalmente.
-    assert.equal(ficha.find((f) => f.field === "username").value, "postgres")
+    assert.equal(ficha.find((f: any) => f.field === "username").value, "postgres")
 })
 
 test("revelar é uma chamada à parte", async () => {
@@ -219,7 +219,7 @@ test("revelar é uma chamada à parte", async () => {
 
     const revelada = await store.RevealCredentials({ serviceId: s.id })
 
-    assert.equal(revelada.find((f) => f.field === "password").value, "segredo")
+    assert.equal(revelada.find((f: any) => f.field === "password").value, "segredo")
 })
 
 test("falha depois de o container existir GRAVA o erro, não apaga o serviço", async () => {
@@ -290,7 +290,7 @@ test("remover receita curada é recusado, com o caminho alternativo na mensagem"
 
     await assert.rejects(
         () => store.RemoveRecipe({ slug: "postgres" }),
-        (erro) => erro.code === "BUILTIN_RECIPE" && /[Dd]uplique/.test(erro.message)
+        (erro: any) => erro.code === "BUILTIN_RECIPE" && /[Dd]uplique/.test(erro.message)
     )
 })
 

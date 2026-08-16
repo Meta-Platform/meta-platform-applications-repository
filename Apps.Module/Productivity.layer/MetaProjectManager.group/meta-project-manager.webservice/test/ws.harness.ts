@@ -2,8 +2,8 @@
 // do server-manager (CreateAPIEndpointsService): getAllParams = {...path,...body,...query};
 // 0 params => método(undefined); 1 presente E 1 declarado => valor posicional; senão => objeto.
 const express = require("express")
-const http = require("http")
-const path = require("path")
+const http = require("http") as typeof import("http")
+const path = require("path") as typeof import("path")
 
 const WS_ROOT = path.resolve(__dirname, "..")
 const LIB_SRC = path.resolve(WS_ROOT, "../project-store.lib/src")
@@ -11,11 +11,11 @@ const LIB_SRC = path.resolve(WS_ROOT, "../project-store.lib/src")
 const CONTROLLERS = ["Health", "Projects", "Boards", "Items", "Comments", "Attachments", "Users", "Agents", "Reports", "Events", "Planning", "Docs", "Risks", "PlanningDocs", "System",
     "Deliveries", "Reviews", "Mandates", "Plans"]
 
-const getAllParams = ({ body, params, query }) => ({ ...params, ...body, ...query })
+const getAllParams = ({ body, params, query }: any): Record<string, any> => ({ ...params, ...body, ...query })
 
-const MakeServer = ({ startupParams }) => {
+const MakeServer = ({ startupParams }: any) => {
     const controllerParams = {
-        projectStoreLib: { require: (m) => require(path.join(LIB_SRC, m)) },
+        projectStoreLib: { require: (m: string) => require(path.join(LIB_SRC, m)) },
         dbFilePath: startupParams.MPM_DB_FILE_PATH,
         attachmentsDirPath: startupParams.MPM_ATTACHMENTS_DIR_PATH,
         maxAttachmentBytes: startupParams.MPM_MAX_ATTACHMENT_BYTES
@@ -31,10 +31,10 @@ const MakeServer = ({ startupParams }) => {
         for(const ep of api.endpoints){
             if(ep.method === "ws") continue // WS testado à parte
             const expressPath = ep.path.replace(/:([A-Za-z0-9_]+)/g, ":$1")
-            app[ep.method.toLowerCase()](expressPath, async (req, res, next) => {
+            app[ep.method.toLowerCase()](expressPath, async (req: any, res: any, next: any) => {
                 try {
                     const params = getAllParams(req)
-                    let result
+                    let result: any
                     if(!ep.parameters) result = await service[ep.summary]()
                     else if(Object.keys(params).length === 1 && ep.parameters.length === 1) result = await service[ep.summary](params[Object.keys(params)[0]])
                     else result = await service[ep.summary](params)
@@ -46,15 +46,15 @@ const MakeServer = ({ startupParams }) => {
     }
 
     const server = http.createServer(app)
-    const listen = () => new Promise((r) => server.listen(0, () => r(server.address().port)))
-    const close = () => new Promise((r) => server.close(r))
+    const listen = (): Promise<any> => new Promise((r) => server.listen(0, () => r((server.address() as any).port)))
+    const close = (): Promise<any> => new Promise((r) => server.close(r as any))
 
-    const request = (method, urlPath, body) => new Promise((resolve, reject) => {
-        const port = server.address().port
+    const request = (method: string, urlPath: string, body?: any): Promise<any> => new Promise((resolve, reject) => {
+        const port = (server.address() as any).port
         const data = body ? JSON.stringify(body) : undefined
         const req = http.request({ host: "127.0.0.1", port, path: urlPath, method, headers: { "Content-Type": "application/json" } }, (res) => {
             let buf = ""
-            res.on("data", (c) => buf += c)
+            res.on("data", (c: any) => buf += c)
             res.on("end", () => { try { resolve({ status: res.statusCode, json: JSON.parse(buf) }) } catch(e){ resolve({ status: res.statusCode, text: buf }) } })
         })
         req.on("error", reject)

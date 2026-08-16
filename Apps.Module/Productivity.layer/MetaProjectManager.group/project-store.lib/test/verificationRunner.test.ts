@@ -1,18 +1,18 @@
-const { test } = require("node:test")
-const assert = require("node:assert")
-const { EventEmitter } = require("events")
+const { test } = require("node:test") as typeof import("node:test")
+const assert = require("node:assert") as typeof import("node:assert")
+const { EventEmitter } = require("events") as typeof import("events")
 
 const { CreateVerificationRunner, BuildVerificationRunner } = require("../src/Utils/verificationRunner")
 
 // Terminal falso: emite o que um terminal real emitiria, no próximo tick.
-const FakeStream = (mensagens) => {
-    const ee = new EventEmitter()
+const FakeStream = (mensagens: any[]) => {
+    const ee: any = new EventEmitter()
     ee.close = () => { ee.fechado = true }
     setImmediate(() => { for(const m of mensagens) ee.emit("message", JSON.stringify(m)) })
     return ee
 }
 
-const FakeClient = ({ resposta, stream, aoAbrir } = {}) => ({
+const FakeClient = ({ resposta, stream, aoAbrir }: any = {}) => ({
     RunCommand: async () => resposta,
     OpenTerminalStream: async () => { aoAbrir && aoAbrir(); return stream },
     KillTerminal: async () => undefined
@@ -92,7 +92,7 @@ test("canal sem superfície de eventos não vira timeout silencioso", async () =
 })
 
 test("terminal que fecha sem exit não é lido como sucesso", async () => {
-    const ee = new EventEmitter()
+    const ee: any = new EventEmitter()
     ee.close = () => undefined
     setImmediate(() => ee.emit("close"))
     const run = CreateVerificationRunner({
@@ -104,15 +104,15 @@ test("terminal que fecha sem exit não é lido como sucesso", async () => {
 })
 
 test("estourar o tempo mata o processo e devolve o que saiu", async () => {
-    const ee = new EventEmitter()
+    const ee: any = new EventEmitter()
     ee.close = () => undefined
     setImmediate(() => ee.emit("message", JSON.stringify({ type: "data", data: "compilando…" })))
-    let matou
+    let matou: any
     const run = CreateVerificationRunner({
         instanceManagerClient: {
             RunCommand: async () => ({ terminalId: "t-7" }),
             OpenTerminalStream: async () => ee,
-            KillTerminal: async ({ terminalId }) => { matou = terminalId }
+            KillTerminal: async ({ terminalId }: any) => { matou = terminalId }
         }
     })
     const r = await run({ command: "sleep", cwd: "/tmp", timeoutMs: 120 })
@@ -124,8 +124,8 @@ test("estourar o tempo mata o processo e devolve o que saiu", async () => {
 // A montagem é única para os três hosts justamente porque cada um errava de um
 // jeito diferente. Errar agora precisa DIZER o motivo, não devolver undefined mudo.
 test("montagem indisponível informa o motivo em vez de sumir", () => {
-    const motivos = []
-    const onUnavailable = (m) => motivos.push(m)
+    const motivos: any[] = []
+    const onUnavailable = (m: any) => motivos.push(m)
 
     assert.equal(BuildVerificationRunner({ onUnavailable }), undefined)
     assert.match(motivos[0], /não foi injetada/)
@@ -142,24 +142,24 @@ test("montagem indisponível informa o motivo em vez de sumir", () => {
 })
 
 test("o socket é derivado do EcosystemData com o nome de parâmetro que a lib espera", () => {
-    let recebido
-    const lib = { require: () => (args) => { recebido = args; return { RunCommand: async () => ({}) } } }
+    let recebido: any
+    const lib = { require: () => (args: any) => { recebido = args; return { RunCommand: async () => ({}) } } }
     const runner = BuildVerificationRunner({ instanceManagerClientLib: lib, ecosystemDataPath: "/opt/eco" })
     assert.equal(typeof runner, "function")
     assert.equal(recebido.platformApplicationSocketPath, "/opt/eco/sockets/ecosystem-instance-manager.app.sock")
 })
 
 test("o til do startup-param é expandido: um socket com ~ não existe", () => {
-    let recebido
-    const lib = { require: () => (args) => { recebido = args; return { RunCommand: async () => ({}) } } }
+    let recebido: any
+    const lib = { require: () => (args: any) => { recebido = args; return { RunCommand: async () => ({}) } } }
     BuildVerificationRunner({ instanceManagerClientLib: lib, ecosystemDataPath: "~/EcosystemData" })
     assert.ok(!recebido.platformApplicationSocketPath.includes("~"))
     assert.ok(recebido.platformApplicationSocketPath.startsWith(require("os").homedir()))
 })
 
 test("socket explícito tem precedência sobre o derivado", () => {
-    let recebido
-    const lib = { require: () => (args) => { recebido = args; return { RunCommand: async () => ({}) } } }
+    let recebido: any
+    const lib = { require: () => (args: any) => { recebido = args; return { RunCommand: async () => ({}) } } }
     BuildVerificationRunner({ instanceManagerClientLib: lib, ecosystemDataPath: "/opt/eco", socketPath: "/run/outro.sock" })
     assert.equal(recebido.platformApplicationSocketPath, "/run/outro.sock")
 })

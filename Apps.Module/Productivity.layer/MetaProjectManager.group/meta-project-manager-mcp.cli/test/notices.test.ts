@@ -1,6 +1,6 @@
-const { test, before } = require("node:test")
-const assert = require("node:assert")
-const os = require("os"); const path = require("path"); const fs = require("fs")
+const { test, before } = require("node:test") as typeof import("node:test")
+const assert = require("node:assert") as typeof import("node:assert")
+const os = require("os") as typeof import("os"); const path = require("path") as typeof import("path"); const fs = require("fs") as typeof import("fs")
 
 const InitializeProjectStore = require("../../project-store.lib/src/InitializeProjectStore")
 const { BuildTools } = require("../src/Server/Tools")
@@ -19,19 +19,19 @@ fs.mkdirSync(TMP, { recursive: true })
 const actor = { source: "agent", session: { provider: "claude", model: "claude-opus-5", traceId: "NOT-EU" } }
 const outra = { source: "agent", session: { provider: "codex", model: "gpt-6", traceId: "NOT-OUTRA" } }
 
-let store, server
-const sent = []
+let store: any, server: any
+const sent: string[] = []
 
 // Captura o que o servidor escreveria no stdout do protocolo. Só o JSON-RPC é
 // desviado: o resto (relatório do próprio test runner) segue para o terminal,
 // senão o teste engole a própria saída.
-const withCapturedStdout = async (run) => {
+const withCapturedStdout = async (run: () => any) => {
     const original = process.stdout.write
-    process.stdout.write = function(chunk, ...rest){
+    process.stdout.write = function(chunk: any, ...rest: any[]){
         const text = String(chunk)
         if(text.startsWith("{\"jsonrpc\"")){ sent.push(text); return true }
-        return original.call(process.stdout, chunk, ...rest)
-    }
+        return (original as any).call(process.stdout, chunk, ...rest)
+    } as any
     try { await run() } finally { process.stdout.write = original }
 }
 const lastPayload = () => JSON.parse(JSON.parse(sent[sent.length - 1]).result.content[0].text)
@@ -63,7 +63,7 @@ test("resposta de tool carrega _notices quando há aviso novo", async () => {
     assert.equal(payload.ok, true)
     assert.ok(payload.data, "o dado da tool continua intacto")
     assert.ok(Array.isArray(payload._notices), "o aviso vem FORA de data")
-    assert.ok(payload._notices.some((n) => /gpt-6/.test(n)), "e diz quem entrou")
+    assert.ok(payload._notices.some((n: string) => /gpt-6/.test(n)), "e diz quem entrou")
 })
 
 test("aviso entregue não se repete na chamada seguinte", async () => {
@@ -82,5 +82,5 @@ test("o aviso viaja também quando a tool falha", async () => {
     assert.equal(reply.result.isError, true)
     const body = JSON.parse(reply.result.content[0].text)
     assert.equal(body.ok, false)
-    assert.ok(body._notices.some((n) => /cuidado com o orquestrador/.test(n)), "o erro não engole o recado")
+    assert.ok(body._notices.some((n: string) => /cuidado com o orquestrador/.test(n)), "o erro não engole o recado")
 })

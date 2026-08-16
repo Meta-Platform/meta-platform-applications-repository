@@ -1,7 +1,7 @@
-const test = require("node:test")
-const assert = require("node:assert/strict")
-const fs = require("fs")
-const path = require("path")
+const test = require("node:test") as typeof import("node:test")
+const assert = require("node:assert/strict") as typeof import("node:assert/strict")
+const fs = require("fs") as typeof import("fs")
+const path = require("path") as typeof import("path")
 const { InitializeBlueprintStore } = require("../src")
 const file = path.join("/tmp", `my-blueprint-${process.pid}.sqlite`)
 test("captura e organiza itens", async () => {

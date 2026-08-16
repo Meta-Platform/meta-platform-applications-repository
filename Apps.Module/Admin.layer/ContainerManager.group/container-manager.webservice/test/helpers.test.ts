@@ -9,8 +9,8 @@
     Rodar: node --test test/*.test.js
 */
 
-const test = require("node:test")
-const assert = require("node:assert")
+const test = require("node:test") as typeof import("node:test")
+const assert = require("node:assert") as typeof import("node:assert")
 
 const ParseImageReference = require("../src/Helpers/ParseImageReference")
 const { NormalizeReference } = require("../src/Helpers/ParseImageReference")
@@ -95,7 +95,7 @@ test("tamanho desconhecido não bloqueia", () => {
 test("o que não cabe erra com código, tamanho e limite", () => {
     assert.throws(
         () => EnsureFits({ sizeBytes: 5000, limitBytes: 1000, what: "A imagem x" }),
-        (erro) => {
+        (erro: any) => {
             assert.strictEqual(erro.code, "PAYLOAD_TOO_LARGE")
             assert.strictEqual(erro.httpStatus, 413)
             assert.strictEqual(erro.sizeBytes, 5000)

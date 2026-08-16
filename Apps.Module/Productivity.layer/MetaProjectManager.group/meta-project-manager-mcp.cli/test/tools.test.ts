@@ -1,6 +1,6 @@
-const { test, before } = require("node:test")
-const assert = require("node:assert")
-const os = require("os"); const path = require("path"); const fs = require("fs")
+const { test, before } = require("node:test") as typeof import("node:test")
+const assert = require("node:assert") as typeof import("node:assert")
+const os = require("os") as typeof import("os"); const path = require("path") as typeof import("path"); const fs = require("fs") as typeof import("fs")
 
 const InitializeProjectStore = require("../../project-store.lib/src/InitializeProjectStore")
 const { BuildTools } = require("../src/Server/Tools")
@@ -8,15 +8,15 @@ const { BuildTools } = require("../src/Server/Tools")
 const TMP = path.join(os.tmpdir(), `mpm-mcp-${process.pid}`)
 fs.mkdirSync(TMP, { recursive: true })
 
-let store, tools
-const byName = (n) => tools.find((t) => t.name === n)
+let store: any, tools: any[]
+const byName = (n: string) => tools.find((t: any) => t.name === n)
 
 // A tool gated cria o pedido e só então bloqueia; o "humano" do teste precisa
 // esperar o pedido existir antes de decidir.
-const waitForPendingRequest = async ({ type, name, actionName }) => {
+const waitForPendingRequest = async ({ type, name, actionName }: any) => {
     for(let i = 0; i < 100; i++){
         const list = await store.ListCreationRequests({ status: "pending", type, actionName })
-        const found = name ? list.find((r) => r.payload && r.payload.name === name) : list[0]
+        const found = name ? list.find((r: any) => r.payload && r.payload.name === name) : list[0]
         if(found) return found
         await new Promise((r) => setTimeout(r, 20))
     }
@@ -60,7 +60,7 @@ test("delete_item waitApproval:false retorna approvalRequestId (não espera)", a
     const still = await store.GetItem({ item: it.id })
     assert.equal(still.id, it.id)
     // o pedido carrega o impacto (o QUE) e quem (provider/modelo)
-    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.id === out.approvalRequestId)
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r: any) => r.id === out.approvalRequestId)
     assert.equal(pend.who.provider, "claude")
     assert.equal(pend.impact.targetType, "item")
 })
@@ -78,21 +78,21 @@ test("delete_item waitApproval:true bloqueia e retoma após aprovação", async 
     // aprova em paralelo
     let reqId
     for(let i = 0; i < 50 && !reqId; i++){
-        const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+        const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r: any) => r.targetId === it.id)
         if(pend) reqId = pend.id; else await new Promise((r) => setTimeout(r, 10))
     }
     await store.ApproveRequest({ request: reqId, actor: { actorUserId: "h", source: "gui" } })
     const result = await call
     assert.equal(result.deleted, true)
-    await assert.rejects(() => store.GetItem({ item: it.id }), (e) => e.code === "NOT_FOUND")
+    await assert.rejects(() => store.GetItem({ item: it.id }), (e: any) => e.code === "NOT_FOUND")
 })
 
 test("delete rejeitado vira REJECTED_BY_HUMAN", async () => {
     const it = await store.CreateItem({ project: "MCP", type: "task", title: "MCP rejeita" })
-    const call = byName("delete_item").handler({ item: it.key }).then((r) => ({ ok: r }), (e) => ({ err: e }))
+    const call = byName("delete_item").handler({ item: it.key }).then((r: any) => ({ ok: r }), (e: any) => ({ err: e }))
     let reqId
     for(let i = 0; i < 50 && !reqId; i++){
-        const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+        const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r: any) => r.targetId === it.id)
         if(pend) reqId = pend.id; else await new Promise((r) => setTimeout(r, 10))
     }
     await store.RejectRequest({ request: reqId, reason: "não", actor: { actorUserId: "h", source: "gui" } })
@@ -102,7 +102,7 @@ test("delete rejeitado vira REJECTED_BY_HUMAN", async () => {
 })
 
 test("list_activity global sem permissão => FORBIDDEN", async () => {
-    await assert.rejects(() => byName("list_activity").handler({}), (e) => e.code === "FORBIDDEN")
+    await assert.rejects(() => byName("list_activity").handler({}), (e: any) => e.code === "FORBIDDEN")
 })
 
 test("list_activity com project funciona", async () => {
@@ -114,7 +114,7 @@ test("add_activity_note + list_activity_notes + get_activity_context", async () 
     const it = await store.CreateItem({ project: "MCP", type: "task", title: "Ctx" })
     await byName("add_activity_note").handler({ item: it.key, text: "nota do agente" })
     const notes = await byName("list_activity_notes").handler({ item: it.key })
-    assert.ok(notes.some((n) => n.body === "nota do agente"))
+    assert.ok(notes.some((n: any) => n.body === "nota do agente"))
     const ctx = await byName("get_activity_context").handler({ item: it.key })
     assert.equal(ctx.scope.scopeType, "item")
     assert.ok(Array.isArray(ctx.audit))
@@ -125,7 +125,7 @@ test("create_project waitApproval:false não espera e guarda shortDescription no
     assert.equal(out.status, "pending_approval")
     assert.equal(out.actionName, "create")
     assert.ok(out.approvalRequestId)
-    const pend = (await store.ListCreationRequests({ status: "pending", type: "project" })).find((r) => r.payload.name === "Via MCP")
+    const pend = (await store.ListCreationRequests({ status: "pending", type: "project" })).find((r: any) => r.payload.name === "Via MCP")
     assert.equal(pend.payload.shortDescription, "curta")
 })
 
@@ -147,7 +147,7 @@ test("create_project rejeitado vira REJECTED_BY_HUMAN com o motivo", async () =>
     const req = await waitForPendingRequest({ type: "project", name: "Sera Rejeitado" })
     await store.RejectRequest({ request: req.id, reason: "não faz sentido agora", actor: { source: "cli" } })
 
-    const out = await pending.then((r) => ({ ok: r }), (e) => ({ err: e }))
+    const out = await pending.then((r: any) => ({ ok: r }), (e: any) => ({ err: e }))
     assert.equal(out.err.code, "REJECTED_BY_HUMAN")
     assert.equal(out.err.details.reason, "não faz sentido agora")
 })
@@ -190,7 +190,7 @@ test("add_column bloqueia até aprovação (estrutura do fluxo)", async () => {
 })
 
 test("tools de revisão do projeto estão no catálogo", () => {
-    const names = tools.map((t) => t.name)
+    const names = tools.map((t: any) => t.name)
     for (const n of ["update_project","archive_project","restore_project","get_board","update_board","set_default_board",
                      "list_columns","add_column","update_column","move_column","delete_column",
                      "update_milestone","delete_milestone","update_sprint","delete_sprint",
@@ -201,7 +201,7 @@ test("tools de revisão do projeto estão no catálogo", () => {
 })
 
 test("delete tools + activity tools estão no catálogo", () => {
-    const names = tools.map((t) => t.name)
+    const names = tools.map((t: any) => t.name)
     for (const n of ["delete_project","delete_board","delete_item","list_audit_events","get_audit_event","add_activity_note","list_activity_notes","get_activity_context"])
         assert.ok(names.indexOf(n) >= 0, `faltou ${n}`)
 })
@@ -266,15 +266,15 @@ test("fluxo do feedback via MCP: listar → pegar → resolver", async () => {
     })
 
     const open = await byName("list_feedback").handler({ project: "MCP" })
-    assert.ok(open.some((f) => f.id === fb.id))
-    assert.equal(open.find((f) => f.id === fb.id).field, "description")
+    assert.ok(open.some((f: any) => f.id === fb.id))
+    assert.equal(open.find((f: any) => f.id === fb.id).field, "description")
 
     const claimed = await byName("claim_feedback").handler({ feedback: fb.id })
     assert.equal(claimed.status, "in-analysis")
 
     // pego: sai da fila de abertos
     const afterClaim = await byName("list_feedback").handler({ project: "MCP" })
-    assert.ok(!afterClaim.some((f) => f.id === fb.id))
+    assert.ok(!afterClaim.some((f: any) => f.id === fb.id))
 
     const resolved = await byName("resolve_feedback").handler({ feedback: fb.id, note: "reescrito" })
     assert.equal(resolved.status, "resolved")
@@ -287,9 +287,9 @@ test("claim de um feedback já pego por OUTRO agente devolve CONFLICT", async ()
 
     // outro agente (identidade diferente ⇒ outra sessão) pega primeiro
     const other = BuildTools({ store, actor: { source: "agent", session: { provider: "codex", model: "gpt", traceId: "OUTRO", host: "h2", osUser: "u2", pid: 2 } } })
-    await other.find((t) => t.name === "claim_feedback").handler({ feedback: fb.id })
+    await other.find((t: any) => t.name === "claim_feedback").handler({ feedback: fb.id })
 
-    const out = await byName("claim_feedback").handler({ feedback: fb.id }).then((r) => ({ ok: r }), (e) => ({ err: e }))
+    const out = await byName("claim_feedback").handler({ feedback: fb.id }).then((r: any) => ({ ok: r }), (e: any) => ({ err: e }))
     assert.equal(out.err.code, "CONFLICT")
 })
 
@@ -298,14 +298,14 @@ test("resolver um feedback pego por outro agente é CONFLICT (identidade MCP res
     const fb = await store.CreateFeedback({ item: it.key, body: "corrija", actor: { source: "gui" } })
 
     const other = BuildTools({ store, actor: { source: "agent", session: { provider: "codex", model: "gpt", traceId: "OUTRO2", host: "h2", osUser: "u2", pid: 3 } } })
-    await other.find((t) => t.name === "claim_feedback").handler({ feedback: fb.id })
+    await other.find((t: any) => t.name === "claim_feedback").handler({ feedback: fb.id })
 
     const out = await byName("resolve_feedback").handler({ feedback: fb.id, note: "roubei" })
-        .then((r) => ({ ok: r }), (e) => ({ err: e }))
+        .then((r: any) => ({ ok: r }), (e: any) => ({ err: e }))
     assert.equal(out.err.code, "CONFLICT")
 
     // o dono do claim resolve normalmente
-    const done = await other.find((t) => t.name === "resolve_feedback").handler({ feedback: fb.id, note: "meu" })
+    const done = await other.find((t: any) => t.name === "resolve_feedback").handler({ feedback: fb.id, note: "meu" })
     assert.equal(done.status, "resolved")
 })
 
@@ -319,7 +319,7 @@ test("project_changes devolve a janela inteira, resumo e o cursor latestAt", asy
     assert.ok(out.summary.byAction.create >= 2)
     assert.ok(out.latestAt)
     // cronológico
-    const times = out.events.map((e) => String(e.createdAt))
+    const times = out.events.map((e: any) => String(e.createdAt))
     assert.deepEqual(times, [...times].sort())
 
     // desde o cursor, nada novo
@@ -329,7 +329,7 @@ test("project_changes devolve a janela inteira, resumo e o cursor latestAt", asy
 
 // ---- Contexto do ecossistema via MCP ----
 test("agente lista pacotes do catálogo e vincula vários a um item", async () => {
-    const fs2 = require("fs")
+    const fs2 = require("fs") as typeof import("fs")
     const root = path.join(TMP, "eco-mcp")
     const repo = path.join(root, "R")
     for (const rel of ["A.Module/B.layer/G.group/x.lib", "A.Module/B.layer/G.group/x.webgui"])
@@ -345,7 +345,7 @@ test("agente lista pacotes do catálogo e vincula vários a um item", async () =
     })
     await ecoStore.ConnectAndSync()
     const ecoTools = BuildTools({ store: ecoStore, actor })
-    const byN = (n) => ecoTools.find((t) => t.name === n)
+    const byN = (n: string) => ecoTools.find((t: any) => t.name === n)
 
     const indexed = await byN("index_ecosystem_packages").handler({})
     assert.equal(indexed.indexed, 2)
@@ -383,12 +383,12 @@ test("MPMX-2 search_items: envelope paginado + projeção enxuta (sem descriçã
     assert.equal(typeof res.total, "number")
     assert.equal(res.limit, 50)
     assert.equal(res.offset, 0)
-    const hit = res.items.find((i) => i.title === "Busca Alfa")
+    const hit = res.items.find((i: any) => i.title === "Busca Alfa")
     assert.ok(hit)
     assert.equal(hit.description, undefined) // resumo por padrão: sem descrição longa
     // projeção explícita
     const only = await byName("search_items").handler({ text: "Busca Alfa", project: "MCP", fields: ["key", "title"] })
-    const h2 = only.items.find((i) => i.title === "Busca Alfa")
+    const h2 = only.items.find((i: any) => i.title === "Busca Alfa")
     assert.deepEqual(Object.keys(h2).sort(), ["key", "title"])
 })
 
@@ -420,7 +420,7 @@ test("MPMX-5 update_item grava releaseTag/releaseUrl e search_items filtra por r
     assert.equal(got.releaseTag, "v9.9.9")
     assert.equal(got.releaseUrl, "https://r/9")
     const res = await byName("search_items").handler({ text: "Rel", project: "MCP", release: "v9.9.9" })
-    assert.ok(res.items.some((i) => i.key === it.key))
+    assert.ok(res.items.some((i: any) => i.key === it.key))
     assert.ok(res.total >= 1)
 })
 
@@ -430,7 +430,7 @@ test("MPMX-6 get_item: vínculo cross-projeto navegável (otherKey + crossProjec
     const b = await store.CreateItem({ project: "OTHP", type: "task", title: "B alvo" })
     await byName("link_item").handler({ item: a.key, relation: "depends", target: b.key })
     const got = await byName("get_item").handler({ item: a.key })
-    const link = got.links.find((l) => l.relation === "depends")
+    const link = got.links.find((l: any) => l.relation === "depends")
     assert.ok(link)
     assert.equal(link.otherKey, b.key)
     assert.equal(link.direction, "outgoing")
@@ -440,7 +440,7 @@ test("MPMX-6 get_item: vínculo cross-projeto navegável (otherKey + crossProjec
 test("MPMX-4 close_project: bloqueia sem itens concluídos e sem relatório", async () => {
     await store.CreateProject({ name: "Close Proj", keyPrefix: "CLOSE", actor: { source: "cli" } })
     await store.CreateItem({ project: "CLOSE", type: "task", title: "aberto" })
-    const out = await byName("close_project").handler({ project: "CLOSE" }).then((r) => ({ ok: r }), (e) => ({ err: e }))
+    const out = await byName("close_project").handler({ project: "CLOSE" }).then((r: any) => ({ ok: r }), (e: any) => ({ err: e }))
     assert.ok(out.err)
     assert.equal(out.err.code, "CLOSE_PRECONDITION_FAILED")
     assert.equal(out.err.details.preconditions.hasFinalReport, false)
@@ -512,7 +512,7 @@ test("MPMX2-1 link_items vincula em lote com resultado por elemento", async () =
         project: "MCP",
         items: [{ type: "task", title: "Elo A" }, { type: "task", title: "Elo B" }]
     })
-    const [a, b] = criados.results.map((r) => r.key)
+    const [a, b] = criados.results.map((r: any) => r.key)
     const out = await byName("link_items").handler({
         links: [
             { item: a, relation: "depends", target: b },
@@ -522,7 +522,7 @@ test("MPMX2-1 link_items vincula em lote com resultado por elemento", async () =
     assert.equal(out.succeeded, 1)
     assert.equal(out.results[1].ok, false)
     const detalhe = await byName("get_item").handler({ item: a })
-    assert.equal(detalhe.links.filter((l) => l.relation === "depends").length, 1)
+    assert.equal(detalhe.links.filter((l: any) => l.relation === "depends").length, 1)
 })
 
 test("MPMX2-1 add_acceptance_criteria aceita vários textos numa chamada", async () => {
@@ -531,7 +531,7 @@ test("MPMX2-1 add_acceptance_criteria aceita vários textos numa chamada", async
     assert.equal(out.succeeded, 3)
     assert.equal((await byName("get_item").handler({ item: item.key })).acceptanceCriteria.length, 3)
     // sem text nem texts, erro claro
-    await assert.rejects(() => byName("add_acceptance_criteria").handler({ item: item.key }), (e) => e.code === "VALIDATION_ERROR")
+    await assert.rejects(() => byName("add_acceptance_criteria").handler({ item: item.key }), (e: any) => e.code === "VALIDATION_ERROR")
 })
 
 test("MPMX2-2 escritas devolvem RESUMO por padrão; view:full traz o registro inteiro", async () => {
@@ -567,10 +567,10 @@ test("MPMX2-3/7/8 create_item grava shortDescription, labels, effort e confidenc
     assert.equal(out.confidence, "medium")
 
     const filtrado = await byName("list_items").handler({ project: "MCP", label: "agente:senior" })
-    assert.ok(filtrado.items.some((i) => i.key === out.key))
+    assert.ok(filtrado.items.some((i: any) => i.key === out.key))
 
     const vocab = await byName("list_labels").handler({ project: "MCP" })
-    assert.ok(vocab.some((l) => l.label === "trilha:mcp"))
+    assert.ok(vocab.some((l: any) => l.label === "trilha:mcp"))
     const areas = await byName("list_areas").handler({ project: "MCP" })
     assert.ok(Array.isArray(areas))
 })
@@ -581,7 +581,7 @@ test("MPMX2-4 list_items devolve envelope paginado e projeta com fields", async 
     assert.equal(res.limit, 2)
     assert.equal(typeof res.total, "number")
     assert.equal(typeof res.hasMore, "boolean")
-    assert.ok(res.items.every((i) => i.description === undefined), "a descrição longa não vem por padrão")
+    assert.ok(res.items.every((i: any) => i.description === undefined), "a descrição longa não vem por padrão")
 
     const projetado = await byName("list_items").handler({ project: "MCP", fields: ["key", "title"], limit: 1 })
     assert.deepEqual(Object.keys(projetado.items[0]).sort(), ["key", "title"])
@@ -591,7 +591,7 @@ test("MPMX2-5 list_doc_pages não traz o corpo — só o tamanho", async () => {
     await byName("create_doc_page").handler({ project: "MCP", title: "Página com corpo", body: "y".repeat(3000) })
     const res = await byName("list_doc_pages").handler({ project: "MCP" })
     assert.ok(res.items.length >= 1)
-    const alvo = res.items.find((p) => p.title === "Página com corpo")
+    const alvo = res.items.find((p: any) => p.title === "Página com corpo")
     assert.equal(alvo.body, undefined)
     assert.equal(alvo.bodyLength, 3000)
     // e o corpo continua a uma chamada de distância
@@ -617,14 +617,14 @@ test("MPMX2-10 link_milestones sequencia entregas e recusa ciclo", async () => {
     const b = await byName("create_milestone").handler({ project: "MCP", name: "Fase B" })
     await byName("link_milestones").handler({ milestone: b.id, relation: "depends", target: a.id })
     await assert.rejects(() => byName("link_milestones").handler({ milestone: a.id, relation: "depends", target: b.id }),
-        (e) => e.code === "VALIDATION_ERROR")
+        (e: any) => e.code === "VALIDATION_ERROR")
 
     const lista = await byName("list_milestones").handler({ project: "MCP" })
-    const fb = lista.find((m) => m.name === "Fase B")
-    assert.deepEqual(fb.dependsOn.map((d) => d.name), ["Fase A"])
+    const fb = lista.find((m: any) => m.name === "Fase B")
+    assert.deepEqual(fb.dependsOn.map((d: any) => d.name), ["Fase A"])
     assert.equal(fb.dependenciesMet, false)
     // MPMX2-14: a entrega aceita shortDescription
-    assert.equal(lista.find((m) => m.name === "Fase A").shortDescription, "primeira")
+    assert.equal(lista.find((m: any) => m.name === "Fase A").shortDescription, "primeira")
 })
 
 test("MPMX2-11 report_ready lista o desimpedido com quanto cada item destrava", async () => {
@@ -634,7 +634,7 @@ test("MPMX2-11 report_ready lista o desimpedido com quanto cada item destrava", 
     await store.LinkItem({ item: dep.id, relation: "depends", target: base.id })
 
     const res = await byName("report_ready").handler({ project: p.id })
-    const keys = res.items.map((i) => i.key)
+    const keys = res.items.map((i: any) => i.key)
     assert.ok(keys.includes(base.key))
     assert.ok(!keys.includes(dep.key))
     assert.equal(res.items[0].unblocks, 1)
@@ -655,7 +655,7 @@ test("MPMX2-17 set_item_status BLOQUEIA até a aprovação e retorna o item no n
 
     let reqId
     for(let i = 0; i < 100 && !reqId; i++){
-        const pend = (await store.ListCreationRequests({ status: "pending", actionName: "set-status" })).find((r) => r.targetId === it.id)
+        const pend = (await store.ListCreationRequests({ status: "pending", actionName: "set-status" })).find((r: any) => r.targetId === it.id)
         if(pend) reqId = pend.id; else await new Promise((r) => setTimeout(r, 20))
     }
     assert.ok(reqId, "o pedido pendente precisa existir enquanto a tool espera")
@@ -670,11 +670,11 @@ test("MPMX2-17 set_item_status BLOQUEIA até a aprovação e retorna o item no n
 test("MPMX2-17 set_item_status rejeitado vira REJECTED_BY_HUMAN e o item não muda", async () => {
     const it = await store.CreateItem({ project: "MCP", type: "task", title: "Início recusado" })
     const call = byName("set_item_status").handler({ item: it.key, status: "in-progress" })
-        .then((r) => ({ ok: r }), (e) => ({ err: e }))
+        .then((r: any) => ({ ok: r }), (e: any) => ({ err: e }))
 
     let reqId
     for(let i = 0; i < 100 && !reqId; i++){
-        const pend = (await store.ListCreationRequests({ status: "pending", actionName: "set-status" })).find((r) => r.targetId === it.id)
+        const pend = (await store.ListCreationRequests({ status: "pending", actionName: "set-status" })).find((r: any) => r.targetId === it.id)
         if(pend) reqId = pend.id; else await new Promise((r) => setTimeout(r, 20))
     }
     await store.RejectRequest({ request: reqId, reason: "ainda não", actor: { actorUserId: "h", source: "gui" } })
@@ -715,10 +715,10 @@ test("MPMX3-22 list_items não oferece item reivindicado por outra sessão", asy
     await store.ClaimItem({ item: it.id, actor: outra })
 
     const fila = await byName("list_items").handler({ project: "MCP", limit: 200 })
-    assert.ok(!fila.items.some((i) => i.id === it.id), "item com dono sai da fila")
+    assert.ok(!fila.items.some((i: any) => i.id === it.id), "item com dono sai da fila")
 
     const tudo = await byName("list_items").handler({ project: "MCP", includeClaimed: true, limit: 200 })
-    const tomado = tudo.items.find((i) => i.id === it.id)
+    const tomado = tudo.items.find((i: any) => i.id === it.id)
     assert.ok(tomado, "includeClaimed mostra o quadro completo")
     assert.ok(tomado.claim, "e a reivindicação vem no resumo padrão, sem precisar pedir o campo")
 })
@@ -727,7 +727,7 @@ test("MPMX3 who_is_here descreve a sessão vizinha, e next_task pega com dono", 
     const it = await store.CreateItem({ project: "MCP", type: "task", title: "Para pegar", statusKey: "ready" })
     const aqui = await byName("who_is_here").handler({ project: "MCP" })
     assert.ok(Array.isArray(aqui.sessions))
-    assert.ok(aqui.sessions.some((s) => s.model === "gpt-6"), "a sessão que reivindicou algo aparece")
+    assert.ok(aqui.sessions.some((s: any) => s.model === "gpt-6"), "a sessão que reivindicou algo aparece")
 
     const pego = await byName("next_task").handler({ project: "MCP" })
     if(pego.item){
@@ -747,7 +747,7 @@ test("MPMX3-19 recado dirigido e caixa de entrada da sessão", async () => {
 
     await byName("send_agent_message").handler({ item: it.key, project: "MCP", body: "não reprovisione agora" })
     const recebidos = await store.CollectNotices({ actor: outra })
-    assert.ok(recebidos.some((n) => /não reprovisione agora/.test(n.body)), "o alvo recebe sem ter perguntado")
+    assert.ok(recebidos.some((n: any) => /não reprovisione agora/.test(n.body)), "o alvo recebe sem ter perguntado")
 
     const inbox = await byName("agent_inbox").handler({ limit: 10 })
     assert.ok(Array.isArray(inbox), "a caixa de entrada relê o histórico")
@@ -757,7 +757,7 @@ test("MPMX3-17 foco da sessão muda; identidade, não", async () => {
     const atualizada = await byName("update_session_focus").handler({ currentFocus: "revisando o PresenceStore" })
     assert.equal(atualizada.currentFocus, "revisando o PresenceStore")
     const aqui = await byName("who_is_here").handler({})
-    const eu = aqui.sessions.find((s) => s.isYou)
+    const eu = aqui.sessions.find((s: any) => s.isYou)
     assert.ok(eu, "a própria sessão aparece na presença")
     assert.equal(eu.currentFocus, "revisando o PresenceStore")
 })
@@ -765,7 +765,7 @@ test("MPMX3-17 foco da sessão muda; identidade, não", async () => {
 test("MPMX3-21 ação de ambiente vira registro consultável", async () => {
     await byName("record_environment_action").handler({ project: "MCP", action: "up", target: "service-orchestrator", note: "não derrube" })
     const lista = await byName("list_environment_actions").handler({ project: "MCP" })
-    assert.ok(lista.some((n) => /service-orchestrator/.test(n.body)))
+    assert.ok(lista.some((n: any) => /service-orchestrator/.test(n.body)))
 })
 
 // ─────────── MPMX3: gate, lote e leituras (itens 8 a 14 e 23) na camada MCP ───────────
@@ -796,14 +796,14 @@ test("MPMX3-11 update_acceptance_criteria aceita lista de ids", async () => {
     const dois = await store.AddAcceptanceCriteria({ item: it.id, text: "dois" })
     const marcados = await byName("update_acceptance_criteria").handler({ criteria: [um.id, dois.id], met: true })
     assert.equal(marcados.length, 2)
-    assert.ok(marcados.every((c) => c.met))
+    assert.ok(marcados.every((c: any) => c.met))
 })
 
 test("MPMX3-23 get_activity_context enxuto por padrão, inteiro sob demanda", async () => {
     await store.AddActivityNote({ project: "MCP", text: `Nota comprida: ${"y".repeat(2000)}`, actor: { source: "cli" } })
     const enxuto = await byName("get_activity_context").handler({ project: "MCP" })
     assert.ok(enxuto._trimmed, "avisa que recortou")
-    assert.ok(enxuto.notes.some((n) => n.truncated))
+    assert.ok(enxuto.notes.some((n: any) => n.truncated))
     const inteiro = await byName("get_activity_context").handler({ project: "MCP", fullText: true })
     assert.equal(inteiro._trimmed, undefined)
 })
@@ -817,7 +817,7 @@ test("MPMX3-13 close_project não conta ideias do inbox como pendência", async 
     // Sem relatório final, a recusa é sobre o RELATÓRIO — não sobre a ideia.
     await assert.rejects(
         () => byName("close_project").handler({ project: p.id }),
-        (e) => e.code === "CLOSE_PRECONDITION_FAILED" && /relatório final/.test(e.message) && !/não concluído/.test(e.message)
+        (e: any) => e.code === "CLOSE_PRECONDITION_FAILED" && /relatório final/.test(e.message) && !/não concluído/.test(e.message)
     )
 })
 
@@ -839,7 +839,7 @@ test("MPMR-22 as 21 tools do modelo de entrega existem, com schema válido e sem
         assert.equal(typeof t.handler, "function")
     }
     // Nenhuma das anteriores mudou de nome, e ninguém foi registrado duas vezes.
-    const nomes = tools.map((t) => t.name)
+    const nomes = tools.map((t: any) => t.name)
     assert.equal(new Set(nomes).size, nomes.length, "há tool duplicada no catálogo")
     for(const antiga of ["create_item", "set_item_status", "get_item", "list_items", "next_task", "claim_item"])
         assert.ok(nomes.includes(antiga), `a tool ${antiga} sumiu do catálogo`)
@@ -852,13 +852,13 @@ test("MPMR-24 concluir por status é RECUSADO em projeto migrado, com o substitu
 
     await assert.rejects(
         () => byName("set_item_status").handler({ item: item.key, status: "done" }),
-        (e) => e.code === "MODEL_MIGRATED" && e.details.replacement === "submit_delivery",
+        (e: any) => e.code === "MODEL_MIGRATED" && e.details.replacement === "submit_delivery",
         "concluir por status precisa apontar o caminho novo")
 
     // Em LOTE também: basta um item migrado para o lote não fazer sentido.
     await assert.rejects(
         () => byName("set_items_status").handler({ items: [item.key], status: "done" }),
-        (e) => e.code === "MODEL_MIGRATED")
+        (e: any) => e.code === "MODEL_MIGRATED")
 
     // Transição que NÃO é conclusão continua livre.
     const movido = await byName("set_item_status").handler({ item: item.key, status: "review" })
@@ -884,7 +884,7 @@ test("MPMR-22 entregar e revisar pelo MCP: quem executou não revisa", async () 
     // tem que ser recusado.
     await assert.rejects(
         () => byName("submit_review").handler({ delivery: entrega.key, decision: "pass" }),
-        (e) => e.code === "SAME_SESSION_REVIEW")
+        (e: any) => e.code === "SAME_SESSION_REVIEW")
 
     // A visão do revisor traz o que decide a revisão.
     const revisao = await byName("get_delivery").handler({ delivery: entrega.key, view: "review" })
@@ -915,7 +915,7 @@ test("MPMR-22 uma entrega com muita evidência não estoura o teto de resposta, 
 
     // O que não pode sumir: a lacuna que impede a entrega de ser aceita.
     const texto = JSON.stringify(guardada)
-    const impeditivas = cheia.evidence.filter((e) => e.severity === "blocking")
+    const impeditivas = cheia.evidence.filter((e: any) => e.severity === "blocking")
     for(const gap of impeditivas)
         assert.ok(texto.includes(gap.title) || texto.includes(gap.ref),
             "uma lacuna impeditiva foi cortada da resposta — é justamente ela que não pode sumir")

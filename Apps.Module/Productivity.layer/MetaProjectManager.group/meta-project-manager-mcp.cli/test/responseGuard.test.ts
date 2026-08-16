@@ -1,5 +1,5 @@
-const { test } = require("node:test")
-const assert = require("node:assert")
+const { test } = require("node:test") as typeof import("node:test")
+const assert = require("node:assert") as typeof import("node:assert")
 
 const { GuardResponseSize, MAX_RESPONSE_CHARS } = require("../src/Server/ResponseGuard")
 
@@ -15,7 +15,7 @@ test("resposta pequena passa intacta, sem aviso", () => {
 
 test("primeiro corte tira os campos longos e diz quais saíram", () => {
     // 40 itens com ~2 KB de descrição cada: passa do teto só pela descrição.
-    const items = Array.from({ length: 40 }, (_, i) => ({
+    const items = Array.from({ length: 40 }, (_: any, i: number) => ({
         id: String(i), key: `X-${i}`, title: `Item ${i}`, description: "d".repeat(2000)
     }))
     const out = GuardResponseSize({ items, total: 40 }, { toolName: "list_items" })
@@ -30,7 +30,7 @@ test("primeiro corte tira os campos longos e diz quais saíram", () => {
 
 test("se ainda não couber, corta a maior lista e informa o total real", () => {
     // Campos curtos, mas MUITOS itens: não há campo longo para remover.
-    const items = Array.from({ length: 5000 }, (_, i) => ({
+    const items = Array.from({ length: 5000 }, (_: any, i: number) => ({
         id: `id-${i}`, key: `X-${i}`, title: `Um título de tamanho razoável número ${i}`, statusKey: "backlog"
     }))
     const out = GuardResponseSize({ items, total: 5000 }, { toolName: "list_items" })
@@ -39,11 +39,11 @@ test("se ainda não couber, corta a maior lista e informa o total real", () => {
     assert.ok(out.data.items.length > 0, "sobra o que ler, não uma lista vazia")
     assert.ok(JSON.stringify(out.data).length <= MAX_RESPONSE_CHARS)
     assert.equal(out.data.total, 5000, "o total real continua visível")
-    assert.ok(out.data._truncated.applied.some((step) => step.includes("cortada")))
+    assert.ok(out.data._truncated.applied.some((step: string) => step.includes("cortada")))
 })
 
 test("array na raiz vira envelope para caber o aviso", () => {
-    const rows = Array.from({ length: 3000 }, (_, i) => ({ id: String(i), body: "b".repeat(200) }))
+    const rows = Array.from({ length: 3000 }, (_: any, i: number) => ({ id: String(i), body: "b".repeat(200) }))
     const out = GuardResponseSize(rows)
     assert.equal(out.degraded, true)
     assert.ok(Array.isArray(out.data.items))

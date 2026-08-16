@@ -1,8 +1,8 @@
-const { test, before, after } = require("node:test")
-const assert = require("node:assert")
-const os = require("os")
-const path = require("path")
-const fs = require("fs")
+const { test, before, after } = require("node:test") as typeof import("node:test")
+const assert = require("node:assert") as typeof import("node:assert")
+const os = require("os") as typeof import("os")
+const path = require("path") as typeof import("path")
+const fs = require("fs") as typeof import("fs")
 
 const MakeServer = require("./ws.harness")
 
@@ -14,8 +14,8 @@ const startupParams = {
     MPM_MAX_ATTACHMENT_BYTES: 52428800
 }
 
-let srv
-let projectId, boardId, itemId
+let srv: any
+let projectId: any, boardId: any, itemId: any
 before(async () => { srv = MakeServer({ startupParams }); await srv.listen() })
 after(async () => { await srv.close() })
 
@@ -94,7 +94,7 @@ test("GET /activity e /reports/project-status", async () => {
 test("GET /events reflete mutações (buffer realtime)", async () => {
     const { json } = await srv.request("GET", "/events?since=0")
     assert.equal(json.ok, true)
-    assert.ok(json.data.events.some((e) => e.type === "item.created"))
+    assert.ok(json.data.events.some((e: any) => e.type === "item.created"))
     assert.ok(json.data.cursor > 0)
 })
 
@@ -105,7 +105,7 @@ test("checklist add/update/remove + acceptance via API", async () => {
     const upd = await srv.request("PATCH", `/checklist/${clId}`, { done: true })
     assert.equal(upd.json.data.done, true)
     const got = await srv.request("GET", `/items/${itemId}`)
-    assert.ok(got.json.data.checklist.some((c) => c.id === clId && c.done))
+    assert.ok(got.json.data.checklist.some((c: any) => c.id === clId && c.done))
     const rem = await srv.request("DELETE", `/checklist/${clId}`)
     assert.equal(rem.json.ok, true)
     const ac = await srv.request("POST", `/items/${itemId}/acceptance`, { text: "deve compilar" })
@@ -119,7 +119,7 @@ test("agente criar projeto via API bloqueia + aprovar executa", async () => {
     assert.equal(blocked.json.ok, false)
     assert.equal(blocked.json.code, "AGENT_SESSION_CONFIRMATION_REQUIRED")
     const list = await srv.request("GET", "/creation-requests?type=project")
-    const req = list.json.data.find((r) => r.payload.name === "API Agent Proj")
+    const req = list.json.data.find((r: any) => r.payload.name === "API Agent Proj")
     assert.ok(req)
     assert.equal(req.session.host, "remoteHost")
     assert.equal(req.session.provider, "claude")
@@ -142,7 +142,7 @@ test("milestone CRUD + roadmap + atribuição via API", async () => {
     const got = await srv.request("GET", `/milestones/${mid}`)
     assert.ok(got.json.data.totalItems >= 1)
     const road = await srv.request("GET", `/projects/${projectId}/roadmap`)
-    assert.ok(road.json.data.some((x) => x.id === mid && x.progress !== undefined))
+    assert.ok(road.json.data.some((x: any) => x.id === mid && x.progress !== undefined))
     const sp = await srv.request("POST", `/projects/${projectId}/sprints`, { name: "Sprint API" })
     assert.equal(sp.json.data.status, "planned")
 })
@@ -161,7 +161,7 @@ test("planejamento via API: tipo feature + horizon + filtro + horizon-board", as
     assert.equal(it.json.data.horizon, "next")
     assert.equal(it.json.data.area, "CLI")
     const byH = await srv.request("GET", `/projects/${projectId}/items?horizon=next`)
-    assert.ok(byH.json.data.some((i) => i.id === it.json.data.id))
+    assert.ok(byH.json.data.some((i: any) => i.id === it.json.data.id))
     const hb = await srv.request("GET", `/projects/${projectId}/horizon-board`)
     assert.ok(hb.json.data.next.length >= 1)
 })

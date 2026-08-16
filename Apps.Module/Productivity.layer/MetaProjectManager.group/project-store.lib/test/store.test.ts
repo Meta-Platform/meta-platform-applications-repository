@@ -1,8 +1,8 @@
-const { test, before } = require("node:test")
-const assert = require("node:assert")
-const os = require("os")
-const path = require("path")
-const fs = require("fs")
+const { test, before } = require("node:test") as typeof import("node:test")
+const assert = require("node:assert") as typeof import("node:assert")
+const os = require("os") as typeof import("os")
+const path = require("path") as typeof import("path")
+const fs = require("fs") as typeof import("fs")
 
 const InitializeProjectStore = require("../src/InitializeProjectStore")
 
@@ -10,12 +10,12 @@ const TMP = path.join(process.env.MPM_TEST_DIR || os.tmpdir(), `mpm-test-${proce
 const DB_PATH = path.join(TMP, "store.sqlite")
 const ATT_DIR = path.join(TMP, "attachments")
 
-let store
-const events = []
+let store: any
+const events: any[] = []
 
 before(async () => {
     fs.mkdirSync(TMP, { recursive: true })
-    store = InitializeProjectStore({ storage: DB_PATH, attachmentsDirPath: ATT_DIR, onEvent: (e) => events.push(e) })
+    store = InitializeProjectStore({ storage: DB_PATH, attachmentsDirPath: ATT_DIR, onEvent: (e: any) => events.push(e) })
     await store.ConnectAndSync()
 })
 
@@ -27,7 +27,7 @@ test("cria projeto e gera keyPrefix/slug", async () => {
 })
 
 test("slug duplicado gera CONFLICT", async () => {
-    await assert.rejects(() => store.CreateProject({ name: "Meta Platform" }), (e) => e.code === "CONFLICT")
+    await assert.rejects(() => store.CreateProject({ name: "Meta Platform" }), (e: any) => e.code === "CONFLICT")
 })
 
 test("relatório final: set/get e persistência no GetProject", async () => {
@@ -46,7 +46,7 @@ test("relatório final: set/get e persistência no GetProject", async () => {
 })
 
 test("relatório final: rejeita valor não-string", async () => {
-    await assert.rejects(() => store.SetProjectReport({ project: "meta-platform", finalReport: 123 }), (e) => e.code === "VALIDATION_ERROR")
+    await assert.rejects(() => store.SetProjectReport({ project: "meta-platform", finalReport: 123 }), (e: any) => e.code === "VALIDATION_ERROR")
 })
 
 test("cria board com colunas padrão e vira default", async () => {
@@ -69,11 +69,11 @@ test("cria história, tarefa e subtarefa com keys sequenciais", async () => {
 
 test("bloqueia ciclo na hierarquia", async () => {
     // MP-1 (story) <- MP-2 (task) <- MP-3 (subtask). Mover MP-1 para dentro de MP-3 = ciclo.
-    await assert.rejects(() => store.MoveItem({ item: "MP-1", parent: "MP-3" }), (e) => e.code === "VALIDATION_ERROR")
+    await assert.rejects(() => store.MoveItem({ item: "MP-1", parent: "MP-3" }), (e: any) => e.code === "VALIDATION_ERROR")
 })
 
 test("não move item para dentro de si mesmo", async () => {
-    await assert.rejects(() => store.MoveItem({ item: "MP-2", parent: "MP-2" }), (e) => e.code === "VALIDATION_ERROR")
+    await assert.rejects(() => store.MoveItem({ item: "MP-2", parent: "MP-2" }), (e: any) => e.code === "VALIDATION_ERROR")
 })
 
 test("set-status done marca completedAt e progress 100", async () => {
@@ -106,14 +106,14 @@ test("anexa arquivo com hash e metadata", async () => {
 test("ListItems traz attachmentCount/commentCount para os cards", async () => {
     // MP-1 recebeu um anexo no teste anterior.
     const list = await store.ListItems({ project: "MP" })
-    const mp1 = list.find((i) => i.key === "MP-1")
+    const mp1 = list.find((i: any) => i.key === "MP-1")
     assert.ok(mp1)
     assert.equal(mp1.attachmentCount >= 1, true)
     assert.equal(typeof mp1.commentCount, "number")
     // Um item recém-criado sem anexos vem com 0 (não undefined).
     const fresh = await store.CreateItem({ project: "MP", type: "task", title: "Sem anexos" })
     const flist = await store.ListItems({ project: "MP" })
-    assert.equal(flist.find((i) => i.id === fresh.id).attachmentCount, 0)
+    assert.equal(flist.find((i: any) => i.id === fresh.id).attachmentCount, 0)
 })
 
 test("cria usuário humano e usuário agente", async () => {
@@ -141,16 +141,16 @@ test("sessão com confirm=true já nasce active", async () => {
 test("não arquiva usuário com itens sem force", async () => {
     await store.CreateItem({ project: "MP", type: "task", title: "Do agente", assignee: "claude-kaio" })
     const agentUser = (await store.ListUsers({ type: "agent" }))[0]
-    await assert.rejects(() => store.ArchiveUser({ user: agentUser.handle }), (e) => e.code === "FORBIDDEN")
+    await assert.rejects(() => store.ArchiveUser({ user: agentUser.handle }), (e: any) => e.code === "FORBIDDEN")
 })
 
 test("gera eventos de auditoria em mutações", async () => {
     const activity = await store.ListActivity({ projectId: (await store.GetProject({ project: "MP" })).id, limit: 100 })
-    const actions = activity.map((a) => a.action)
+    const actions = activity.map((a: any) => a.action)
     assert.ok(actions.includes("create"))
     assert.ok(actions.includes("set-status"))
-    assert.ok(events.some((e) => e.type === "item.created"))
-    assert.ok(events.some((e) => e.type === "audit.created"))
+    assert.ok(events.some((e: any) => e.type === "item.created"))
+    assert.ok(events.some((e: any) => e.type === "audit.created"))
 })
 
 test("relatórios: project-status e by-agent", async () => {
@@ -172,11 +172,11 @@ const AGENT = { source: "agent", session: { provider: "claude", model: "claude-s
 test("agente criar PROJETO bloqueia e vira pedido pendente", async () => {
     await assert.rejects(
         () => store.CreateProject({ name: "Projeto do Agente", actor: AGENT }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && !!e.details.pendingCreationId && e.details.type === "project"
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && !!e.details.pendingCreationId && e.details.type === "project"
     )
     // não criou o projeto
     const list = await store.ListProjects({ includeArchived: true })
-    assert.ok(!list.some((p) => p.slug === "projeto-do-agente"))
+    assert.ok(!list.some((p: any) => p.slug === "projeto-do-agente"))
 })
 
 test("pedido pendente carrega TODOS os detalhes da sessão", async () => {
@@ -199,13 +199,13 @@ test("aprovar pedido EXECUTA a criação do projeto", async () => {
     assert.equal(request.status, "approved")
     assert.equal(result.slug, "projeto-do-agente")
     const list = await store.ListProjects({ includeArchived: true })
-    assert.ok(list.some((p) => p.slug === "projeto-do-agente"))
+    assert.ok(list.some((p: any) => p.slug === "projeto-do-agente"))
 })
 
 test("agente criar BOARD bloqueia; aprovar cria o board", async () => {
     await assert.rejects(
         () => store.CreateBoard({ project: "MP", name: "Board do Agente", actor: AGENT }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.type === "board"
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.type === "board"
     )
     const pend = await store.ListCreationRequests({ status: "pending", type: "board" })
     assert.ok(pend.length >= 1)
@@ -223,31 +223,31 @@ test("agente: gate de iniciar/concluir tarefa (projeto ativo)", async () => {
     assert.equal(toReview.statusKey, "review")
 
     // INICIAR (in-progress) e CONCLUIR (done) por agente exigem aprovação humana.
-    await assert.rejects(() => store.SetStatus({ item: story.key, status: "in-progress", actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
-    await assert.rejects(() => store.SetStatus({ item: story.key, status: "done", actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    await assert.rejects(() => store.SetStatus({ item: story.key, status: "in-progress", actor: AGENT }), (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    await assert.rejects(() => store.SetStatus({ item: story.key, status: "done", actor: AGENT }), (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
 
     // Nem criar item já iniciado/concluído.
-    await assert.rejects(() => store.CreateItem({ project: active.id, type: "task", title: "Já feito", statusKey: "done", actor: AGENT }), (e) => e.code === "AGENT_ACTION_REQUIRES_HUMAN")
+    await assert.rejects(() => store.CreateItem({ project: active.id, type: "task", title: "Já feito", statusKey: "done", actor: AGENT }), (e: any) => e.code === "AGENT_ACTION_REQUIRES_HUMAN")
 
     // Humano/CLI: iniciar/concluir seguem livres (o gate é só p/ agente).
     const byCli = await store.SetStatus({ item: story.key, status: "in-progress", actor: { source: "cli" } })
     assert.equal(byCli.statusKey, "in-progress")
 
     // O gate vira pedido aprovável: aprovar EXECUTA o set-status (executor set-status:work-item).
-    await assert.rejects(() => store.SetStatus({ item: story.key, status: "done", actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
-    const pend = (await store.ListCreationRequests({ status: "pending", type: "work-item", actionName: "set-status" })).find((r) => r.targetId === story.id)
+    await assert.rejects(() => store.SetStatus({ item: story.key, status: "done", actor: AGENT }), (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", type: "work-item", actionName: "set-status" })).find((r: any) => r.targetId === story.id)
     assert.ok(pend)
     await store.ApproveCreation({ request: pend.id, actor: { actorUserId: "human-1", source: "gui" } })
     assert.equal((await store.GetItem({ item: story.key })).statusKey, "done")
 })
 
 test("rejeitar pedido não cria nada", async () => {
-    await assert.rejects(() => store.CreateProject({ name: "Rejeitado", actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
-    const pend = (await store.ListCreationRequests({ status: "pending", type: "project" })).find((r) => r.payload.name === "Rejeitado")
+    await assert.rejects(() => store.CreateProject({ name: "Rejeitado", actor: AGENT }), (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", type: "project" })).find((r: any) => r.payload.name === "Rejeitado")
     const rej = await store.RejectCreation({ request: pend.id, actor: { actorUserId: "human-1", source: "gui" } })
     assert.equal(rej.status, "rejected")
     const list = await store.ListProjects({ includeArchived: true })
-    assert.ok(!list.some((p) => p.slug === "rejeitado"))
+    assert.ok(!list.some((p: any) => p.slug === "rejeitado"))
 })
 
 // ---- Milestones / Sprints / Roadmap ----
@@ -271,7 +271,7 @@ test("cria sprint e filtra itens por milestone", async () => {
     assert.equal(s.status, "planned")
     const rm = await store.Roadmap({ project: "MP" })
     const items = await store.ListItems({ project: "MP", milestone: rm[0].id })
-    assert.ok(items.some((i) => i.key === "MP-2"))
+    assert.ok(items.some((i: any) => i.key === "MP-2"))
 })
 
 // Política de gate: planejar dentro do projeto é livre; remover e mexer na
@@ -287,13 +287,13 @@ test("agente remover milestone é gated; aprovar remove", async () => {
     const m = await store.CreateMilestone({ project: "MP", name: "M a remover", actor: { source: "cli" } })
     await assert.rejects(
         () => store.DeleteMilestone({ milestone: m.id, actor: AGENT }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.type === "milestone" && e.details.actionName === "delete"
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.type === "milestone" && e.details.actionName === "delete"
     )
     const pend = (await store.ListCreationRequests({ status: "pending", type: "milestone", actionName: "delete" }))[0]
     const { result } = await store.ApproveRequest({ request: pend.id, actor: { actorUserId: "h", source: "gui" } })
     assert.equal(result.deleted, true)
     const left = await store.ListMilestones({ project: "MP" })
-    assert.ok(!left.some((x) => x.id === m.id))
+    assert.ok(!left.some((x: any) => x.id === m.id))
 })
 
 test("agente reescrever descrição do projeto é gated; ajuste operacional passa", async () => {
@@ -303,7 +303,7 @@ test("agente reescrever descrição do projeto é gated; ajuste operacional pass
 
     await assert.rejects(
         () => store.UpdateProject({ project: "MP", description: "reescrita pelo agente", actor: AGENT }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.actionName === "update"
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.actionName === "update"
     )
     const pend = (await store.ListCreationRequests({ status: "pending", type: "project", actionName: "update" }))[0]
     const { result } = await store.ApproveRequest({ request: pend.id, actor: { actorUserId: "h", source: "gui" } })
@@ -314,7 +314,7 @@ test("agente mexer em coluna do board é gated (estrutura do fluxo)", async () =
     const boards = await store.ListBoards({ project: "MP" })
     await assert.rejects(
         () => store.AddColumn({ board: boards[0].id, name: "Coluna do Agente", actor: AGENT }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.type === "column"
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.type === "column"
     )
     const pend = (await store.ListCreationRequests({ status: "pending", type: "column" }))[0]
     const { result } = await store.ApproveRequest({ request: pend.id, actor: { actorUserId: "h", source: "gui" } })
@@ -325,7 +325,7 @@ test("agente arquivar projeto é gated", async () => {
     const p = await store.CreateProject({ name: "Arquivavel", keyPrefix: "ARQ", actor: { source: "cli" } })
     await assert.rejects(
         () => store.ArchiveProject({ project: p.id, actor: AGENT }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.actionName === "archive"
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.actionName === "archive"
     )
     const pend = (await store.ListCreationRequests({ status: "pending", actionName: "archive" }))[0]
     const { result } = await store.ApproveRequest({ request: pend.id, actor: { actorUserId: "h", source: "gui" } })
@@ -347,19 +347,19 @@ test("campos de planejamento (horizon/clarity/effort/value/area) + filtros", asy
     assert.equal(idea.horizon, "next")
     assert.equal(idea.area, "CLI")
     const byHorizon = await store.ListItems({ project: "MP", horizon: "next" })
-    assert.ok(byHorizon.some((i) => i.key === idea.key))
+    assert.ok(byHorizon.some((i: any) => i.key === idea.key))
     const byArea = await store.ListItems({ project: "MP", area: "CLI" })
-    assert.ok(byArea.some((i) => i.key === idea.key))
+    assert.ok(byArea.some((i: any) => i.key === idea.key))
 })
 
 test("horizon inválido é rejeitado", async () => {
-    await assert.rejects(() => store.CreateItem({ project: "MP", title: "x", horizon: "zzz" }), (e) => e.code === "VALIDATION_ERROR" && e.details.field === "horizon")
+    await assert.rejects(() => store.CreateItem({ project: "MP", title: "x", horizon: "zzz" }), (e: any) => e.code === "VALIDATION_ERROR" && e.details.field === "horizon")
 })
 
 test("inbox: item horizon=inbox e RoadmapByHorizon agrupa", async () => {
     await store.CreateItem({ project: "MP", title: "Ideia bruta", horizon: "inbox", clarityState: "idea" })
     const buckets = await store.RoadmapByHorizon({ project: "MP" })
-    assert.ok(buckets.inbox.some((i) => i.title === "Ideia bruta"))
+    assert.ok(buckets.inbox.some((i: any) => i.title === "Ideia bruta"))
     assert.ok(buckets.next.length >= 1) // da feature "CLI completa"
 })
 
@@ -381,13 +381,13 @@ test("agente deletar ITEM bloqueia e vira pedido destrutivo pendente", async () 
     const it = await store.CreateItem({ project: "MP", type: "task", title: "A remover pelo agente" })
     await assert.rejects(
         () => store.DeleteItem({ item: it.key, actor: AGENT }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.actionName === "delete" && e.details.type === "item"
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED" && e.details.actionName === "delete" && e.details.type === "item"
     )
     // item NÃO foi deletado
     const still = await store.GetItem({ item: it.key })
     assert.equal(still.id, it.id)
     // pedido pendente carrega actionName/risk/targetId + "quem" + impacto (o QUE)
-    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r: any) => r.targetId === it.id)
     assert.ok(pend)
     assert.equal(pend.risk, "destructive")
     assert.equal(pend.who.provider, "claude")
@@ -398,19 +398,19 @@ test("agente deletar ITEM bloqueia e vira pedido destrutivo pendente", async () 
 
 test("aprovar pedido de delete EXECUTA o soft delete", async () => {
     const it = await store.CreateItem({ project: "MP", type: "task", title: "Delete aprovado" })
-    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
-    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r: any) => r.targetId === it.id)
     const { request, result } = await store.ApproveRequest({ request: pend.id, actor: { actorUserId: "human-1", source: "gui" } })
     assert.equal(request.status, "approved")
     assert.equal(result.deleted, true)
     // item some das consultas (soft delete)
-    await assert.rejects(() => store.GetItem({ item: it.id }), (e) => e.code === "NOT_FOUND")
+    await assert.rejects(() => store.GetItem({ item: it.id }), (e: any) => e.code === "NOT_FOUND")
 })
 
 test("rejeitar delete com motivo preserva o item e grava rejectionReason", async () => {
     const it = await store.CreateItem({ project: "MP", type: "task", title: "Delete rejeitado" })
-    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
-    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r: any) => r.targetId === it.id)
     const rej = await store.RejectRequest({ request: pend.id, reason: "não é para remover", actor: { actorUserId: "human-1", source: "gui" } })
     assert.equal(rej.status, "rejected")
     assert.equal(rej.rejectionReason, "não é para remover")
@@ -424,8 +424,8 @@ test("rejeitar delete com motivo preserva o item e grava rejectionReason", async
 // informação que o gate existe para produzir.
 test("aprovar sem actorUserId credita o usuario-desktop, não system", async () => {
     const it = await store.CreateItem({ project: "MP", type: "task", title: "Aprovado pela GUI" })
-    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
-    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r: any) => r.targetId === it.id)
 
     const { request } = await store.ApproveRequest({ request: pend.id, actor: { source: "api" } })
 
@@ -440,8 +440,8 @@ test("aprovar sem actorUserId credita o usuario-desktop, não system", async () 
 
 test("rejeitar sem actorUserId também credita o usuario-desktop", async () => {
     const it = await store.CreateItem({ project: "MP", type: "task", title: "Rejeitado pela GUI" })
-    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
-    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r: any) => r.targetId === it.id)
 
     const rej = await store.RejectRequest({ request: pend.id, reason: "não", actor: { source: "api" } })
 
@@ -455,8 +455,8 @@ test("rejeitar sem actorUserId também credita o usuario-desktop", async () => {
 // a auditoria tem que continuar dizendo "agent", nunca "desktop".
 test("ator com identidade de agente nunca vira usuario-desktop ao aprovar", async () => {
     const it = await store.CreateItem({ project: "MP", type: "task", title: "Agente aprovando" })
-    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
-    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r: any) => r.targetId === it.id)
 
     await store.ApproveRequest({ request: pend.id, actor: AGENT })
 
@@ -470,16 +470,16 @@ test("ator com identidade de agente nunca vira usuario-desktop ao aprovar", asyn
 test("idempotência: mesmo resumeToken reusa o pedido pendente", async () => {
     const it = await store.CreateItem({ project: "MP", type: "task", title: "Idempotente" })
     const AG = { ...AGENT, resumeToken: "tok-del-1" }
-    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AG }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
-    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AG }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
-    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).filter((r) => r.resumeToken === "tok-del-1")
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AG }), (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AG }), (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).filter((r: any) => r.resumeToken === "tok-del-1")
     assert.equal(pend.length, 1) // não duplicou
 })
 
 test("WaitForApproval retorna assim que o pedido é aprovado", async () => {
     const it = await store.CreateItem({ project: "MP", type: "task", title: "Espera" })
-    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
-    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r: any) => r.targetId === it.id)
     // aprova em paralelo enquanto WaitForApproval faz polling
     const waiting = store.WaitForApproval({ request: pend.id, pollMs: 20 })
     await store.ApproveRequest({ request: pend.id, actor: { actorUserId: "human-1", source: "gui" } })
@@ -490,8 +490,8 @@ test("WaitForApproval retorna assim que o pedido é aprovado", async () => {
 
 test("WaitForApproval respeita timeout quando ninguém decide", async () => {
     const it = await store.CreateItem({ project: "MP", type: "task", title: "Timeout" })
-    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
-    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r) => r.targetId === it.id)
+    await assert.rejects(() => store.DeleteItem({ item: it.key, actor: AGENT }), (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+    const pend = (await store.ListCreationRequests({ status: "pending", actionName: "delete" })).find((r: any) => r.targetId === it.id)
     const final = await store.WaitForApproval({ request: pend.id, timeoutMs: 50, pollMs: 20 })
     assert.equal(final.timedOut, true)
     assert.equal(final.status, "pending")
@@ -503,7 +503,7 @@ test("shortDescription é persistido e validado (<=240)", async () => {
     assert.equal(p.shortDescription, "Uma linha curta.")
     await assert.rejects(
         () => store.CreateProject({ name: "Longo", shortDescription: "x".repeat(241) }),
-        (e) => e.code === "VALIDATION_ERROR" && e.details.field === "shortDescription"
+        (e: any) => e.code === "VALIDATION_ERROR" && e.details.field === "shortDescription"
     )
     // nunca grava fallback derivado da description
     const p2 = await store.CreateProject({ name: "Sem curta", description: "descrição longa" })
@@ -524,13 +524,13 @@ test("nota de atividade sem autor é atribuída ao usuario-desktop", async () =>
     assert.equal(note.authorUserId, desktop.id)
     assert.equal(note.scopeType, "item")
     const notes = await store.ListActivityNotes({ item: "MP-1" })
-    assert.ok(notes.some((n) => n.body === "Revisei isso à mão."))
+    assert.ok(notes.some((n: any) => n.body === "Revisei isso à mão."))
 })
 
 test("nota de projeto aparece na listagem do projeto", async () => {
     await store.AddActivityNote({ project: "MP", text: "Nota de projeto" })
     const notes = await store.ListActivityNotes({ project: "MP" })
-    assert.ok(notes.some((n) => n.body === "Nota de projeto"))
+    assert.ok(notes.some((n: any) => n.body === "Nota de projeto"))
 })
 
 test("GetActivityContext devolve notas + auditoria do escopo", async () => {
@@ -542,7 +542,7 @@ test("GetActivityContext devolve notas + auditoria do escopo", async () => {
 test("consulta global de atividade por AGENTE sem permissão => FORBIDDEN", async () => {
     await assert.rejects(
         () => store.ListActivity({ actor: AGENT }),
-        (e) => e.code === "FORBIDDEN" && e.details.permission === "activity:read:all_projects"
+        (e: any) => e.code === "FORBIDDEN" && e.details.permission === "activity:read:all_projects"
     )
     // humano (sem session) passa livre
     const all = await store.ListActivity({ actor: { source: "gui" } })
@@ -562,7 +562,7 @@ test("permissão inválida é rejeitada", async () => {
     const d = await store.EnsureDesktopUser()
     await assert.rejects(
         () => store.SetUserPermissions({ user: d.id, permissions: ["nao:existe"] }),
-        (e) => e.code === "VALIDATION_ERROR"
+        (e: any) => e.code === "VALIDATION_ERROR"
     )
 })
 
@@ -573,7 +573,7 @@ test("auditoria grava diff antes→depois e identidade do ator", async () => {
     const it = await store.CreateItem({ project: active.id, type: "task", title: "Diff" })
     await store.SetStatus({ item: it.key, status: "review", actor: AGENT })
     const events = await store.ListActivity({ projectId: active.id, entityType: "work-item", entityId: it.id })
-    const ev = events.find((e) => e.action === "set-status")
+    const ev = events.find((e: any) => e.action === "set-status")
     assert.ok(ev)
     assert.equal(ev.before.statusKey, "backlog")
     assert.equal(ev.after.statusKey, "review")
@@ -584,11 +584,11 @@ test("auditoria grava diff antes→depois e identidade do ator", async () => {
 
 test("filtros de auditoria: por ação, actorType e provider", async () => {
     const byAction = await store.ListActivity({ action: "set-status", actor: { source: "gui" } })
-    assert.ok(byAction.every((e) => e.action === "set-status"))
+    assert.ok(byAction.every((e: any) => e.action === "set-status"))
     const byAgent = await store.ListActivity({ actorType: "agent", actor: { source: "gui" } })
-    assert.ok(byAgent.every((e) => e.actorType === "agent"))
+    assert.ok(byAgent.every((e: any) => e.actorType === "agent"))
     const byProvider = await store.ListActivity({ provider: "claude", actor: { source: "gui" } })
-    assert.ok(byProvider.every((e) => e.provider === "claude"))
+    assert.ok(byProvider.every((e: any) => e.provider === "claude"))
 })
 
 test("GetAuditEvent devolve o evento hidratado", async () => {
@@ -611,8 +611,8 @@ test("#1 setDefault mantém board.isDefault coerente com project.defaultBoardId"
     const b2 = await store.CreateBoard({ project: p.id, name: "B2", setDefault: true })
     assert.equal(b2.isDefault, true)
     const boards = await store.ListBoards({ project: p.id })
-    assert.equal(boards.filter((b) => b.isDefault).length, 1)              // só um padrão
-    assert.equal(boards.find((b) => b.isDefault).id, b2.id)
+    assert.equal(boards.filter((b: any) => b.isDefault).length, 1)              // só um padrão
+    assert.equal(boards.find((b: any) => b.isDefault).id, b2.id)
     assert.equal((await store.GetProject({ project: p.id })).defaultBoardId, b2.id)
     // SetDefaultBoard volta para o B1
     await store.SetDefaultBoard({ board: b1.id })
@@ -628,11 +628,11 @@ test("#2 auditoria grava diff em assign/block/move/convert/board-update", async 
     await store.ConvertItem({ item: it.id, type: "bug" })
     const evs = await store.ListActivity({ projectId: it.projectId, entityType: "work-item", entityId: it.id, actor: { source: "gui" } })
     for(const action of ["assign", "block", "convert"]){
-        const e = evs.find((x) => x.action === action)
+        const e = evs.find((x: any) => x.action === action)
         assert.ok(e, `faltou evento ${action}`)
         assert.ok(e.before && e.after, `${action} sem diff`)
     }
-    const assign = evs.find((x) => x.action === "assign")
+    const assign = evs.find((x: any) => x.action === "assign")
     assert.equal(assign.after.assigneeUserId, u.id)
 })
 
@@ -641,7 +641,7 @@ test("#3 add link attachment aceita file:// e rejeita esquema desconhecido", asy
     assert.equal(att.externalUrl, "file:///tmp/build.log")
     await assert.rejects(
         () => store.AddLinkAttachment({ item: "MP-1", url: "javascript:alert(1)" }),
-        (e) => e.code === "VALIDATION_ERROR" && e.details.allowed.includes("file")
+        (e: any) => e.code === "VALIDATION_ERROR" && e.details.allowed.includes("file")
     )
 })
 
@@ -675,11 +675,11 @@ test("#5 AssignItemPlanning vincula item a milestone e sprint (totalItems reflet
 test("#6 keyPrefix inválido erra com sugestão, em vez de truncar em silêncio", async () => {
     await assert.rejects(
         () => store.CreateProject({ name: "A", keyPrefix: "MUITOLONGO" }),
-        (e) => e.code === "VALIDATION_ERROR" && e.details.max === 5 && e.details.suggestion === "MUITO"
+        (e: any) => e.code === "VALIDATION_ERROR" && e.details.max === 5 && e.details.suggestion === "MUITO"
     )
     await assert.rejects(
         () => store.CreateProject({ name: "B", keyPrefix: "MP-M" }),
-        (e) => e.code === "VALIDATION_ERROR" && e.details.suggestion === "MPM"
+        (e: any) => e.code === "VALIDATION_ERROR" && e.details.suggestion === "MPM"
     )
     // prefixo válido passa; derivado do nome continua sendo cortado sem erro
     assert.equal((await store.CreateProject({ name: "C", keyPrefix: "ABCDE" })).keyPrefix, "ABCDE")
@@ -692,18 +692,18 @@ test("#7 LinkItem só aceita as relações reais do domínio", async () => {
     await store.LinkItem({ item: a.id, relation: "depends", target: b.id })
     await assert.rejects(
         () => store.LinkItem({ item: a.id, relation: "depends-on", target: b.id }),
-        (e) => e.code === "VALIDATION_ERROR" && e.details.allowed.includes("depends")
+        (e: any) => e.code === "VALIDATION_ERROR" && e.details.allowed.includes("depends")
     )
 })
 
 test("histórico de pedidos: status=all, filtro por agente e por sessão", async () => {
     const all = await store.ListCreationRequests({ status: "all" })
     assert.ok(all.length >= 3)
-    assert.ok(all.some((r) => r.status !== "pending"))   // inclui aprovados/rejeitados
+    assert.ok(all.some((r: any) => r.status !== "pending"))   // inclui aprovados/rejeitados
     const sessions = await store.ListSessions({})
     const sid = sessions[0].id
     const bySession = await store.ListCreationRequests({ status: "all", session: sid })
-    assert.ok(bySession.every((r) => r.agentSessionId === sid))
+    assert.ok(bySession.every((r: any) => r.agentSessionId === sid))
     const byAgent = await store.ListCreationRequests({ status: "all", agent: sessions[0].agentUserId })
     assert.ok(byAgent.length >= bySession.length)
 })
@@ -727,7 +727,7 @@ test("feedback nasce aberto, guarda ONDE foi dado e espelha um comentário no it
     assert.equal(fb.excerpt, "texto antigo")
 
     const comments = await store.ListComments({ item: it.id })
-    assert.ok(comments.some((c) => c.body.indexOf("Feedback para o agente") >= 0))
+    assert.ok(comments.some((c: any) => c.body.indexOf("Feedback para o agente") >= 0))
 })
 
 test("claim é exclusivo: o segundo agente recebe CONFLICT", async () => {
@@ -740,11 +740,11 @@ test("claim é exclusivo: o segundo agente recebe CONFLICT", async () => {
 
     await assert.rejects(
         () => store.ClaimFeedback({ feedback: fb.id, actor: AGENT_B }),
-        (e) => e.code === "CONFLICT"
+        (e: any) => e.code === "CONFLICT"
     )
     // e some da fila de "open" enquanto o claim está vivo
     const open = await store.ListFeedback({ project: "MP", status: "open" })
-    assert.ok(!open.some((f) => f.id === fb.id))
+    assert.ok(!open.some((f: any) => f.id === fb.id))
 })
 
 test("claim vencido volta para a fila e outro agente assume", async () => {
@@ -755,7 +755,7 @@ test("claim vencido volta para a fila e outro agente assume", async () => {
     await store.ClaimFeedback({ feedback: fb.id, ttlSeconds: -1, actor: AGENT_A })
 
     const open = await store.ListFeedback({ project: "MP", status: "open" })
-    assert.ok(open.some((f) => f.id === fb.id), "feedback com claim vencido deve voltar para a fila")
+    assert.ok(open.some((f: any) => f.id === fb.id), "feedback com claim vencido deve voltar para a fila")
 
     const retaken = await store.ClaimFeedback({ feedback: fb.id, actor: AGENT_B })
     assert.equal(retaken.claimedByProvider, "codex")
@@ -775,7 +775,7 @@ test("o próprio dono renova o claim vivo; outro agente ainda recebe CONFLICT", 
     // enquanto o claim de A está vivo, B continua barrado
     await assert.rejects(
         () => store.ClaimFeedback({ feedback: fb.id, actor: AGENT_B }),
-        (e) => e.code === "CONFLICT"
+        (e: any) => e.code === "CONFLICT"
     )
 })
 
@@ -786,20 +786,20 @@ test("resolver exige claim vivo e do próprio agente", async () => {
     // sem claim, o agente não resolve
     await assert.rejects(
         () => store.ResolveFeedback({ feedback: fb.id, actor: AGENT_A }),
-        (e) => e.code === "CONFLICT"
+        (e: any) => e.code === "CONFLICT"
     )
     await store.ClaimFeedback({ feedback: fb.id, actor: AGENT_A })
     // outro agente também não
     await assert.rejects(
         () => store.ResolveFeedback({ feedback: fb.id, actor: AGENT_B }),
-        (e) => e.code === "CONFLICT"
+        (e: any) => e.code === "CONFLICT"
     )
     const done = await store.ResolveFeedback({ feedback: fb.id, note: "reescrito", actor: AGENT_A })
     assert.equal(done.status, "resolved")
 
     // resolvido some da fila
     const open = await store.ListFeedback({ project: "MP", status: "open" })
-    assert.ok(!open.some((f) => f.id === fb.id))
+    assert.ok(!open.some((f: any) => f.id === fb.id))
 })
 
 test("humano descarta e reabre; agente devolve com release", async () => {
@@ -812,7 +812,7 @@ test("humano descarta e reabre; agente devolve com release", async () => {
 
     const dismissed = await store.DismissFeedback({ feedback: fb.id, reason: "não quero mais", actor: { source: "gui" } })
     assert.equal(dismissed.status, "dismissed")
-    await assert.rejects(() => store.ClaimFeedback({ feedback: fb.id, actor: AGENT_A }), (e) => e.code === "CONFLICT")
+    await assert.rejects(() => store.ClaimFeedback({ feedback: fb.id, actor: AGENT_A }), (e: any) => e.code === "CONFLICT")
 
     const reopened = await store.ReopenFeedback({ feedback: fb.id, actor: { source: "gui" } })
     assert.equal(reopened.status, "open")
@@ -841,7 +841,7 @@ test("feedback filtra por item e por janela de tempo", async () => {
 //
 // O catálogo vem do disco; os testes montam um repositório de mentira e apontam
 // o ecosystemDataPath para ele — nada depende da máquina de quem roda.
-const fsx = require("fs")
+const fsx = require("fs") as typeof import("fs")
 
 const makeFakeEcosystem = () => {
     const root = path.join(TMP, "eco")
@@ -865,7 +865,7 @@ const makeFakeEcosystem = () => {
     return root
 }
 
-let ecoStore
+let ecoStore: any
 test("indexa os pacotes do disco, ignorando contêineres e node_modules", async () => {
     const ecosystemDataPath = makeFakeEcosystem()
     ecoStore = InitializeProjectStore({
@@ -879,18 +879,18 @@ test("indexa os pacotes do disco, ignorando contêineres e node_modules", async 
     assert.equal(result.indexed, 3)
 
     const all = await ecoStore.ListEcosystemPackages({})
-    const names = all.map((p) => p.packageName).sort()
+    const names = all.map((p: any) => p.packageName).sort()
     assert.deepEqual(names, ["demo.lib", "demo.webgui", "solo.cli"])
 
     // hierarquia decomposta, com e sem grupo
-    const webgui = all.find((p) => p.packageName === "demo.webgui")
+    const webgui = all.find((p: any) => p.packageName === "demo.webgui")
     assert.equal(webgui.moduleName, "Apps.Module")
     assert.equal(webgui.layerName, "Productivity.layer")
     assert.equal(webgui.groupName, "Demo.group")
     assert.equal(webgui.packageType, "webgui")
     assert.equal(webgui.repositoryName, "FakeRepo")
 
-    const solo = all.find((p) => p.packageName === "solo.cli")
+    const solo = all.find((p: any) => p.packageName === "solo.cli")
     assert.equal(solo.groupName, null)
 })
 
@@ -902,10 +902,10 @@ test("um pacote que some do disco fica ausente, não é apagado", async () => {
     assert.equal(result.markedMissing, 1)
 
     const visible = await ecoStore.ListEcosystemPackages({})
-    assert.ok(!visible.some((p) => p.packageName === "solo.cli"))
+    assert.ok(!visible.some((p: any) => p.packageName === "solo.cli"))
 
     const withMissing = await ecoStore.ListEcosystemPackages({ includeMissing: true })
-    assert.ok(withMissing.some((p) => p.packageName === "solo.cli"))
+    assert.ok(withMissing.some((p: any) => p.packageName === "solo.cli"))
 })
 
 test("um item toca VÁRIOS pacotes, e dá para filtrar itens por pacote", async () => {
@@ -920,8 +920,8 @@ test("um item toca VÁRIOS pacotes, e dá para filtrar itens por pacote", async 
 
     const full = await ecoStore.GetItem({ item: it.key })
     assert.equal(full.packages.length, 2)
-    assert.equal(full.packages.find((x) => x.packageName === "demo.webgui").role, "primary")
-    assert.equal(full.packages.find((x) => x.packageName === "demo.lib").role, "touched")
+    assert.equal(full.packages.find((x: any) => x.packageName === "demo.webgui").role, "primary")
+    assert.equal(full.packages.find((x: any) => x.packageName === "demo.lib").role, "touched")
 
     // filtro: o que está aberto neste pacote?
     const byPackage = await ecoStore.ListItems({ project: p.id, package: "demo.lib" })
@@ -936,12 +936,12 @@ test("vincular pacote inexistente falha; nome ambíguo pede o ref completo", asy
     const p = await ecoStore.ListItems({ limit: 1 })
     await assert.rejects(
         () => ecoStore.AddItemPackage({ item: p[0].key, package: "nao-existe.lib" }),
-        (e) => e.code === "NOT_FOUND"
+        (e: any) => e.code === "NOT_FOUND"
     )
     // "demo" casa com demo.webgui e demo.lib
     await assert.rejects(
         () => ecoStore.AddItemPackage({ item: p[0].key, package: "demo" }),
-        (e) => e.code === "VALIDATION_ERROR" && e.details.candidates.length === 2
+        (e: any) => e.code === "VALIDATION_ERROR" && e.details.candidates.length === 2
     )
 })
 
@@ -995,12 +995,12 @@ test("item concluído não continua bloqueado (limpa blockedReason + some de 'Re
     const b = await store.SetBlocked({ item: it.key, reason: "aguarda X" })
     assert.equal(b.statusKey, "blocked")
     assert.equal(b.blockedReason, "aguarda X")
-    assert.ok((await store.Blocked({ project: "meta-platform" })).some((x) => x.id === it.id))
+    assert.ok((await store.Blocked({ project: "meta-platform" })).some((x: any) => x.id === it.id))
     assert.ok((await store.ProjectMetrics({ project: "meta-platform" })).blocked >= 1)
     const done = await store.SetStatus({ item: it.key, status: "done" })
     assert.equal(done.statusKey, "done")
     assert.equal(done.blockedReason, null)
-    assert.ok(!(await store.Blocked({ project: "meta-platform" })).some((x) => x.id === it.id))
+    assert.ok(!(await store.Blocked({ project: "meta-platform" })).some((x: any) => x.id === it.id))
 })
 
 test("desbloquear: SetBlocked com motivo vazio limpa e sai da coluna blocked", async () => {
@@ -1020,7 +1020,7 @@ test("documentação: árvore (páginas + sub-páginas), update, move sem ciclo,
     // Lista traz todas planas; a árvore é montada por parentId.
     const list = await store.ListDocPages({ project: proj.id })
     assert.equal(list.length, 3)
-    assert.equal(list.filter((p) => p.parentId === raiz.id).length, 1)
+    assert.equal(list.filter((p: any) => p.parentId === raiz.id).length, 1)
     assert.equal((await store.GetDocPage({ docPage: raiz.id })).body, "# Guia")
 
     // Update do corpo.
@@ -1029,7 +1029,7 @@ test("documentação: árvore (páginas + sub-páginas), update, move sem ciclo,
     assert.equal(upd.title, "Instalação e setup")
 
     // Move: raiz não pode virar filha de sua própria neta (ciclo).
-    await assert.rejects(() => store.MoveDocPage({ docPage: raiz.id, parentId: neta.id }), (e) => e.code === "VALIDATION_ERROR")
+    await assert.rejects(() => store.MoveDocPage({ docPage: raiz.id, parentId: neta.id }), (e: any) => e.code === "VALIDATION_ERROR")
     // Move válido: sub vira raiz.
     const moved = await store.MoveDocPage({ docPage: sub.id, parentId: "none" })
     assert.equal(moved.parentId, null)
@@ -1046,7 +1046,7 @@ test("documentação em projeto arquivado é somente leitura", async () => {
     const proj = await store.CreateProject({ name: "Doc RO", actor: { source: "cli" } })
     const page = await store.CreateDocPage({ project: proj.id, title: "Nota", actor: { source: "cli" } })
     await store.ArchiveProject({ project: proj.id, actor: { source: "cli" } })
-    const archived = (e) => e.code === "PROJECT_ARCHIVED"
+    const archived = (e: any) => e.code === "PROJECT_ARCHIVED"
     await assert.rejects(() => store.CreateDocPage({ project: proj.id, title: "X" }), archived)
     await assert.rejects(() => store.UpdateDocPage({ docPage: page.id, body: "y" }), archived)
     await assert.rejects(() => store.MoveDocPage({ docPage: page.id, order: 2 }), archived)
@@ -1065,7 +1065,7 @@ test("projeto arquivado é somente leitura: escritas rejeitadas, leituras libera
 
     await store.ArchiveProject({ project: proj.id, actor: { source: "cli" } })
 
-    const archived = (e) => e.code === "PROJECT_ARCHIVED"
+    const archived = (e: any) => e.code === "PROJECT_ARCHIVED"
     // Escritas em vários stores devem falhar com PROJECT_ARCHIVED.
     await assert.rejects(() => store.UpdateItem({ item: item.id, title: "novo" }), archived)
     await assert.rejects(() => store.SetStatus({ item: item.id, status: "done" }), archived)
@@ -1110,7 +1110,7 @@ test("anexo de página: upload/link/list/read, remove e cascata ao apagar a pág
     // Link (http/https/file) — validação de esquema.
     const link = await store.AddDocPageLinkAttachment({ docPage: page.id, url: "https://example.com/spec", name: "spec", actor: { source: "cli" } })
     assert.equal(link.type, "link")
-    await assert.rejects(() => store.AddDocPageLinkAttachment({ docPage: page.id, url: "javascript:alert(1)" }), (e) => e.code === "VALIDATION_ERROR")
+    await assert.rejects(() => store.AddDocPageLinkAttachment({ docPage: page.id, url: "javascript:alert(1)" }), (e: any) => e.code === "VALIDATION_ERROR")
 
     // List traz os dois.
     assert.equal((await store.ListDocPageAttachments({ docPage: page.id })).length, 2)
@@ -1118,7 +1118,7 @@ test("anexo de página: upload/link/list/read, remove e cascata ao apagar a pág
     // Read devolve o conteúdo original (não vale para link).
     const read = await store.ReadDocPageAttachment({ attachment: att.id })
     assert.ok(read.buffer.equals(svg))
-    await assert.rejects(() => store.ReadDocPageAttachment({ attachment: link.id }), (e) => e.code === "VALIDATION_ERROR")
+    await assert.rejects(() => store.ReadDocPageAttachment({ attachment: link.id }), (e: any) => e.code === "VALIDATION_ERROR")
 
     // A sub-página tem o próprio anexo.
     const subAtt = await store.AddDocPageBufferAttachment({ docPage: sub.id, name: "s.txt", base64: Buffer.from("hi").toString("base64"), actor: { source: "cli" } })
@@ -1142,7 +1142,7 @@ test("anexo de página em projeto arquivado é somente leitura", async () => {
     const att = await store.AddDocPageBufferAttachment({ docPage: page.id, name: "a.txt", base64: Buffer.from("x").toString("base64"), actor: { source: "cli" } })
 
     await store.ArchiveProject({ project: proj.id, actor: { source: "cli" } })
-    const archived = (e) => e.code === "PROJECT_ARCHIVED"
+    const archived = (e: any) => e.code === "PROJECT_ARCHIVED"
     await assert.rejects(() => store.AddDocPageBufferAttachment({ docPage: page.id, name: "b.txt", base64: Buffer.from("y").toString("base64") }), archived)
     await assert.rejects(() => store.AddDocPageLinkAttachment({ docPage: page.id, url: "https://x.dev" }), archived)
     await assert.rejects(() => store.RemoveDocPageAttachment({ attachment: att.id, actor: { source: "cli" } }), archived)
@@ -1212,7 +1212,7 @@ test("trava de planejamento (flag do MCP): TODA escrita em projeto 'planning' é
     // vive no AssertProjectWritable, no topo de toda escrita.
     const mcp = InitializeProjectStore({ storage: DB, attachmentsDirPath: ATT, agentPlanningLock: true, onEvent: () => {} })
     await mcp.ConnectAndSync()
-    const planning = (e) => e.code === "PROJECT_IN_PLANNING"
+    const planning = (e: any) => e.code === "PROJECT_IN_PLANNING"
     await assert.rejects(() => mcp.CreateItem({ project: proj.id, type: "task", title: "X" }), planning)
     await assert.rejects(() => mcp.UpdateItem({ item: item.id, title: "novo" }), planning)
     await assert.rejects(() => mcp.SetStatus({ item: item.id, status: "ready" }), planning)
@@ -1250,11 +1250,11 @@ test("MPMX2-7/8 item aceita shortDescription, effort e confidence; shortDescript
     // O limite é o MESMO de projeto/board/entrega (240).
     await assert.rejects(
         () => store.CreateItem({ project: p.id, type: "task", title: "Longo", shortDescription: "x".repeat(241) }),
-        (e) => e.code === "VALIDATION_ERROR" && e.details.field === "shortDescription")
+        (e: any) => e.code === "VALIDATION_ERROR" && e.details.field === "shortDescription")
     // Confiança fora da escala não passa em silêncio.
     await assert.rejects(
         () => store.CreateItem({ project: p.id, type: "task", title: "Conf", confidence: "talvez" }),
-        (e) => e.code === "VALIDATION_ERROR")
+        (e: any) => e.code === "VALIDATION_ERROR")
 })
 
 test("MPMX2-3 labels são normalizados, filtráveis e viram vocabulário do projeto", async () => {
@@ -1271,7 +1271,7 @@ test("MPMX2-3 labels são normalizados, filtráveis e viram vocabulário do proj
     assert.equal(senior[0].key, a.key)
 
     const vocab = await store.ListProjectLabels({ project: p.id })
-    const trilha = vocab.find((l) => l.label === "trilha:iam")
+    const trilha = vocab.find((l: any) => l.label === "trilha:iam")
     assert.equal(trilha.count, 2)
     // o mais usado vem primeiro
     assert.equal(vocab[0].label, "trilha:iam")
@@ -1344,10 +1344,10 @@ test("MPMX2-9 risco ↔ item: vínculo navegável dos dois lados", async () => {
     assert.equal((await store.ListRiskItems({ risk: risk.id })).length, 1)
 
     // relação inválida e projeto cruzado são recusados
-    await assert.rejects(() => store.LinkRiskItem({ risk: risk.id, item: item.key, relation: "cura" }), (e) => e.code === "VALIDATION_ERROR")
+    await assert.rejects(() => store.LinkRiskItem({ risk: risk.id, item: item.key, relation: "cura" }), (e: any) => e.code === "VALIDATION_ERROR")
     const outro = await store.CreateProject({ name: "MPMX2 Outro", keyPrefix: "X2E", actor: { source: "cli" } })
     const alheio = await store.CreateItem({ project: outro.id, type: "task", title: "de outro projeto" })
-    await assert.rejects(() => store.LinkRiskItem({ risk: risk.id, item: alheio.key }), (e) => e.code === "VALIDATION_ERROR")
+    await assert.rejects(() => store.LinkRiskItem({ risk: risk.id, item: alheio.key }), (e: any) => e.code === "VALIDATION_ERROR")
 
     assert.equal((await store.UnlinkRiskItem({ risk: risk.id, item: item.key })).removed, 1)
     assert.equal((await store.GetItem({ item: item.key })).risks.length, 0)
@@ -1364,28 +1364,28 @@ test("MPMX2-10 dependência entre entregas: ciclo recusado, roadmap topológico,
     await store.LinkMilestones({ milestone: f1.id, relation: "blocks", target: f3.id })   // F3 precisa de F1
 
     // ciclo direto e indireto
-    await assert.rejects(() => store.LinkMilestones({ milestone: f1.id, relation: "depends", target: f2.id }), (e) => e.code === "VALIDATION_ERROR")
-    await assert.rejects(() => store.LinkMilestones({ milestone: f1.id, relation: "depends", target: f1.id }), (e) => e.code === "VALIDATION_ERROR")
+    await assert.rejects(() => store.LinkMilestones({ milestone: f1.id, relation: "depends", target: f2.id }), (e: any) => e.code === "VALIDATION_ERROR")
+    await assert.rejects(() => store.LinkMilestones({ milestone: f1.id, relation: "depends", target: f1.id }), (e: any) => e.code === "VALIDATION_ERROR")
 
     const roadmap = await store.Roadmap({ project: p.id })
-    const ordem = roadmap.map((m) => m.name)
+    const ordem = roadmap.map((m: any) => m.name)
     assert.ok(ordem.indexOf("F1") < ordem.indexOf("F2"), "F1 precisa vir antes de F2")
     assert.ok(ordem.indexOf("F1") < ordem.indexOf("F3"), "F1 precisa vir antes de F3")
 
     const lista = await store.ListMilestones({ project: p.id })
-    const dF2 = lista.find((m) => m.name === "F2")
-    assert.deepEqual(dF2.dependsOn.map((d) => d.name), ["F1"])
+    const dF2 = lista.find((m: any) => m.name === "F2")
+    assert.deepEqual(dF2.dependsOn.map((d: any) => d.name), ["F1"])
     assert.equal(dF2.dependenciesMet, false)
     assert.deepEqual(dF2.pendingDependencies, ["F1"])
-    assert.deepEqual(lista.find((m) => m.name === "F1").blocks.map((d) => d.name).sort(), ["F2", "F3"])
+    assert.deepEqual(lista.find((m: any) => m.name === "F1").blocks.map((d: any) => d.name).sort(), ["F2", "F3"])
 
     // entregue a F1, as dependentes ficam liberadas
     await store.UpdateMilestone({ milestone: f1.id, status: "released" })
-    assert.equal((await store.ListMilestones({ project: p.id })).find((m) => m.name === "F2").dependenciesMet, true)
+    assert.equal((await store.ListMilestones({ project: p.id })).find((m: any) => m.name === "F2").dependenciesMet, true)
 
     // remover a entrega leva as arestas junto
     await store.DeleteMilestone({ milestone: f3.id, actor: { source: "cli" } })
-    assert.deepEqual((await store.ListMilestones({ project: p.id })).find((m) => m.name === "F1").blocks.map((d) => d.name), ["F2"])
+    assert.deepEqual((await store.ListMilestones({ project: p.id })).find((m: any) => m.name === "F1").blocks.map((d: any) => d.name), ["F2"])
 })
 
 test("MPMX2-8 entrega agrega esforço e confiança (capacidade, não só contagem)", async () => {
@@ -1425,7 +1425,7 @@ test("MPMX2-11 report_ready: só o desimpedido, ordenado por quanto destrava", a
     await store.LinkItem({ item: base.id, relation: "blocks", target: outra.id })
 
     let pronto = await store.Ready({ project: p.id })
-    let keys = pronto.map((i) => i.key)
+    let keys = pronto.map((i: any) => i.key)
     assert.ok(!keys.includes(dependente.key), "quem depende de item aberto não está pronto")
     assert.ok(!keys.includes(outra.key), "quem é bloqueado por item aberto não está pronto")
     assert.ok(!keys.includes(travada.key), "item bloqueado não está pronto")
@@ -1437,7 +1437,7 @@ test("MPMX2-11 report_ready: só o desimpedido, ordenado por quanto destrava", a
 
     // concluída a fundação, as duas dependentes entram
     await store.SetStatus({ item: base.id, status: "done", actor: { source: "cli" } })
-    keys = (await store.Ready({ project: p.id })).map((i) => i.key)
+    keys = (await store.Ready({ project: p.id })).map((i: any) => i.key)
     assert.ok(keys.includes(dependente.key) && keys.includes(outra.key))
 })
 
@@ -1450,7 +1450,7 @@ test("MPMX2-11 report_ready enxerga dependência que CRUZA projetos", async () =
 
     assert.equal((await store.Ready({ project: a.id })).length, 0, "dependência externa aberta não pode ser ignorada")
     await store.SetStatus({ item: externo.id, status: "done", actor: { source: "cli" } })
-    assert.deepEqual((await store.Ready({ project: a.id })).map((i) => i.key), [nosso.key])
+    assert.deepEqual((await store.Ready({ project: a.id })).map((i: any) => i.key), [nosso.key])
 })
 
 test("MPMX2-11 report_ready respeita a dependência entre entregas", async () => {
@@ -1461,7 +1461,7 @@ test("MPMX2-11 report_ready respeita a dependência entre entregas", async () =>
     const naFase1 = await store.CreateItem({ project: p.id, type: "task", title: "na fase 1", milestoneId: f1.id })
     const naFase2 = await store.CreateItem({ project: p.id, type: "task", title: "na fase 2", milestoneId: f2.id })
 
-    const keys = (await store.Ready({ project: p.id })).map((i) => i.key)
+    const keys = (await store.Ready({ project: p.id })).map((i: any) => i.key)
     assert.ok(keys.includes(naFase1.key))
     assert.ok(!keys.includes(naFase2.key), "item de entrega travada não está pronto")
 })
@@ -1514,7 +1514,7 @@ test("MPMX2-6 política de gate é a fonte única: criar entrega é livre, remov
     assert.ok(s.id)
     // remover, sim
     await assert.rejects(() => store.DeleteMilestone({ milestone: m.id, actor: agente }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
 })
 
 test("MPMX2-16 estado do índice de pacotes é leitura pura e diz o que falta indexar", async () => {
@@ -1556,7 +1556,7 @@ test("MPMX3-4 trava de planejamento libera SÓ a mudança de status do projeto",
 
     const mcp = InitializeProjectStore({ storage: DB, attachmentsDirPath: ATT, agentPlanningLock: true, onEvent: () => {} })
     await mcp.ConnectAndSync()
-    const planning = (e) => e.code === "PROJECT_IN_PLANNING"
+    const planning = (e: any) => e.code === "PROJECT_IN_PLANNING"
 
     // Só-status passa (é o que destrava o projeto).
     const ativo = await mcp.UpdateProject({ project: proj.id, status: "active", actor: { source: "cli" } })
@@ -1577,7 +1577,7 @@ test("MPMX3-7 pedido de aprovação descreve o alvo pelo nome e o de-para da aç
 
     // Iniciar tarefa por agente = pedido pendente.
     await assert.rejects(() => store.SetStatus({ item: item.id, status: "in-progress", actor: agente }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
 
     const [pedido] = await store.ListCreationRequests({ actionName: "set-status", status: "pending" })
     assert.ok(pedido.subject, "todo pedido com alvo traz o assunto")
@@ -1591,7 +1591,7 @@ test("MPMX3-7 pedido de aprovação descreve o alvo pelo nome e o de-para da aç
 
     // Ação sem payload (arquivar projeto) também tem de-para.
     await assert.rejects(() => store.ArchiveProject({ project: p.id, actor: agente }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
     const [arquivar] = await store.ListCreationRequests({ actionName: "archive", status: "pending" })
     assert.equal(arquivar.subject.label, "GTL · Gate Legível")
     assert.deepEqual(arquivar.subject.changes, [{ field: "status", from: "active", to: "archived" }])
@@ -1617,11 +1617,11 @@ test("MPME-6/7 ExecutionOverview separa em execução, fila, bloqueado e conclu�
 
     const view = await store.ExecutionOverview({ project: p.id })
     assert.equal(view.round.id, rodada.id, "usa a rodada ativa como recorte")
-    assert.deepEqual(view.now.map((i) => i.id), [emCurso.id])
-    assert.deepEqual(view.blocked.map((i) => i.id), [travado.id])
-    assert.deepEqual(view.doneInRound.map((i) => i.id), [pronto.id])
+    assert.deepEqual(view.now.map((i: any) => i.id), [emCurso.id])
+    assert.deepEqual(view.blocked.map((i: any) => i.id), [travado.id])
+    assert.deepEqual(view.doneInRound.map((i: any) => i.id), [pronto.id])
     // Na fila entra o que está livre; o que depende de item aberto NÃO entra.
-    const filaIds = view.queue.map((i) => i.id)
+    const filaIds = view.queue.map((i: any) => i.id)
     assert.ok(filaIds.includes(naFila.id), "item sem dependência está na fila")
     assert.ok(!filaIds.includes(dependente.id), "item que depende de aberto fica fora da fila")
     assert.ok(!filaIds.includes(travado.id), "bloqueado fica fora da fila")
@@ -1641,8 +1641,8 @@ test("MPME-13 ItemTimeline reconstrói início e fim reais do audit log", async 
 
     const timeline = await store.ItemTimeline({ project: p.id })
     assert.equal(timeline.hasData, true)
-    const byId = {}
-    timeline.items.forEach((i) => { byId[i.id] = i })
+    const byId: Record<string, any> = {}
+    timeline.items.forEach((i: any) => { byId[i.id] = i })
 
     assert.ok(byId[feito.id].actualStart, "concluído tem início real")
     assert.ok(byId[feito.id].actualEnd, "concluído tem fim real")
@@ -1711,7 +1711,7 @@ test("MPME-28/29 sessão nova entra pendente, só lê, declara identidade e é l
 
     // 1. A entrada nasce pendente e a escrita é recusada.
     await assert.rejects(() => mcp.AssertSessionApproved({ actor: agente, action: "create_item" }),
-        (e) => e.code === "AGENT_SESSION_PENDING_APPROVAL")
+        (e: any) => e.code === "AGENT_SESSION_PENDING_APPROVAL")
 
     // 2. Leitura continua livre (é o que o agente deve fazer enquanto espera).
     assert.ok((await mcp.GetProject({ project: projeto.id })).id)
@@ -1736,11 +1736,11 @@ test("MPME-28/29 sessão nova entra pendente, só lê, declara identidade e é l
     // 6. Sessão recusada não escreve mais.
     const outro = { source: "agent", session: { provider: "codex", model: "gpt-6", traceId: "sessao-nova-2" } }
     await assert.rejects(() => mcp.AssertSessionApproved({ actor: outro, action: "create_item" }),
-        (e) => e.code === "AGENT_SESSION_PENDING_APPROVAL")
+        (e: any) => e.code === "AGENT_SESSION_PENDING_APPROVAL")
     const [pendente2] = await humano.ListSessions({ status: "pending_confirmation" })
     await humano.RejectSession({ session: pendente2.id, actor: { source: "gui" } })
     await assert.rejects(() => mcp.AssertSessionApproved({ actor: outro, action: "create_item" }),
-        (e) => e.code === "AGENT_SESSION_REJECTED")
+        (e: any) => e.code === "AGENT_SESSION_REJECTED")
 })
 
 test("MPME-30 concluir épico fecha os filhos abertos numa autorização só", async () => {
@@ -1766,7 +1766,7 @@ test("MPME-30 concluir épico fecha os filhos abertos numa autorização só", a
     await store.CreateItem({ project: p2.id, type: "task", title: "T-b", parent: e2.id })
     const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "epico-1" } }
     await assert.rejects(() => store.CompleteEpic({ item: e2.id, actor: agente }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
 
     const [pedido] = await store.ListCreationRequests({ actionName: "complete-epic", status: "pending" })
     assert.equal(pedido.subject.children.length, 2, "o pedido lista os filhos")
@@ -1788,12 +1788,12 @@ test("MPME-19/20/22 progresso, reivindicação e pulse orquestram agentes em par
     // 1. Um agente reivindica; o outro não consegue o mesmo item.
     const claim = await store.ClaimItem({ item: a.id, actor: agente1 })
     assert.ok(claim.claim.expiresAt, "a reivindicação tem validade")
-    await assert.rejects(() => store.ClaimItem({ item: a.id, actor: agente2 }), (e) => e.code === "ITEM_CLAIMED")
+    await assert.rejects(() => store.ClaimItem({ item: a.id, actor: agente2 }), (e: any) => e.code === "ITEM_CLAIMED")
 
     // 2. O item reivindicado sai da fila (senão dois pegam o mesmo trabalho).
     const fila = await store.Ready({ project: p.id })
-    assert.ok(!fila.some((i) => i.id === a.id), "item com dono não é oferecido")
-    assert.ok(fila.some((i) => i.id === b.id), "o resto da fila continua")
+    assert.ok(!fila.some((i: any) => i.id === a.id), "item com dono não é oferecido")
+    assert.ok(fila.some((i: any) => i.id === b.id), "o resto da fila continua")
 
     // 3. Reportar progresso registra o relato E renova a reivindicação.
     const progresso = await store.ReportProgress({ item: a.id, note: "lendo o ReportsStore", phase: "investigando", actor: agente1 })
@@ -1814,7 +1814,7 @@ test("MPME-19/20/22 progresso, reivindicação e pulse orquestram agentes em par
     // 6. Liberar devolve o item à fila.
     await store.ReleaseItem({ item: a.id, actor: agente1 })
     const filaDepois = await store.Ready({ project: p.id })
-    assert.ok(filaDepois.some((i) => i.id === a.id), "liberado, volta para a fila")
+    assert.ok(filaDepois.some((i: any) => i.id === a.id), "liberado, volta para a fila")
 })
 
 test("MPME-21 sequência diz o estado de cada item e de quem ele espera", async () => {
@@ -1828,8 +1828,8 @@ test("MPME-21 sequência diz o estado de cada item e de quem ele espera", async 
     await store.SetStatus({ item: base.id, status: "in-progress" })
 
     const seq = await store.SequenceView({ project: p.id })
-    const byKey = {}
-    seq.items.forEach((i) => { byKey[i.key] = i })
+    const byKey: Record<string, any> = {}
+    seq.items.forEach((i: any) => { byKey[i.key] = i })
 
     assert.equal(byKey[base.key].state, "doing")
     assert.deepEqual(byKey[base.key].unblocks, [depende.key], "diz o que ele destrava ao sair")
@@ -1847,7 +1847,7 @@ test("MPME-21 sequência diz o estado de cada item e de quem ele espera", async 
     // Concluir a base solta quem esperava.
     await store.SetStatus({ item: base.id, status: "done" })
     const depois = await store.SequenceView({ project: p.id })
-    const dep = depois.items.find((i) => i.key === depende.key)
+    const dep = depois.items.find((i: any) => i.key === depende.key)
     assert.equal(dep.state, "ready", "sem dependência aberta, vira pronto")
     assert.deepEqual(dep.waitingFor, [])
 })
@@ -1869,9 +1869,9 @@ test("MPMX3-15/16 quem está aqui, e o aviso de companhia chega na primeira escr
     await store.ReportProgress({ item: item.id, note: "lendo o PresenceStore", phase: "investigando", actor: um })
 
     const aqui = await store.WhoIsHere({ project: p.id, actor: dois })
-    const outro = aqui.sessions.find((s) => s.model === "claude-opus-5")
+    const outro = aqui.sessions.find((s: any) => s.model === "claude-opus-5")
     assert.ok(outro, "a sessão vizinha aparece")
-    assert.deepEqual(outro.claimedItems.map((i) => i.key), [item.key], "diz COM O QUE ela está")
+    assert.deepEqual(outro.claimedItems.map((i: any) => i.key), [item.key], "diz COM O QUE ela está")
     assert.equal(outro.lastProgress.note, "lendo o PresenceStore", "e o que ela relatou por último")
     assert.equal(outro.presence, "here")
 
@@ -1879,12 +1879,12 @@ test("MPMX3-15/16 quem está aqui, e o aviso de companhia chega na primeira escr
     const sessao2 = await store.ResolveOrCreateSessionByIdentity(dois.session, "test")
     await store.WarnAboutCompany({ session: await store.models.AgentSession.findOne({ where: { id: sessao2.id } }) })
     const avisos = await store.CollectNotices({ actor: dois })
-    assert.ok(avisos.some((n) => /outra\(s\) sessão\(ões\) ativa\(s\)/.test(n.body)), "o aviso de companhia chega")
-    assert.ok(avisos.some((n) => /git add/.test(n.body)), "e diz o que fazer com a informação")
+    assert.ok(avisos.some((n: any) => /outra\(s\) sessão\(ões\) ativa\(s\)/.test(n.body)), "o aviso de companhia chega")
+    assert.ok(avisos.some((n: any) => /git add/.test(n.body)), "e diz o que fazer com a informação")
 
     // Entregue é lido: não se repete indefinidamente.
     const denovo = await store.CollectNotices({ actor: dois })
-    assert.ok(!denovo.some((n) => /outra\(s\) sessão\(ões\)/.test(n.body)), "aviso lido não volta")
+    assert.ok(!denovo.some((n: any) => /outra\(s\) sessão\(ões\)/.test(n.body)), "aviso lido não volta")
 })
 
 test("MPMX3 entrada e saída de agente viram aviso para quem já está trabalhando", async () => {
@@ -1902,7 +1902,7 @@ test("MPMX3 entrada e saída de agente viram aviso para quem já está trabalhan
     await store.AnnounceArrival({ session: await store.models.AgentSession.findOne({ where: { id: nova.id } }) })
 
     const aoEntrar = await store.CollectNotices({ actor: veterano })
-    assert.ok(aoEntrar.some((n) => n.kind === "joined" && /gpt-6/.test(n.body)), "quem já trabalhava fica sabendo da entrada")
+    assert.ok(aoEntrar.some((n: any) => n.kind === "joined" && /gpt-6/.test(n.body)), "quem já trabalhava fica sabendo da entrada")
 
     // E a saída também avisa — liberando o que a sessão segurava.
     const outroItem = await store.CreateItem({ project: p.id, type: "task", title: "Item do novato" })
@@ -1911,7 +1911,7 @@ test("MPMX3 entrada e saída de agente viram aviso para quem já está trabalhan
     assert.deepEqual(fim.releasedItems, [outroItem.key], "sair devolve os itens à fila na hora")
 
     const aoSair = await store.CollectNotices({ actor: veterano })
-    assert.ok(aoSair.some((n) => n.kind === "left" && /gpt-6/.test(n.body)), "e a saída também é anunciada")
+    assert.ok(aoSair.some((n: any) => n.kind === "left" && /gpt-6/.test(n.body)), "e a saída também é anunciada")
     const claimDepois = await store.GetItemClaim({ item: outroItem.id })
     assert.equal(claimDepois, undefined, "o item do agente que saiu não fica travado")
 })
@@ -1929,14 +1929,14 @@ test("MPMX3-19 recado dirigido chega a quem reivindicou o item", async () => {
     await store.SendSessionMessage({ item: item.key, project: p.id, body: "varri um arquivo teu para o meu commit", actor: vizinho })
 
     const recebidos = await store.CollectNotices({ actor: dono })
-    const recado = recebidos.find((n) => n.kind === "message")
+    const recado = recebidos.find((n: any) => n.kind === "message")
     assert.ok(recado, "o recado chega sem que o alvo tenha consultado nada")
     assert.match(recado.body, /varri um arquivo teu/)
-    assert.ok(!(await store.CollectNotices({ actor: dono })).some((n) => n.kind === "message"), "recado lido não se repete")
+    assert.ok(!(await store.CollectNotices({ actor: dono })).some((n: any) => n.kind === "message"), "recado lido não se repete")
 
     // Item sem dono não tem a quem falar.
     const orfao = await store.CreateItem({ project: p.id, type: "task", title: "Sem dono" })
-    await assert.rejects(() => store.SendSessionMessage({ item: orfao.id, body: "oi", actor: vizinho }), (e) => e.code === "NOT_FOUND")
+    await assert.rejects(() => store.SendSessionMessage({ item: orfao.id, body: "oi", actor: vizinho }), (e: any) => e.code === "NOT_FOUND")
 })
 
 test("MPMX3-22/next_task fila limpa: item tomado sai, e pegar tarefa já reivindica", async () => {
@@ -1953,19 +1953,19 @@ test("MPMX3-22/next_task fila limpa: item tomado sai, e pegar tarefa já reivind
 
     // O segundo agente não vê o item tomado na fila, e pega outro.
     const fila = await store.ListItems({ project: p.id, actor: dois })
-    assert.ok(!fila.some((i) => i.id === pego.item.id), "item com dono sai da fila dos outros")
+    assert.ok(!fila.some((i: any) => i.id === pego.item.id), "item com dono sai da fila dos outros")
     const outro = await store.NextTask({ project: p.id, actor: dois })
     assert.notEqual(outro.item.id, pego.item.id, "dois agentes nunca pegam o mesmo item")
 
     // Quem quer o quadro completo pede — e enxerga a reivindicação.
     const tudo = await store.ListItems({ project: p.id, includeClaimed: true, actor: dois })
-    const tomado = tudo.find((i) => i.id === pego.item.id)
+    const tomado = tudo.find((i: any) => i.id === pego.item.id)
     assert.ok(tomado, "includeClaimed mostra tudo")
     assert.ok(tomado.claim && tomado.claim.sessionId, "e a reivindicação aparece no resumo")
 
     // A minha própria reivindicação continua visível para mim.
     const minhaFila = await store.ListItems({ project: p.id, actor: um })
-    assert.ok(minhaFila.some((i) => i.id === pego.item.id), "vejo o que eu mesmo peguei")
+    assert.ok(minhaFila.some((i: any) => i.id === pego.item.id), "vejo o que eu mesmo peguei")
 
     // Fila esgotada responde POR QUÊ, em vez de devolver vazio sem explicação.
     const seca = await store.NextTask({ project: p.id, actor: um })
@@ -1981,7 +1981,7 @@ test("MPMX3-24 status pedido e não aprovado fica visível no item", async () =>
 
     await assert.rejects(
         () => store.SetStatus({ item: item.id, status: "in-progress", actor: agente }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED"
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED"
     )
     const depois = await store.GetItem({ item: item.id })
     assert.equal(depois.statusKey, "backlog", "o status real só muda com a aprovação")
@@ -1989,7 +1989,7 @@ test("MPMX3-24 status pedido e não aprovado fica visível no item", async () =>
 
     // Aprovado, o pendente some (o status real assume).
     const pedidos = await store.ListCreationRequests({ status: "pending", projectId: p.id })
-    const pedido = pedidos.find((r) => r.actionName === "set-status")
+    const pedido = pedidos.find((r: any) => r.actionName === "set-status")
     await store.ApproveRequest({ request: pedido.id, actor: { source: "cli", actorUserId: null } })
     const aprovado = await store.GetItem({ item: item.id })
     assert.equal(aprovado.statusKey, "in-progress")
@@ -2006,7 +2006,7 @@ test("MPMX3-17/21 foco da sessão é editável e ambiente compartilhado fica reg
     // Identidade não muda depois de liberada; intenção muda.
     await assert.rejects(
         () => store.DeclareSession({ provider: "codex", actor: agente }),
-        (e) => e.code === "VALIDATION_ERROR"
+        (e: any) => e.code === "VALIDATION_ERROR"
     )
     const atualizada = await store.DeclareSession({ objective: "resolver os feedbacks", actor: agente })
     assert.equal(atualizada.objective, "resolver os feedbacks", "redeclarar só o objetivo é aceito")
@@ -2030,7 +2030,7 @@ test("MPMX3-17/21 foco da sessão é editável e ambiente compartilhado fica reg
     assert.ok(notas.length > registros.length, "o filtro por tipo separa ambiente do resto")
 
     const avisos = await store.CollectNotices({ actor: vizinho })
-    assert.ok(avisos.some((n) => n.kind === "environment" && /service-orchestrator/.test(n.body)), "quem depende do processo é avisado")
+    assert.ok(avisos.some((n: any) => n.kind === "environment" && /service-orchestrator/.test(n.body)), "quem depende do processo é avisado")
 })
 
 test("MPMX3 presença envelhece: sessão sem sinal sai sozinha e avisa", async () => {
@@ -2046,10 +2046,10 @@ test("MPMX3 presença envelhece: sessão sem sinal sai sozinha e avisa", async (
         { where: { id: sessao.id } }
     )
     const mudou = await store.SweepPresence()
-    assert.ok(mudou.some((m) => m.sessionId === sessao.id && m.presence === "gone"), "sessão sem sinal deixa de constar presente")
+    assert.ok(mudou.some((m: any) => m.sessionId === sessao.id && m.presence === "gone"), "sessão sem sinal deixa de constar presente")
 
     const avisos = await store.CollectNotices({ actor: testemunha })
-    assert.ok(avisos.some((n) => n.kind === "left" && /sem sinal/.test(n.body)), "a saída por silêncio também é anunciada")
+    assert.ok(avisos.some((n: any) => n.kind === "left" && /sem sinal/.test(n.body)), "a saída por silêncio também é anunciada")
 
     // Voltar a agir traz a sessão de volta — e anuncia o retorno.
     await store.TouchSession({ actor: agente, action: "test" })
@@ -2067,7 +2067,7 @@ test("MPMX3-14 update_item com status passa pelo MESMO gate de set_item_status",
     // O caminho lateral estava aberto: update_item escrevia o status direto.
     await assert.rejects(
         () => store.UpdateItem({ item: item.id, statusKey: "done", actor: agente }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED"
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED"
     )
     assert.equal((await store.GetItem({ item: item.id })).statusKey, "backlog")
 
@@ -2087,21 +2087,21 @@ test("MPMX3-9 aprovação tardia não reverte item que já mudou de estado", asy
     const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "tard-1" } }
 
     await assert.rejects(() => store.SetStatus({ item: item.id, status: "in-progress", actor: agente }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
     const pedido = (await store.ListCreationRequests({ status: "pending", projectId: p.id }))
-        .find((r) => r.actionName === "set-status" && r.targetId === item.id)
+        .find((r: any) => r.actionName === "set-status" && r.targetId === item.id)
 
     // O agente desistiu de esperar e o item seguiu por outro caminho.
     await store.SetStatus({ item: item.id, status: "review", actor: { source: "cli" } })
 
     // Horas depois, o humano encontra o pedido antigo e aprova.
     await assert.rejects(() => store.ApproveRequest({ request: pedido.id, actor: { source: "gui" } }),
-        (e) => e.code === "STALE_APPROVAL")
+        (e: any) => e.code === "STALE_APPROVAL")
     assert.equal((await store.GetItem({ item: item.id })).statusKey, "review", "o estado atual é preservado")
 
     // E o pedido sai da fila, preservado como expirado (não fica pendente para sempre).
     const aindaPendente = (await store.ListCreationRequests({ status: "pending", projectId: p.id }))
-        .some((r) => r.id === pedido.id)
+        .some((r: any) => r.id === pedido.id)
     assert.equal(aindaPendente, false)
 })
 
@@ -2119,7 +2119,7 @@ test("MPMX3-8 um pedido move vários itens, e o humano decide em bloco", async (
 
     // Concluir os três: UM pedido para o conjunto.
     await assert.rejects(() => store.SetStatusBatch({ items: [a.key, b.key, c.key], status: "done", actor: agente }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
     const pendentes = await store.ListCreationRequests({ status: "pending", projectId: p.id })
     assert.equal(pendentes.length, 1, "um pedido, não três")
     const pedido = pendentes[0]
@@ -2134,14 +2134,14 @@ test("MPMX3-8 um pedido move vários itens, e o humano decide em bloco", async (
 test("MPMX3-8 decisão em lote de pedidos independentes", async () => {
     const p = await store.CreateProject({ name: "LoteDecide", keyPrefix: "LDEC", status: "active", actor: { source: "cli" } })
     const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "ldec-1" } }
-    const criados = []
+    const criados: any[] = []
     for(const titulo of ["A", "B"]){
         const item = await store.CreateItem({ project: p.id, type: "task", title: titulo })
         await assert.rejects(() => store.SetStatus({ item: item.id, status: "in-progress", actor: agente }),
-            (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+            (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
         criados.push(item)
     }
-    const ids = (await store.ListCreationRequests({ status: "pending", projectId: p.id })).map((r) => r.id)
+    const ids = (await store.ListCreationRequests({ status: "pending", projectId: p.id })).map((r: any) => r.id)
     assert.equal(ids.length, 2)
 
     const out = await store.DecideRequests({ requests: ids, decision: "approve", actor: { source: "gui" } })
@@ -2163,7 +2163,7 @@ test("MPMX3-10 concluir devolve os critérios de aceite não atendidos", async (
     // MPMX3-11: marcar os dois numa chamada só.
     const marcados = await store.UpdateAcceptanceCriteria({ criteria: [um.id, dois.id], met: true })
     assert.equal(marcados.length, 2)
-    assert.ok(marcados.every((c) => c.met))
+    assert.ok(marcados.every((c: any) => c.met))
     const limpo = await store.SetStatus({ item: item.id, status: "review", actor: { source: "cli" } })
     assert.equal(limpo.unmetAcceptanceCriteria, undefined)
 
@@ -2188,7 +2188,7 @@ test("MPMX3-12 list_items encontra a entrega pelo NOME, não só pelo id", async
 
     // Referência inexistente RECUSA, em vez de devolver lista vazia.
     await assert.rejects(() => store.ListItems({ project: p.id, milestone: "Entrega que não existe" }),
-        (e) => e.code === "NOT_FOUND")
+        (e: any) => e.code === "NOT_FOUND")
 })
 
 test("MPMX3-13 ideias do inbox mudam de casa em vez de sumir com o projeto", async () => {
@@ -2213,7 +2213,7 @@ test("MPMX3-23 get_activity_context vem enxuto por padrão", async () => {
     assert.ok(enxuto.notes[0].body.length < 500)
     assert.ok(enxuto.notes[0].bodyChars > 3000, "mas diz o tamanho real")
     assert.ok(enxuto._trimmed, "e avisa que recortou")
-    assert.ok(enxuto.audit.every((e) => e.before === undefined && e.after === undefined), "auditoria sem os diffs")
+    assert.ok(enxuto.audit.every((e: any) => e.before === undefined && e.after === undefined), "auditoria sem os diffs")
 
     const inteiro = await store.GetActivityContext({ project: p.id, fullText: true, actor: { source: "cli" } })
     assert.ok(inteiro.notes[0].body.length > 3000, "fullText traz tudo para quem precisa")
@@ -2235,7 +2235,7 @@ test("MPMX3 varredura não anuncia a saída de sessão antiga (só marca gone)",
     await store.SweepPresence()
     assert.equal((await store.GetSession({ session: s.id })).presence, "gone")
     const avisos = await store.CollectNotices({ actor: testemunha })
-    assert.ok(!avisos.some((n) => n.kind === "left" && /gpt-6/.test(n.body)),
+    assert.ok(!avisos.some((n: any) => n.kind === "left" && /gpt-6/.test(n.body)),
         "sessão morta há dias não vira aviso — senão a primeira varredura afoga o canal")
 })
 
@@ -2243,7 +2243,7 @@ test("MPMX3 varredura não anuncia a saída de sessão antiga (só marca gone)",
 
 test("MPMR-5 as sete tabelas do modelo de entrega nascem do sync()", async () => {
     const [rows] = await store.sequelize.query("SELECT name FROM sqlite_master WHERE type='table'")
-    const tabelas = rows.map((r) => r.name)
+    const tabelas = rows.map((r: any) => r.name)
     for(const t of ["deliveries", "delivery_evidence", "delivery_reviews",
                     "agent_mandates", "agent_role_assignments", "agent_plans", "agent_plan_nodes"]){
         assert.ok(tabelas.includes(t), `tabela ${t} não foi criada`)
@@ -2295,7 +2295,7 @@ test("MPMR-6 banco PRÉ-EXISTENTE ganha as colunas novas sem quebrar o boot", as
     assert.equal(i.returnCount, 0)
 
     const [rows] = await migrado.sequelize.query("SELECT name FROM sqlite_master WHERE type='table'")
-    assert.ok(rows.map((r) => r.name).includes("deliveries"), "as tabelas novas voltam no boot seguinte")
+    assert.ok(rows.map((r: any) => r.name).includes("deliveries"), "as tabelas novas voltam no boot seguinte")
 
     // E o dado antigo continua legível — o ALTER não pode custar o histórico.
     const itens = await migrado.ListItems({ project: proj.id })
@@ -2306,7 +2306,7 @@ test("MPMR-6 banco PRÉ-EXISTENTE ganha as colunas novas sem quebrar o boot", as
 
 // O revisor humano dos testes do modelo de entrega precisa existir de verdade:
 // aceitar um plano cria itens em nome dele.
-let _humanoId
+let _humanoId: any
 const humano = async () => (_humanoId ||= (await store.CreateUser({ type: "human", displayName: "Revisor Humano" })).id)
 
 test("MPMR ciclo completo: entregar, revisor devolve, reentregar, humano aceita", async () => {
@@ -2334,13 +2334,13 @@ test("MPMR ciclo completo: entregar, revisor devolve, reentregar, humano aceita"
     // Quem executou não revisa.
     await assert.rejects(
         () => store.SubmitReview({ delivery: entrega.id, decision: "pass", actor: executor }),
-        (e) => e.code === "SAME_SESSION_REVIEW")
+        (e: any) => e.code === "SAME_SESSION_REVIEW")
 
     // O revisor devolve — e devolver exige motivo.
     await store.DeclareRole({ role: "reviewer", actor: revisor })
     await assert.rejects(
         () => store.SubmitReview({ delivery: entrega.id, decision: "return", actor: revisor }),
-        (e) => e.code === "VALIDATION_ERROR")
+        (e: any) => e.code === "VALIDATION_ERROR")
     await store.SubmitReview({ delivery: entrega.id, decision: "return", reason: "Faltou testar a partida a frio.", actor: revisor })
 
     const devolvido = await store.GetItem({ item: item.id })
@@ -2348,12 +2348,12 @@ test("MPMR ciclo completo: entregar, revisor devolve, reentregar, humano aceita"
     assert.equal(devolvido.returnCount, 1)
     assert.equal(devolvido.claimedBySessionId, (await store.FindSessionByIdentity(executor.session)).id,
         "volta para quem fez, não para a fila")
-    assert.ok((await store.Ready({ project: p.id })).every((i) => i.key !== item.key),
+    assert.ok((await store.Ready({ project: p.id })).every((i: any) => i.key !== item.key),
         "item devolvido tem dono: não é oferecido a outro agente")
 
     // A crítica chega como instrução, não como registro esquecido.
     const comentarios = await store.ListComments({ item: item.id })
-    assert.ok(comentarios.some((c) => /partida a frio/.test(c.body)), "a crítica vira comentário no item")
+    assert.ok(comentarios.some((c: any) => /partida a frio/.test(c.body)), "a crítica vira comentário no item")
 
     // Reentrega: rodada 2.
     const entrega2 = await store.SubmitDelivery({ item: item.id, summary: "Agora com partida a frio.", actor: executor })
@@ -2386,7 +2386,7 @@ test("MPMR ciclo completo: entregar, revisor devolve, reentregar, humano aceita"
     // histórico de revisão mentiria por omissão: só apareceria quem opinou,
     // nunca quem decidiu.
     const revisoes = await store.models.DeliveryReview.findAll({ where: { workItemId: item.id }, order: [["createdAt", "ASC"]] })
-    const humanas = revisoes.filter((r) => r.reviewerType === "human")
+    const humanas = revisoes.filter((r: any) => r.reviewerType === "human")
     assert.equal(humanas.length, 1, "o aceite humano fica registrado como revisão")
     assert.equal(humanas[0].decision, "accept")
     assert.equal(humanas[0].reviewerUserId, revisorHumano)
@@ -2426,7 +2426,7 @@ test("MPMR projeto migrado conclui sem aprovação; projeto legado continua pedi
     const i1 = await store.CreateItem({ project: legado.id, type: "task", title: "Tarefa antiga", actor: { source: "cli" } })
     await assert.rejects(
         () => store.SetStatus({ item: i1.id, status: "done", actor: agente }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED",
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED",
         "projeto legado continua exigindo aprovação para concluir")
 
     // MIGRADO: a mesma transição passa direto — quem decide é a revisão, depois.
@@ -2439,7 +2439,7 @@ test("MPMR projeto migrado conclui sem aprovação; projeto legado continua pedi
     // Excluir continua sendo humano nos DOIS modelos: é o que não tem "depois".
     await assert.rejects(
         () => store.DeleteItem({ item: i2.id, actor: agente }),
-        (e) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
+        (e: any) => e.code === "AGENT_SESSION_CONFIRMATION_REQUIRED")
 })
 
 test("MPMR migração preserva o trabalho em curso e mata pedido pendente órfão", async () => {
@@ -2481,7 +2481,7 @@ test("MPMR mandato para a linha quando o humano vira o gargalo", async () => {
     const agente = { source: "agent", session: { provider: "claude", modelName: "claude-opus-5", traceId: "man-1" } }
     const sessao = await store.ResolveOrCreateSessionByIdentity(agente.session, "test")
 
-    const itens = []
+    const itens: any[] = []
     for(let n = 1; n <= 4; n++)
         itens.push(await store.CreateItem({ project: p.id, type: "task", title: `Tarefa ${n}`, actor: { source: "cli" } }))
 
@@ -2504,7 +2504,7 @@ test("MPMR mandato para a linha quando o humano vira o gargalo", async () => {
     // O agente é barrado e recebe o que fazer em seguida — não fica tentando.
     await assert.rejects(
         () => store.ClaimItem({ item: itens[2].id, actor: agente }),
-        (e) => e.code === "MANDATE_EXHAUSTED" && Array.isArray(e.details.whatNow) && e.details.whatNow.length > 0)
+        (e: any) => e.code === "MANDATE_EXHAUSTED" && Array.isArray(e.details.whatNow) && e.details.whatNow.length > 0)
 
     // O humano revisa uma: a linha volta a andar sozinha. (Ele pode decidir sem
     // esperar o revisor-IA — é a autoridade final, não o último da fila.)
@@ -2570,7 +2570,7 @@ test("MPMR plano proposto vira backlog, rodada e mandato numa decisão só", asy
     assert.equal(mesaComPlano.plans[0].title, "Reescrever o importador")
 
     // O humano edita antes de aceitar — e a edição fica marcada.
-    const noParser = plano.nodes.find((n) => n.title === "Ler o formato novo")
+    const noParser = plano.nodes.find((n: any) => n.title === "Ler o formato novo")
     await store.RevisePlan({ plan: plano.id, node: noParser.id, updates: { effort: "l" }, actor: { source: "gui" } })
 
     const aceito = await store.AcceptPlan({ plan: plano.id, actor: { source: "gui", actorUserId: await humano() } })
@@ -2580,14 +2580,14 @@ test("MPMR plano proposto vira backlog, rodada e mandato numa decisão só", asy
 
     const itens = await store.ListItems({ project: p.id })
     assert.equal(itens.length, 3)
-    const parser = itens.find((i) => i.title === "Ler o formato novo")
+    const parser = itens.find((i: any) => i.title === "Ler o formato novo")
     assert.equal(parser.effort, "l", "a edição do humano é o que virou item")
     const nos = (await store.GetPlan({ plan: plano.id })).nodes
-    assert.ok(nos.find((n) => n.title === "Ler o formato novo").editedByHuman)
+    assert.ok(nos.find((n: any) => n.title === "Ler o formato novo").editedByHuman)
 
     // A dependência declarada no plano existe como vínculo real.
-    const migrar = await store.GetItem({ item: itens.find((i) => i.title === "Migrar a carga noturna").id })
-    assert.ok(migrar.links.some((l) => l.relation === "depends"), "a dependência do plano virou vínculo")
+    const migrar = await store.GetItem({ item: itens.find((i: any) => i.title === "Migrar a carga noturna").id })
+    assert.ok(migrar.links.some((l: any) => l.relation === "depends"), "a dependência do plano virou vínculo")
 
     // Aceitar o plano é uma decisão só: não pode ser aceito de novo.
     assert.equal((await store.AcceptPlan({ plan: plano.id, actor: { source: "gui" } })).status, "accepted")
@@ -2616,7 +2616,7 @@ test("MPMR plano com campo que o aceite recusa é barrado na PROPOSTA, não no a
         ],
         actor: agente
     })
-    const primeiro = caixaAlta.nodes.find((n) => n.title === "Primeiro")
+    const primeiro = caixaAlta.nodes.find((n: any) => n.title === "Primeiro")
     assert.equal(primeiro.effort, "m", "a caixa é normalizada na proposta")
     assert.equal(primeiro.type, "task")
     assert.equal(primeiro.value, "high")
@@ -2629,13 +2629,13 @@ test("MPMR plano com campo que o aceite recusa é barrado na PROPOSTA, não no a
     // o mandato", e uma rodada sem os itens quebra a promessa em silêncio — foi o
     // que acontecia quando o vínculo ia por `sprint:` e CreateItem lê `sprintId:`.
     assert.ok(aceito.sprintId, "a rodada nasce")
-    const naRodada = (await store.ListItems({ project: p.id })).filter((i) => i.sprintId === aceito.sprintId)
+    const naRodada = (await store.ListItems({ project: p.id })).filter((i: any) => i.sprintId === aceito.sprintId)
     assert.equal(naRodada.length, 2, "os itens do plano entram na rodada que o aceite criou")
 
     // E o mandato cobre exatamente essas chaves.
     const mandato = await store.GetMandate({ mandate: aceito.mandateId })
     const escopo = mandato.scopeJson || {}
-    assert.deepEqual([...(escopo.itemKeys || [])].sort(), naRodada.map((i) => i.key).sort())
+    assert.deepEqual([...(escopo.itemKeys || [])].sort(), naRodada.map((i: any) => i.key).sort())
     assert.equal(escopo.sprintId, aceito.sprintId)
 
     // Valor que não existe em caixa nenhuma: barrado na PROPOSTA.
@@ -2645,11 +2645,11 @@ test("MPMR plano com campo que o aceite recusa é barrado na PROPOSTA, não no a
             nodes: [{ type: "task", title: "Fazer", effort: "enorme" }],
             actor: agente
         }),
-        (e) => e.code === "VALIDATION_ERROR" && e.details.field === "effort",
+        (e: any) => e.code === "VALIDATION_ERROR" && e.details.field === "effort",
         "recusado antes de virar plano, não depois de o humano decidir")
 
     // Nada meio gravado: o plano inteiro é validado antes de qualquer escrita.
-    assert.ok(!(await store.ListPlans({ project: p.id })).some((pl) => pl.title === "Esforço inexistente"))
+    assert.ok(!(await store.ListPlans({ project: p.id })).some((pl: any) => pl.title === "Esforço inexistente"))
 
     // E a validação vale para o lote todo, não só para o primeiro nó.
     await assert.rejects(
@@ -2658,8 +2658,8 @@ test("MPMR plano com campo que o aceite recusa é barrado na PROPOSTA, não no a
             nodes: [{ type: "task", title: "Bom", effort: "s" }, { type: "inventado", title: "Ruim" }],
             actor: agente
         }),
-        (e) => e.code === "VALIDATION_ERROR" && e.details.field === "type" && e.details.index === 1)
-    assert.ok(!(await store.ListPlans({ project: p.id })).some((pl) => pl.title === "Segundo nó inválido"),
+        (e: any) => e.code === "VALIDATION_ERROR" && e.details.field === "type" && e.details.index === 1)
+    assert.ok(!(await store.ListPlans({ project: p.id })).some((pl: any) => pl.title === "Segundo nó inválido"),
         "um plano meio gravado é pior que um plano recusado")
 
     // Editar para um valor que o aceite recusa também é barrado na edição.
@@ -2670,7 +2670,7 @@ test("MPMR plano com campo que o aceite recusa é barrado na PROPOSTA, não no a
     })
     await assert.rejects(
         () => store.RevisePlan({ plan: outro.id, node: outro.nodes[0].id, updates: { effort: "gigante" }, actor: { source: "gui" } }),
-        (e) => e.code === "VALIDATION_ERROR" && e.details.field === "effort")
+        (e: any) => e.code === "VALIDATION_ERROR" && e.details.field === "effort")
     // A edição válida em caixa alta passa, normalizada.
     const editado = await store.RevisePlan({ plan: outro.id, node: outro.nodes[0].id, updates: { effort: "XL" }, actor: { source: "gui" } })
     assert.equal(editado.nodes[0].effort, "xl")
@@ -2682,28 +2682,28 @@ test("MPMR plano com campo que o aceite recusa é barrado na PROPOSTA, não no a
 // e um runner de verificação local. É o único jeito de provar que a correlação
 // commit↔item funciona: um dublê de git provaria só que o dublê responde.
 
-const { execFileSync } = require("child_process")
+const { execFileSync } = require("child_process") as typeof import("child_process")
 const CORE_GIT_LIB = "/home/kadisk/Workspaces/meta-platform-repo/repos/ecosystem-core-repository/Main.Module/Libraries.layer/git-status.lib"
 
-const _makeRepo = (nome) => {
+const _makeRepo = (nome: string) => {
     const repo = path.join(TMP, nome)
     fs.mkdirSync(repo, { recursive: true })
-    const git = (...args) => execFileSync("git", args, { cwd: repo, stdio: ["ignore", "pipe", "ignore"] })
+    const git = (...args: string[]) => execFileSync("git", args, { cwd: repo, stdio: ["ignore", "pipe", "ignore"] })
     git("init", "-q")
     git("config", "user.email", "teste@exemplo.com")
     git("config", "user.name", "Teste")
-    return { repo, commit: (arquivo, conteudo, mensagem) => {
+    return { repo, commit: (arquivo: string, conteudo: string, mensagem: string) => {
         fs.writeFileSync(path.join(repo, arquivo), conteudo)
         git("add", arquivo); git("commit", "-q", "-m", mensagem)
     } }
 }
 
-const _storeComEvidencia = async (nome) => {
+const _storeComEvidencia = async (nome: string) => {
     const db = path.join(TMP, `${nome}.sqlite`)
-    const gitLib = { require: (m) => require(path.join(CORE_GIT_LIB, "src", m)) }
-    const runVerification = ({ command, args, cwd }) => new Promise((resolve) => {
+    const gitLib = { require: (m: string) => require(path.join(CORE_GIT_LIB, "src", m)) }
+    const runVerification = ({ command, args, cwd }: any) => new Promise((resolve: any) => {
         const inicio = Date.now()
-        require("child_process").execFile(command, args, { cwd, timeout: 10000 }, (err, stdout, stderr) =>
+        require("child_process").execFile(command, args, { cwd, timeout: 10000 }, (err: any, stdout: any, stderr: any) =>
             resolve({ exitCode: err ? (err.code || 1) : 0, output: (stdout || "") + (stderr || ""), durationMs: Date.now() - inicio }))
     })
     const s = InitializeProjectStore({ storage: db, attachmentsDirPath: ATT_DIR, gitLib, runVerification })
@@ -2722,21 +2722,21 @@ test("MPMR-19 commit que cita a chave vira evidência forte; sem a chave, cai pa
     await s.ClaimItem({ item: comChave.id, actor: agente })
     commit("a.js", "console.log(1)\n", `feat: implementa ${comChave.key}`)
     const d1 = await s.SubmitDelivery({ item: comChave.id, summary: "feito", actor: agente })
-    const commits1 = d1.evidence.filter((e) => e.kind === "commit")
+    const commits1 = d1.evidence.filter((e: any) => e.kind === "commit")
     assert.equal(commits1.length, 1)
     assert.equal(commits1[0].attribution, "key")
     assert.equal(commits1[0].confidence, "high")
-    assert.ok(d1.evidence.some((e) => e.kind === "file" && e.ref === "a.js"), "os arquivos do commit entram como evidência")
+    assert.ok(d1.evidence.some((e: any) => e.kind === "file" && e.ref === "a.js"), "os arquivos do commit entram como evidência")
 
     const semChave = await s.CreateItem({ project: p.id, type: "task", title: "Sem chave", actor: { source: "cli" } })
     await s.ClaimItem({ item: semChave.id, actor: agente })
     commit("b.js", "console.log(2)\n", "ajuste rápido")
     const d2 = await s.SubmitDelivery({ item: semChave.id, summary: "feito", actor: agente })
-    assert.ok(d2.evidence.filter((e) => e.kind === "commit").every((e) => e.attribution === "window"),
+    assert.ok(d2.evidence.filter((e: any) => e.kind === "commit").every((e: any) => e.attribution === "window"),
         "sem a chave, a correlação é por tempo")
-    assert.ok(d2.evidence.filter((e) => e.kind === "commit").every((e) => e.confidence === "low"),
+    assert.ok(d2.evidence.filter((e: any) => e.kind === "commit").every((e: any) => e.confidence === "low"),
         "e ela se declara fraca em vez de fingir certeza")
-    assert.ok(d2.gaps.some((g) => g.ref === "commit-sem-key" && g.severity === "blocking"))
+    assert.ok(d2.gaps.some((g: any) => g.ref === "commit-sem-key" && g.severity === "blocking"))
     await s.sequelize.close()
 })
 
@@ -2756,7 +2756,7 @@ test("MPMR-20 a verificação é executada pelo sistema: exit code entra na evid
     await s.ClaimItem({ item: ok.id, actor: agente })
     commit("ok.js", "1\n", `fix: ${ok.key} resolvido`)
     const d1 = await s.SubmitDelivery({ item: ok.id, summary: "feito", actor: agente })
-    const v1 = d1.evidence.find((e) => e.kind === "verification")
+    const v1 = d1.evidence.find((e: any) => e.kind === "verification")
     assert.ok(v1, "a verificação vira evidência")
     assert.equal(v1.exitCode, 0)
     assert.ok(/12 passed/.test(v1.body), "a saída do comando é guardada")
@@ -2769,10 +2769,10 @@ test("MPMR-20 a verificação é executada pelo sistema: exit code entra na evid
     await s.ClaimItem({ item: ruim.id, actor: agente })
     commit("ruim.js", "2\n", `wip: ${ruim.key}`)
     const d2 = await s.SubmitDelivery({ item: ruim.id, summary: "acho que quebrou", actor: agente })
-    const v2 = d2.evidence.find((e) => e.kind === "verification")
+    const v2 = d2.evidence.find((e: any) => e.kind === "verification")
     assert.equal(v2.exitCode, 3)
     assert.equal(v2.severity, "blocking")
-    assert.ok(d2.gaps.some((g) => g.ref === "verificacao-falhou" && g.severity === "blocking"))
+    assert.ok(d2.gaps.some((g: any) => g.ref === "verificacao-falhou" && g.severity === "blocking"))
     assert.ok(d2.warnings && d2.warnings.length, "o agente é avisado do que ficou frouxo")
     assert.equal(d2.verifyExitCode, 3)
     await s.sequelize.close()
@@ -2787,7 +2787,7 @@ test("MPMR-21 a ausência é registrada como fato: sem repo, sem comando, sem cr
 
     const d = await s.SubmitDelivery({ item: item.id, summary: "confia", actor: agente })
     assert.equal(d.evidenceQuality, "none", "sem repositório não há o que apurar")
-    const refs = d.gaps.map((g) => g.ref)
+    const refs = d.gaps.map((g: any) => g.ref)
     assert.ok(refs.includes("repo-nao-declarado"))
     assert.ok(refs.includes("sem-comando-de-verificacao"))
     assert.ok(refs.includes("sem-criterios"))
@@ -2809,7 +2809,7 @@ test("MPMR-21 coleta indisponível não derruba a entrega", async () => {
 
     const d = await s.SubmitDelivery({ item: item.id, summary: "entreguei", actor: agente })
     assert.equal(d.status, "ai-review", "a entrega acontece mesmo sem poder apurar nada")
-    assert.ok(d.gaps.some((g) => g.ref === "git-indisponivel"))
+    assert.ok(d.gaps.some((g: any) => g.ref === "git-indisponivel"))
     await s.sequelize.close()
 })
 
@@ -2825,7 +2825,7 @@ test("MPMR-29 em projeto migrado, concluir por status é recusado também no STO
     // Humano, pela GUI — o caminho do arrastar.
     await assert.rejects(
         () => store.SetStatus({ item: item.id, status: "done", actor: { source: "gui" } }),
-        (e) => e.code === "MODEL_MIGRATED" && e.details.replacement === "AcceptDelivery")
+        (e: any) => e.code === "MODEL_MIGRATED" && e.details.replacement === "AcceptDelivery")
 
     // As transições que NÃO concluem continuam livres (arrastar para "em
     // progresso" é legítimo).

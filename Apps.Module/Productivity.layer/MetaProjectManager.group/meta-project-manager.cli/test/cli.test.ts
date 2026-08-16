@@ -1,8 +1,8 @@
-const { test, before } = require("node:test")
-const assert = require("node:assert")
-const os = require("os")
-const path = require("path")
-const fs = require("fs")
+const { test, before } = require("node:test") as typeof import("node:test")
+const assert = require("node:assert") as typeof import("node:assert")
+const os = require("os") as typeof import("os")
+const path = require("path") as typeof import("path")
+const fs = require("fs") as typeof import("fs")
 
 const MakeHarness = require("./cli.harness")
 
@@ -15,8 +15,8 @@ const startupParams = {
     MPM_MAX_ATTACHMENT_BYTES: 52428800
 }
 
-let h
-let sessionId
+let h: any
+let sessionId: any
 before(() => { h = MakeHarness({ startupParams }) })
 
 test("project create --json retorna ok + key", async () => {
@@ -66,7 +66,7 @@ test("item set-status com --actor-session-id gera auditoria de agente", async ()
     assert.equal(json.ok, true)
     assert.equal(json.data.statusKey, "in-progress")
     const act = await h.run(["activity", "list", "--project", "MP", "--json"])
-    assert.ok(act.json.data.some((e) => e.source === "agent" && e.action === "set-status"))
+    assert.ok(act.json.data.some((e: any) => e.source === "agent" && e.action === "set-status"))
 })
 
 test("comment add", async () => {
@@ -150,19 +150,19 @@ test("activity note add atribui ao usuario-desktop e list devolve", async () => 
     assert.equal(add.json.ok, true)
     assert.equal(add.json.data.scopeType, "item")
     const list = await h.run(["activity", "note", "list", "--item", "MP-1", "--json"])
-    assert.ok(list.json.data.some((n) => n.body === "anotação manual"))
+    assert.ok(list.json.data.some((n: any) => n.body === "anotação manual"))
 })
 
 test("audit list --project filtra por ação", async () => {
     const a = await h.run(["audit", "list", "--project", "MP", "--action", "set-status", "--json"])
     assert.equal(a.json.ok, true)
-    assert.ok(a.json.data.every((e) => e.action === "set-status"))
+    assert.ok(a.json.data.every((e: any) => e.action === "set-status"))
 })
 
 test("activity list --provider filtra eventos de agente", async () => {
     const a = await h.run(["activity", "list", "--project", "MP", "--actor-type", "agent", "--json"])
     assert.equal(a.json.ok, true)
-    assert.ok(a.json.data.every((e) => e.actorType === "agent"))
+    assert.ok(a.json.data.every((e: any) => e.actorType === "agent"))
 })
 
 test("MPMR ciclo de entrega pela CLI: migrar, entregar, devolver, reentregar, aceitar", async () => {
@@ -231,7 +231,7 @@ test("comandos que colhem evidência carregam as libs de coleta", () => {
             assert.ok(exe["bound-params"][lib], `${lib} ausente no boot.json de ${exe.executableName}`)
     }
 
-    const achar = (nodes, ns) => {
+    const achar = (nodes: any[], ns: string): any => {
         for(const n of nodes){
             if(n.namespace === ns) return n
             const filho = n.children && achar(n.children, ns)
@@ -248,6 +248,6 @@ test("comandos que colhem evidência carregam as libs de coleta", () => {
         // resolve). Aqui não há resolução de módulo para completá-la, então
         // procuramos o arquivo que existe — .ts hoje, .js enquanto sobrar algum.
         const base = path.join(__dirname, "..", "src", cmd.path)
-        assert.ok([".ts", ".js"].some((ext) => fs.existsSync(base + ext)), `${cmd.path} não existe`)
+        assert.ok([".ts", ".js"].some((ext: string) => fs.existsSync(base + ext)), `${cmd.path} não existe`)
     }
 })
