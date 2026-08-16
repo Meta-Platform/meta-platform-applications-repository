@@ -52,6 +52,31 @@ const InstallElectronLogger = () => {
 }
 InstallElectronLogger()
 
+/*
+    REDE DE SEGURANÇA DO `Log`.
+
+    Este arquivo chama `Log.error(...)` em cinco caminhos de ERRO. Se a
+    instalação acima não acontecer — e ela não acontece quando a logger.lib está
+    em TypeScript, porque o Node do Electron não carrega `.ts` —, cada uma
+    dessas chamadas vira um ReferenceError: o diagnóstico do problema some e é
+    substituído por uma quebra, justamente onde algo já tinha dado errado.
+
+    Não é uma cópia do logger: é o mínimo para que registrar um erro nunca seja
+    o que derruba o processo. Some assim que o canônico conseguir subir aqui.
+*/
+if(!globalThis.Log){
+    const escrever = (nivel) => (origem, ...resto) =>
+        console[nivel === "error" ? "error" : "log"](`[${nivel}] [${origem}]`, ...resto)
+
+    globalThis.Log = {
+        trace: escrever("trace"), debug: escrever("debug"), info: escrever("info"),
+        message: escrever("message"), warn: escrever("warn"), error: escrever("error"),
+        fatal: escrever("fatal"),
+        child: () => globalThis.Log, source: () => globalThis.Log,
+        minimal: true
+    }
+}
+
 const DEFAULT_WIDTH  = 1024
 const DEFAULT_HEIGHT = 768
 const POLL_INTERVAL_MS   = 800
