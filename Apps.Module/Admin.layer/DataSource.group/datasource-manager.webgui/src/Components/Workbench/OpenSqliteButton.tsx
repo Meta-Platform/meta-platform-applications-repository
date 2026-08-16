@@ -21,7 +21,12 @@ const OpenSqliteButton = ({onOpen, variant = "primary", label = "Abrir SQLite", 
     const handleChange = (e:React.ChangeEvent<HTMLInputElement>) => {
         const file:any = e.target.files && e.target.files[0]
         if(!file) return
-        const path = file.path
+        // O `File` do navegador não tem caminho. O Chromium expunha um
+        // `file.path` fora do padrão e o Electron 32 o removeu — a ponte
+        // `desktopFiles` pergunta ao `webUtils`, que é onde a resposta mora.
+        // O `file.path` fica como segunda opção para o Electron antigo.
+        const bridge = (window as any).desktopFiles
+        const path = (bridge && bridge.getPathForFile(file)) || file.path
         if(path) onOpen(path, file.name)
         e.target.value = ""
     }

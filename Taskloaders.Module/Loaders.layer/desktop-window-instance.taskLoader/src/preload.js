@@ -4,11 +4,26 @@
  * (anterior ao 22.18, que é quando o Node passou a apagar tipos sozinho).
  * Ver o cabeçalho do electron-main.js. */
 
-const { contextBridge, ipcRenderer } = require("electron")
+const { contextBridge, ipcRenderer, webUtils } = require("electron")
 
 // Notificações nativas (já existia): usado pelo ecosystem-control-panel.webgui.
 contextBridge.exposeInMainWorld("electronNotifications", {
     show: ({ title, body }) => ipcRenderer.invoke("desktop-notification:show", { title, body })
+})
+
+/* Caminho real de um arquivo escolhido pelo usuário.
+ *
+ * O objeto `File` do navegador NÃO tem caminho — o Chromium expunha um
+ * `file.path` fora do padrão, e o Electron 32 o removeu. Quem precisa do
+ * caminho (para abrir um banco SQLite, por exemplo) tem de perguntar ao
+ * `webUtils`, que só existe deste lado da ponte.
+ *
+ * Escrito antes de a subida do Electron acontecer, e funcionando desde o 29:
+ * é o que permite que a interface pare de depender do `file.path` hoje, em vez
+ * de descobrir a ausência dele no dia da subida — quando a falha seria muda (o
+ * diálogo fecha e nada acontece). */
+contextBridge.exposeInMainWorld("desktopFiles", {
+    getPathForFile: (file) => webUtils.getPathForFile(file)
 })
 
 // Placa de vídeo da janela. Só existe no Electron: num navegador comum a
