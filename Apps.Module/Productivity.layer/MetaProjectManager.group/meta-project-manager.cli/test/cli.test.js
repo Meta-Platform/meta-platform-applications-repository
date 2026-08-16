@@ -244,6 +244,10 @@ test("comandos que colhem evidência carregam as libs de coleta", () => {
         for(const lib of EXIGIDAS)
             assert.ok((cmd.parametersToLoad || []).includes(lib),
                 `${ns}.parametersToLoad não carrega ${lib} — o coletor chegaria undefined e a lacuna seria silenciosa`)
-        assert.ok(fs.existsSync(path.join(__dirname, "..", "src", cmd.path + ".js")), `${cmd.path} não existe`)
+        // `cmd.path` vem do command-group SEM extensão (é assim que a plataforma
+        // resolve). Aqui não há resolução de módulo para completá-la, então
+        // procuramos o arquivo que existe — .ts hoje, .js enquanto sobrar algum.
+        const base = path.join(__dirname, "..", "src", cmd.path)
+        assert.ok([".ts", ".js"].some((ext) => fs.existsSync(base + ext)), `${cmd.path} não existe`)
     }
 })

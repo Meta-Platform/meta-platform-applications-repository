@@ -1,0 +1,5 @@
+const { Command } = require("../Utils/runtime") as { Command: (businessFn: (ctx: any) => any, opts?: any) => (ctx: any) => Promise<any> }
+
+module.exports = Command(async ({ store, actor, args }: any) => {
+    return await store.CreateItem({ project: args.project, type: args.type, title: args.title, description: args.description, parent: args.parent, board: args.board, priority: args.priority, statusKey: args.status, assignee: args.assignee, reporter: args.reporter, dueDate: args.dueDate, startDate: args.startDate, estimatePoints: args.estimatePoints, estimateMinutes: args.estimateMinutes, labels: args.labels, repositoryUrl: args.repositoryUrl, branchName: args.branchName, commitHash: args.commitHash, pullRequestUrl: args.pullRequestUrl, environment: args.environment, packagePath: args.packagePath, moduleName: args.moduleName, layerName: args.layerName, groupName: args.groupName, horizon: args.horizon, clarityState: args.clarity, effort: args.effort, value: args.value, area: args.area, ideaOrigin: args.ideaOrigin, actor })
+})

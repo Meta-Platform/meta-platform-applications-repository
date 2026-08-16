@@ -2,6 +2,10 @@
   "name": "blueprint-store.lib",
   "version": "0.0.1",
   "private": true,
-  "dependencies": { "sqlite3": "^5.1.7" },
-  "scripts": { "test": "node --test test/store.test.js" }
+  "dependencies": {
+    "sqlite3": "^5.1.7"
+  },
+  "scripts": {
+    "test": "node --require ../../../../../essential-repository/Commons.Module/Libraries.layer/module-resolution.lib/src/register.js --test test/store.test.js"
+  }
 }

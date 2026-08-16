@@ -1,0 +1,35 @@
+const { GetContext } = require("../AppContext")
+const { Guard, idOf, Actor } = require("../Utils/respond")
+
+// Controller Projects — adaptador HTTP fino sobre @/project-store.lib.
+const ProjectsController = (params: any) => {
+    const ctx = GetContext(params)
+    const { store } = ctx
+
+    const ListProjects = async (p: any = {}) => Guard(async () => { await ctx.ready; return store.ListProjects({ status: p.status, sort: p.sort, limit: p.limit, offset: p.offset, includeArchived: p.all, includeCounts: !!p.includeCounts }) })
+    const CreateProject = async (p: any = {}) => Guard(async () => { await ctx.ready; return store.CreateProject({ ...p, ownerUserId: p.owner, actor: Actor(p) }) })
+    const GetProject = async (arg: any) => Guard(async () => { await ctx.ready; const id = idOf(arg, "projectId"); return store.GetProject({ project: id }) })
+    const UpdateProject = async (p: any = {}) => Guard(async () => { await ctx.ready; return store.UpdateProject({ project: p.projectId, ...p, ownerUserId: p.owner, actor: Actor(p) }) })
+    const ArchiveProject = async (arg: any) => Guard(async () => { await ctx.ready; const id = idOf(arg, "projectId"); return store.ArchiveProject({ project: id, actor: { source: "api" } }) })
+    const RestoreProject = async (arg: any) => Guard(async () => { await ctx.ready; const id = idOf(arg, "projectId"); return store.RestoreProject({ project: id, actor: { source: "api" } }) })
+    const DeleteProject = async (arg: any) => Guard(async () => { await ctx.ready; const id = idOf(arg, "projectId"); return store.DeleteProject({ project: id, actor: { source: "api" } }) })
+    const ProjectMetrics = async (arg: any) => Guard(async () => { await ctx.ready; const id = idOf(arg, "projectId"); return store.ProjectMetrics({ project: id }) })
+    const GetProjectReport = async (arg: any) => Guard(async () => { await ctx.ready; const id = idOf(arg, "projectId"); return store.GetProjectReport({ project: id }) })
+    const SetProjectReport = async (p: any = {}) => Guard(async () => { await ctx.ready; return store.SetProjectReport({ project: p.projectId, finalReport: p.finalReport, actor: Actor(p) }) })
+
+    return {
+        controllerName: "ProjectsController",
+        ListProjects,
+        CreateProject,
+        GetProject,
+        UpdateProject,
+        ArchiveProject,
+        RestoreProject,
+        DeleteProject,
+        ProjectMetrics,
+        GetProjectReport,
+        SetProjectReport
+    }
+}
+
+module.exports = ProjectsController

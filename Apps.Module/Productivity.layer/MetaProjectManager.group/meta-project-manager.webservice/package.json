@@ -3,5 +3,8 @@
   "version": "0.0.1",
   "description": "API REST + WebSocket do Meta Project Manager",
   "author": "Kaio Cezar <kadisk.shark@gmail.com>",
-  "license": "BSD-3-Clause"
+  "license": "BSD-3-Clause",
+  "scripts": {
+    "test": "node --require ../../../../../essential-repository/Commons.Module/Libraries.layer/module-resolution.lib/src/register.js --test test/*.test.js"
+  }
 }

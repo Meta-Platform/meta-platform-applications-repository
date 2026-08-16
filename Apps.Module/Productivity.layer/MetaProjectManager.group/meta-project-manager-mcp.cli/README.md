@@ -26,7 +26,7 @@ diff** vivem na lib. Este pacote só traduz tools MCP ↔ métodos da store.
 ## Por que hand-rolled (zero dependências)
 
 O protocolo MCP (subconjunto *tools*) é implementado à mão em CommonJS puro
-(`src/Server/McpStdioServer.js`). Motivo: o SDK oficial é ESM-only e a Meta
+(`src/Server/McpStdioServer.ts`). Motivo: o SDK oficial é ESM-only e a Meta
 Platform roda CommonJS (`require`). Assim a **única dependência do pacote é
 `@/project-store.lib`** (injetada via `bound-params`) — sem libs externas, sem
 novas vulnerabilidades.
@@ -117,7 +117,7 @@ guia operacional que o cliente injeta no contexto do agente. É o que faz o agen
 já chegar sabendo as regras, em vez de descobri-las errando (batendo no gate,
 escrevendo descrições enormes, usando relações de vínculo inexistentes).
 
-Fonte única: `src/Server/Instructions.js`. Também é devolvido pela tool
+Fonte única: `src/Server/Instructions.ts`. Também é devolvido pela tool
 **`get_guidance`**, para clientes que ignoram `instructions`.
 
 O guia cobre:
@@ -132,7 +132,7 @@ O guia cobre:
 | Armadilhas | relações exatas (`blocks`, `depends`, `relates`, `duplicates`, `implements`, `tests`); `assign_item_planning` é o que vincula milestone/sprint; `keyPrefix` ≤ 5 chars; `file://` vale em link |
 | Códigos de erro | o que fazer em `AGENT_SESSION_CONFIRMATION_REQUIRED`, `REJECTED_BY_HUMAN`, `APPROVAL_TIMEOUT`, `FORBIDDEN`, `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT` |
 
-> **Ao editar `Instructions.js`:** só documente o que o código realmente faz. Os
+> **Ao editar `Instructions.ts`:** só documente o que o código realmente faz. Os
 > testes (`test/tools.test.js`) verificam que as restrições anunciadas batem com
 > o domínio — por exemplo, que as relações de vínculo listadas são as reais.
 
@@ -261,8 +261,8 @@ sem se despedir.
 > O aviso é **entregue**, não consultado: o agente que precisa da informação é
 > justamente o que não sabe que precisa perguntar.
 
-O teto vive em `Server/ResponseGuard.js` e vale para **toda** tool, inclusive as
-que forem adicionadas depois; os envelopes ficam em `Server/Envelopes.js`.
+O teto vive em `Server/ResponseGuard.ts` e vale para **toda** tool, inclusive as
+que forem adicionadas depois; os envelopes ficam em `Server/Envelopes.ts`.
 
 > Aprovar/rejeitar pedidos e confirmar sessões **não** são tools MCP: são ações
 > **humanas** (na GUI ou pela CLI `mpm`) — se o agente pudesse se autoaprovar, o gate
@@ -288,12 +288,12 @@ repo update ApplicationsRepository
 ```
 metadata/{package.json, boot.json, command-group.json, startup-params.json}
 src/
-  Commands/Serve.command.js     # entry persistente (await new Promise(()=>{}))
-  Server/McpStdioServer.js       # protocolo MCP stdio (JSON-RPC 2.0), zero deps
-  Server/Tools.js                # catálogo de tools → métodos da store
-  Server/Envelopes.js            # projeção, resumo de escrita e execução em lote
-  Server/ResponseGuard.js        # teto de tamanho: degrada em vez de estourar
-  Utils/{runtime,actor,logger}.js
+  Commands/Serve.command.ts     # entry persistente (await new Promise(()=>{}))
+  Server/McpStdioServer.ts       # protocolo MCP stdio (JSON-RPC 2.0), zero deps
+  Server/Tools.ts                # catálogo de tools → métodos da store
+  Server/Envelopes.ts            # projeção, resumo de escrita e execução em lote
+  Server/ResponseGuard.ts        # teto de tamanho: degrada em vez de estourar
+  Utils/{runtime,actor,logger}.ts
 ```
 
 ## Comandos (`metadata/command-group.json`)
