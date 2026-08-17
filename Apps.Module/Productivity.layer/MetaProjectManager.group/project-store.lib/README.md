@@ -183,11 +183,11 @@ src/
     AgentsStore.ts  ActivityStore.ts  PresenceStore.ts  ReportsStore.ts  AuditStore.ts
     ImportExportStore.ts
     DocsStore.ts  RisksStore.ts  PlanningDocsStore.ts  EcosystemStore.ts  FeedbackStore.ts
-test/store.test.js            # node --test (spec §14.1)
+test/store.test.ts            # npm test (spec §14.1)
 ```
 
 ## Testes
 
 ```bash
-node --test
+npm test
 ```

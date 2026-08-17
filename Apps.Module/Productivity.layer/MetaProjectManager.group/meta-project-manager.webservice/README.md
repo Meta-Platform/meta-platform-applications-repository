@@ -55,7 +55,7 @@ No desktop, o push vem do GUI-host por IPC (ver `meta-project-manager-gui.servic
 
 ```bash
 npm install express --no-save   # a plataforma provê express em produção
-node --test
+npm test
 ```
-O harness (`test/ws.harness.js`) replica o `CreateAPIEndpointsService` e exercita os
+O harness (`test/ws.harness.ts`) replica o `CreateAPIEndpointsService` e exercita os
 endpoints por HTTP real (12 casos), incluindo o buffer de eventos.

@@ -133,7 +133,7 @@ O guia cobre:
 | Códigos de erro | o que fazer em `AGENT_SESSION_CONFIRMATION_REQUIRED`, `REJECTED_BY_HUMAN`, `APPROVAL_TIMEOUT`, `FORBIDDEN`, `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT` |
 
 > **Ao editar `Instructions.ts`:** só documente o que o código realmente faz. Os
-> testes (`test/tools.test.js`) verificam que as restrições anunciadas batem com
+> testes (`test/tools.test.ts`) verificam que as restrições anunciadas batem com
 > o domínio — por exemplo, que as relações de vínculo listadas são as reais.
 
 ## Tools expostas

@@ -116,9 +116,9 @@ Veja a árvore completa em `metadata/command-group.json`. Rode `mpm <grupo> --he
 
 ```bash
 npm install yargs --no-save   # a plataforma provê yargs em produção; necessário só p/ o harness
-node --test
+npm test
 ```
-O harness (`test/cli.harness.js`) replica o `CommandApplication.taskLoader` (yargs +
+O harness (`test/cli.harness.ts`) replica o `CommandApplication.taskLoader` (yargs +
 command-group.json) e exercita o fluxo completo de agente.
 
 ## Comandos (`metadata/command-group.json`)
