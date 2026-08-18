@@ -6,7 +6,7 @@
  * Electron 43 embute o Node 24.18, que apaga tipos e tem `module.registerHooks`.
  * Ver source-language-standard.md. */
 
-const { app, BrowserWindow, Menu, dialog, ipcMain, Notification, nativeImage, protocol, net } = require("electron")
+const { app, BrowserWindow, Menu, dialog, ipcMain, Notification, nativeImage, protocol, net, clipboard } = require("electron")
 const http  = require("http")
 const https = require("https")
 const crypto = require("crypto")
@@ -14,6 +14,7 @@ const fs = require("fs")
 const { join, dirname } = require("path")
 const { pathToFileURL } = require("url")
 const { ResolveGpuLaunch, ListVulkanDevices, WritePreference } = require("./GpuPreference")
+const { DescribeSandboxNotice, FormatSandboxWarning, ShouldAnnounceNotice, RememberNoticeAnnounced } = require("./SandboxSupport")
 
 // Resolução de `.ts` deste processo, pelo mesmo motivo do logger abaixo: o
 // Electron é processo SEPARADO e nada do que o executor instalou vale aqui. Vem
@@ -143,6 +144,66 @@ if(WM_CLASS){
 // dessa divisão está em GpuPreference.js.
 const GPU_STATE = ResolveGpuLaunch(WM_CLASS)
 if(GPU_STATE.useVulkan) app.commandLine.appendSwitch("use-angle", "vulkan")
+
+/* SANDBOX: o que foi decidido antes de este processo existir.
+
+   A escolha é de quem abriu a janela (a flag é lida na largada do Chromium, ver
+   SandboxSupport.js) — aqui só recebemos o resultado pelo env. Esta metade
+   existe por um motivo: quando a janela abre SEM sandbox, quem está usando o
+   app precisa saber disso, o que mudou em risco e o que fazer para recuperar a
+   proteção. Um log não cumpre esse papel; ninguém lê o log da própria área de
+   trabalho. */
+const SANDBOX_STATE = (() => {
+    try {
+        return process.env.META_SANDBOX_STATE ? JSON.parse(process.env.META_SANDBOX_STATE) : null
+    } catch (error) {
+        return null
+    }
+})()
+
+const _AnnounceSandboxNotice = () => {
+    if(!SANDBOX_STATE || SANDBOX_STATE.mode !== "disabled") return
+
+    // No log SEMPRE: é o registro que sobrevive ao clique no diálogo e o que o
+    // painel de instâncias mostra.
+    Log.warn("electron-main", FormatSandboxWarning(SANDBOX_STATE))
+
+    // Na tela, não a cada abertura: o aviso reaparece quando a máquina muda
+    // (outro kernel, outra instalação do Electron) e cala de vez se a pessoa
+    // pedir. Um alerta repetido em todo lançamento deixaria de ser lido.
+    if(!ShouldAnnounceNotice(SANDBOX_STATE)) return
+
+    const notice = DescribeSandboxNotice(SANDBOX_STATE)
+
+    dialog.showMessageBox({
+        type     : "warning",
+        title    : notice.title,
+        message  : notice.title,
+        detail   : [
+            notice.summary,
+            "",
+            ...notice.causes.map((cause) => `• ${cause}`),
+            "",
+            notice.risk,
+            "",
+            "Para restaurar a proteção, rode no terminal:",
+            ...notice.repair.map((command) => `    ${command}`),
+            "",
+            notice.footer
+        ].join("\n"),
+        buttons  : ["Entendi", "Copiar os comandos"],
+        defaultId: 0,
+        cancelId : 0,
+        noLink   : true,
+        checkboxLabel  : "Não avisar de novo nesta máquina",
+        checkboxChecked: false
+    }).then(({ response, checkboxChecked }) => {
+        if(response === 1) clipboard.writeText(notice.repair.join("\n"))
+        RememberNoticeAnnounced(SANDBOX_STATE, { silenced: Boolean(checkboxChecked) })
+    }).catch((error) => {
+        Log.error("electron-main", "falha ao exibir o aviso de sandbox", error)
+    })
+}
 
 // Código de saída reservado: "não fui fechado, quero reabrir". Trocar de placa
 // exige um processo novo (a escolha é flag de linha de comando), e `relaunch()`
@@ -962,7 +1023,10 @@ const CreateGuiHostWindow = async () => {
     }
 }
 
-app.whenReady().then(() => IS_GUI_HOST ? CreateGuiHostWindow() : CreateWindow())
+app.whenReady().then(() => {
+    _AnnounceSandboxNotice()
+    return IS_GUI_HOST ? CreateGuiHostWindow() : CreateWindow()
+})
 
 app.on("window-all-closed", () => ExitApp())
 app.on("before-quit", () => BrowserWindow.getAllWindows().forEach((window) => {

@@ -1,6 +1,7 @@
 const { spawn } = require("child_process") as typeof import("child_process")
 const { join } = require("path") as typeof import("path")
 const { ResolveGpuLaunch } = require("./GpuPreference") as { ResolveGpuLaunch: (appKey?: string) => { env: Record<string, string> } }
+const { ResolveSandboxLaunch } = require("./SandboxSupport") as { ResolveSandboxLaunch: (electronBinaryPath: string, options?: any) => any }
 
 // A extensão é literal, e continua sendo: este caminho não é um specifier de
 // módulo — é o ARQUIVO que o binário do Electron recebe como ponto de entrada.
@@ -9,6 +10,12 @@ const { ResolveGpuLaunch } = require("./GpuPreference") as { ResolveGpuLaunch: (
 // Ver o cabeçalho do próprio electron-main.js.
 const ELECTRON_MAIN_SCRIPT = join(__dirname, "electron-main.js")
 
+// Quanto do stderr do Chromium guardamos. Ele não é ruidoso em operação normal,
+// e quando a janela morre cedo é AQUI que está o motivo — o abort de sandbox,
+// por exemplo, existe só nesta saída. Sem isto o monitor de execução mostra uma
+// instância que terminou sem explicação nenhuma.
+const STDERR_TAIL_LINES = 40
+
 // Fábrica: recebe runtimeDeps (SmartRequire p/ resolver o binário electron + `paths`
 // absolutos que o subprocesso electron-main usa p/ requerer deps por PATH, já que ele
 // roda num processo separado e não recebe módulos JS).
@@ -16,7 +23,7 @@ const CreateOpenElectronWindow = (runtimeDeps: any) => {
 
     const { SmartRequire, paths } = runtimeDeps
 
-    const OpenElectronWindow = ({ url, file, rootPath, title, width, height, iconPath, guiConfigPath, wmClass, logsDirPath }: any) => {
+    const OpenElectronWindow = ({ url, file, rootPath, title, width, height, iconPath, guiConfigPath, wmClass, logsDirPath, forceNoSandbox }: any) => {
         const electronBinaryPath = SmartRequire("electron")
 
         // Três modos:
@@ -37,12 +44,23 @@ const CreateOpenElectronWindow = (runtimeDeps: any) => {
         // disco a cada abertura — é assim que a troca vale ao reabrir a janela.
         const gpuEnv = ResolveGpuLaunch(wmClass).env
 
-        return spawn(electronBinaryPath, [ELECTRON_MAIN_SCRIPT], {
-            stdio: "inherit",
+        // Sandbox do Chromium: qual modo ESTA máquina permite. A flag entra na
+        // linha de comando (o zygote a lê na largada, não dá para decidir de
+        // dentro), e o estado segue no env para que a janela possa avisar quem
+        // está usando o app. `forceNoSandbox` é a reabertura pedida por quem
+        // observou o abort. O porquê de tudo isto está em SandboxSupport.js.
+        const sandbox = ResolveSandboxLaunch(electronBinaryPath, { forceDisabled: Boolean(forceNoSandbox) })
+
+        const windowProcess: any = spawn(electronBinaryPath, [...sandbox.args, ELECTRON_MAIN_SCRIPT], {
+            // stdout herdado como antes; o stderr passa por nós para que o
+            // motivo de uma morte precoce chegue ao log — e continua ecoado,
+            // para quem lançou pelo terminal não perder nada.
+            stdio: ["inherit", "inherit", "pipe"],
             env: {
                 ...process.env,
                 ...contentEnv,
                 ...gpuEnv,
+                META_SANDBOX_STATE: JSON.stringify(sandbox),
                 // Caminhos p/ o electron-main (modo gui-host) resolver o
                 // WebInterfaceBuilder (ecosystem-core) e o SmartRequire (essential)
                 // por PATH — o subprocesso não recebe módulos injetados.
@@ -72,6 +90,27 @@ const CreateOpenElectronWindow = (runtimeDeps: any) => {
                 ...wmClass ? { DESKTOP_WINDOW_WM_CLASS: String(wmClass) } : {}
             }
         })
+
+        const stderrTail: string[] = []
+
+        if(windowProcess.stderr){
+            windowProcess.stderr.on("data", (chunk: any) => {
+                process.stderr.write(chunk)
+                for(const line of String(chunk).split("\n")){
+                    if(!line.trim()) continue
+                    stderrTail.push(line)
+                    if(stderrTail.length > STDERR_TAIL_LINES) stderrTail.shift()
+                }
+            })
+        }
+
+        // Como a janela foi aberta e o que ela disse antes de morrer: quem
+        // acompanha o processo (o task loader) precisa das duas coisas para
+        // decidir o que fazer e para registrar um motivo.
+        windowProcess.metaSandbox     = sandbox
+        windowProcess.metaStderrTail  = () => stderrTail.join("\n")
+
+        return windowProcess
     }
 
     return OpenElectronWindow

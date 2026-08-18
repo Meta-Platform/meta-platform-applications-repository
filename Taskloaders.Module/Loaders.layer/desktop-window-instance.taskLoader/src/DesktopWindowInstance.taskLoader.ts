@@ -1,6 +1,10 @@
 const fs = require("fs") as typeof import("fs")
 const os = require("os") as typeof import("os")
 const { join, basename } = require("path") as typeof import("path")
+const { LooksLikeSandboxFailure, FormatSandboxWarning } = require("./SandboxSupport") as {
+    LooksLikeSandboxFailure: (text: string) => boolean,
+    FormatSandboxWarning: (state: any) => string
+}
 
 // Classe X11 (WM_CLASS) usada pelo gerenciador de janelas para agrupar botões na
 // barra de tarefas. Cada .desktopapp precisa de uma classe ESTÁVEL e ÚNICA, senão
@@ -152,12 +156,15 @@ const DesktopWindowInstanceTaskLoader = (runtimeDeps: any) => {
     let windowProcess: any
     let wasStopped = false
     let isProcessExitScheduled = false
+    // A reabertura sem sandbox acontece UMA vez: se a janela morrer de novo, o
+    // problema é outro e insistir só esconderia o motivo real.
+    let sandboxFallbackAttempted = false
     // Reabertura pedida pela própria janela (ver RESTART_EXIT_CODE no
     // electron-main): trocar a placa de vídeo exige um processo Electron novo,
     // porque a escolha é uma flag lida na largada. Reabrimos aqui em vez de
     // deixar o Electron se relançar sozinho — assim a INSTÂNCIA continua sendo
     // esta, e o app não some do monitor de execução.
-    let openWindow: () => void
+    let openWindow: (options?: any) => void
 
     const {
         url,
@@ -174,6 +181,18 @@ const DesktopWindowInstanceTaskLoader = (runtimeDeps: any) => {
 
     const isGuiHost = Boolean(guiHost)
 
+    // Como a janela abriu, em uma linha — e o aviso inteiro quando ela abriu
+    // desprotegida. É o mesmo texto que a janela mostra à pessoa; aqui ele
+    // serve a quem lê o log da instância depois.
+    const _AnnounceSandboxMode = () => {
+        const sandbox = windowProcess && windowProcess.metaSandbox
+        if(!sandbox) return
+        if(sandbox.mode === "disabled")
+            log.warn(FormatSandboxWarning(sandbox))
+        else
+            log.info(`sandbox do Chromium ativa (${sandbox.reason})`)
+    }
+
     const ScheduleProcessExit = () => {
         if(isProcessExitScheduled) return
         isProcessExitScheduled = true
@@ -181,7 +200,12 @@ const DesktopWindowInstanceTaskLoader = (runtimeDeps: any) => {
     }
 
     const _WatchWindowProcess = () => {
+        // O processo observado fica preso aqui porque `windowProcess` é zerado
+        // logo abaixo — e o que ele disse antes de morrer só existe nele.
+        const watchedProcess = windowProcess
         windowProcess.on("exit", (code: number | null, signal: string | null) => {
+            const stderrTail  = watchedProcess.metaStderrTail ? watchedProcess.metaStderrTail() : ""
+            const sandboxMode = watchedProcess.metaSandbox ? watchedProcess.metaSandbox.mode : null
             windowProcess = undefined
             // Por que a janela terminou: sem isto, o monitor de instâncias
             // mostra "encerrada" sem motivo nenhum.
@@ -195,6 +219,29 @@ const DesktopWindowInstanceTaskLoader = (runtimeDeps: any) => {
                 _WatchWindowProcess()
                 return
             }
+
+            // REDE DE SEGURANÇA DA SANDBOX. O Chromium aborta ANTES de existir
+            // janela quando a máquina não permite nenhum modo de isolamento, e
+            // o motivo existe só no stderr. A leitura do /proc feita na
+            // abertura conhece os mecanismos das distros que conhecemos; o que
+            // ela não previr cai aqui — reconhecemos o abort pelo que ele
+            // disse e reabrimos sem sandbox, avisando. É esta segunda camada
+            // que faz a janela abrir em sistema nenhum de nós já testou.
+            if(!wasStopped && !sandboxFallbackAttempted && sandboxMode !== "disabled" && LooksLikeSandboxFailure(stderrTail)){
+                sandboxFallbackAttempted = true
+                log.warn("o Chromium não conseguiu iniciar a sandbox nesta máquina — reabrindo a janela sem sandbox")
+                openWindow({ forceNoSandbox: true })
+                _AnnounceSandboxMode()
+                _WatchWindowProcess()
+                return
+            }
+
+            // Saída anormal: o que o processo escreveu antes de morrer é a
+            // única pista que existe. Sem isto o monitor mostra "encerrada" e
+            // mais nada — foi assim que um abort de sandbox passou por bug do
+            // app durante horas.
+            if(!wasStopped && code !== 0 && stderrTail)
+                log.error(`saída do processo da janela antes de terminar:\n${stderrTail}`)
 
             executorChannel.emit(CommandChannelEventTypes.CHANGE_TASK_STATUS, TaskStatusTypes.TERMINATED)
             if(!wasStopped)
@@ -213,15 +260,16 @@ const DesktopWindowInstanceTaskLoader = (runtimeDeps: any) => {
                 // Registra o app na barra de tarefas (StartupWMClass) para que o
                 // KDE não agrupe todos os desktopapps pelo binário Electron comum.
                 EnsureAppDesktopEntry({ wmClass, name: config.window.title, iconPath: config.window.iconPath })
-                openWindow = () => { windowProcess = OpenElectronWindow({ guiConfigPath, wmClass, logsDirPath: _ResolveLogsDirPath() }) }
+                openWindow = (options?: any) => { windowProcess = OpenElectronWindow({ guiConfigPath, wmClass, logsDirPath: _ResolveLogsDirPath(), ...options }) }
             } else {
                 const wmClass  = _ResolveWmClass(rootPath ? basename(rootPath) : title)
                 const iconPath = ResolveIconPath(rootPath)
                 EnsureAppDesktopEntry({ wmClass, name: title, iconPath })
-                openWindow = () => { windowProcess = OpenElectronWindow({ url, file, rootPath, title, width, height, iconPath, wmClass, logsDirPath: _ResolveLogsDirPath() }) }
+                openWindow = (options?: any) => { windowProcess = OpenElectronWindow({ url, file, rootPath, title, width, height, iconPath, wmClass, logsDirPath: _ResolveLogsDirPath(), ...options }) }
             }
 
             openWindow()
+            _AnnounceSandboxMode()
             _WatchWindowProcess()
 
             executorChannel.emit(CommandChannelEventTypes.CHANGE_TASK_STATUS, TaskStatusTypes.ACTIVE)
