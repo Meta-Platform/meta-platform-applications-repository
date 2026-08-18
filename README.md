@@ -25,13 +25,25 @@ Quando você quer instalar/usar as aplicações finais, ou estudá-las como
 
 ## Instalação
 
-Instalado via [Setup Wizard](https://github.com/Meta-Platform/meta-platform-setup-wizard-command-line).
-O único perfil que inclui este repositório (`dev-localfs-full`) **não está
-registrado** no wizard atual — a instalação deste repositório é manual, voltada
-a desenvolvimento. Executáveis publicados em
-[`metadata/applications.json`](./metadata/applications.json):
-`api-designer-webapp` e `api-designer-desktop` (api-designer), `developer`
-(package-developer), `sources` (datasource-manager).
+Instalado via [Setup Wizard](https://github.com/Meta-Platform/meta-platform-setup-wizard-command-line):
+
+```bash
+mywizard install github-release-full
+```
+
+O perfil `github-release-full` instala este repositório a partir da release
+publicada, junto do `EssentialRepo` e do `EcosystemCoreRepo` — máquina limpa,
+sem checkout local. Quem desenvolve a plataforma continua usando
+`dev-localfs-full`, que aponta para o workspace.
+
+Os 20 executáveis estão em
+[`metadata/applications.json`](./metadata/applications.json). O perfil de
+release instala as 10 aplicações de janela: `my-desktop`, `developer-desktop`,
+`launcher-desktop`, `container-manager-desktop`, `executor-panel-desktop`,
+`meta-project-manager-desktop`, `ui-catalog-desktop`, `api-designer-desktop`,
+`my-blueprint-desktop` e `sources-desktop`. As versões web (`developer`,
+`launcher`, `container-manager`, …) e os CLIs (`mpm`, `meta-project-manager-mcp`,
+`my-blueprint-mcp`) são instaláveis à parte com `repo install-executable`.
 
 ## Conceitos importantes
 
