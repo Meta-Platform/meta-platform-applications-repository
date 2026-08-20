@@ -52,47 +52,33 @@ release instala as 10 aplicações de janela: `my-desktop`, `developer-desktop`,
   próprios. Ver [Module / Layer / Group](https://github.com/Meta-Platform/meta-platform-open-standard/blob/main/concepts/module-layer-group.md).
 - O `webapp` é o package que aparece em `applications.json` e gera o executável.
 
-## Matriz de packages
+## Aplicações
 
-> **Estado** reflete o que existe **no código hoje**: *Desenvolvido* = com
-> metadados/código; *WIP* = início; *Stub* = vazio ou só `package.json`.
+Cada aplicação é um **Group**: os pacotes que a compõem (interface, API, composição web e desktop) ficam juntos. O detalhe de cada pacote está no README dele; a listagem completa e sempre atual é a própria árvore de diretórios.
 
-| Package | Tipo | Módulo | Layer | Group | Função | Estado | Dependências (namespaces) | Executável |
-|---------|------|--------|-------|-------|--------|--------|---------------------------|------------|
-| `container-manager.webapp` | webapp | Apps | Admin | ContainerManager | Composição da app de gestão de containers | Desenvolvido | `@@/server-service`, `@/container-runtime-adapter.service` (core), `@/container-manager.{webgui,webservice}` | `container-manager` |
-| `container-manager.webgui` | webgui | Apps | Admin | ContainerManager | Front-end: conexões, containers, imagens, redes e volumes | Desenvolvido | `@@/server-service`, `@/i-components.uilib` | — |
-| `container-manager.webservice` | webservice | Apps | Admin | ContainerManager | API HTTP sobre o gerenciador de conexões | Desenvolvido | `@@/server-service`, `@/container-runtime-adapter.service` (core) | — |
-| `container-manager.desktopapp` | desktopapp | Apps | Admin | ContainerManager | Janela Electron (GUI-host, sem HTTP) | Desenvolvido | `@/container-manager.{webgui,webservice}`, `@/container-manager-gui.service`, `@/container-runtime-adapter.service` (core) | `container-manager-desktop` |
-| `container-manager-gui.service` | service | Apps | Admin | ContainerManager | Hospeda os controllers do webservice via IPC (modo GUI-host) | Desenvolvido | `@/container-manager.webservice` | — |
-| `datasource-manager.webapp` | webapp | Apps | Admin | DataSource | Composição da app de fontes de dados | Desenvolvido | `@@/server-service` (server-manager), `@/datasource-manager.{webgui,webservice,service}` | `sources` |
-| `datasource-manager.webgui` | webgui | Apps | Admin | DataSource | Front-end | Desenvolvido | `@@/server-service` | — |
-| `datasource-manager.webservice` | webservice | Apps | Admin | DataSource | API HTTP | Desenvolvido | `@@/server-service` | — |
-| `datasource-manager.service` | service | Base | Service | — | Serviço `DataSourceLocalManager` | Desenvolvido | — | — |
-| `my-desktop.desktopapp` | desktopapp | Apps | Admin | MyDesktop | Composição desktop (janela Electron) do MyDesktop | Desenvolvido | `@@/server-service`, `@/home-screen.webgui`, `@/execution-manager.webservice`, serviços de core (`repository-manager`, `ecosystemdata-handler`, `notification-hub`) | `my-desktop` |
-| `home-screen.webgui` | webgui | Apps | Admin | MyDesktop | Área de trabalho: ícones (arrastáveis, multi-seleção), gerenciamento de apps/fontes, instâncias em execução | Desenvolvido | `@@/server-service`, `@/execution-manager.webservice` | — |
-| `execution-manager.webservice` | webservice | Apps | Admin | MyDesktop | Descobre/lança apps desktop; gerencia aplicações (instalar/remover), fontes/repositórios e instâncias | Desenvolvido | `@@/server-service`, `@/repository-manager.service`, `@/ecosystem-install-utilities.lib`, `@/ecosystem-control-panel.service` | — |
-| `desktop-gui.service` | service | Apps | Admin | MyDesktop | Hospeda os controllers do execution-manager via IPC (modo Electron GUI-host) | Desenvolvido | `@/execution-manager.webservice` (+ serviços de core) | — |
-| `my-workspace.webgui` | webgui | Apps | Admin | MyDesktop | Workspace do usuário: quadro de notas (persistência local) | Desenvolvido | `@@/server-service` | — |
-| `api-designer.webapp` | webapp | Apps | Tools | APIDesigner | Composição do API Designer | Desenvolvido | `@@/server-service`, `@/api-designer.{webgui,webservice}` | `api-designer-webapp` |
-| `api-designer.desktopapp` | desktopapp | Apps | Tools | APIDesigner | Composição desktop (janela Electron) do API Designer | Desenvolvido | `@@/server-service`, `@/api-designer.{webgui,webservice}` | `api-designer-desktop` |
-| `api-designer.webgui` | webgui | Apps | Tools | APIDesigner | Front-end | Desenvolvido | `@@/server-service` | — |
-| `api-designer.webservice` | webservice | Apps | Tools | APIDesigner | API HTTP | Desenvolvido | `@@/server-service` | — |
-| `MetaCloud.webapp` | webapp | Apps | Tools | MetaCloud | App MetaCloud (planejado) | Stub (só `package.json`) | — | — |
-| `MetaCloud.webgui` | webgui | Apps | Tools | MetaCloud | Front-end MetaCloud (planejado) | WIP (telas `Login`, `WelcomePanel`) | — | — |
-| `package-developer.lib` | lib | Apps | Tools | PackageDeveloper | Serviço `PackageHandlerManager` | Desenvolvido | — | — |
-| `package-developer.webapp` | webapp | Apps | Tools | PackageDeveloper | Composição do Package Developer | Desenvolvido | `@@/server-service`, `@/package-developer.{lib,webgui,webservice}` | `developer` |
-| `package-developer.webgui` | webgui | Apps | Tools | PackageDeveloper | Front-end | Desenvolvido | `@@/server-service` | — |
-| `package-developer.webservice` | webservice | Apps | Tools | PackageDeveloper | API HTTP | Desenvolvido | `@@/server-service`, `@/package-developer.lib` | — |
-| `instance-executor-control-panel.desktopapp` | desktopapp | Apps | InstanceManager | InstanceExecutorControlPanel | Composição desktop (Electron **GUI-host + streaming**) do painel do executor de instâncias | Desenvolvido | `@/instance-executor-control-panel.{webgui,webservice,-gui.service}` + serviços de core (`repository-manager`, `task-executor-machine`, `environment-runtime-manager`, `ecosystem-manager`) | `executor-panel-desktop` |
-| `instance-executor-control-panel.webapp` | webapp | Apps | InstanceManager | InstanceExecutorControlPanel | Composição web do painel do executor de instâncias | Desenvolvido | `@@/server-service`, `@/instance-executor-control-panel.{webgui,webservice}` + serviços de core | `executor-panel` |
-| `instance-executor-control-panel.webgui` | webgui | Apps | InstanceManager | InstanceExecutorControlPanel | Front-end (control panel / package explorer / task monitor); **dual-transport** HTTP/IPC | Desenvolvido | `@@/server-service` | — |
-| `instance-executor-control-panel.webservice` | webservice | Apps | InstanceManager | InstanceExecutorControlPanel | API HTTP+WS (TaskExecutorMonitor / RepositoryManager / EcosystemManager) | Desenvolvido | `@@/server-service` + serviços de core | — |
-| `instance-executor-control-panel-gui.service` | service | Apps | InstanceManager | InstanceExecutorControlPanel | Hospeda os 3 controllers da webservice via IPC (Electron GUI-host, com streaming) | Desenvolvido | `@/instance-executor-control-panel.webservice` (+ serviços de core) | — |
-| `ui-components.lib` | lib | Base | Library | — | Biblioteca de componentes React (UI) | Desenvolvido (sem `metadata/` namespace) | consumida em build pelos `webgui` | — |
+| Aplicação | Layer | Pacotes | Onde |
+|---|---|---:|---|
+| **ContainerManager** | Admin | 6 | [Apps.Module/Admin.layer/ContainerManager.group](./Apps.Module/Admin.layer/ContainerManager.group) |
+| **DataSource** | Admin | 5 | [Apps.Module/Admin.layer/DataSource.group](./Apps.Module/Admin.layer/DataSource.group) |
+| **MyDesktop** | Admin | 5 | [Apps.Module/Admin.layer/MyDesktop.group](./Apps.Module/Admin.layer/MyDesktop.group) |
+| **InstanceExecutorControlPanel** | InstanceManager | 7 | [Apps.Module/InstanceManager.layer/InstanceExecutorControlPanel.group](./Apps.Module/InstanceManager.layer/InstanceExecutorControlPanel.group) |
+| **Launcher** | InstanceManager | 5 | [Apps.Module/InstanceManager.layer/Launcher.group](./Apps.Module/InstanceManager.layer/Launcher.group) |
+| **MetaProjectManager** | Productivity | 8 | [Apps.Module/Productivity.layer/MetaProjectManager.group](./Apps.Module/Productivity.layer/MetaProjectManager.group/README.md) |
+| **MyBlueprint** | Productivity | 6 | [Apps.Module/Productivity.layer/MyBlueprint.group](./Apps.Module/Productivity.layer/MyBlueprint.group/README.md) |
+| **APIDesigner** | Tools | 5 | [Apps.Module/Tools.layer/APIDesigner.group](./Apps.Module/Tools.layer/APIDesigner.group) |
+| **MetaCloud** | Tools | 2 | [Apps.Module/Tools.layer/MetaCloud.group](./Apps.Module/Tools.layer/MetaCloud.group) |
+| **PackageDeveloper** | Tools | 6 | [Apps.Module/Tools.layer/PackageDeveloper.group](./Apps.Module/Tools.layer/PackageDeveloper.group/README.md) |
+| **UICatalog** | Tools | 2 | [Apps.Module/Tools.layer/UICatalog.group](./Apps.Module/Tools.layer/UICatalog.group/README.md) |
 
-> `@@/server-service` e `@/server-manager.*` são fornecidos pelo
+Fora dos grupos:
+
+- [`Base.Module/Service.layer/datasource-manager.service`](./Base.Module/Service.layer/datasource-manager.service/README.md) — serviço de fontes de dados.
+- [`Taskloaders.Module/Loaders.layer/desktop-window-instance.taskLoader`](./Taskloaders.Module/Loaders.layer/desktop-window-instance.taskLoader/README.md) — o *object loader* que instancia janelas desktop.
+
+> `@@/server-service` e `@/server-manager.*` vêm do
 > [ecosystem-core](https://github.com/Meta-Platform/meta-platform-ecosystem-core-repository)
-> — exemplo de dependência **entre repositórios** resolvida por namespace.
+> — dependência **entre repositórios**, resolvida por namespace. O kit de UI é a
+> `@/i-components.uilib`, também do ecosystem-core.
 
 ## As aplicações em detalhe
 
@@ -126,18 +112,25 @@ release instala as 10 aplicações de janela: `my-desktop`, `developer-desktop`,
 - **package-developer** (`developer`) — ferramenta para desenvolver pacotes.
   Aplicação web completa apoiada pela `package-developer.lib`
   (`PackageHandlerManager`).
-- **ui-components** (`ui-components.lib`) — biblioteca de componentes React
-  compartilhada pelos front-ends. **Não** possui `metadata/` (namespace de
-  plataforma): é consumida em **build** pelos `webgui`, não resolvida como package
-  em runtime.
+- **MetaProjectManager** — gestão de projetos com agentes de IA: quadro, itens,
+  planejamento, documentação e uma camada MCP para que agentes trabalhem sob
+  autorização. Ver o [README do grupo](./Apps.Module/Productivity.layer/MetaProjectManager.group/README.md).
+- **MyBlueprint** — ver o [README do grupo](./Apps.Module/Productivity.layer/MyBlueprint.group/README.md).
+- **InstanceExecutorControlPanel** (`executor-panel` / `executor-panel-desktop`) —
+  o painel que **executa**: lança instâncias, acompanha tarefas internas e
+  monitora consumo. É cliente do daemon de instâncias.
+- **Launcher** — lançador de aplicações, extraído do MyDesktop.
+- **UICatalog** — catálogo vivo dos componentes do kit de UI. Ver o
+  [README do grupo](./Apps.Module/Tools.layer/UICatalog.group/README.md).
 
 ## Estrutura do repositório
 
-- **Apps.Module** → `Admin.layer` (ContainerManager, DataSource, MyDesktop), `Tools.layer`
-  (APIDesigner, MetaCloud, PackageDeveloper) e `InstanceManager.layer`
-  (InstanceExecutorControlPanel).
-- **Base.Module** → `Library.layer` (ui-components) e `Service.layer`
-  (datasource-manager.service).
+- **Apps.Module** → `Admin.layer` (ContainerManager, DataSource, MyDesktop),
+  `Tools.layer` (APIDesigner, MetaCloud, PackageDeveloper, UICatalog),
+  `InstanceManager.layer` (InstanceExecutorControlPanel, Launcher) e
+  `Productivity.layer` (MetaProjectManager, MyBlueprint).
+- **Base.Module** → `Service.layer` (datasource-manager.service).
+- **Taskloaders.Module** → `Loaders.layer` (desktop-window-instance.taskLoader).
 
 ## Troubleshooting
 
@@ -154,7 +147,7 @@ release instala as 10 aplicações de janela: `my-desktop`, `developer-desktop`,
   daemon `executor-manager` mantém os módulos no cache de `require` do Node.
   Trocar o arquivo no disco não basta: reinicie o daemon.
 
-Inconsistências conhecidas (packages stub, `ui-components` sem metadata):
+Inconsistências conhecidas (pacotes stub):
 [docs/known-issues.md](./docs/known-issues.md).
 
 ## Links relacionados

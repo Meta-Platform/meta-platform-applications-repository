@@ -217,5 +217,5 @@ são resolvidos de `EXTERNAL_NODE_MODULES_PATH` (herdado do host pelo `spawn`).
 > Parâmetros e exemplo no `execution-params`: ver
 > [Tipos de Object Loader → `desktop-window-instance`](https://github.com/Meta-Platform/meta-platform-open-standard/blob/main/concepts/tipos-de-object-loader.md#desktop-window-instance).
 > Para criar o seu próprio loader, veja o
-> [Guia: como criar e usar um Object Loader](../../Executor.layer/task-executor.lib/docs/guia-criar-object-loader.md).
+> [Guia: como criar e usar um Object Loader](https://github.com/Meta-Platform/meta-platform-essential-repository/blob/main/Runtime.Module/Executor.layer/task-executor.lib/docs/guia-criar-object-loader.md).
 > [README do repositório](../../../README.md)
