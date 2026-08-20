@@ -1,15 +1,20 @@
-# UI Catalog
+# UICatalog *Group*
 
-Grupo executável do catálogo de componentes e WebGui. Rode
-`@/ui-catalog.desktopapp` para navegar pela visão geral do repositório e pelas
-coleções específicas de cada subpacote.
+O **catálogo vivo** dos componentes da plataforma: uma aplicação desktop que
+exibe cada componente do kit de UI (`@/i-components.uilib`, no ecosystem-core)
+com suas variações, para que se veja o que existe antes de escrever um novo.
 
-## Abrir o aplicativo instalado
+## Pacotes do grupo
 
-```bash
-/home/kadisk/EcosystemData/executables/run package \
-  /home/kadisk/EcosystemData/repos/PlatformApplicationsRepo/Apps.Module/Tools.layer/UICatalog.group/ui-catalog.desktopapp
-```
+| Pacote | Papel |
+|---|---|
+| [`ui-catalog.webgui`](./ui-catalog.webgui/README.md) | A interface do catálogo. |
+| `ui-catalog.desktopapp` | A janela desktop que a hospeda. |
 
-O procedimento de provisionamento, a arquitetura, as verificações e o histórico
-da entrega estão em `docs/uilib-ui-catalog-delivery.md`.
+## Execução
+
+Lance pelo Instance Executor, como qualquer aplicação desktop do ecossistema. O
+padrão do kit de UI está em
+[`docs/ui-kit-standard.md`](../../../docs/ui-kit-standard.md).
+
+> Veja o [README do repositório](../../../README.md).
